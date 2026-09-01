@@ -8,14 +8,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -35,15 +35,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.data.source.GrantedFolder
+import com.david.llegeix.ui.common.CoverAspectRatio
+import com.david.llegeix.ui.common.MenuEmoji
+import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.formatSize
@@ -76,20 +77,13 @@ fun DocumentRow(
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
+        PdfCover(
+            uriString = document.uriString,
+            width = ListCoverWidth,
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = stringResource(R.string.pdf_badge),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
+                .width(ListCoverWidth)
+                .aspectRatio(CoverAspectRatio),
+        )
 
         Column(
             modifier = Modifier
@@ -144,52 +138,171 @@ fun DocumentRow(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(
-                                if (isBookmarked) {
-                                    R.string.document_remove_bookmark
-                                } else {
-                                    R.string.document_add_bookmark
-                                },
-                            ),
-                        )
-                    },
-                    onClick = {
-                        onToggleBookmarked()
-                        menuOpen = false
-                    },
+            DocumentMenu(
+                expanded = menuOpen,
+                isBookmarked = isBookmarked,
+                isReadLater = isReadLater,
+                onDismiss = { menuOpen = false },
+                onToggleBookmarked = onToggleBookmarked,
+                onToggleReadLater = onToggleReadLater,
+                onMoveToFolder = onMoveToFolder,
+            )
+        }
+    }
+}
+
+/** The per-document actions, shared by the list row and the grid cell. */
+@Composable
+private fun DocumentMenu(
+    expanded: Boolean,
+    isBookmarked: Boolean,
+    isReadLater: Boolean,
+    onDismiss: () -> Unit,
+    onToggleBookmarked: () -> Unit,
+    onToggleReadLater: () -> Unit,
+    onMoveToFolder: () -> Unit,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            leadingIcon = { MenuEmoji(if (isBookmarked) "💔" else "⭐") },
+            text = {
+                Text(
+                    stringResource(
+                        if (isBookmarked) {
+                            R.string.document_remove_bookmark
+                        } else {
+                            R.string.document_add_bookmark
+                        },
+                    ),
                 )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            stringResource(
-                                if (isReadLater) {
-                                    R.string.document_remove_read_later
-                                } else {
-                                    R.string.document_read_later
-                                },
-                            ),
-                        )
-                    },
-                    onClick = {
-                        onToggleReadLater()
-                        menuOpen = false
-                    },
+            },
+            onClick = {
+                onToggleBookmarked()
+                onDismiss()
+            },
+        )
+        DropdownMenuItem(
+            leadingIcon = { MenuEmoji(if (isReadLater) "✅" else "🔖") },
+            text = {
+                Text(
+                    stringResource(
+                        if (isReadLater) {
+                            R.string.document_remove_read_later
+                        } else {
+                            R.string.document_read_later
+                        },
+                    ),
                 )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.document_move_to_folder)) },
-                    onClick = {
-                        onMoveToFolder()
-                        menuOpen = false
-                    },
+            },
+            onClick = {
+                onToggleReadLater()
+                onDismiss()
+            },
+        )
+        DropdownMenuItem(
+            leadingIcon = { MenuEmoji("📁") },
+            text = { Text(stringResource(R.string.document_move_to_folder)) },
+            onClick = {
+                onMoveToFolder()
+                onDismiss()
+            },
+        )
+    }
+}
+
+/**
+ * One PDF as a cover in the grid.
+ *
+ * The cover does most of the identifying work here, so the title is allowed two
+ * lines and the detail line is dropped entirely — in a grid it would be noise
+ * repeated across every cell.
+ */
+@Composable
+fun DocumentCell(
+    document: PdfDocument,
+    isBookmarked: Boolean,
+    isReadLater: Boolean,
+    onClick: () -> Unit,
+    onMoveToFolder: () -> Unit,
+    onToggleReadLater: () -> Unit,
+    onToggleBookmarked: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(Space.sm),
+    ) {
+        Box {
+            PdfCover(
+                uriString = document.uriString,
+                width = GridCoverWidth,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(CoverAspectRatio),
+                cornerRadius = 12.dp,
+            )
+            if (isBookmarked) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = stringResource(R.string.document_bookmarked),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(Space.sm)
+                        .size(18.dp),
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Space.sm),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(
+                text = document.title,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Box {
+                IconButton(
+                    onClick = { menuOpen = true },
+                    modifier = Modifier.size(28.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(
+                            R.string.document_actions,
+                            document.title,
+                        ),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                DocumentMenu(
+                    expanded = menuOpen,
+                    isBookmarked = isBookmarked,
+                    isReadLater = isReadLater,
+                    onDismiss = { menuOpen = false },
+                    onToggleBookmarked = onToggleBookmarked,
+                    onToggleReadLater = onToggleReadLater,
+                    onMoveToFolder = onMoveToFolder,
                 )
             }
         }
     }
 }
+
+/** Cover sizes, named so the list and the grid stay in proportion. */
+val ListCoverWidth = 46.dp
+val GridCoverWidth = 150.dp
 
 /**
  * Everything to do with where PDFs come from, in one place.
@@ -234,7 +347,7 @@ fun SourcesSheet(
             Column(modifier = Modifier.padding(top = Space.xl)) {
                 SourceAction(
                     // A sweep of the device, not another thing to add.
-                    icon = if (deviceScanEnabled) Icons.Default.Check else Icons.Default.Search,
+                    emoji = if (deviceScanEnabled) "✅" else "🔍",
                     title = stringResource(R.string.action_scan_device),
                     subtitle = stringResource(
                         if (deviceScanEnabled) {
@@ -249,7 +362,7 @@ fun SourcesSheet(
                     },
                 )
                 SourceAction(
-                    icon = Icons.Default.Add,
+                    emoji = "📁",
                     title = stringResource(R.string.action_add_folder),
                     onClick = {
                         onAddFolder()
@@ -257,7 +370,7 @@ fun SourcesSheet(
                     },
                 )
                 SourceAction(
-                    icon = Icons.Default.Add,
+                    emoji = "📄",
                     title = stringResource(R.string.library_add_files),
                     onClick = {
                         onAddFiles()
@@ -310,7 +423,7 @@ fun SourcesSheet(
 
 @Composable
 private fun SourceAction(
-    icon: ImageVector,
+    emoji: String,
     title: String,
     onClick: () -> Unit,
     subtitle: String? = null,
@@ -322,11 +435,7 @@ private fun SourceAction(
             .padding(horizontal = Space.xl, vertical = Space.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
+        MenuEmoji(emoji)
         Column(modifier = Modifier.padding(start = Space.lg)) {
             Text(text = title, style = MaterialTheme.typography.bodyLarge)
             if (subtitle != null) {

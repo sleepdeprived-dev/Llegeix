@@ -39,11 +39,23 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(language = language)
     }
 
+    fun setLibraryLayout(layout: LibraryLayout) {
+        prefs.edit { putString(KEY_LAYOUT, layout.key) }
+        _settings.value = current.copy(libraryLayout = layout)
+    }
+
+    fun setInvertPages(invert: Boolean) {
+        prefs.edit { putBoolean(KEY_INVERT_PAGES, invert) }
+        _settings.value = current.copy(invertPages = invert)
+    }
+
     companion object {
         private const val PREFS_NAME = "llegeix.settings"
         private const val KEY_THEME = "theme_mode"
         private const val KEY_ACCENT = "accent"
         private const val KEY_LANGUAGE = "language"
+        private const val KEY_LAYOUT = "library_layout"
+        private const val KEY_INVERT_PAGES = "invert_pages"
 
         private fun preferences(context: Context): SharedPreferences =
             context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -52,6 +64,8 @@ class SettingsRepository(context: Context) {
             themeMode = ThemeMode.fromKey(prefs.getString(KEY_THEME, null)),
             accent = AccentColor.fromKey(prefs.getString(KEY_ACCENT, null)),
             language = AppLanguage.fromTag(prefs.getString(KEY_LANGUAGE, null)),
+            libraryLayout = LibraryLayout.fromKey(prefs.getString(KEY_LAYOUT, null)),
+            invertPages = prefs.getBoolean(KEY_INVERT_PAGES, false),
         )
 
         /**

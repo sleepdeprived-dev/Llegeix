@@ -5,6 +5,7 @@ import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.pdf.PdfThumbnails
 
 /**
  * Holds the app's singletons.
@@ -23,6 +24,9 @@ class LlegeixApp : Application() {
         LibraryDataRepository(LlegeixDatabase.build(this))
     }
 
-    /** Theme, accent and language, as chosen on the Settings screen. */
+    /** First-page covers for the library, shared so the cache outlives a screen. */
+    val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(this) }
+
+    /** Theme, accent, language and reading preferences. */
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
 }

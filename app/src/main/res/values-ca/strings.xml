@@ -150,6 +150,24 @@
     <string name="reader_highlight_colour">Color del ressaltat</string>
     <string name="reader_colour_selected">%1$s, seleccionat</string>
 
+    <string name="reader_find">Cerca al document</string>
+    <string name="reader_find_hint">Cerca</string>
+    <string name="reader_find_close">Tanca la cerca</string>
+    <string name="reader_find_next">Coincidència següent</string>
+    <string name="reader_find_previous">Coincidència anterior</string>
+    <string name="reader_find_none">Cap coincidència</string>
+    <!-- Posició dins dels resultats, p. ex. «3 / 47». -->
+    <string name="reader_find_position">%1$d / %2$d</string>
+    <string name="reader_zoom">Amplia</string>
+    <string name="reader_zoom_level">%1$s×</string>
+    <string name="reader_invert_on">Colors de la pàgina invertits</string>
+    <string name="reader_invert_off">Inverteix els colors de la pàgina</string>
+    <string name="reader_highlight_colour_hint">Mantén premut el botó de marcador per canviar el color del ressaltat.</string>
+    <!-- El comptador de pàgines flotant, p. ex. «12 / 340». -->
+    <string name="reader_page_position">%1$d / %2$d</string>
+    <string name="library_view_grid">Vista de graella</string>
+    <string name="library_view_list">Vista de llista</string>
+
     <!-- Consulta de paraules -->
     <string name="lookup_direction">Català → anglès</string>
     <string name="lookup_translating">S\'està traduint…</string>

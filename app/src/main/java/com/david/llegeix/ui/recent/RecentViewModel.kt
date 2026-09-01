@@ -6,16 +6,27 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
+import com.david.llegeix.data.settings.LibraryLayout
+import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.data.source.LibraryDataRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class RecentViewModel(
     private val libraryData: LibraryDataRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
+
+    /** Rows or covers. Shared with the library so the app looks like one app. */
+    val layout: StateFlow<LibraryLayout> = settings.settings
+        .map { it.libraryLayout }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.current.libraryLayout)
+
+    fun onToggleLayout() = settings.setLibraryLayout(layout.value.toggled())
 
     val recents: StateFlow<List<RecentDocument>> = libraryData.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -31,7 +42,7 @@ class RecentViewModel(
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                     as LlegeixApp
-                RecentViewModel(app.libraryDataRepository)
+                RecentViewModel(app.libraryDataRepository, app.settingsRepository)
             }
         }
     }

@@ -22,8 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,7 +42,6 @@ import androidx.annotation.StringRes
 import com.david.llegeix.R
 import com.david.llegeix.ui.common.HighlightColors
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
@@ -68,16 +66,12 @@ fun BookmarksScreen(
     val pages by viewModel.pageBookmarks.collectAsStateWithLifecycle()
     val folders by viewModel.bookmarkedFolders.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier.fillMaxSize(),
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = { Text(stringResource(R.string.bookmarks_title)) },
-                scrollBehavior = scrollBehavior,
             )
         },
     ) { innerPadding ->

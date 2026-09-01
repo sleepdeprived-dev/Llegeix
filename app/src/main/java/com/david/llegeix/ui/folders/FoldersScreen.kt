@@ -34,8 +34,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,9 +55,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.ui.common.HighlightColors
+import com.david.llegeix.ui.common.MenuEmoji
 import com.david.llegeix.ui.common.resolved
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
 
@@ -86,17 +85,13 @@ fun FoldersScreen(
         viewModel.onMessageShown()
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = { Text(stringResource(R.string.folders_title)) },
-                scrollBehavior = scrollBehavior,
             )
         },
         floatingActionButton = {
@@ -346,6 +341,7 @@ private fun FolderRow(
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
+                    leadingIcon = { MenuEmoji("📌") },
                     text = {
                         Text(
                             stringResource(
@@ -360,6 +356,7 @@ private fun FolderRow(
                     onClick = { onTogglePinned(); menuOpen = false },
                 )
                 DropdownMenuItem(
+                    leadingIcon = { MenuEmoji(if (folder.isBookmarked) "💔" else "⭐") },
                     text = {
                         Text(
                             stringResource(
@@ -374,15 +371,18 @@ private fun FolderRow(
                     onClick = { onToggleBookmarked(); menuOpen = false },
                 )
                 DropdownMenuItem(
+                    leadingIcon = { MenuEmoji("🎨") },
                     text = { Text(stringResource(R.string.folders_colour)) },
                     onClick = { onPickColor(); menuOpen = false },
                 )
                 DropdownMenuItem(
+                    leadingIcon = { MenuEmoji("✏️") },
                     text = { Text(stringResource(R.string.folders_rename)) },
                     onClick = { onRename(); menuOpen = false },
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
+                    leadingIcon = { MenuEmoji("🗑️") },
                     text = { Text(stringResource(R.string.action_delete)) },
                     onClick = { onDelete(); menuOpen = false },
                 )

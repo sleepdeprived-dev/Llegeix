@@ -13,6 +13,8 @@ import io.legere.pdfiumandroid.PdfPage
 import io.legere.pdfiumandroid.PdfTextPage
 import io.legere.pdfiumandroid.PdfiumCore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -173,6 +175,108 @@ class PdfiumPageRenderer private constructor(
         } else {
             null
         }
+    }
+
+    override suspend fun findMatches(
+        query: String,
+        limit: Int,
+        onBatch: suspend (List<PdfMatch>) -> Unit,
+    ) {
+        val term = query.trim()
+        if (term.isEmpty()) return
+        var found = 0
+
+        for (pageIndex in 0 until pageCount) {
+            // The lock is taken and released per page rather than held for the
+            // whole sweep, so paging and rendering stay responsive while a long
+            // document is being searched.
+            val matches = withContext(Dispatchers.IO) {
+                mutex.withLock {
+                    document.openPage(pageIndex)?.use { page ->
+                        page.openTextPage().use { textPage ->
+                            matchesOnPage(textPage, pageIndex, term, limit - found)
+                        }
+                    }.orEmpty()
+                }
+            }
+            // Cancellation is checked between pages: a reader who keeps typing
+            // starts a new search and this one should stop promptly.
+            currentCoroutineContext().ensureActive()
+
+            if (matches.isNotEmpty()) {
+                found += matches.size
+                onBatch(matches)
+            }
+            if (found >= limit) return
+        }
+    }
+
+    private fun matchesOnPage(
+        textPage: PdfTextPage,
+        pageIndex: Int,
+        term: String,
+        remaining: Int,
+    ): List<PdfMatch> {
+        if (remaining <= 0) return emptyList()
+        // No flags: case-insensitive, substring. Searching a language you are
+        // learning means often being unsure of the exact form, so the widest
+        // match is the useful one.
+        // close() alone. FindResult.close() and closeFind() both call the same
+        // native closeFind on the same handle, so calling both is a double free
+        // and aborts the process inside the allocator.
+        return textPage.findStart(term, emptySet(), 0)?.use { find ->
+            buildList {
+                while (size < remaining && find.findNext()) {
+                    val index = find.getSchResultIndex()
+                    val count = find.getSchCount()
+                    if (index >= 0 && count > 0) {
+                        add(PdfMatch(pageIndex = pageIndex, charIndex = index, charCount = count))
+                    }
+                }
+            }
+        }.orEmpty()
+    }
+
+    override suspend fun matchBoundsPx(
+        match: PdfMatch,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): List<RectF> = withContext(Dispatchers.IO) {
+        if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext emptyList()
+        mutex.withLock {
+            document.openPage(match.pageIndex)?.use { page ->
+                val widthPt = page.getPageWidthPoint().toDouble()
+                val heightPt = page.getPageHeightPoint().toDouble()
+                if (widthPt <= 0.0 || heightPt <= 0.0) return@use emptyList()
+                page.openTextPage().use { textPage ->
+                    // FPDFText_GetRect only answers after the range has been
+                    // counted; the count call is what populates it.
+                    val rectCount = textPage.textPageCountRects(match.charIndex, match.charCount)
+                    (0 until rectCount).mapNotNull { i ->
+                        textPage.textPageGetRect(i)?.let { box ->
+                            toBitmapRect(box, widthPt, heightPt, renderedWidthPx, renderedHeightPx)
+                        }
+                    }
+                }
+            }.orEmpty()
+        }
+    }
+
+    /** PDF user space is y-up from the bottom left; bitmaps are y-down. */
+    private fun toBitmapRect(
+        box: RectF,
+        widthPt: Double,
+        heightPt: Double,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): RectF {
+        val scaleX = renderedWidthPx / widthPt
+        val scaleY = renderedHeightPx / heightPt
+        val left = minOf(box.left, box.right).toDouble() * scaleX
+        val right = maxOf(box.left, box.right).toDouble() * scaleX
+        val top = (heightPt - maxOf(box.top, box.bottom).toDouble()) * scaleY
+        val bottom = (heightPt - minOf(box.top, box.bottom).toDouble()) * scaleY
+        return RectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
     }
 
     override fun close() {

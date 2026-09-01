@@ -10,8 +10,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
+import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.source.LibraryDataRepository
 import android.graphics.RectF
+import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.translate.WordTranslator
@@ -21,6 +23,10 @@ import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.util.pdfTitle
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +51,21 @@ data class WordLookup(
     val canRetryOnAnyNetwork: Boolean = false,
 )
 
+/** The find-in-document bar and whatever it has turned up so far. */
+data class SearchState(
+    val isOpen: Boolean = false,
+    val query: String = "",
+    val matches: List<PdfMatch> = emptyList(),
+    val currentIndex: Int = 0,
+    val isSearching: Boolean = false,
+) {
+    val current: PdfMatch? get() = matches.getOrNull(currentIndex)
+
+    /** True once a completed search has come back with nothing. */
+    val isEmptyResult: Boolean
+        get() = !isSearching && query.isNotBlank() && matches.isEmpty()
+}
+
 data class ReaderUiState(
     /** The real filename, as stored in the database. */
     val title: String = "",
@@ -60,18 +81,26 @@ data class ReaderUiState(
     val lookup: WordLookup? = null,
     /** Shown briefly when a long press lands on a page with no text layer. */
     val lookupHint: UiText? = null,
+    val search: SearchState = SearchState(),
+    /** Renders the page light-on-dark. Persisted, so it survives reopening. */
+    val invertPages: Boolean = false,
+    /** Page magnification, driven by pinch, double tap, or the zoom button. */
+    val zoom: Float = 1f,
 ) {
     /** The filename trimmed for the app bar. */
     val displayTitle: String get() = pdfTitle(title)
 
     val isCurrentPageBookmarked: Boolean
         get() = currentPage in bookmarkedPages
+
+    val isZoomed: Boolean get() = zoom > 1.01f
 }
 
 class ReaderViewModel(
     private val application: Application,
     private val uriString: String,
     private val libraryData: LibraryDataRepository,
+    private val settings: SettingsRepository,
     title: String,
     /** Page to open on, overriding the remembered position. */
     private val targetPage: Int? = null,
@@ -86,6 +115,8 @@ class ReaderViewModel(
 
     private var lookupJob: Job? = null
 
+    private var searchJob: Job? = null
+
     /**
      * Keeps a few rendered pages around so swiping back to the previous page is
      * instant. Bitmaps are never recycled here — the pager may still be drawing
@@ -96,6 +127,110 @@ class ReaderViewModel(
     init {
         openDocument()
         observeStoredState()
+        viewModelScope.launch {
+            settings.settings.collect { current ->
+                _uiState.update { it.copy(invertPages = current.invertPages) }
+            }
+        }
+    }
+
+    // ---- Reading controls -------------------------------------------------
+
+    fun onToggleInvertPages() {
+        settings.setInvertPages(!_uiState.value.invertPages)
+    }
+
+    /**
+     * Step through the zoom levels.
+     *
+     * A button as well as pinch: pinching accurately is fiddly, and the whole
+     * point of this screen is that it should not be fiddly.
+     */
+    fun onCycleZoom() {
+        val next = ZOOM_STEPS.firstOrNull { it > _uiState.value.zoom + 0.01f } ?: ZOOM_STEPS.first()
+        _uiState.update { it.copy(zoom = next) }
+    }
+
+    fun onZoomChanged(zoom: Float) {
+        _uiState.update { it.copy(zoom = zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)) }
+    }
+
+    fun onResetZoom() {
+        _uiState.update { it.copy(zoom = 1f) }
+    }
+
+    // ---- Find in document -------------------------------------------------
+
+    fun onOpenSearch() {
+        _uiState.update { it.copy(search = it.search.copy(isOpen = true)) }
+    }
+
+    fun onCloseSearch() {
+        searchJob?.cancel()
+        _uiState.update { it.copy(search = SearchState()) }
+    }
+
+    fun onSearchQueryChange(query: String) {
+        searchJob?.cancel()
+        _uiState.update {
+            it.copy(
+                search = it.search.copy(
+                    query = query,
+                    matches = emptyList(),
+                    currentIndex = 0,
+                    isSearching = query.isNotBlank(),
+                ),
+            )
+        }
+        if (query.isBlank()) return
+
+        searchJob = viewModelScope.launch {
+            // Typing a word produces a search per keystroke otherwise, and each
+            // one sweeps the whole document.
+            delay(SEARCH_DEBOUNCE_MS)
+            val active = renderer ?: return@launch
+            var jumped = false
+            runCatchingCancellable {
+                active.findMatches(query) { batch ->
+                    _uiState.update { state ->
+                        state.copy(search = state.search.copy(matches = state.search.matches + batch))
+                    }
+                    // Land on the first hit as soon as there is one, rather than
+                    // waiting for the whole document to be swept.
+                    if (!jumped) {
+                        jumped = true
+                        _pageJumps.emit(batch.first().pageIndex)
+                    }
+                }
+            }
+            _uiState.update { it.copy(search = it.search.copy(isSearching = false)) }
+        }
+    }
+
+    fun onNextMatch() = stepMatch(1)
+
+    fun onPreviousMatch() = stepMatch(-1)
+
+    private fun stepMatch(delta: Int) {
+        val search = _uiState.value.search
+        if (search.matches.isEmpty()) return
+        val next = (search.currentIndex + delta).mod(search.matches.size)
+        _uiState.update { it.copy(search = it.search.copy(currentIndex = next)) }
+        viewModelScope.launch { _pageJumps.emit(search.matches[next].pageIndex) }
+    }
+
+    /** Where the search wants the pager to go. */
+    private val _pageJumps = MutableSharedFlow<Int>(extraBufferCapacity = 4)
+    val pageJumps: SharedFlow<Int> = _pageJumps.asSharedFlow()
+
+    /** Highlight rectangles for the active match on [pageIndex], if any. */
+    suspend fun matchHighlights(pageIndex: Int, widthPx: Int, heightPx: Int): List<RectF> {
+        val active = renderer ?: return emptyList()
+        val match = _uiState.value.search.current ?: return emptyList()
+        if (match.pageIndex != pageIndex) return emptyList()
+        return runCatchingCancellable {
+            active.matchBoundsPx(match, widthPx, heightPx)
+        }.getOrDefault(emptyList())
     }
 
     private fun openDocument() = viewModelScope.launch {
@@ -321,6 +456,10 @@ class ReaderViewModel(
 
     companion object {
         private const val CACHE_SIZE = 6
+        private const val SEARCH_DEBOUNCE_MS = 300L
+        private val ZOOM_STEPS = listOf(1f, 1.5f, 2f, 3f)
+        const val MIN_ZOOM = 1f
+        const val MAX_ZOOM = 4f
 
         fun factory(
             uriString: String,
@@ -330,7 +469,14 @@ class ReaderViewModel(
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                     as LlegeixApp
-                ReaderViewModel(app, uriString, app.libraryDataRepository, title, targetPage)
+                ReaderViewModel(
+                    app,
+                    uriString,
+                    app.libraryDataRepository,
+                    app.settingsRepository,
+                    title,
+                    targetPage,
+                )
             }
         }
     }

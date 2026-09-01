@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
+import com.david.llegeix.data.settings.LibraryLayout
+import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
@@ -18,6 +20,7 @@ import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +30,15 @@ import kotlinx.coroutines.launch
 class LibraryViewModel(
     private val repository: PdfRepository,
     private val libraryData: LibraryDataRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
+
+    /** Rows or covers. Shared with Recent so the app looks like one app. */
+    val layout: StateFlow<LibraryLayout> = settings.settings
+        .map { it.libraryLayout }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.current.libraryLayout)
+
+    fun onToggleLayout() = settings.setLibraryLayout(layout.value.toggled())
 
     /** Folders offered by the "move to folder" sheet. */
     val folders: StateFlow<List<FolderEntity>> = libraryData.observeFolders()
@@ -222,7 +233,7 @@ class LibraryViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as LlegeixApp
-                LibraryViewModel(app.pdfRepository, app.libraryDataRepository)
+                LibraryViewModel(app.pdfRepository, app.libraryDataRepository, app.settingsRepository)
             }
         }
     }

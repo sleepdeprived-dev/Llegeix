@@ -16,6 +16,19 @@ data class PdfWord(
 )
 
 /**
+ * One occurrence of a search term, as a character range on a page.
+ *
+ * Stored as a range rather than as rectangles because the rectangles depend on
+ * the size the page is currently rendered at, which changes with rotation and
+ * zoom; the range does not.
+ */
+data class PdfMatch(
+    val pageIndex: Int,
+    val charIndex: Int,
+    val charCount: Int,
+)
+
+/**
  * Renders the pages of one open PDF and answers questions about their text.
  *
  * The text half is what forced the backend choice: Android's built-in
@@ -46,6 +59,31 @@ interface PdfPageRenderer : AutoCloseable {
         renderedWidthPx: Int,
         renderedHeightPx: Int,
     ): PdfWord?
+
+    /**
+     * Search the whole document for [query], case-insensitively.
+     *
+     * Results are delivered page by page through [onBatch] rather than returned
+     * at the end: a long document takes noticeable time to sweep, and a reader
+     * who typed a word wants the first hit now, not after page 400 has been
+     * checked. Stops once [limit] matches have been found.
+     */
+    suspend fun findMatches(
+        query: String,
+        limit: Int = 500,
+        onBatch: suspend (List<PdfMatch>) -> Unit,
+    )
+
+    /**
+     * Where [match] sits on its page, in rendered-bitmap pixels.
+     *
+     * A match can span more than one rectangle when it wraps across a line.
+     */
+    suspend fun matchBoundsPx(
+        match: PdfMatch,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): List<RectF>
 }
 
 /**

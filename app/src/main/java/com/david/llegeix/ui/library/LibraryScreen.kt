@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -28,7 +31,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,7 +41,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,11 +51,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,8 +63,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.model.LibrarySort
+import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.MenuEmoji
 import com.david.llegeix.ui.common.Senyera
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
@@ -85,10 +89,10 @@ fun LibraryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val folders by viewModel.folders.collectAsState()
+    val layout by viewModel.layout.collectAsStateWithLifecycle()
     var documentToFile by remember { mutableStateOf<PdfDocument?>(null) }
     var showNewFolderFor by remember { mutableStateOf<PdfDocument?>(null) }
     var showSources by remember { mutableStateOf(false) }
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     // All Files Access is granted in system Settings, so the only reliable
     // signal that it changed is coming back to the foreground.
@@ -130,12 +134,10 @@ fun LibraryScreen(
     }
 
     Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Senyera()
@@ -165,11 +167,12 @@ fun LibraryScreen(
                     }
                     LibraryMenu(
                         currentSort = state.sort,
+                        layout = layout,
                         onSortChange = viewModel::onSortChange,
+                        onToggleLayout = viewModel::onToggleLayout,
                         onOpenSources = { showSources = true },
                     )
                 },
-                scrollBehavior = scrollBehavior,
             )
         },
     ) { innerPadding ->
@@ -215,6 +218,7 @@ fun LibraryScreen(
 
             LibraryBody(
                 state = state,
+                layout = layout,
                 onAddFolder = { folderPicker.launch(null) },
                 onScanDevice = ::openAllFilesSettings,
                 onOpenDocument = onOpenDocument,
@@ -297,6 +301,7 @@ private fun LibraryFilterRow(
 @Composable
 private fun LibraryBody(
     state: LibraryUiState,
+    layout: LibraryLayout,
     onAddFolder: () -> Unit,
     onScanDevice: () -> Unit,
     onOpenDocument: (PdfDocument) -> Unit,
@@ -361,6 +366,30 @@ private fun LibraryBody(
             },
             modifier = modifier,
         )
+
+        layout == LibraryLayout.GRID -> LazyVerticalGrid(
+            // Adaptive rather than a fixed count, so a wide screen or landscape
+            // fits more covers instead of stretching two of them.
+            columns = GridCells.Adaptive(minSize = 140.dp),
+            modifier = modifier,
+            contentPadding = PaddingValues(
+                start = Space.md,
+                end = Space.md,
+                bottom = Space.xxl,
+            ),
+        ) {
+            items(state.documents, key = { it.uriString }) { document ->
+                DocumentCell(
+                    document = document,
+                    isBookmarked = state.isBookmarked(document),
+                    isReadLater = state.isReadLater(document),
+                    onClick = { onOpenDocument(document) },
+                    onMoveToFolder = { onMoveToFolder(document) },
+                    onToggleReadLater = { onToggleReadLater(document) },
+                    onToggleBookmarked = { onToggleBookmarked(document) },
+                )
+            }
+        }
 
         else -> LazyColumn(
             modifier = modifier,
@@ -440,7 +469,9 @@ private fun MoveToFolderDialog(
 @Composable
 private fun LibraryMenu(
     currentSort: LibrarySort,
+    layout: LibraryLayout,
     onSortChange: (LibrarySort) -> Unit,
+    onToggleLayout: () -> Unit,
     onOpenSources: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -453,9 +484,28 @@ private fun LibraryMenu(
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
+                leadingIcon = { MenuEmoji("📂") },
                 text = { Text(stringResource(R.string.library_sources_open)) },
                 onClick = {
                     onOpenSources()
+                    expanded = false
+                },
+            )
+            DropdownMenuItem(
+                leadingIcon = { MenuEmoji(if (layout == LibraryLayout.GRID) "☰" else "🔳") },
+                text = {
+                    Text(
+                        stringResource(
+                            if (layout == LibraryLayout.GRID) {
+                                R.string.library_view_list
+                            } else {
+                                R.string.library_view_grid
+                            },
+                        ),
+                    )
+                },
+                onClick = {
+                    onToggleLayout()
                     expanded = false
                 },
             )

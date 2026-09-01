@@ -6,9 +6,12 @@ language. Written in Kotlin with Jetpack Compose.
 ## Features
 
 - **Library** — discovers PDFs on the device through MediaStore, the Storage
-  Access Framework, and direct file picks, with sorting and search.
+  Access Framework, and direct file picks, with sorting, search, first-page
+  cover thumbnails, and a choice of list or grid.
 - **Reader** — page rendering via [PdfiumAndroid](https://github.com/johngray1965/PdfiumAndroid),
-  with a selectable text layer over the rendered page.
+  with a selectable text layer, pinch and double-tap zoom, find-in-document
+  across every page, and an invert toggle that darkens the page itself without
+  touching the app's theme. One slim bar, no bottom chrome.
 - **Organisation** — folders, recently viewed, and bookmarks, persisted in a
   Room database.
 - **Translation** — tap and hold a word to translate it with ML Kit's on-device

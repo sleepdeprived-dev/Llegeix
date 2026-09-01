@@ -60,8 +60,31 @@ enum class AppLanguage(val tag: String, @param:StringRes val labelRes: Int) {
     }
 }
 
+/** Whether documents are listed as rows or as a grid of covers. */
+enum class LibraryLayout(val key: String) {
+    LIST("list"),
+    GRID("grid"),
+    ;
+
+    fun toggled(): LibraryLayout = if (this == LIST) GRID else LIST
+
+    companion object {
+        fun fromKey(key: String?): LibraryLayout =
+            entries.firstOrNull { it.key == key } ?: LIST
+    }
+}
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accent: AccentColor = AccentColor.SYSTEM,
     val language: AppLanguage = AppLanguage.Default,
+    val libraryLayout: LibraryLayout = LibraryLayout.LIST,
+    /**
+     * Inverts the rendered page so a white PDF reads as light-on-dark.
+     *
+     * Separate from [themeMode]: the app's own chrome and the document are
+     * different surfaces, and plenty of people want a dark interface around a
+     * page that still looks like paper.
+     */
+    val invertPages: Boolean = false,
 )
