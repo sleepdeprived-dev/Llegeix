@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
     <!--
-        Now that the artwork is a drawn glyph rather than a render, a themed
-        icon can be supported properly: the monochrome layer is a silhouette
-        made for flat tinting, not an automatic reduction of the colour version.
+        A raster foreground, deliberately. The artwork is a rendered illustration
+        with shading and bevels that no hand-written vector would reproduce
+        honestly. What made the previous raster icon look like a sticker was not
+        the format but the framing: it filled its canvas, so every launcher mask
+        cut into it. These are generated at ~62% of the canvas, inside the safe
+        zone, so nothing can crop the book.
     -->
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
     <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
 </adaptive-icon>

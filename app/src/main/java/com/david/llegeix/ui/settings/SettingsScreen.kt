@@ -160,15 +160,6 @@ fun SettingsScreen(
                 )
             }
 
-            SectionHeader(stringResource(R.string.settings_ai))
-
-            SettingsCard {
-                ApiKeyField(
-                    current = settings.anthropicApiKey,
-                    onSave = viewModel::onApiKeyChange,
-                )
-            }
-
             SectionHeader(stringResource(R.string.settings_about))
 
             SettingsCard {
@@ -197,67 +188,6 @@ private fun ColorPickerHost(
 ) {
     if (show) {
         ColorPickerDialog(initial = initial, onDismiss = onDismiss, onConfirm = onConfirm)
-    }
-}
-
-/**
- * Where the reader puts their own Anthropic key.
- *
- * Never shows the key back: once saved there is no reason to display a secret,
- * and a masked field that cannot be read is more confusing than a plain "saved"
- * with a way to replace it. Editing starts from empty and replaces wholesale.
- */
-@Composable
-private fun ApiKeyField(current: String, onSave: (String) -> Unit) {
-    var typed by remember { mutableStateOf("") }
-    val hasKey = current.isNotBlank()
-
-    Column {
-        FieldLabel(stringResource(R.string.settings_api_key))
-        Text(
-            text = stringResource(R.string.settings_api_key_summary),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = Space.md),
-        )
-        OutlinedTextField(
-            value = typed,
-            onValueChange = { typed = it },
-            singleLine = true,
-            placeholder = {
-                Text(
-                    stringResource(
-                        if (hasKey) {
-                            R.string.settings_api_key_set
-                        } else {
-                            R.string.settings_api_key_none
-                        },
-                    ),
-                )
-            },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(
-            modifier = Modifier.padding(top = Space.sm),
-            horizontalArrangement = Arrangement.spacedBy(Space.sm),
-        ) {
-            TextButton(
-                onClick = {
-                    onSave(typed)
-                    typed = ""
-                },
-                enabled = typed.isNotBlank(),
-            ) {
-                Text(stringResource(R.string.settings_api_key_save))
-            }
-            if (hasKey) {
-                TextButton(onClick = { onSave("") }) {
-                    Text(stringResource(R.string.settings_api_key_clear))
-                }
-            }
-        }
     }
 }
 
@@ -305,6 +235,7 @@ private fun ThemePicker(current: ThemeMode, onChoose: (ThemeMode) -> Unit) {
         ThemeMode.SYSTEM to R.string.settings_theme_system_short,
         ThemeMode.LIGHT to R.string.settings_theme_light_short,
         ThemeMode.DARK to R.string.settings_theme_dark_short,
+        ThemeMode.AMOLED to R.string.settings_theme_amoled_short,
     )
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
         ThemeMode.entries.forEachIndexed { index, mode ->

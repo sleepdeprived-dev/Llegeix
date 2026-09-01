@@ -12,8 +12,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SettingsRepository
-import com.david.llegeix.explain.ClaudeExplainer
-import com.david.llegeix.explain.Explanation
 import com.david.llegeix.data.source.LibraryDataRepository
 import android.graphics.RectF
 import com.david.llegeix.lang.CatalanIpa
@@ -66,8 +64,6 @@ data class WordLookup(
     val ipa: String = "",
     /** True when the stressed vowel's aperture had to be guessed. */
     val isIpaApproximate: Boolean = false,
-    val explanation: String? = null,
-    val isExplaining: Boolean = false,
     val status: LookupStatus = LookupStatus.LOOKING_UP,
     val translation: String? = null,
     /** Per-word gloss, only worth showing for a phrase. */
@@ -147,10 +143,6 @@ class ReaderViewModel(
     private var lookupJob: Job? = null
 
     private var searchJob: Job? = null
-
-    private var explainJob: Job? = null
-
-    private val explainer = ClaudeExplainer()
 
     /**
      * Keeps a few rendered pages around so swiping back to the previous page is
@@ -522,53 +514,6 @@ class ReaderViewModel(
         _uiState.update { it.copy(lookupHint = null) }
     }
 
-    /**
-     * Ask Claude what the selection is doing in this sentence.
-     *
-     * The word-by-word breakdown says what the parts mean; this is for the part
-     * a translation drops — idiom, register, why this form and not another. It
-     * needs the reader's own API key, so the no-key case points at Settings
-     * rather than failing.
-     */
-    fun onExplainMore() {
-        val lookup = _uiState.value.lookup ?: return
-        if (lookup.isExplaining) return
-
-        explainJob?.cancel()
-        explainJob = viewModelScope.launch {
-            updateLookup { it.copy(isExplaining = true, error = null) }
-            val result = explainer.explain(
-                apiKey = settings.current.anthropicApiKey,
-                selection = lookup.text,
-                context = lookup.context,
-                documentTitle = _uiState.value.displayTitle,
-            )
-            updateLookup { current ->
-                when (result) {
-                    is Explanation.Ready ->
-                        current.copy(isExplaining = false, explanation = result.text)
-
-                    Explanation.NeedsKey -> current.copy(
-                        isExplaining = false,
-                        error = UiText.of(R.string.lookup_explain_needs_key),
-                    )
-
-                    is Explanation.Failed -> current.copy(
-                        isExplaining = false,
-                        error = explanationError(result.reason),
-                    )
-                }
-            }
-        }
-    }
-
-    /** Turns the client's failure reasons into something worth reading. */
-    private fun explanationError(reason: String): UiText = when (reason) {
-        "refusal" -> UiText.of(R.string.lookup_explain_refused)
-        "unauthorized" -> UiText.of(R.string.lookup_explain_unauthorized)
-        "empty" -> UiText.of(R.string.lookup_explain_empty)
-        else -> UiText.of(R.string.lookup_explain_failed, reason)
-    }
 
     fun onToggleBookmark() = viewModelScope.launch {
         val state = _uiState.value

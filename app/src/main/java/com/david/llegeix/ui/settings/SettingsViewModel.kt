@@ -24,8 +24,6 @@ class SettingsViewModel(
 
     fun onLanguageChange(language: AppLanguage) = settingsRepository.setLanguage(language)
 
-    fun onApiKeyChange(key: String) = settingsRepository.setAnthropicApiKey(key)
-
     /** Applies the mixed colour and selects it in one step. */
     fun onCustomAccentChange(argb: Int) = settingsRepository.setCustomAccent(argb)
 

@@ -21,16 +21,13 @@ language. Written in Kotlin with Jetpack Compose.
   than looked up, so it works for any word including names and inflections,
   backed by a word list for the one thing spelling cannot record. See the note
   below.
-- **Explanations** — "Explain more" asks Claude what the selection is doing in
-  its sentence: idiom, register, why this form. Needs your own Anthropic API
-  key, entered in Settings.
 - **Saved words** — star a word or phrase and it is kept with its translation,
   its pronunciation, the line it appeared in, and the document, page and line it
   came from.
-- **Settings** — reached from the gear in the Library app bar: light/dark/system
-  theme, an accent colour (Material You from the wallpaper, one of six fixed
-  schemes, or one mixed by hand with a hue slider and a hex field), and the
-  app's own language.
+- **Settings** — reached from the gear in the Library app bar: light, dark,
+  AMOLED black or follow-the-system, an accent colour (Material You from the
+  wallpaper, one of six fixed schemes, or one mixed by hand with a hue slider
+  and a hex field), and the app's own language.
 
 ## Design
 

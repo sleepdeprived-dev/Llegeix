@@ -3,11 +3,21 @@ package com.david.llegeix.data.settings
 import androidx.annotation.StringRes
 import com.david.llegeix.R
 
-/** Light, dark, or whatever the system is currently doing. */
+/** Light, dark, true black, or whatever the system is currently doing. */
 enum class ThemeMode(val key: String, @param:StringRes val labelRes: Int) {
     SYSTEM("system", R.string.settings_theme_system),
     LIGHT("light", R.string.settings_theme_light),
     DARK("dark", R.string.settings_theme_dark),
+
+    /**
+     * True black, for OLED screens.
+     *
+     * Separate from [DARK] rather than a switch beside it: on an OLED panel a
+     * black pixel is an off pixel, so this is a different look and a different
+     * battery cost, not a shade of the same one. Reading at night is most of
+     * what this app is for.
+     */
+    AMOLED("amoled", R.string.settings_theme_amoled),
     ;
 
     companion object {
@@ -91,14 +101,6 @@ data class AppSettings(
     val invertPages: Boolean = false,
     /** ARGB for [AccentColor.CUSTOM]. Ignored by every other accent. */
     val customAccent: Int = DEFAULT_CUSTOM_ACCENT,
-    /**
-     * The reader's own Anthropic API key, for "Explain more".
-     *
-     * Entered by hand and kept in the app's private preferences rather than
-     * compiled in: the release APK is public, and a key inside one is both
-     * extractable and billed to whoever built it.
-     */
-    val anthropicApiKey: String = "",
 )
 
 /** The colour the custom picker opens on before anything is chosen. */

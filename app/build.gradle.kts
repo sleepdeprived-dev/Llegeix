@@ -30,8 +30,8 @@ android {
         applicationId = "com.david.llegeix"
         minSdk = 31
         targetSdk = 37
-        versionCode = 7
-        versionName = "1.6"
+        versionCode = 8
+        versionName = "1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -127,9 +127,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
-    // Android's unit-test android.jar stubs org.json and every call throws;
-    // the real implementation only ever lands on the test classpath.
-    testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

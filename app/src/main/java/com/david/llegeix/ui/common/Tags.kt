@@ -36,6 +36,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.TagEntity
@@ -85,18 +88,21 @@ fun TagStrip(
 
 @Composable
 private fun TagChip(name: String, color: Color) {
+    val surface = MaterialTheme.colorScheme.surface
+    // Composited here rather than left as an alpha, so the contrast the label
+    // was chosen against is the contrast that actually gets drawn.
+    val chipBackground = tagChipBackground(color, surface)
+
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(color.copy(alpha = 0.18f))
+            .background(chipBackground)
             .padding(horizontal = Space.sm, vertical = 3.dp),
     ) {
         Text(
             text = name,
             style = MaterialTheme.typography.labelMedium,
-            // The tag's own colour on a wash of itself: legible in either theme
-            // without needing a second colour chosen for it.
-            color = color.readableOn(MaterialTheme.colorScheme.surface),
+            color = tagLabelColor(color, surface),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.widthIn(max = 84.dp),
@@ -105,18 +111,52 @@ private fun TagChip(name: String, color: Color) {
 }
 
 /**
- * Nudges a tag colour until it can be read against [background].
+ * Darkens or lightens a tag colour until its label can actually be read on
+ * [background], keeping the hue the reader chose.
  *
- * A reader picking a pale yellow should still be able to read the label; this
- * darkens or lightens the text without moving the hue they chose.
+ * Measured rather than guessed. A fixed 35% darkening was the first attempt and
+ * it left a yellow tag's label at 3.06:1 — below the 4.5:1 that small text
+ * needs — while a purple one was comfortably past it. The same nudge cannot
+ * work for every hue, because hues do not start at the same brightness.
  */
-@Composable
 private fun Color.readableOn(background: Color): Color {
-    val isLight = background.luminanceApprox() > 0.5f
-    return if (isLight) darken(0.35f) else lighten(0.35f)
+    val goDarker = background.relativeLuminance() > 0.5f
+    var candidate = this
+    repeat(MAX_CONTRAST_STEPS) {
+        if (contrastAgainst(candidate, background) >= MIN_LABEL_CONTRAST) return candidate
+        candidate = if (goDarker) candidate.darken(0.12f) else candidate.lighten(0.12f)
+    }
+    return candidate
 }
 
-private fun Color.luminanceApprox(): Float = 0.299f * red + 0.587f * green + 0.114f * blue
+private const val MIN_LABEL_CONTRAST = 4.5f
+private const val MAX_CONTRAST_STEPS = 14
+
+/** The chip's ground: a wash of its own colour over whatever is behind it. */
+internal fun tagChipBackground(tag: Color, surface: Color): Color =
+    Color(
+        red = tag.red * TAG_WASH + surface.red * (1f - TAG_WASH),
+        green = tag.green * TAG_WASH + surface.green * (1f - TAG_WASH),
+        blue = tag.blue * TAG_WASH + surface.blue * (1f - TAG_WASH),
+    )
+
+private const val TAG_WASH = 0.18f
+
+/** Exposed so the palette can be checked against both themes in a test. */
+internal fun tagLabelColor(tag: Color, surface: Color): Color =
+    tag.readableOn(tagChipBackground(tag, surface))
+
+internal fun contrastAgainst(a: Color, b: Color): Float {
+    val la = a.relativeLuminance()
+    val lb = b.relativeLuminance()
+    return (max(la, lb) + 0.05f) / (min(la, lb) + 0.05f)
+}
+
+private fun Color.relativeLuminance(): Float {
+    fun channel(value: Float): Float =
+        if (value <= 0.03928f) value / 12.92f else ((value + 0.055f) / 1.055f).pow(2.4f)
+    return 0.2126f * channel(red) + 0.7152f * channel(green) + 0.0722f * channel(blue)
+}
 
 private fun Color.darken(amount: Float): Color =
     Color(red * (1 - amount), green * (1 - amount), blue * (1 - amount), alpha)

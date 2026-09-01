@@ -188,7 +188,6 @@
     <string name="lookup_model_failed">No s\'ha pogut baixar el model català.</string>
     <string name="lookup_use_mobile_data">Utilitza dades mòbils</string>
     <string name="lookup_done">Entesos</string>
-    <string name="lookup_explain_more">Explica-ho més</string>
 
     <string name="lookup_save_word">Desa aquesta paraula</string>
     <string name="lookup_unsave_word">Treu de les paraules desades</string>
@@ -206,23 +205,6 @@
     <string name="bookmarks_words_empty_body">Mantén premuda una paraula mentre llegeixes i toca l\'estrella. Si continues arrossegant, en pots desar tota una frase.</string>
     <string name="words_remove">Treu aquesta paraula</string>
     <string name="words_source">%1$s · pàgina %2$d · línia %3$d</string>
-
-    <string name="lookup_explaining">S\'està consultant el Claude…</string>
-    <string name="lookup_explanation">Explicació</string>
-    <string name="lookup_explain_needs_key">Afegeix una clau d\'API d\'Anthropic a la configuració per fer-ho servir.</string>
-    <string name="lookup_explain_failed">No s\'ha pogut obtenir l\'explicació: %1$s</string>
-    <string name="lookup_explain_refused">El Claude no ha volgut respondre en aquest cas.</string>
-    <string name="lookup_explain_unauthorized">Aquesta clau d\'API s\'ha rebutjat. Comprova-la a la configuració.</string>
-    <string name="lookup_explain_empty">El Claude no ha retornat res.</string>
-
-    <!-- Configuració: la clau per a les explicacions -->
-    <string name="settings_ai">Explicacions</string>
-    <string name="settings_api_key">Clau d\'API d\'Anthropic</string>
-    <string name="settings_api_key_summary">Només cal per a \"Explica-ho més\" del lector. Es desa en aquest dispositiu i s\'envia a Anthropic amb cada consulta. En pots obtenir una a console.anthropic.com.</string>
-    <string name="settings_api_key_set">Clau desada</string>
-    <string name="settings_api_key_none">Cap clau desada</string>
-    <string name="settings_api_key_clear">Treu la clau</string>
-    <string name="settings_api_key_save">Desa</string>
 
     <!-- Colors de ressaltat -->
     <string name="colour_yellow">Groc</string>
@@ -243,10 +225,12 @@
     <string name="settings_theme_system">Segueix el sistema</string>
     <string name="settings_theme_light">Clar</string>
     <string name="settings_theme_dark">Fosc</string>
+    <string name="settings_theme_amoled">Negre</string>
     <!-- Etiquetes del control segmentat: prou curtes per anar de tres en tres. -->
     <string name="settings_theme_system_short">Sistema</string>
     <string name="settings_theme_light_short">Clar</string>
     <string name="settings_theme_dark_short">Fosc</string>
+    <string name="settings_theme_amoled_short">Negre</string>
     <string name="settings_accent">Color d\'accent</string>
     <string name="settings_accent_system">Predeterminat del sistema</string>
     <string name="settings_accent_system_summary">Pren el color del fons de pantalla.</string>

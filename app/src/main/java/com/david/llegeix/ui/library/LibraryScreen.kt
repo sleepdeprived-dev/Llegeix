@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -190,28 +193,49 @@ fun LibraryScreen(
             // Search and filters appear only once there is something to sift
             // through; on a small library they would be pure noise.
             if (state.totalFound > 0) {
+                // A compact field rather than the default 56dp one with a
+                // floating label. Search is a thing you reach for occasionally;
+                // it should not be the tallest object above the library.
                 OutlinedTextField(
                     value = state.query,
                     onValueChange = viewModel::onQueryChange,
-                    label = { Text(stringResource(R.string.library_search)) },
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.library_search),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    },
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    shape = RoundedCornerShape(50),
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
                     trailingIcon = {
                         if (state.query.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.onQueryChange("") }) {
+                            IconButton(
+                                onClick = { viewModel.onQueryChange("") },
+                                modifier = Modifier.size(32.dp),
+                            ) {
                                 Icon(
                                     Icons.Default.Clear,
                                     contentDescription = stringResource(
                                         R.string.library_clear_search,
                                     ),
+                                    modifier = Modifier.size(18.dp),
                                 )
                             }
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = 44.dp)
                         .padding(horizontal = Space.screen)
-                        .padding(top = Space.sm, bottom = Space.md),
+                        .padding(top = Space.xs, bottom = Space.sm),
                 )
 
                 LibraryFilterRow(

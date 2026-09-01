@@ -292,7 +292,6 @@ fun ReaderScreen(
         WordLookupSheet(
             lookup = lookup,
             onDismiss = viewModel::onDismissLookup,
-            onExplainMore = viewModel::onExplainMore,
             onRetryOnAnyNetwork = viewModel::onRetryOnAnyNetwork,
             onToggleSaved = viewModel::onToggleWordBookmark,
         )
@@ -781,7 +780,6 @@ private fun emitSelection(
 private fun WordLookupSheet(
     lookup: WordLookup,
     onDismiss: () -> Unit,
-    onExplainMore: () -> Unit,
     onRetryOnAnyNetwork: () -> Unit,
     onToggleSaved: () -> Unit,
 ) {
@@ -954,31 +952,6 @@ private fun WordLookupSheet(
                 }
             }
 
-            if (lookup.isExplaining || lookup.explanation != null) {
-                DetailCard(
-                    title = stringResource(R.string.lookup_explanation),
-                    modifier = Modifier.padding(top = Space.lg),
-                ) {
-                    if (lookup.explanation != null) {
-                        Text(
-                            text = lookup.explanation,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.lookup_explaining),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = Space.sm),
-                        )
-                    }
-                }
-            }
 
             // Shown alongside a successful translation too, since the stub
             // message is delivered through the same field.
@@ -998,13 +971,6 @@ private fun WordLookupSheet(
                 if (lookup.canRetryOnAnyNetwork) {
                     OutlinedButton(onClick = onRetryOnAnyNetwork) {
                         Text(stringResource(R.string.lookup_use_mobile_data))
-                    }
-                } else if (lookup.explanation == null) {
-                    OutlinedButton(
-                        onClick = onExplainMore,
-                        enabled = !lookup.isExplaining,
-                    ) {
-                        Text(stringResource(R.string.lookup_explain_more))
                     }
                 }
                 Button(onClick = onDismiss) { Text(stringResource(R.string.lookup_done)) }
