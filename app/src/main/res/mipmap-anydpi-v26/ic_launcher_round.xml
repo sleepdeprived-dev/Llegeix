@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <!--
+        No <monochrome> layer. Android 13+ themed icons are tinted flat, and this
+        artwork is a detailed render whose subject fills its frame, so every
+        automatic reduction of it — alpha silhouette, luminance threshold —
+        collapses into an unreadable blob. Omitting the layer makes the launcher
+        fall back to the full-colour icon, which is the better outcome. A
+        hand-drawn glyph would be needed to support themed icons properly.
+    -->
+</adaptive-icon>
