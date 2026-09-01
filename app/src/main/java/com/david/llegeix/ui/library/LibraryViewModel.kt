@@ -66,6 +66,11 @@ class LibraryViewModel(
         libraryData.deleteTag(tag.id)
     }
 
+    /** Recolour a tag that already exists, keeping its name and its documents. */
+    fun onRecolourTag(tag: TagEntity, colorArgb: Int) = viewModelScope.launch {
+        libraryData.renameTag(tag.id, tag.name, colorArgb)
+    }
+
     /** Folders offered by the "move to folder" sheet. */
     val folders: StateFlow<List<FolderEntity>> = libraryData.observeFolders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -101,6 +106,25 @@ class LibraryViewModel(
     private var scanJob: Job? = null
 
     init {
+        // Under a tag sort the order depends on data outside the document list,
+        // so a tag being added, removed or recoloured has to re-sort what is on
+        // screen.
+        //
+        // This has to live below _uiState, not beside tagsByDocument where it
+        // reads better. Kotlin runs initialisers in declaration order, and
+        // viewModelScope uses Dispatchers.Main.immediate: a StateFlow emits its
+        // current value the moment it is collected, so the collector ran during
+        // construction and found _uiState still null. The Room-backed
+        // collectors above get away with it only because a database flow has
+        // nothing to emit yet.
+        viewModelScope.launch {
+            tagsByDocument.collect {
+                if (_uiState.value.sort == LibrarySort.TAG) {
+                    _uiState.update { state -> state.withVisibleDocuments() }
+                }
+            }
+        }
+
         // Seed the sources directly rather than through syncSources(), which
         // would see the device grant "appear" and start a scan that the
         // refresh() below would immediately cancel.
@@ -250,7 +274,13 @@ class LibraryViewModel(
             }
         }
         return copy(
-            documents = matches.sortedWith(sort.comparator()),
+            documents = matches.sortedWith(
+                sort.comparator { document ->
+                    // Already alphabetical from the DAO, so the first is the
+                    // one the row displays.
+                    tagsByDocument.value[document.uriString]?.firstOrNull()?.name
+                },
+            ),
             totalFound = allDocuments.size,
         )
     }

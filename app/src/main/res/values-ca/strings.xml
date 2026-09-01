@@ -20,28 +20,24 @@
     <string name="action_delete">Suprimeix</string>
     <string name="action_create">Crea</string>
     <string name="action_rename">Reanomena</string>
-    <string name="action_clear">Esborra</string>
     <string name="action_back">Enrere</string>
-    <string name="action_close">Tanca</string>
     <string name="action_more_options">Més opcions</string>
     <string name="action_add_folder">Afegeix una carpeta</string>
     <string name="action_scan_device">Escaneja tot el dispositiu</string>
-    <string name="action_open_settings">Obre la configuració</string>
 
     <!-- Biblioteca -->
     <string name="library_welcome_title">Comença la biblioteca</string>
     <string name="library_welcome_body">Deixa que Llegeix trobi els PDF que ja tens al dispositiu, o indica-li una sola carpeta.</string>
     <string name="library_sources">Fonts</string>
     <string name="library_sources_open">Fonts…</string>
-    <string name="library_sources_body">On busca els PDF, el Llegeix.</string>
-    <string name="library_device_scan_on">S\'escaneja tot el dispositiu</string>
-    <string name="library_device_scan_off">No s\'escaneja tot el dispositiu</string>
+    <string name="library_sources_body">On cerca els PDF, el Llegeix.</string>
+    <string name="library_device_scan_on">Actiu</string>
+    <string name="library_device_scan_off">Cal accés a tots els fitxers</string>
     <string name="library_add_files">Afegeix fitxers PDF</string>
     <string name="library_watched_folders">Carpetes vigilades</string>
     <string name="library_rescan">Torna a escanejar</string>
     <string name="library_search">Cerca</string>
     <string name="library_clear_search">Esborra la cerca</string>
-    <string name="library_add_pdfs">Afegeix PDF directament…</string>
     <string name="library_settings_unavailable">No s\'ha pogut obrir la configuració. Concedeix l\'\"Accés a tots els fitxers\" manualment.</string>
     <string name="library_scan_failed">No s\'han pogut cercar els PDF</string>
     <string name="library_filter_all">Tots</string>
@@ -51,6 +47,7 @@
     <string name="library_sort_recent">Modificats recentment</string>
     <string name="library_sort_name">Nom</string>
     <string name="library_sort_size">Mida</string>
+    <string name="library_sort_tag">Etiqueta</string>
     <string name="library_empty_title">No s\'ha trobat cap PDF</string>
     <string name="library_empty_body">No ha aparegut res amb l\'extensió .pdf. Els PDF de Baixades no es poden llegir vigilant una carpeta: escaneja tot el dispositiu o afegeix-los un a un des del menú.</string>
     <string name="library_read_later_empty_title">Res per llegir més tard</string>
@@ -68,11 +65,9 @@
     <string name="document_actions">Accions per a %1$s</string>
     <string name="document_remove_bookmark">Treu el marcador</string>
     <string name="document_add_bookmark">Afegeix un marcador a aquest PDF</string>
-    <string name="document_remove_read_later">Treu de per llegir més tard</string>
+    <string name="document_remove_read_later">Treu de \"Per llegir més tard\"</string>
     <string name="document_move_to_folder">Mou a una carpeta…</string>
     <string name="source_stop_watching">Deixa de vigilar %1$s</string>
-    <string name="device_scan_title">Escaneja tot el dispositiu</string>
-    <string name="device_scan_body">Troba tots els PDF sense haver de triar carpetes. Necessita l\'accés a tots els fitxers, que s\'activa a la configuració del sistema.</string>
 
     <!-- Etiquetes -->
     <string name="tags_title">Etiquetes</string>
@@ -80,9 +75,9 @@
     <string name="tags_none_yet">Encara no hi ha etiquetes. Escriu-ne un nom a sota per crear-ne una.</string>
     <string name="tags_new_name">Etiqueta nova</string>
     <string name="tags_add">Afegeix</string>
-    <string name="tags_colour">Color</string>
+    <string name="tags_change_colour">Canvia el color de %1$s</string>
+    <string name="tags_pick_colour">Tria un color</string>
     <string name="tags_delete">Suprimeix l\'etiqueta %1$s</string>
-    <string name="tags_on_document">Etiquetat com a %1$s</string>
     <!-- Es mostra quan una fila té més etiquetes de les que hi caben, p. ex. «+2». -->
     <string name="tags_overflow">+%1$d</string>
 
@@ -116,7 +111,7 @@
     <string name="folders_empty_body">Toca + per crear-ne una i després hi podràs moure PDF des de la biblioteca.</string>
     <string name="folders_rename_title">Reanomena la carpeta</string>
     <string name="folders_delete_title">Vols suprimir la carpeta?</string>
-    <string name="folders_delete_body">Els PDF que hi ha dins es queden al dispositiu: només deixen d\'estar arxivats aquí.</string>
+    <string name="folders_delete_body">Els PDF que hi ha dins es queden al dispositiu: només deixen d\'estar en aquesta carpeta.</string>
     <string name="folders_exists">Ja hi ha una carpeta anomenada \"%1$s\"</string>
     <string name="folders_name_label">Nom de la carpeta</string>
     <string name="folders_bookmarked_auto">S\'actualitza automàticament</string>
@@ -139,13 +134,12 @@
         <item quantity="other">%1$d PDF</item>
     </plurals>
     <string name="folder_detail_back">Torna a les carpetes</string>
-    <string name="folder_detail_empty_title">Aquí no hi ha res arxivat</string>
+    <string name="folder_detail_empty_title">Aquí no hi ha cap PDF</string>
     <string name="folder_detail_empty_body">Fes servir \"Mou a una carpeta\" en un PDF de la biblioteca per afegir-l\'hi.</string>
     <string name="folder_detail_remove">Treu de la carpeta</string>
 
     <!-- Lector -->
     <string name="reader_back">Torna a la biblioteca</string>
-    <string name="reader_page_of">Pàgina %1$d de %2$d</string>
     <string name="reader_page_content_description">Pàgina %1$d</string>
     <string name="reader_open_failed_title">No s\'ha pogut obrir aquest PDF</string>
     <string name="reader_open_failed_body">Pot ser que el fitxer s\'hagi mogut o que s\'hagi revocat el permís de la carpeta.</string>
@@ -154,8 +148,6 @@
     <string name="reader_no_pages_body">Aquest document diu que té zero pàgines.</string>
     <string name="reader_remove_page_bookmark">Treu el marcador d\'aquesta pàgina</string>
     <string name="reader_add_page_bookmark">Afegeix un marcador a aquesta pàgina</string>
-    <string name="reader_page_bookmarked">Amb marcador</string>
-    <string name="reader_bookmark_page">Marca la pàgina</string>
     <string name="reader_highlight_colour">Color del ressaltat</string>
     <string name="reader_colour_selected">%1$s, seleccionat</string>
 
@@ -171,7 +163,6 @@
     <string name="reader_zoom_level">%1$s×</string>
     <string name="reader_invert_on">Colors de la pàgina invertits</string>
     <string name="reader_invert_off">Inverteix els colors de la pàgina</string>
-    <string name="reader_highlight_colour_hint">Mantén premut el botó de marcador per canviar el color del ressaltat.</string>
     <!-- El comptador de pàgines flotant, p. ex. «12 / 340». -->
     <string name="reader_page_position">%1$d / %2$d</string>
     <string name="library_view_grid">Vista de graella</string>
@@ -197,7 +188,6 @@
     <string name="lookup_location">Pàgina %1$d · línia %2$d</string>
     <!-- Marca una transcripció amb la vocal tònica deduïda. -->
     <string name="lookup_ipa_approximate">aprox.</string>
-    <string name="lookup_ipa_note">Català central. L\'ortografia catalana no indica si una e o una o tòniques són tancades o obertes, per això es marquen com a aproximades.</string>
 
     <!-- Paraules desades -->
     <string name="bookmarks_tab_words">Paraules</string>
@@ -235,17 +225,16 @@
     <string name="settings_accent_system">Predeterminat del sistema</string>
     <string name="settings_accent_system_summary">Pren el color del fons de pantalla.</string>
     <string name="settings_accent_custom">Personalitzat</string>
-    <string name="settings_accent_custom_open">Tria un color…</string>
     <string name="settings_accent_custom_title">Tria un color</string>
     <string name="settings_accent_hex">Codi hexadecimal</string>
     <string name="settings_accent_hue">To</string>
-    <string name="settings_accent_shade">Tonalitat</string>
-    <string name="settings_accent_senyera">Senyera</string>
-    <string name="settings_accent_blue">Blau</string>
+    <string name="settings_accent_shade">Lluminositat</string>
+    <string name="settings_accent_red">Vermell</string>
+    <string name="settings_accent_orange">Taronja</string>
+    <string name="settings_accent_yellow">Groc</string>
     <string name="settings_accent_green">Verd</string>
-    <string name="settings_accent_violet">Violeta</string>
-    <string name="settings_accent_amber">Ambre</string>
-    <string name="settings_accent_teal">Turquesa</string>
+    <string name="settings_accent_blue">Blau</string>
+    <string name="settings_accent_purple">Lila</string>
     <string name="settings_accent_selected">%1$s, seleccionat</string>
     <string name="settings_language">Idioma</string>
     <string name="settings_language_summary">Només s\'aplica a l\'aplicació. En canviar-lo, la pantalla es torna a carregar.</string>

@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
@@ -59,6 +60,7 @@ import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.AppLanguage
 import com.david.llegeix.data.settings.ThemeMode
 import com.david.llegeix.ui.common.Space
+import com.david.llegeix.ui.theme.hslColor
 import com.david.llegeix.ui.theme.isDark
 import com.david.llegeix.ui.theme.swatchOrNull
 
@@ -136,12 +138,6 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = Space.xs),
                     )
-                }
-                TextButton(
-                    onClick = { showColorPicker = true },
-                    modifier = Modifier.padding(top = Space.xs),
-                ) {
-                    Text(stringResource(R.string.settings_accent_custom_open))
                 }
             }
 
@@ -285,30 +281,44 @@ private fun AccentPicker(
         dynamicLightColorScheme(context).primary
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        AccentColor.entries.forEach { accent ->
-            val label = stringResource(accent.labelRes)
-            val selected = accent == current
-            AccentSwatch(
-                color = when (accent) {
-                    AccentColor.CUSTOM -> Color(customAccent)
-                    else -> accent.swatchOrNull() ?: dynamicPrimary
-                },
-                selected = selected,
-                contentDescription = if (selected) {
-                    stringResource(R.string.settings_accent_selected, label)
-                } else {
-                    label
-                },
-                // Tapping the custom dot opens the mixer rather than silently
-                // applying whatever was mixed last.
-                onClick = {
-                    if (accent == AccentColor.CUSTOM) onOpenPicker() else onChoose(accent)
-                },
-            )
+    // Two rows of four rather than eight across. Eight dots on a narrow phone
+    // leaves them touching, and a row of touching circles reads as a strip of
+    // colour instead of a set of choices.
+    Column(verticalArrangement = Arrangement.spacedBy(Space.lg)) {
+        AccentColor.entries.chunked(4).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                row.forEach { accent ->
+                    val label = stringResource(accent.labelRes)
+                    val selected = accent == current
+                    AccentSwatch(
+                        color = when (accent) {
+                            AccentColor.CUSTOM -> Color(customAccent)
+                            else -> accent.swatchOrNull() ?: dynamicPrimary
+                        },
+                        selected = selected,
+                        // The custom dot is ringed so it reads as "and one of
+                        // your own" rather than as a seventh fixed colour.
+                        isCustom = accent == AccentColor.CUSTOM,
+                        contentDescription = if (selected) {
+                            stringResource(R.string.settings_accent_selected, label)
+                        } else {
+                            label
+                        },
+                        // Tapping the custom dot opens the mixer rather than
+                        // silently applying whatever was mixed last.
+                        onClick = {
+                            if (accent == AccentColor.CUSTOM) {
+                                onOpenPicker()
+                            } else {
+                                onChoose(accent)
+                            }
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -319,34 +329,75 @@ private fun AccentSwatch(
     selected: Boolean,
     contentDescription: String,
     onClick: () -> Unit,
+    isCustom: Boolean = false,
 ) {
+    val ring = MaterialTheme.colorScheme.onSurface
+
     Box(
+        // The selection ring is drawn outside the dot with a gap, rather than
+        // as a thicker border on it. A border eats into the colour and makes
+        // the chosen swatch look smaller than the others; a halo leaves every
+        // dot the same size and still reads unmistakably.
         modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(color)
-            .border(
-                width = if (selected) 3.dp else 1.dp,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onSurface
+            .size(48.dp)
+            .then(
+                if (selected) {
+                    Modifier.border(2.dp, ring, CircleShape)
                 } else {
-                    MaterialTheme.colorScheme.outlineVariant
+                    Modifier
                 },
-                shape = CircleShape,
             )
+            .padding(4.dp)
+            .clip(CircleShape)
             .clickable(onClick = onClick)
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
     ) {
-        if (selected) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(20.dp),
-            )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .then(
+                    if (isCustom) {
+                        // A hue wheel behind the chosen colour: this is the one
+                        // that opens a picker, and it should look like it.
+                        Modifier.background(
+                            Brush.sweepGradient(
+                                (0..360 step 45).map { hslColor(it.toFloat(), 0.85f, 0.55f) },
+                            ),
+                        )
+                    } else {
+                        Modifier.background(color)
+                    },
+                )
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isCustom) {
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                        .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                )
+            }
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = onColorOf(color),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
+}
+
+/** Black or white, whichever can be seen on [color]. */
+private fun onColorOf(color: Color): Color {
+    val luminance = 0.2126f * color.red + 0.7152f * color.green + 0.0722f * color.blue
+    return if (luminance > 0.55f) Color.Black else Color.White
 }
 
 @Composable

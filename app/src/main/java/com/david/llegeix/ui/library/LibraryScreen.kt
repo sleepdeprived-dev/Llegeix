@@ -233,16 +233,20 @@ fun LibraryScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 44.dp)
+                        .heightIn(min = 42.dp)
                         .padding(horizontal = Space.screen)
-                        .padding(top = Space.xs, bottom = Space.sm),
+                        // Dropped clear of the app bar rather than tucked under
+                        // it. The bar, the field and the filters were three
+                        // stacked objects in the top fifth of the screen with
+                        // nothing between them.
+                        .padding(top = Space.lg, bottom = Space.lg),
                 )
 
                 LibraryFilterRow(
                     current = state.filter,
                     readLaterCount = state.readLaterUris.size,
                     onFilterChange = viewModel::onFilterChange,
-                    modifier = Modifier.padding(bottom = Space.sm),
+                    modifier = Modifier.padding(bottom = Space.lg),
                 )
             }
 
@@ -282,6 +286,7 @@ fun LibraryScreen(
             selectedIds = selected,
             onToggle = { viewModel.onToggleTag(document, it) },
             onCreate = { name, color -> viewModel.onCreateTag(document, name, color) },
+            onRecolour = viewModel::onRecolourTag,
             onDelete = viewModel::onDeleteTag,
             onDismiss = { tagsFor = null },
         )

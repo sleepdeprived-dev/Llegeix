@@ -29,20 +29,24 @@ enum class ThemeMode(val key: String, @param:StringRes val labelRes: Int) {
 /**
  * Which colour the app is built around.
  *
- * [SYSTEM] means Material You: the scheme is derived from the wallpaper by the
- * platform. Every other entry is a fixed scheme defined in ui/theme/Accents.kt,
- * so the choice survives a wallpaper change.
+ * Six plain colours, plus the two that are not colours: [SYSTEM] is Material
+ * You, derived from the wallpaper by the platform, and [CUSTOM] is whatever the
+ * reader mixed. The six are named for what they look like rather than for a
+ * palette — someone choosing an accent is choosing "the green one", not a tone
+ * value — and each is a fixed scheme in ui/theme/Accents.kt, so the choice
+ * survives a wallpaper change.
  */
 enum class AccentColor(val key: String, @param:StringRes val labelRes: Int) {
     SYSTEM("system", R.string.settings_accent_system),
-    /** A colour the reader mixed themselves; the value lives in [AppSettings.customAccent]. */
-    CUSTOM("custom", R.string.settings_accent_custom),
-    SENYERA("senyera", R.string.settings_accent_senyera),
-    BLUE("blue", R.string.settings_accent_blue),
+    RED("red", R.string.settings_accent_red),
+    ORANGE("orange", R.string.settings_accent_orange),
+    YELLOW("yellow", R.string.settings_accent_yellow),
     GREEN("green", R.string.settings_accent_green),
-    VIOLET("violet", R.string.settings_accent_violet),
-    AMBER("amber", R.string.settings_accent_amber),
-    TEAL("teal", R.string.settings_accent_teal),
+    BLUE("blue", R.string.settings_accent_blue),
+    PURPLE("purple", R.string.settings_accent_purple),
+
+    /** A colour mixed by hand; the value lives in [AppSettings.customAccent]. */
+    CUSTOM("custom", R.string.settings_accent_custom),
     ;
 
     companion object {

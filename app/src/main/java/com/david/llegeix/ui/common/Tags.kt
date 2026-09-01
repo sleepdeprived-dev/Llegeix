@@ -1,6 +1,7 @@
 package com.david.llegeix.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -185,11 +188,14 @@ fun TagPickerDialog(
     selectedIds: Set<Long>,
     onToggle: (TagEntity) -> Unit,
     onCreate: (String, Int) -> Unit,
+    onRecolour: (TagEntity, Int) -> Unit,
     onDelete: (TagEntity) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var newName by remember { mutableStateOf("") }
     var colorIndex by remember { mutableIntStateOf(0) }
+    // Which existing tag has its palette open, if any.
+    var recolouring by remember { mutableStateOf<TagEntity?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -216,7 +222,15 @@ fun TagPickerDialog(
                             TagRow(
                                 tag = tag,
                                 selected = tag.id in selectedIds,
+                                paletteOpen = recolouring?.id == tag.id,
                                 onToggle = { onToggle(tag) },
+                                onOpenPalette = {
+                                    recolouring = if (recolouring?.id == tag.id) null else tag
+                                },
+                                onPickColour = { colour ->
+                                    onRecolour(tag, colour)
+                                    recolouring = null
+                                },
                                 onDelete = { onDelete(tag) },
                             )
                         }
@@ -263,52 +277,118 @@ fun TagPickerDialog(
     )
 }
 
+/**
+ * One tag in the picker.
+ *
+ * The dot does two jobs, deliberately separated from the row: tapping the row
+ * puts the tag on the document or takes it off, and tapping the *dot* opens the
+ * palette to recolour it. Choosing a colour you regret should not mean deleting
+ * the tag and making it again.
+ */
 @Composable
 private fun TagRow(
     tag: TagEntity,
     selected: Boolean,
+    paletteOpen: Boolean,
     onToggle: () -> Unit,
+    onOpenPalette: () -> Unit,
+    onPickColour: (Int) -> Unit,
     onDelete: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onToggle)
-            .padding(vertical = Space.xs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
+    val changeColourLabel = stringResource(R.string.tags_change_colour, tag.name)
+    val pickColourLabel = stringResource(R.string.tags_pick_colour)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(Color(tag.colorArgb)),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(vertical = Space.xs),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onOpenPalette)
+                    .semantics {
+                        contentDescription = changeColourLabel
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color(tag.colorArgb))
+                        .border(
+                            width = if (paletteOpen) 2.dp else 0.dp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selected) {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = Color.Black.copy(alpha = 0.7f),
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+            }
+            Text(
+                text = tag.name,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = Space.md),
+            )
+            IconButton(onClick = onDelete) {
                 Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = Color.Black.copy(alpha = 0.7f),
-                    modifier = Modifier.size(14.dp),
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.tags_delete, tag.name),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
-        Text(
-            text = tag.name,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = Space.md),
-        )
-        IconButton(onClick = onDelete) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(R.string.tags_delete, tag.name),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
+
+        if (paletteOpen) {
+            // The fixed palette only. A tag is a glance-level marker in a list;
+            // the hex mixer belongs to the app's accent, where one colour is
+            // worth fussing over.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = Space.xl, bottom = Space.sm),
+                horizontalArrangement = Arrangement.spacedBy(Space.sm),
+            ) {
+                TagPalette.forEach { argb ->
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color(argb))
+                            .border(
+                                width = if (argb == tag.colorArgb) 2.dp else 1.dp,
+                                color = if (argb == tag.colorArgb) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.outlineVariant
+                                },
+                                shape = CircleShape,
+                            )
+                            .clickable { onPickColour(argb) }
+                            .semantics {
+                                contentDescription = pickColourLabel
+                            },
+                    )
+                }
+            }
         }
     }
 }

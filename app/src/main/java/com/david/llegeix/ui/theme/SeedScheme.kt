@@ -26,49 +26,90 @@ internal fun schemesFromSeed(seed: Color): AccentSchemes {
     // A very grey or very bright pick still has to produce a usable accent.
     val saturation = hsl[1].coerceIn(0.35f, 0.95f)
 
-    fun tone(lightness: Float, sat: Float = saturation) =
-        hslColor(hue, sat, lightness)
+    fun tone(lightness: Float, sat: Float = saturation) = hslColor(hue, sat, lightness)
 
-    // Text tones are chosen by contrast, not by a fixed lightness. A green at
-    // lightness 0.38 and a blue at lightness 0.38 are nowhere near equally
-    // readable — green is far brighter — so picking a number would leave some
-    // hues failing against the surface behind them.
-    val primaryOnLight = readableTone(hue, saturation, against = Color.White, goDarker = true)
-    val primaryOnDark = readableTone(hue, saturation * 0.85f, against = DarkSurface, goDarker = false)
+    // Every text tone is chosen by measured contrast against the exact surface
+    // it sits on, never by a lightness that looked about right. A green and a
+    // yellow at the same lightness are nowhere near equally readable, so fixed
+    // numbers pass for some hues and fail for others — which is precisely the
+    // bug the contrast tests caught when these were hand-picked.
+    val primaryLight = readableTone(hue, saturation, Color.White, goDarker = true)
+    val primaryDark = readableTone(hue, saturation * 0.85f, DarkSurface, goDarker = false)
+    val containerLight = tone(0.90f, saturation * 0.7f)
+    val containerDark = tone(0.28f)
+    val tertiaryHue = hue + 40f
 
     return AccentSchemes(
         swatch = seed,
         light = lightColorScheme(
-            primary = primaryOnLight,
-            onPrimary = Color.White,
-            primaryContainer = tone(0.90f, saturation * 0.7f),
-            onPrimaryContainer = tone(0.14f),
+            primary = primaryLight,
+            onPrimary = onColorFor(primaryLight),
+            primaryContainer = containerLight,
+            onPrimaryContainer = onColorFor(containerLight, hue, saturation),
             secondary = readableTone(hue, saturation * 0.45f, Color.White, true),
             onSecondary = Color.White,
             secondaryContainer = tone(0.90f, saturation * 0.35f),
-            onSecondaryContainer = tone(0.15f, saturation * 0.5f),
+            onSecondaryContainer = onColorFor(tone(0.90f, saturation * 0.35f), hue, saturation),
             // A neighbouring hue, so the tertiary role is distinguishable
             // without belonging to a different palette.
-            tertiary = readableTone(hue + 40f, saturation, Color.White, true),
+            tertiary = readableTone(tertiaryHue, saturation, Color.White, true),
             onTertiary = Color.White,
             tertiaryContainer = tone(0.90f, saturation * 0.6f).shiftHue(40f),
-            onTertiaryContainer = tone(0.15f).shiftHue(40f),
+            onTertiaryContainer = onColorFor(
+                tone(0.90f, saturation * 0.6f).shiftHue(40f), tertiaryHue, saturation,
+            ),
         ),
         dark = darkColorScheme(
-            primary = primaryOnDark,
-            onPrimary = tone(0.18f),
-            primaryContainer = tone(0.30f),
-            onPrimaryContainer = tone(0.90f, saturation * 0.7f),
+            primary = primaryDark,
+            onPrimary = onColorFor(primaryDark),
+            primaryContainer = containerDark,
+            onPrimaryContainer = onColorFor(containerDark, hue, saturation * 0.7f),
             secondary = readableTone(hue, saturation * 0.35f, DarkSurface, false),
-            onSecondary = tone(0.20f, saturation * 0.4f),
-            secondaryContainer = tone(0.32f, saturation * 0.35f),
-            onSecondaryContainer = tone(0.90f, saturation * 0.3f),
-            tertiary = readableTone(hue + 40f, saturation * 0.7f, DarkSurface, false),
-            onTertiary = tone(0.20f).shiftHue(40f),
-            tertiaryContainer = tone(0.32f).shiftHue(40f),
-            onTertiaryContainer = tone(0.90f, saturation * 0.6f).shiftHue(40f),
+            onSecondary = onColorFor(readableTone(hue, saturation * 0.35f, DarkSurface, false)),
+            secondaryContainer = tone(0.30f, saturation * 0.35f),
+            onSecondaryContainer = onColorFor(
+                tone(0.30f, saturation * 0.35f), hue, saturation * 0.4f,
+            ),
+            tertiary = readableTone(tertiaryHue, saturation * 0.7f, DarkSurface, false),
+            onTertiary = onColorFor(
+                readableTone(tertiaryHue, saturation * 0.7f, DarkSurface, false),
+            ),
+            tertiaryContainer = tone(0.30f).shiftHue(40f),
+            onTertiaryContainer = onColorFor(
+                tone(0.30f).shiftHue(40f), tertiaryHue, saturation * 0.7f,
+            ),
         ),
     )
+}
+
+/**
+ * A foreground that can be read on [background].
+ *
+ * With no hue given it returns plain black or white, whichever wins — the right
+ * answer for a filled button, where a tinted label on a saturated ground just
+ * looks muddy. Given a hue it keeps that hue and walks it away from the
+ * background until the contrast clears.
+ */
+private fun onColorFor(
+    background: Color,
+    hue: Float? = null,
+    saturation: Float = 0.6f,
+): Color {
+    if (hue == null) {
+        val onWhite = contrastRatio(Color.White, background)
+        val onBlack = contrastRatio(Color.Black, background)
+        return if (onWhite >= onBlack) Color.White else Color.Black
+    }
+    val goDarker = background.relativeLuminance() > 0.4f
+    val tinted = readableTone(hue, saturation, background, goDarker)
+    // A hue can run out of headroom against its own container — a dark yellow
+    // on a dark yellow ground never separates. Fall back to plain rather than
+    // shipping something unreadable.
+    return if (contrastRatio(tinted, background) >= 4.5f) {
+        tinted
+    } else {
+        onColorFor(background)
+    }
 }
 
 /** Material's default dark surface, which is what dark-scheme text sits on. */

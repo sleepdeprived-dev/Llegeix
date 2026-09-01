@@ -93,7 +93,7 @@ class ContrastTest {
     fun `the readable neutrals genuinely improve on the defaults`() {
         // The claim this change rests on: Material's tinted defaults are worse
         // for the smallest text in the app, and measurably so.
-        val default = AccentColor.SENYERA.schemes()!!.light
+        val default = AccentColor.RED.schemes()!!.light
         val readable = default.withReadableLightNeutrals()
 
         val before = contrast(default.onSurfaceVariant, default.surface)
@@ -105,7 +105,7 @@ class ContrastTest {
 
     @Test
     fun `true black really is black, and stays readable on it`() {
-        val amoled = AccentColor.SENYERA.schemes()!!.dark.toTrueBlack()
+        val amoled = AccentColor.RED.schemes()!!.dark.toTrueBlack()
         assertTrue("background was not black", amoled.background == Color.Black)
         assertTrue("surface was not black", amoled.surface == Color.Black)
 
@@ -117,7 +117,7 @@ class ContrastTest {
 
     @Test
     fun `an elevated surface is still distinguishable from the black behind it`() {
-        val amoled = AccentColor.SENYERA.schemes()!!.dark.toTrueBlack()
+        val amoled = AccentColor.RED.schemes()!!.dark.toTrueBlack()
         // A sheet or a card has to have a visible edge, or the layout collapses
         // into one undifferentiated black field.
         assertTrue(

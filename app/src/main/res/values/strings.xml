@@ -25,13 +25,10 @@
     <string name="action_delete">Delete</string>
     <string name="action_create">Create</string>
     <string name="action_rename">Rename</string>
-    <string name="action_clear">Clear</string>
     <string name="action_back">Back</string>
-    <string name="action_close">Close</string>
     <string name="action_more_options">More options</string>
     <string name="action_add_folder">Add folder</string>
     <string name="action_scan_device">Scan whole device</string>
-    <string name="action_open_settings">Open Settings</string>
 
     <!-- Library -->
     <string name="library_welcome_title">Start your library</string>
@@ -46,7 +43,6 @@
     <string name="library_rescan">Rescan</string>
     <string name="library_search">Search</string>
     <string name="library_clear_search">Clear search</string>
-    <string name="library_add_pdfs">Add PDFs directly…</string>
     <string name="library_settings_unavailable">Could not open Settings. Grant \"All files access\" manually.</string>
     <string name="library_scan_failed">Could not scan for PDFs</string>
     <string name="library_filter_all">All</string>
@@ -57,6 +53,7 @@
     <string name="library_sort_recent">Recently modified</string>
     <string name="library_sort_name">Name</string>
     <string name="library_sort_size">Size</string>
+    <string name="library_sort_tag">Tag</string>
     <string name="library_empty_title">No PDFs found</string>
     <string name="library_empty_body">Nothing with a .pdf extension turned up. PDFs in Downloads cannot be reached by watching a folder — scan the whole device instead, or add them individually from the menu.</string>
     <string name="library_read_later_empty_title">Nothing to read later</string>
@@ -77,8 +74,6 @@
     <string name="document_remove_read_later">Remove from read later</string>
     <string name="document_move_to_folder">Move to folder…</string>
     <string name="source_stop_watching">Stop watching %1$s</string>
-    <string name="device_scan_title">Scan the whole device</string>
-    <string name="device_scan_body">Finds every PDF without picking folders. Needs All files access, which you turn on in system Settings.</string>
 
     <!-- Tags -->
     <string name="tags_title">Tags</string>
@@ -86,9 +81,9 @@
     <string name="tags_none_yet">No tags yet. Type a name below to make one.</string>
     <string name="tags_new_name">New tag</string>
     <string name="tags_add">Add</string>
-    <string name="tags_colour">Colour</string>
+    <string name="tags_change_colour">Change the colour of %1$s</string>
+    <string name="tags_pick_colour">Pick a colour</string>
     <string name="tags_delete">Delete tag %1$s</string>
-    <string name="tags_on_document">Tagged %1$s</string>
     <!-- Shown when a row has more tags than fit, e.g. "+2". -->
     <string name="tags_overflow">+%1$d</string>
 
@@ -148,7 +143,6 @@
 
     <!-- Reader -->
     <string name="reader_back">Back to library</string>
-    <string name="reader_page_of">Page %1$d of %2$d</string>
     <string name="reader_page_content_description">Page %1$d</string>
     <string name="reader_open_failed_title">Could not open this PDF</string>
     <string name="reader_open_failed_body">The file may have moved, or the folder grant may have been revoked.</string>
@@ -157,8 +151,6 @@
     <string name="reader_no_pages_body">This document reports zero pages.</string>
     <string name="reader_remove_page_bookmark">Remove bookmark from this page</string>
     <string name="reader_add_page_bookmark">Bookmark this page</string>
-    <string name="reader_page_bookmarked">Bookmarked</string>
-    <string name="reader_bookmark_page">Bookmark page</string>
     <string name="reader_highlight_colour">Highlight colour</string>
     <string name="reader_colour_selected">%1$s, selected</string>
 
@@ -174,7 +166,6 @@
     <string name="reader_zoom_level">%1$s×</string>
     <string name="reader_invert_on">Page colours inverted</string>
     <string name="reader_invert_off">Invert page colours</string>
-    <string name="reader_highlight_colour_hint">Hold the bookmark button to change the highlight colour.</string>
     <!-- The floating page counter over the page, e.g. "12 / 340". -->
     <string name="reader_page_position">%1$d / %2$d</string>
     <string name="library_view_grid">Grid view</string>
@@ -200,7 +191,6 @@
     <string name="lookup_location">Page %1$d · line %2$d</string>
     <!-- Marks a transcription whose stressed vowel had to be guessed. -->
     <string name="lookup_ipa_approximate">approx.</string>
-    <string name="lookup_ipa_note">Central Catalan. Catalan spelling does not record whether a stressed e or o is close or open, so those are marked approximate.</string>
 
     <!-- Saved words -->
     <string name="bookmarks_tab_words">Words</string>
@@ -238,17 +228,16 @@
     <string name="settings_accent_system">System default</string>
     <string name="settings_accent_system_summary">Takes its colour from your wallpaper.</string>
     <string name="settings_accent_custom">Custom</string>
-    <string name="settings_accent_custom_open">Choose a colour…</string>
     <string name="settings_accent_custom_title">Pick a colour</string>
     <string name="settings_accent_hex">Hex code</string>
     <string name="settings_accent_hue">Hue</string>
-    <string name="settings_accent_shade">Shade</string>
-    <string name="settings_accent_senyera">Senyera</string>
-    <string name="settings_accent_blue">Blue</string>
+    <string name="settings_accent_shade">Lightness</string>
+    <string name="settings_accent_red">Red</string>
+    <string name="settings_accent_orange">Orange</string>
+    <string name="settings_accent_yellow">Yellow</string>
     <string name="settings_accent_green">Green</string>
-    <string name="settings_accent_violet">Violet</string>
-    <string name="settings_accent_amber">Amber</string>
-    <string name="settings_accent_teal">Teal</string>
+    <string name="settings_accent_blue">Blue</string>
+    <string name="settings_accent_purple">Purple</string>
     <string name="settings_accent_selected">%1$s, selected</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_summary">Applies to the app only. Changing it reloads the screen.</string>
