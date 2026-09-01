@@ -13,6 +13,15 @@ language. Written in Kotlin with Jetpack Compose.
   Room database.
 - **Translation** — tap and hold a word to translate it with ML Kit's on-device
   translation models.
+- **Settings** — light/dark/system theme, a choice of accent colour (or Material
+  You, taken from the wallpaper), and the app's own language.
+
+## Language
+
+The interface is available in Catalan and English, and defaults to **Catalan**
+regardless of the device language — this is a tool for reading Catalan, so it
+starts there. The choice lives in Settings and applies to the app alone; it does
+not change the device. "Llegeix" is a proper noun and is never translated.
 
 ## Requirements
 

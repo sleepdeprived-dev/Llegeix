@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Catalan strings. This is the language the app selects out of the box; the
+    English defaults live in values/strings.xml.
+
+    app_name is absent on purpose: "Llegeix" is the name of the app and is not
+    translated in any locale.
+-->
+<resources>
+
+    <!-- Navegació -->
+    <string name="nav_library">Biblioteca</string>
+    <string name="nav_recent">Recents</string>
+    <string name="nav_bookmarks">Marcadors</string>
+    <string name="nav_folders">Carpetes</string>
+    <!--
+        Deliberately shorter than the screen's own title ("Configuració"): five
+        tabs share the width of the navigation bar, and the longer word fills its
+        cell edge to edge.
+    -->
+    <string name="nav_settings">Ajustos</string>
+
+    <!-- Accions compartides -->
+    <string name="action_cancel">Cancel·la</string>
+    <string name="action_done">Fet</string>
+    <string name="action_delete">Suprimeix</string>
+    <string name="action_create">Crea</string>
+    <string name="action_rename">Reanomena</string>
+    <string name="action_clear">Esborra</string>
+    <string name="action_more_options">Més opcions</string>
+    <string name="action_add_folder">Afegeix una carpeta</string>
+    <string name="action_scan_device">Escaneja tot el dispositiu</string>
+    <string name="action_open_settings">Obre la configuració</string>
+
+    <!-- Biblioteca -->
+    <string name="library_rescan">Torna a escanejar</string>
+    <string name="library_search">Cerca</string>
+    <string name="library_clear_search">Esborra la cerca</string>
+    <string name="library_add_pdfs">Afegeix PDF directament…</string>
+    <string name="library_settings_unavailable">No s\'ha pogut obrir la configuració. Concedeix l\'\"Accés a tots els fitxers\" manualment.</string>
+    <string name="library_scan_failed">No s\'han pogut cercar els PDF</string>
+    <string name="library_filter_all">Tots</string>
+    <string name="library_filter_read_later">Per llegir més tard</string>
+    <string name="library_filter_with_count">%1$s (%2$d)</string>
+    <string name="library_sort_recent">Modificats recentment</string>
+    <string name="library_sort_name">Nom</string>
+    <string name="library_sort_size">Mida</string>
+    <string name="library_empty_title">No s\'ha trobat cap PDF</string>
+    <string name="library_empty_body">No ha aparegut res amb l\'extensió .pdf. Els PDF de Baixades no es poden llegir vigilant una carpeta: escaneja tot el dispositiu o afegeix-los un a un des del menú.</string>
+    <string name="library_read_later_empty_title">Res per llegir més tard</string>
+    <string name="library_read_later_empty_body">Marca un PDF com a \"Per llegir més tard\" des del seu menú i s\'anirà acumulant aquí.</string>
+    <string name="library_no_matches_title">Cap coincidència</string>
+    <string name="library_no_matches_body">Cap dels %1$d PDF no coincideix amb \"%2$s\".</string>
+    <string name="library_move_to_folder">Mou a una carpeta</string>
+    <string name="library_no_folders_yet">Encara no tens cap carpeta.</string>
+    <string name="library_remove_from_folder">Treu de la carpeta</string>
+    <string name="library_new_folder_ellipsis">Carpeta nova…</string>
+
+    <!-- Fila de document -->
+    <string name="document_bookmarked">Amb marcador</string>
+    <string name="document_read_later">Per llegir més tard</string>
+    <string name="document_actions">Accions per a %1$s</string>
+    <string name="document_remove_bookmark">Treu el marcador</string>
+    <string name="document_add_bookmark">Afegeix un marcador a aquest PDF</string>
+    <string name="document_remove_read_later">Treu de per llegir més tard</string>
+    <string name="document_move_to_folder">Mou a una carpeta…</string>
+    <string name="source_stop_watching">Deixa de vigilar %1$s</string>
+    <string name="device_scan_title">Escaneja tot el dispositiu</string>
+    <string name="device_scan_body">Troba tots els PDF sense haver de triar carpetes. Necessita l\'accés a tots els fitxers, que s\'activa a la configuració del sistema.</string>
+
+    <!-- Recents -->
+    <string name="recent_title">Vistos recentment</string>
+    <string name="recent_empty_title">Encara no has llegit res</string>
+    <string name="recent_empty_body">Obre un PDF des de la biblioteca i apareixerà aquí, juntament amb la pàgina on vas arribar.</string>
+    <string name="recent_page">Pàgina %1$d</string>
+    <string name="recent_subtitle">%1$s · %2$s</string>
+
+    <!-- Marcadors -->
+    <string name="bookmarks_title">Marcadors</string>
+    <string name="bookmarks_tab_pdfs">PDF</string>
+    <string name="bookmarks_tab_pages">Pàgines</string>
+    <string name="bookmarks_tab_folders">Carpetes</string>
+    <string name="bookmarks_tab_with_count">%1$s (%2$d)</string>
+    <string name="bookmarks_pdfs_empty_title">Cap PDF amb marcador</string>
+    <string name="bookmarks_pdfs_empty_body">Afegeix un marcador a un PDF sencer des del seu menú a la biblioteca. Els PDF amb marcador també apareixen com a col·lecció \"Amb marcador\" dins de Carpetes.</string>
+    <string name="bookmarks_pages_empty_title">Cap pàgina amb marcador</string>
+    <string name="bookmarks_pages_empty_body">Toca l\'estrella mentre llegeixes per marcar la pàgina on ets. Es desen aquí, a part dels PDF sencers.</string>
+    <string name="bookmarks_folders_empty_title">Cap carpeta amb marcador</string>
+    <string name="bookmarks_folders_empty_body">Afegeix un marcador a una carpeta des del seu menú a Carpetes.</string>
+    <string name="bookmarks_page_detail">%1$s · %2$s</string>
+    <string name="bookmarked_collection_back">Torna a les carpetes</string>
+    <string name="bookmarked_collection_title">Amb marcador</string>
+    <string name="bookmarked_collection_empty_title">Cap marcador</string>
+    <string name="bookmarked_collection_empty_body">Afegeix un marcador a un PDF des del seu menú a la biblioteca i apareixerà aquí automàticament.</string>
+
+    <!-- Carpetes -->
+    <string name="folders_title">Carpetes</string>
+    <string name="folders_new">Carpeta nova</string>
+    <string name="folders_empty_title">Cap carpeta pròpia</string>
+    <string name="folders_empty_body">Toca + per crear-ne una i després hi podràs arxivar PDF des de la biblioteca.</string>
+    <string name="folders_rename_title">Reanomena la carpeta</string>
+    <string name="folders_delete_title">Vols suprimir la carpeta?</string>
+    <string name="folders_delete_body">Els PDF que hi ha dins es queden al dispositiu: només deixen d\'estar arxivats aquí.</string>
+    <string name="folders_exists">Ja hi ha una carpeta anomenada \"%1$s\"</string>
+    <string name="folders_name_label">Nom de la carpeta</string>
+    <string name="folders_bookmarked_auto">S\'actualitza automàticament</string>
+    <string name="folders_pinned">Fixada</string>
+    <string name="folders_unpin">Deixa de fixar</string>
+    <string name="folders_pin">Fixa a dalt</string>
+    <string name="folders_bookmark">Afegeix un marcador</string>
+    <string name="folders_colour">Color…</string>
+    <string name="folders_rename">Reanomena…</string>
+    <string name="folders_colour_title">Color de la carpeta</string>
+    <string name="folders_no_colour">Sense color</string>
+    <string name="folders_empty_count">Buida</string>
+    <!--
+        "PDF" is an invariable acronym in Catalan, so every quantity reads the
+        same; the "many" form exists because CLDR requires it for Catalan.
+    -->
+    <plurals name="folders_pdf_count">
+        <item quantity="one">%1$d PDF</item>
+        <item quantity="many">%1$d PDF</item>
+        <item quantity="other">%1$d PDF</item>
+    </plurals>
+    <string name="folder_detail_back">Torna a les carpetes</string>
+    <string name="folder_detail_empty_title">Aquí no hi ha res arxivat</string>
+    <string name="folder_detail_empty_body">Fes servir \"Mou a una carpeta\" en un PDF de la biblioteca per afegir-l\'hi.</string>
+    <string name="folder_detail_remove">Treu de la carpeta</string>
+
+    <!-- Lector -->
+    <string name="reader_back">Torna a la biblioteca</string>
+    <string name="reader_page_of">Pàgina %1$d de %2$d</string>
+    <string name="reader_page_content_description">Pàgina %1$d</string>
+    <string name="reader_open_failed_title">No s\'ha pogut obrir aquest PDF</string>
+    <string name="reader_open_failed_body">Pot ser que el fitxer s\'hagi mogut o que s\'hagi revocat el permís de la carpeta.</string>
+    <string name="reader_open_failed_message">No s\'ha pogut obrir aquest PDF</string>
+    <string name="reader_no_pages_title">Cap pàgina</string>
+    <string name="reader_no_pages_body">Aquest document diu que té zero pàgines.</string>
+    <string name="reader_remove_page_bookmark">Treu el marcador d\'aquesta pàgina</string>
+    <string name="reader_add_page_bookmark">Afegeix un marcador a aquesta pàgina</string>
+    <string name="reader_page_bookmarked">Amb marcador</string>
+    <string name="reader_bookmark_page">Marca la pàgina</string>
+    <string name="reader_highlight_colour">Color del ressaltat</string>
+    <string name="reader_colour_selected">%1$s, seleccionat</string>
+
+    <!-- Consulta de paraules -->
+    <string name="lookup_direction">Català → anglès</string>
+    <string name="lookup_translating">S\'està traduint…</string>
+    <string name="lookup_downloading_title">S\'està baixant el model d\'idioma català…</string>
+    <string name="lookup_downloading_body">És una baixada única per Wi-Fi. Després les consultes són fora de línia i instantànies.</string>
+    <string name="lookup_failed">No s\'ha pogut traduir aquesta paraula</string>
+    <string name="lookup_no_text">Aquí no hi ha text seleccionable</string>
+    <string name="lookup_model_wifi_failed">No s\'ha pogut baixar el model català per Wi-Fi.</string>
+    <string name="lookup_model_failed">No s\'ha pogut baixar el model català.</string>
+    <string name="lookup_use_mobile_data">Usa dades mòbils</string>
+    <string name="lookup_explain_more">Explica-ho més</string>
+    <string name="lookup_explain_more_stub">\"Explica-ho més\" encara no està connectat: demanarà la paraula en context a un LLM.</string>
+
+    <!-- Colors de ressaltat -->
+    <string name="colour_yellow">Groc</string>
+    <string name="colour_green">Verd</string>
+    <string name="colour_blue">Blau</string>
+    <string name="colour_pink">Rosa</string>
+    <string name="colour_orange">Taronja</string>
+    <string name="colour_purple">Lila</string>
+    <string name="colour_custom">Personalitzat</string>
+
+    <!-- Senyera -->
+    <string name="senyera_content_description">La senyera, la bandera catalana</string>
+
+    <!-- Configuració -->
+    <string name="settings_title">Configuració</string>
+    <string name="settings_appearance">Aparença</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Segueix el sistema</string>
+    <string name="settings_theme_light">Clar</string>
+    <string name="settings_theme_dark">Fosc</string>
+    <string name="settings_accent">Color d\'accent</string>
+    <string name="settings_accent_system">Predeterminat del sistema</string>
+    <string name="settings_accent_system_summary">Pren el color del fons de pantalla.</string>
+    <string name="settings_accent_senyera">Senyera</string>
+    <string name="settings_accent_blue">Blau</string>
+    <string name="settings_accent_green">Verd</string>
+    <string name="settings_accent_violet">Violeta</string>
+    <string name="settings_accent_amber">Ambre</string>
+    <string name="settings_accent_teal">Turquesa</string>
+    <string name="settings_accent_selected">%1$s, seleccionat</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_summary">Només s\'aplica a l\'aplicació. En canviar-lo, la pantalla es torna a carregar.</string>
+    <string name="settings_about">Quant a</string>
+    <string name="settings_version">Versió %1$s</string>
+
+</resources>

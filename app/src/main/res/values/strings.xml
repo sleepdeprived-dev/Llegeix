@@ -1,3 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Default (English) strings. Catalan lives in values-ca/strings.xml, and is
+    what the app selects out of the box; see AppLanguage.
+-->
 <resources>
-    <string name="app_name">Catalan PDF Reader</string>
+
+    <!--
+        The app is called Llegeix in every language: it is a proper noun, so it
+        is deliberately kept out of translation.
+    -->
+    <string name="app_name" translatable="false">Llegeix</string>
+    <!-- The badge on a document row. An abbreviation, not prose. -->
+    <string name="pdf_badge" translatable="false">PDF</string>
+
+    <!-- Navigation -->
+    <string name="nav_library">Library</string>
+    <string name="nav_recent">Recent</string>
+    <string name="nav_bookmarks">Bookmarks</string>
+    <string name="nav_folders">Folders</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Shared actions -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_done">Done</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_create">Create</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_more_options">More options</string>
+    <string name="action_add_folder">Add folder</string>
+    <string name="action_scan_device">Scan whole device</string>
+    <string name="action_open_settings">Open Settings</string>
+
+    <!-- Library -->
+    <string name="library_rescan">Rescan</string>
+    <string name="library_search">Search</string>
+    <string name="library_clear_search">Clear search</string>
+    <string name="library_add_pdfs">Add PDFs directly…</string>
+    <string name="library_settings_unavailable">Could not open Settings. Grant \"All files access\" manually.</string>
+    <string name="library_scan_failed">Could not scan for PDFs</string>
+    <string name="library_filter_all">All</string>
+    <string name="library_filter_read_later">Read later</string>
+    <!-- A filter chip with a count, e.g. "Read later (3)". -->
+    <string name="library_filter_with_count">%1$s (%2$d)</string>
+    <string name="library_sort_recent">Recently modified</string>
+    <string name="library_sort_name">Name</string>
+    <string name="library_sort_size">Size</string>
+    <string name="library_empty_title">No PDFs found</string>
+    <string name="library_empty_body">Nothing with a .pdf extension turned up. PDFs in Downloads cannot be reached by watching a folder — scan the whole device instead, or add them individually from the menu.</string>
+    <string name="library_read_later_empty_title">Nothing to read later</string>
+    <string name="library_read_later_empty_body">Mark a PDF \"Read later\" from its menu and it will collect here.</string>
+    <string name="library_no_matches_title">No matches</string>
+    <string name="library_no_matches_body">None of the %1$d PDFs match \"%2$s\".</string>
+    <string name="library_move_to_folder">Move to folder</string>
+    <string name="library_no_folders_yet">You have no folders yet.</string>
+    <string name="library_remove_from_folder">Remove from folder</string>
+    <string name="library_new_folder_ellipsis">New folder…</string>
+
+    <!-- Document row -->
+    <string name="document_bookmarked">Bookmarked</string>
+    <string name="document_read_later">Read later</string>
+    <string name="document_actions">Actions for %1$s</string>
+    <string name="document_remove_bookmark">Remove bookmark</string>
+    <string name="document_add_bookmark">Bookmark this PDF</string>
+    <string name="document_remove_read_later">Remove from read later</string>
+    <string name="document_move_to_folder">Move to folder…</string>
+    <string name="source_stop_watching">Stop watching %1$s</string>
+    <string name="device_scan_title">Scan the whole device</string>
+    <string name="device_scan_body">Finds every PDF without picking folders. Needs All files access, which you turn on in system Settings.</string>
+
+    <!-- Recent -->
+    <string name="recent_title">Recently viewed</string>
+    <string name="recent_empty_title">Nothing read yet</string>
+    <string name="recent_empty_body">Open a PDF from the library and it will show up here, along with the page you got to.</string>
+    <string name="recent_page">Page %1$d</string>
+    <!-- Joins the page and the timestamp, e.g. "Page 12 · Yesterday". -->
+    <string name="recent_subtitle">%1$s · %2$s</string>
+
+    <!-- Bookmarks -->
+    <string name="bookmarks_title">Bookmarks</string>
+    <string name="bookmarks_tab_pdfs">PDFs</string>
+    <string name="bookmarks_tab_pages">Pages</string>
+    <string name="bookmarks_tab_folders">Folders</string>
+    <string name="bookmarks_tab_with_count">%1$s (%2$d)</string>
+    <string name="bookmarks_pdfs_empty_title">No bookmarked PDFs</string>
+    <string name="bookmarks_pdfs_empty_body">Bookmark a whole PDF from its menu in the library. Bookmarked PDFs also appear as a \"Bookmarked\" collection under Folders.</string>
+    <string name="bookmarks_pages_empty_title">No bookmarked pages</string>
+    <string name="bookmarks_pages_empty_body">Tap the star while reading to bookmark the page you are on. Those land here, separately from whole PDFs.</string>
+    <string name="bookmarks_folders_empty_title">No bookmarked folders</string>
+    <string name="bookmarks_folders_empty_body">Bookmark a folder from its menu under Folders.</string>
+    <!-- A page bookmark's own label, appended after the page number. -->
+    <string name="bookmarks_page_detail">%1$s · %2$s</string>
+    <string name="bookmarked_collection_back">Back to folders</string>
+    <string name="bookmarked_collection_title">Bookmarked</string>
+    <string name="bookmarked_collection_empty_title">Nothing bookmarked</string>
+    <string name="bookmarked_collection_empty_body">Bookmark a PDF from its menu in the library and it will appear here automatically.</string>
+
+    <!-- Folders -->
+    <string name="folders_title">Folders</string>
+    <string name="folders_new">New folder</string>
+    <string name="folders_empty_title">No folders of your own</string>
+    <string name="folders_empty_body">Tap + to make one, then file PDFs into it from the library.</string>
+    <string name="folders_rename_title">Rename folder</string>
+    <string name="folders_delete_title">Delete folder?</string>
+    <string name="folders_delete_body">The PDFs inside stay on your device — they just stop being filed here.</string>
+    <string name="folders_exists">A folder called \"%1$s\" already exists</string>
+    <string name="folders_name_label">Folder name</string>
+    <string name="folders_bookmarked_auto">Kept up to date automatically</string>
+    <string name="folders_pinned">Pinned</string>
+    <string name="folders_unpin">Unpin</string>
+    <string name="folders_pin">Pin to top</string>
+    <string name="folders_bookmark">Bookmark</string>
+    <string name="folders_colour">Colour…</string>
+    <string name="folders_rename">Rename…</string>
+    <string name="folders_colour_title">Folder colour</string>
+    <string name="folders_no_colour">No colour</string>
+    <string name="folders_empty_count">Empty</string>
+    <plurals name="folders_pdf_count">
+        <item quantity="one">%1$d PDF</item>
+        <item quantity="other">%1$d PDFs</item>
+    </plurals>
+    <string name="folder_detail_back">Back to folders</string>
+    <string name="folder_detail_empty_title">Nothing filed here</string>
+    <string name="folder_detail_empty_body">Use \"Move to folder\" on a PDF in the library to add it.</string>
+    <string name="folder_detail_remove">Remove from folder</string>
+
+    <!-- Reader -->
+    <string name="reader_back">Back to library</string>
+    <string name="reader_page_of">Page %1$d of %2$d</string>
+    <string name="reader_page_content_description">Page %1$d</string>
+    <string name="reader_open_failed_title">Could not open this PDF</string>
+    <string name="reader_open_failed_body">The file may have moved, or the folder grant may have been revoked.</string>
+    <string name="reader_open_failed_message">This PDF could not be opened</string>
+    <string name="reader_no_pages_title">No pages</string>
+    <string name="reader_no_pages_body">This document reports zero pages.</string>
+    <string name="reader_remove_page_bookmark">Remove bookmark from this page</string>
+    <string name="reader_add_page_bookmark">Bookmark this page</string>
+    <string name="reader_page_bookmarked">Bookmarked</string>
+    <string name="reader_bookmark_page">Bookmark page</string>
+    <string name="reader_highlight_colour">Highlight colour</string>
+    <string name="reader_colour_selected">%1$s, selected</string>
+
+    <!-- Word lookup -->
+    <string name="lookup_direction">Catalan → English</string>
+    <string name="lookup_translating">Translating…</string>
+    <string name="lookup_downloading_title">Downloading the Catalan language model…</string>
+    <string name="lookup_downloading_body">One-time download over Wi-Fi. Lookups are offline and instant afterwards.</string>
+    <string name="lookup_failed">Could not translate that word</string>
+    <string name="lookup_no_text">No selectable text there</string>
+    <string name="lookup_model_wifi_failed">Could not download the Catalan model over Wi-Fi.</string>
+    <string name="lookup_model_failed">Could not download the Catalan model.</string>
+    <string name="lookup_use_mobile_data">Use mobile data</string>
+    <string name="lookup_explain_more">Explain more</string>
+    <string name="lookup_explain_more_stub">\"Explain more\" is not wired up yet — it will ask an LLM for the word in context.</string>
+
+    <!-- Highlight colours -->
+    <string name="colour_yellow">Yellow</string>
+    <string name="colour_green">Green</string>
+    <string name="colour_blue">Blue</string>
+    <string name="colour_pink">Pink</string>
+    <string name="colour_orange">Orange</string>
+    <string name="colour_purple">Purple</string>
+    <string name="colour_custom">Custom</string>
+
+    <!-- Senyera -->
+    <string name="senyera_content_description">Senyera, the Catalan flag</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">Follow the system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_accent">Accent colour</string>
+    <string name="settings_accent_system">System default</string>
+    <string name="settings_accent_system_summary">Takes its colour from your wallpaper.</string>
+    <string name="settings_accent_senyera">Senyera</string>
+    <string name="settings_accent_blue">Blue</string>
+    <string name="settings_accent_green">Green</string>
+    <string name="settings_accent_violet">Violet</string>
+    <string name="settings_accent_amber">Amber</string>
+    <string name="settings_accent_teal">Teal</string>
+    <string name="settings_accent_selected">%1$s, selected</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_summary">Applies to the app only. Changing it reloads the screen.</string>
+    <!-- Every language is listed in its own language, so it stays readable
+         whichever language the app is currently in. -->
+    <string name="settings_language_catalan" translatable="false">Català</string>
+    <string name="settings_language_english" translatable="false">English</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version %1$s</string>
+
 </resources>

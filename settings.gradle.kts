@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Catalan PDF Reader"
+rootProject.name = "Llegeix"
 include(":app")
