@@ -18,8 +18,12 @@ language. Written in Kotlin with Jetpack Compose.
   models; keep holding and drag to take a whole phrase, which comes back
   translated, broken down word by word, and set in the line it came from.
 - **Pronunciation** — Central Catalan IPA, generated from the spelling rather
-  than looked up, so it works for any word including names and inflections. See
-  the note below on what it can and cannot know.
+  than looked up, so it works for any word including names and inflections,
+  backed by a word list for the one thing spelling cannot record. See the note
+  below.
+- **Explanations** — "Explain more" asks Claude what the selection is doing in
+  its sentence: idiom, register, why this form. Needs your own Anthropic API
+  key, entered in Settings.
 - **Saved words** — star a word or phrase and it is kept with its translation,
   its pronunciation, the line it appeared in, and the document, page and line it
   came from.
@@ -94,10 +98,26 @@ final r in polysyllables.
 
 One thing spelling does not encode is whether a stressed **e** or **o** without a
 written accent is close or open. *Pedra* is [ˈpeðɾə] but *terra* is [ˈtɛrə], and
-nothing in the letters distinguishes them. Those transcriptions use the open
-vowel and are marked **approx.** in the app, so a guess is never presented as a
-fact. A short list of common exceptions is hard-coded; it is not meant to grow
-into a dictionary.
+nothing in the letters distinguishes them.
+
+`assets/catalan-aperture.tsv` answers that for the words it lists, and the
+lookup strips regular inflection so listing a lemma also covers its plural,
+feminine and verb forms. Anything the list does not reach still takes the open
+vowel and is marked **approx.** in the app, so a guess is never presented as a
+fact. The file is a correction list, not a dictionary — it is deliberately short
+and holds only entries worth being confident about, because a wrong entry is
+worse than an honest marker. Extending it is the intended way to improve the
+transcriber.
 
 The transcription is deliberately broad: no spirantisation of b/d/g between
 vowels, and no phrase-level assimilation.
+
+## Downloads
+
+The release publishes one APK per architecture plus a universal one. **arm64-v8a**
+is the right choice for essentially every phone made since 2016. The universal
+APK carries all four architectures and is roughly twice the size; it exists for
+anyone who would rather not check.
+
+Per-ABI splits halve the download because Pdfium ships native libraries for every
+architecture and a device runs only one of them.

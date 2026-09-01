@@ -20,7 +20,7 @@ data class FolderWithCount(
 @Dao
 interface FolderDao {
 
-    @Query("SELECT * FROM folders ORDER BY isPinned DESC, name COLLATE NOCASE")
+    @Query("SELECT * FROM folders ORDER BY isPinned DESC, isBookmarked DESC, name COLLATE NOCASE")
     fun observeFolders(): Flow<List<FolderEntity>>
 
     /**
@@ -35,7 +35,7 @@ interface FolderDao {
         FROM folders f
         LEFT JOIN documents d ON d.folderId = f.id
         GROUP BY f.id, f.name, f.isPinned, f.isBookmarked, f.colorArgb
-        ORDER BY f.isPinned DESC, f.name COLLATE NOCASE
+        ORDER BY f.isPinned DESC, f.isBookmarked DESC, f.name COLLATE NOCASE
         """,
     )
     fun observeFoldersWithCounts(): Flow<List<FolderWithCount>>

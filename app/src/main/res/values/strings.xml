@@ -179,7 +179,6 @@
     <string name="lookup_model_failed">Could not download the Catalan model.</string>
     <string name="lookup_use_mobile_data">Use mobile data</string>
     <string name="lookup_explain_more">Explain more</string>
-    <string name="lookup_explain_more_stub">\"Explain more\" is not wired up yet — it will ask an LLM for the word in context.</string>
 
     <string name="lookup_save_word">Save this word</string>
     <string name="lookup_unsave_word">Remove from saved words</string>
@@ -197,6 +196,23 @@
     <string name="bookmarks_words_empty_body">Press and hold a word while reading, then tap the star. Keep holding and drag to save a whole phrase.</string>
     <string name="words_remove">Remove this word</string>
     <string name="words_source">%1$s · page %2$d · line %3$d</string>
+
+    <string name="lookup_explaining">Asking Claude…</string>
+    <string name="lookup_explanation">Explanation</string>
+    <string name="lookup_explain_needs_key">Add an Anthropic API key in Settings to use this.</string>
+    <string name="lookup_explain_failed">Could not get an explanation: %1$s</string>
+    <string name="lookup_explain_refused">Claude declined to answer this one.</string>
+    <string name="lookup_explain_unauthorized">That API key was rejected. Check it in Settings.</string>
+    <string name="lookup_explain_empty">Claude sent nothing back.</string>
+
+    <!-- Settings: the key for the explanation feature -->
+    <string name="settings_ai">Explanations</string>
+    <string name="settings_api_key">Anthropic API key</string>
+    <string name="settings_api_key_summary">Needed only for "Explain more" in the reader. Stored on this device and sent to Anthropic with each request. Get one at console.anthropic.com.</string>
+    <string name="settings_api_key_set">Key saved</string>
+    <string name="settings_api_key_none">No key set</string>
+    <string name="settings_api_key_clear">Remove key</string>
+    <string name="settings_api_key_save">Save</string>
 
     <!-- Highlight colours -->
     <string name="colour_yellow">Yellow</string>

@@ -39,6 +39,20 @@ data class Pronunciation(
  */
 object CatalanIpa {
 
+    /**
+     * Consulted for the aperture of a stressed e or o that carries no accent.
+     *
+     * Optional on purpose: the transcriber works without it and simply marks
+     * more words approximate, which keeps it usable from a unit test and from
+     * anywhere that has no Android context to hand.
+     */
+    @Volatile
+    private var lexicon: ApertureLexicon? = null
+
+    fun useLexicon(lexicon: ApertureLexicon) {
+        this.lexicon = lexicon
+    }
+
     fun transcribe(text: String): Pronunciation {
         val words = text.trim().split(WHITESPACE).filter { it.isNotBlank() }
         if (words.isEmpty()) return Pronunciation("", false)
@@ -72,6 +86,7 @@ object CatalanIpa {
         if (word.isEmpty()) return Pronunciation("", false)
         EXCEPTIONS[word]?.let { return Pronunciation(it, false) }
 
+        val listedAperture = lexicon?.apertureOf(word)
         val units = segment(word)
         val nuclei = units.indices.filter { units[it].isVowel }
         if (nuclei.isEmpty()) {
@@ -93,7 +108,7 @@ object CatalanIpa {
             startOfUnit[index] = phonemes.size
             if (unit.isVowel) {
                 val isStressed = index == stressed
-                val vowel = vowel(unit, units, index, isStressed)
+                val vowel = vowel(unit, units, index, isStressed, listedAperture)
                 if (isStressed && vowel.approximate) approximate = true
                 phonemes += vowel.ipa
             } else {
@@ -150,7 +165,14 @@ object CatalanIpa {
             // real glide, as in "quatre" and "guant".
             val isLabialised = digraph == "qu" || digraph == "gu"
             val next = word.getOrNull(i + (digraph?.length ?: 0))
-            if (digraph != null && !(isLabialised && next != null && next !in "ei")) {
+            // "ig" is the affricate only at the end of a word — maig, desig.
+            // In the middle it is an ordinary i followed by a g, and treating it
+            // as a digraph turned "aigua" into three syllables.
+            val misplacedIg = digraph == "ig" && i + 2 != word.length
+            if (digraph != null &&
+                !misplacedIg &&
+                !(isLabialised && next != null && next !in "ei")
+            ) {
                 units += Unit(digraph, false)
                 i += digraph.length
             } else {
@@ -230,6 +252,7 @@ object CatalanIpa {
         units: List<Unit>,
         index: Int,
         isStressed: Boolean,
+        listedAperture: String? = null,
     ): VowelSound {
         // The i of "ix" only tells you the x is [ʃ]; it is not pronounced when
         // a vowel already precedes it. caixa is [ˈkaʃə], not [ˈkajʃə].
@@ -253,9 +276,21 @@ object CatalanIpa {
             "i" -> VowelSound("i", false)
             "u" -> VowelSound("u", false)
             "a" -> if (isStressed) VowelSound("a", false) else VowelSound("ə", false)
-            // The two the spelling refuses to disambiguate. Open is the guess.
-            "e" -> if (isStressed) VowelSound("ɛ", true) else VowelSound("ə", false)
-            "o" -> if (isStressed) VowelSound("ɔ", true) else VowelSound("u", false)
+            // The two the spelling refuses to disambiguate. The lexicon answers
+            // for the words it lists; otherwise open is the guess, and saying so
+            // is the honest thing to do.
+            "e" -> when {
+                !isStressed -> VowelSound("ə", false)
+                listedAperture == "e" || listedAperture == "ɛ" ->
+                    VowelSound(listedAperture, false)
+                else -> VowelSound("ɛ", true)
+            }
+            "o" -> when {
+                !isStressed -> VowelSound("u", false)
+                listedAperture == "o" || listedAperture == "ɔ" ->
+                    VowelSound(listedAperture, false)
+                else -> VowelSound("ɔ", true)
+            }
             else -> VowelSound(unit.text, false)
         }
     }
@@ -362,42 +397,33 @@ object CatalanIpa {
     private fun String.isConsonant(): Boolean = this !in VOWEL_SOUNDS && isNotEmpty()
 
     /**
-     * Words the rules cannot get right, kept deliberately short.
+     * The handful of words the rules genuinely cannot reach.
      *
-     * Every entry here is one where the stressed vowel's aperture is lexical, or
-     * where the word is common enough that a wrong vowel would be actively
-     * taught. It is not meant to grow into a dictionary.
+     * Everything here is irregular in something other than vowel aperture,
+     * which is now the aperture list's job. What is left is two groups: the
+     * unstressed clitics, which the stress rules would wrongly give a full
+     * vowel to because they look like one-syllable words (*el* is [əɫ], not
+     * [ˈɛɫ]); and a couple of consonant clusters that simplify in speech.
      */
     private val EXCEPTIONS: Map<String, String> = mapOf(
-        "és" to "es",
-        "què" to "kɛ",
-        "que" to "kə",
-        "de" to "də",
+        // Clitics: always unstressed, so their vowel reduces.
         "el" to "əɫ",
+        "els" to "əɫs",
         "la" to "lə",
         "les" to "ləs",
-        "els" to "əɫs",
-        "un" to "un",
-        "una" to "ˈunə",
-        "amb" to "am",
+        "de" to "də",
+        "que" to "kə",
         "per" to "pər",
-        "però" to "pəˈɾɔ",
-        "com" to "kɔm",
+        "es" to "əs",
+        "em" to "əm",
+        "et" to "ət",
+        "ens" to "əns",
+        "us" to "us",
+        // Clusters that simplify: the final stop is not pronounced.
+        "amb" to "am",
         "molt" to "moɫ",
+        "molts" to "moɫs",
         "temps" to "tems",
-        "món" to "mon",
-        "home" to "ˈɔmə",
-        "dona" to "ˈdɔnə",
-        "terra" to "ˈtɛrə",
-        "festa" to "ˈfɛstə",
-        "cel" to "sɛɫ",
-        "carrer" to "kəˈre",
-        "senyor" to "səˈɲo",
-        "barcelona" to "bərsəˈlonə",
-        "petit" to "pəˈtit",
-        "príncep" to "ˈprinsəp",
-        "llibre" to "ˈʎibɾə",
-        "pedra" to "ˈpedɾə",
-        "aigua" to "ˈajɡwə",
+        "quan" to "kwan",
     )
 }

@@ -30,8 +30,8 @@ android {
         applicationId = "com.david.llegeix"
         minSdk = 31
         targetSdk = 37
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -44,6 +44,23 @@ android {
                 keyAlias = signingValue("llegeix.keyAlias", "LLEGEIX_KEY_ALIAS")
                 keyPassword = signingValue("llegeix.keyPassword", "LLEGEIX_KEY_PASSWORD")
             }
+        }
+    }
+
+    /**
+     * One APK per ABI instead of one carrying all four.
+     *
+     * Pdfium ships native libraries for every architecture and they dominate the
+     * download; a device only ever runs one of them. The universal APK is kept
+     * as well, because a sideloaded release needs an option that installs
+     * anywhere without the reader having to know their own architecture.
+     */
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
         }
     }
 
@@ -110,6 +127,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
+    // Android's unit-test android.jar stubs org.json and every call throws;
+    // the real implementation only ever lands on the test classpath.
+    testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

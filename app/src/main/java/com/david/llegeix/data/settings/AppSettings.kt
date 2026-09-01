@@ -91,6 +91,14 @@ data class AppSettings(
     val invertPages: Boolean = false,
     /** ARGB for [AccentColor.CUSTOM]. Ignored by every other accent. */
     val customAccent: Int = DEFAULT_CUSTOM_ACCENT,
+    /**
+     * The reader's own Anthropic API key, for "Explain more".
+     *
+     * Entered by hand and kept in the app's private preferences rather than
+     * compiled in: the release APK is public, and a key inside one is both
+     * extractable and billed to whoever built it.
+     */
+    val anthropicApiKey: String = "",
 )
 
 /** The colour the custom picker opens on before anything is chosen. */

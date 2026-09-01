@@ -1,6 +1,8 @@
 package com.david.llegeix.lang
 
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -153,5 +155,109 @@ class CatalanIpaTest {
     fun `a falling diphthong stays one syllable`() {
         assertEquals("ˈbɛwɾə", ipa("veure"))
         assertEquals("siwˈtat", ipa("ciutat"))
+    }
+}
+
+/**
+ * The aperture list is the answer to the one thing the rules cannot derive, so
+ * it is worth checking that consulting it actually changes the output — and,
+ * just as importantly, that a word it does not cover still comes back marked
+ * approximate rather than silently guessed.
+ */
+class ApertureLexiconTest {
+
+    private val lexicon = ApertureLexicon.of(
+        mapOf(
+            "terra" to "ɛ",
+            "pedra" to "e",
+            "poble" to "ɔ",
+            "portar" to "o",
+        ),
+    )
+
+    @After
+    fun tearDown() {
+        // The transcriber is a singleton; leave it as the other tests expect.
+        CatalanIpa.useLexicon(ApertureLexicon.of(emptyMap()))
+    }
+
+    @Test
+    fun `a listed word gets its real vowel and is no longer approximate`() {
+        CatalanIpa.useLexicon(lexicon)
+
+        val terra = CatalanIpa.transcribe("terra")
+        assertEquals("ˈtɛrə", terra.ipa)
+        assertFalse(terra.isApproximate)
+
+        val pedra = CatalanIpa.transcribe("pedra")
+        assertEquals("ˈpedɾə", pedra.ipa)
+        assertFalse(pedra.isApproximate)
+    }
+
+    @Test
+    fun `the two words spelling cannot tell apart come out different`() {
+        CatalanIpa.useLexicon(lexicon)
+        assertNotEquals(
+            CatalanIpa.transcribe("terra").ipa.first { it in "eɛ" },
+            CatalanIpa.transcribe("pedra").ipa.first { it in "eɛ" },
+        )
+    }
+
+    @Test
+    fun `an inflected form inherits from its listed base`() {
+        CatalanIpa.useLexicon(lexicon)
+        // The plural does not move the stress, so the aperture carries over.
+        val plural = CatalanIpa.transcribe("terres")
+        assertTrue("expected an open e, got ${plural.ipa}", plural.ipa.contains("ɛ"))
+        assertFalse(plural.isApproximate)
+    }
+
+    @Test
+    fun `a verb form falls back to its infinitive`() {
+        CatalanIpa.useLexicon(lexicon)
+        val imperfect = CatalanIpa.transcribe("portava")
+        assertFalse(imperfect.isApproximate)
+    }
+
+    @Test
+    fun `a word the list does not cover stays honestly approximate`() {
+        CatalanIpa.useLexicon(lexicon)
+        assertTrue(CatalanIpa.transcribe("cadena").isApproximate)
+    }
+
+    @Test
+    fun `an absent word list costs accuracy but never function`() {
+        CatalanIpa.useLexicon(ApertureLexicon.of(emptyMap()))
+        val result = CatalanIpa.transcribe("terra")
+        assertEquals("ˈtɛrə", result.ipa)
+        assertTrue(result.isApproximate)
+    }
+}
+
+/**
+ * Regressions for digraphs that only hold in one position. Each of these was
+ * masked by an entry in the old hard-coded exception list.
+ */
+class CatalanIpaPositionTest {
+
+    private fun ipa(word: String) = CatalanIpa.transcribe(word).ipa
+
+    @Test
+    fun `ig is an affricate only at the end of a word`() {
+        assertEquals("ˈmatʃ", ipa("maig"))
+        // Mid-word it is a plain i and g: aigua is two syllables, not three.
+        assertEquals("ˈajɡwə", ipa("aigua"))
+    }
+
+    @Test
+    fun `an unstressed clitic keeps its reduced vowel`() {
+        assertEquals("əɫ", ipa("el"))
+        assertEquals("ˈlajɡwə", ipa("l'aigua"))
+    }
+
+    @Test
+    fun `an accented word still needs no exception entry`() {
+        assertEquals("ˈpɾinsəp", ipa("príncep"))
+        assertEquals("pəˈɾɔ", ipa("però"))
     }
 }

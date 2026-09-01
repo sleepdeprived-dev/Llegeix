@@ -935,6 +935,32 @@ private fun WordLookupSheet(
                 }
             }
 
+            if (lookup.isExplaining || lookup.explanation != null) {
+                DetailCard(
+                    title = stringResource(R.string.lookup_explanation),
+                    modifier = Modifier.padding(top = Space.lg),
+                ) {
+                    if (lookup.explanation != null) {
+                        Text(
+                            text = lookup.explanation,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.lookup_explaining),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = Space.sm),
+                        )
+                    }
+                }
+            }
+
             // Shown alongside a successful translation too, since the stub
             // message is delivered through the same field.
             if (lookup.status == LookupStatus.READY && lookup.error != null) {
@@ -954,8 +980,11 @@ private fun WordLookupSheet(
                     OutlinedButton(onClick = onRetryOnAnyNetwork) {
                         Text(stringResource(R.string.lookup_use_mobile_data))
                     }
-                } else {
-                    OutlinedButton(onClick = onExplainMore) {
+                } else if (lookup.explanation == null) {
+                    OutlinedButton(
+                        onClick = onExplainMore,
+                        enabled = !lookup.isExplaining,
+                    ) {
                         Text(stringResource(R.string.lookup_explain_more))
                     }
                 }

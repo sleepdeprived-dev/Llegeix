@@ -1,0 +1,172 @@
+# Stressed-vowel aperture for Catalan words whose spelling does not record it.
+#
+# Catalan orthography marks aperture only when the word carries a written
+# accent: é/ó are close, è/ò are open. For a stressed e or o with no accent the
+# letters are silent on the question — pedra is [ˈpeðɾə] but terra is [ˈtɛrə] —
+# so the transcriber has to guess, and marks the result approximate. This file
+# removes the guess for the words it lists.
+#
+# Format: word <TAB> the IPA symbol for its stressed vowel. Only e, ɛ, o and ɔ
+# appear; every other vowel is already determined by the rules.
+#
+# This is a correction list, not a dictionary. It is deliberately short and
+# holds only entries worth being confident about — a wrong entry here is worse
+# than the honest "approx." marker it replaces, because it presents a guess as a
+# fact. Inflected forms are covered by the suffix stripping in CatalanIpa, so
+# listing the lemma also covers its plural, its feminine and its regular verb
+# forms. Extending it is the intended way to improve the transcriber.
+#
+# Kept flat and alphabetical on purpose: an earlier draft grouped entries under
+# "close" and "open" headings and several ended up filed under the wrong one.
+
+abella	e
+amor	o
+aquell	e
+barcelona	o
+bell	e
+bo	ɔ
+boca	o
+bosc	ɔ
+botella	e
+cadena	e
+carrer	e
+carrera	ɛ
+castell	e
+cec	ɛ
+cel	ɛ
+cent	e
+cert	ɛ
+col	ɔ
+color	o
+com	ɔ
+compte	o
+concert	ɛ
+consell	e
+conte	o
+copa	ɔ
+cor	ɔ
+correu	e
+cosa	ɔ
+creu	ɛ
+darrer	e
+desert	ɛ
+deu	ɛ
+diner	e
+doble	ɔ
+dolor	o
+dona	ɔ
+escena	ɛ
+esquena	e
+esquerra	ɛ
+estrella	e
+febre	ɛ
+febrer	e
+ferro	ɛ
+festa	ɛ
+figuera	ɛ
+finestra	ɛ
+foc	ɔ
+formar	o
+fort	ɔ
+força	ɔ
+front	ɔ
+frontera	ɛ
+gener	e
+gent	e
+gos	o
+govern	ɛ
+groc	ɔ
+guerra	ɛ
+herba	ɛ
+hivern	ɛ
+home	ɔ
+honor	o
+horta	ɔ
+joc	ɔ
+lletra	e
+lleuger	e
+lloc	ɔ
+major	o
+manera	ɛ
+mel	ɛ
+mena	e
+menor	o
+mes	e
+mestre	e
+metre	e
+millor	o
+moble	ɔ
+modern	ɛ
+molt	o
+moment	e
+mort	ɔ
+mostrar	o
+motor	o
+negre	e
+nen	ɛ
+noble	ɔ
+nom	ɔ
+nova	ɔ
+obert	ɛ
+obra	ɔ
+ombra	o
+onze	o
+orella	e
+os	ɔ
+ovella	e
+paper	e
+parella	e
+pedra	e
+pedrera	ɛ
+peix	e
+pell	ɛ
+pera	ɛ
+perla	ɛ
+pes	e
+pintor	o
+ple	e
+plena	e
+poble	ɔ
+pobre	ɔ
+poc	ɔ
+port	ɔ
+porta	ɔ
+portar	o
+posar	o
+post	ɔ
+primavera	ɛ
+primer	e
+problema	ɛ
+propi	ɔ
+prova	ɔ
+res	ɛ
+roba	ɔ
+sec	ɛ
+segon	o
+sencer	e
+seny	e
+senyor	o
+senyora	o
+serena	e
+serp	ɛ
+serra	ɛ
+setze	e
+sistema	ɛ
+so	ɔ
+sol	ɔ
+son	ɔ
+sopa	o
+sort	ɔ
+tambor	o
+tema	ɛ
+tercer	e
+terra	ɛ
+terç	ɛ
+tornar	o
+tres	e
+tresor	o
+tretze	e
+trobar	o
+vell	e
+vent	e
+verd	ɛ
