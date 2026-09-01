@@ -7,6 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.db.MIGRATION_1_2
 import com.david.llegeix.data.db.MIGRATION_2_3
+import com.david.llegeix.data.db.MIGRATION_3_4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -154,6 +155,79 @@ class MigrationTest {
             assertEquals(0, cursor.getInt(1))
         }
         db.query("SELECT COUNT(*) FROM word_bookmarks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+    }
+
+    @Test
+    fun migrate3To4_addsTagsAndKeepsSavedWords() {
+        helper.createDatabase(TEST_DB, 3).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO documents
+                    (uriString, displayName, folderId, highlightColor, addedAt,
+                     isBookmarked, isReadLater)
+                VALUES ('content://test/1', 'princep.pdf', NULL, NULL, 200, 0, 0)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO word_bookmarks
+                    (word, translation, ipa, context, documentUri, displayName,
+                     pageIndex, lineNumber, createdAt)
+                VALUES ('serp', 'snake', 'sɛɾp', 'una serp boa', 'content://test/1',
+                        'princep.pdf', 0, 2, 500)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 4, true, MIGRATION_3_4)
+
+        db.execSQL(
+            "INSERT INTO tags (name, colorArgb, createdAt) VALUES ('Gramatica', -12345, 600)",
+        )
+        db.execSQL(
+            "INSERT INTO document_tags (documentUri, tagId) VALUES ('content://test/1', 1)",
+        )
+        db.query(
+            """
+            SELECT t.name FROM document_tags dt
+            INNER JOIN tags t ON t.id = dt.tagId
+            WHERE dt.documentUri = 'content://test/1'
+            """.trimIndent(),
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Gramatica", cursor.getString(0))
+        }
+
+        // The words saved before the upgrade are still there.
+        db.query("SELECT word FROM word_bookmarks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("serp", cursor.getString(0))
+        }
+    }
+
+    @Test
+    fun deletingATagUnfilesItEverywhere() {
+        helper.createDatabase(TEST_DB, 3).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO documents
+                    (uriString, displayName, folderId, highlightColor, addedAt,
+                     isBookmarked, isReadLater)
+                VALUES ('content://test/1', 'a.pdf', NULL, NULL, 1, 0, 0)
+                """.trimIndent(),
+            )
+        }
+        val db = helper.runMigrationsAndValidate(TEST_DB, 4, true, MIGRATION_3_4)
+        db.execSQL("PRAGMA foreign_keys=ON")
+        db.execSQL("INSERT INTO tags (name, colorArgb, createdAt) VALUES ('Lectures', 1, 1)")
+        db.execSQL("INSERT INTO document_tags (documentUri, tagId) VALUES ('content://test/1', 1)")
+
+        db.execSQL("DELETE FROM tags WHERE id = 1")
+
+        db.query("SELECT COUNT(*) FROM document_tags").use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals(0, cursor.getInt(0))
         }

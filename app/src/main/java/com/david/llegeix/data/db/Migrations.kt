@@ -57,3 +57,47 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 }
+
+/**
+ * Adds tags.
+ *
+ * Two tables: the tags themselves, and the pairings. Both cascade on delete, so
+ * removing a document or a tag cleans up its links rather than leaving rows
+ * pointing at nothing.
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `tags` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `colorArgb` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_tags_name` ON `tags` (`name`)")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `document_tags` (
+                `documentUri` TEXT NOT NULL,
+                `tagId` INTEGER NOT NULL,
+                PRIMARY KEY(`documentUri`, `tagId`),
+                FOREIGN KEY(`documentUri`) REFERENCES `documents`(`uriString`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(`tagId`) REFERENCES `tags`(`id`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_document_tags_tagId` " +
+                "ON `document_tags` (`tagId`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_document_tags_documentUri` " +
+                "ON `document_tags` (`documentUri`)",
+        )
+    }
+}

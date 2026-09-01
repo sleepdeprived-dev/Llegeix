@@ -8,9 +8,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -62,6 +62,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -324,6 +325,8 @@ private fun ReaderBar(
     var colorMenuOpen by remember { mutableStateOf(false) }
 
     TopAppBar(
+
+        expandedHeight = Space.topBar,
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
@@ -468,6 +471,7 @@ private fun SearchBar(
 
     Column {
         TopAppBar(
+            expandedHeight = Space.topBar,
             navigationIcon = {
                 IconButton(onClick = onClose) {
                     Icon(
@@ -589,6 +593,11 @@ private fun PdfPage(
         val widthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
         var bitmap by remember(index, widthPx) { mutableStateOf<Bitmap?>(null) }
         var offset by remember(index) { mutableStateOf(Offset.Zero) }
+        // The gesture handlers outlive the composition that started them, so
+        // they have to read the zoom through a holder rather than capture it —
+        // a captured value goes stale the moment the first pinch changes it.
+        val currentZoom by rememberUpdatedState(zoom)
+        val isZoomed = zoom > 1.01f
 
         LaunchedEffect(index, widthPx) {
             bitmap = render(index, widthPx)
@@ -639,25 +648,35 @@ private fun PdfPage(
                         translationY = offset.y
                     }
                     .onSizeChanged { drawnSize = it }
-                    .pointerInput(index) {
-                        detectTransformGestures { _, pan, gestureZoom, _ ->
-                            val next = (zoom * gestureZoom)
-                                .coerceIn(ReaderViewModel.MIN_ZOOM, ReaderViewModel.MAX_ZOOM)
-                            onZoomChanged(next)
-                            if (next > 1.01f) {
-                                // Keep the page from being dragged off screen.
-                                // Horizontally it grows both ways from the
-                                // centre; vertically it only grows downward,
-                                // because the top edge is pinned.
-                                val maxX = size.width * (next - 1f) / 2f
-                                val minY = -size.height * (next - 1f)
-                                offset = Offset(
-                                    (offset.x + pan.x).coerceIn(-maxX, maxX),
-                                    (offset.y + pan.y).coerceIn(minY, 0f),
-                                )
+                    .pinchToZoom(
+                        key = index,
+                        currentZoom = { currentZoom },
+                        minZoom = ReaderViewModel.MIN_ZOOM,
+                        maxZoom = ReaderViewModel.MAX_ZOOM,
+                        onZoomChanged = onZoomChanged,
+                    )
+                    // Dragging pans, but only while magnified — the pager owns
+                    // horizontal drags the rest of the time.
+                    .then(
+                        if (isZoomed) {
+                            Modifier.pointerInput(index, zoom) {
+                                detectDragGestures { change, drag ->
+                                    change.consume()
+                                    // Horizontally the page grows both ways from
+                                    // the centre; vertically only downward,
+                                    // because the top edge is pinned.
+                                    val maxX = size.width * (zoom - 1f) / 2f
+                                    val minY = -size.height * (zoom - 1f)
+                                    offset = Offset(
+                                        (offset.x + drag.x).coerceIn(-maxX, maxX),
+                                        (offset.y + drag.y).coerceIn(minY, 0f),
+                                    )
+                                }
                             }
-                        }
-                    }
+                        } else {
+                            Modifier
+                        },
+                    )
                     .pointerInput(index, rendered, drawnSize) {
                         detectTapGestures(
                             onDoubleTap = {
@@ -988,7 +1007,7 @@ private fun WordLookupSheet(
                         Text(stringResource(R.string.lookup_explain_more))
                     }
                 }
-                Button(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+                Button(onClick = onDismiss) { Text(stringResource(R.string.lookup_done)) }
             }
         }
     }

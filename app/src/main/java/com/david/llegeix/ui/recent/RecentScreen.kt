@@ -47,6 +47,7 @@ import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuEmoji
 import com.david.llegeix.ui.common.PdfCover
+import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.library.GridCoverWidth
 import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.Space
@@ -62,12 +63,14 @@ fun RecentScreen(
 ) {
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val layout by viewModel.layout.collectAsStateWithLifecycle()
+    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                expandedHeight = Space.topBar,
                 title = { Text(stringResource(R.string.recent_title)) },
                 actions = {
                     // Clearing the history is destructive and rarely wanted, so
@@ -225,6 +228,10 @@ fun RecentScreen(
                                 modifier = Modifier.padding(top = 2.dp),
                             )
                         }
+                        TagStrip(
+                            tags = tagsByDocument[recent.uriString].orEmpty(),
+                            modifier = Modifier.padding(start = Space.sm),
+                        )
                     }
                 }
             }

@@ -25,4 +25,15 @@ object Space {
 
     /** Vertical padding inside a tappable list row. */
     val row = 18.dp
+
+    /**
+     * Height of the app bar, against Material's default of 64dp.
+     *
+     * A 24dp icon with 8dp of air above and below. Going further would start
+     * clipping the glyphs themselves: the icon buttons keep their full 48dp
+     * touch target regardless — Compose reserves that independently of the
+     * visual size — so this is as short as the bar can look without becoming
+     * harder to hit than it looks.
+     */
+    val topBar = 40.dp
 }

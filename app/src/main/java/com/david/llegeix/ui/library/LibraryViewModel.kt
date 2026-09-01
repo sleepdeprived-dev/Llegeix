@@ -13,7 +13,9 @@ import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.UiText
+import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.FolderEntity
+import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
 import com.david.llegeix.util.runCatchingCancellable
@@ -39,6 +41,30 @@ class LibraryViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.current.libraryLayout)
 
     fun onToggleLayout() = settings.setLibraryLayout(layout.value.toggled())
+
+    /** Every tag that exists, for the picker. */
+    val tags: StateFlow<List<TagEntity>> = libraryData.observeTags()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Tags keyed by document, so a row can look its own up without a query. */
+    val tagsByDocument: StateFlow<Map<String, List<DocumentTag>>> =
+        libraryData.observeTagsByDocument()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    fun onToggleTag(document: PdfDocument, tag: TagEntity) = viewModelScope.launch {
+        libraryData.toggleTag(document.uriString, document.displayName, tag.id)
+    }
+
+    /** Makes the tag and puts it straight on the document that asked for it. */
+    fun onCreateTag(document: PdfDocument, name: String, colorArgb: Int) =
+        viewModelScope.launch {
+            val tag = libraryData.createOrGetTag(name, colorArgb) ?: return@launch
+            libraryData.toggleTag(document.uriString, document.displayName, tag.id)
+        }
+
+    fun onDeleteTag(tag: TagEntity) = viewModelScope.launch {
+        libraryData.deleteTag(tag.id)
+    }
 
     /** Folders offered by the "move to folder" sheet. */
     val folders: StateFlow<List<FolderEntity>> = libraryData.observeFolders()

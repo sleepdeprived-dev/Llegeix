@@ -12,8 +12,8 @@ language. Written in Kotlin with Jetpack Compose.
   with a selectable text layer, pinch and double-tap zoom, find-in-document
   across every page, and an invert toggle that darkens the page itself without
   touching the app's theme. One slim bar, no bottom chrome.
-- **Organisation** — folders, recently viewed, and bookmarks, persisted in a
-  Room database.
+- **Organisation** — folders, tags with a colour of your choosing, recently
+  viewed, and bookmarks, persisted in a Room database.
 - **Translation** — press and hold a word to translate it with ML Kit's on-device
   models; keep holding and drag to take a whole phrase, which comes back
   translated, broken down word by word, and set in the line it came from.

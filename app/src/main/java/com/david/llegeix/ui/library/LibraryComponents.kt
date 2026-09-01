@@ -45,7 +45,9 @@ import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.MenuEmoji
 import com.david.llegeix.ui.common.PdfCover
+import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.ui.common.Space
+import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.formatSize
 
@@ -61,10 +63,12 @@ fun DocumentRow(
     document: PdfDocument,
     isBookmarked: Boolean,
     isReadLater: Boolean,
+    tags: List<DocumentTag>,
     onClick: () -> Unit,
     onMoveToFolder: () -> Unit,
     onToggleReadLater: () -> Unit,
     onToggleBookmarked: () -> Unit,
+    onEditTags: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -127,6 +131,11 @@ fun DocumentRow(
             }
         }
 
+        // Between the title and the overflow button, with a gap on either side:
+        // a coloured chip pressed against a menu or a dismiss button reads as
+        // part of it, and it is neither.
+        TagStrip(tags = tags, modifier = Modifier.padding(start = Space.sm))
+
         Box {
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
@@ -146,6 +155,7 @@ fun DocumentRow(
                 onToggleBookmarked = onToggleBookmarked,
                 onToggleReadLater = onToggleReadLater,
                 onMoveToFolder = onMoveToFolder,
+                onEditTags = onEditTags,
             )
         }
     }
@@ -161,6 +171,7 @@ private fun DocumentMenu(
     onToggleBookmarked: () -> Unit,
     onToggleReadLater: () -> Unit,
     onMoveToFolder: () -> Unit,
+    onEditTags: () -> Unit,
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
@@ -207,6 +218,14 @@ private fun DocumentMenu(
                 onDismiss()
             },
         )
+        DropdownMenuItem(
+            leadingIcon = { MenuEmoji("🏷️") },
+            text = { Text(stringResource(R.string.tags_open)) },
+            onClick = {
+                onEditTags()
+                onDismiss()
+            },
+        )
     }
 }
 
@@ -222,10 +241,12 @@ fun DocumentCell(
     document: PdfDocument,
     isBookmarked: Boolean,
     isReadLater: Boolean,
+    tags: List<DocumentTag>,
     onClick: () -> Unit,
     onMoveToFolder: () -> Unit,
     onToggleReadLater: () -> Unit,
     onToggleBookmarked: () -> Unit,
+    onEditTags: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -294,9 +315,18 @@ fun DocumentCell(
                     onToggleBookmarked = onToggleBookmarked,
                     onToggleReadLater = onToggleReadLater,
                     onMoveToFolder = onMoveToFolder,
+                    onEditTags = onEditTags,
                 )
             }
         }
+        // In a grid the cover carries the identity, so tags sit under the title
+        // rather than competing with it for the same line.
+        TagStrip(
+            tags = tags,
+            maxVisible = 3,
+            maxWidth = GridCoverWidth,
+            modifier = Modifier.padding(top = Space.xs),
+        )
     }
 }
 

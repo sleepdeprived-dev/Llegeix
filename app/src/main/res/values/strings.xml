@@ -80,6 +80,18 @@
     <string name="device_scan_title">Scan the whole device</string>
     <string name="device_scan_body">Finds every PDF without picking folders. Needs All files access, which you turn on in system Settings.</string>
 
+    <!-- Tags -->
+    <string name="tags_title">Tags</string>
+    <string name="tags_open">Tags…</string>
+    <string name="tags_none_yet">No tags yet. Type a name below to make one.</string>
+    <string name="tags_new_name">New tag</string>
+    <string name="tags_add">Add</string>
+    <string name="tags_colour">Colour</string>
+    <string name="tags_delete">Delete tag %1$s</string>
+    <string name="tags_on_document">Tagged %1$s</string>
+    <!-- Shown when a row has more tags than fit, e.g. "+2". -->
+    <string name="tags_overflow">+%1$d</string>
+
     <!-- Recent -->
     <string name="recent_title">Recently viewed</string>
     <string name="recent_clear_history">Clear history</string>
@@ -178,6 +190,7 @@
     <string name="lookup_model_wifi_failed">Could not download the Catalan model over Wi-Fi.</string>
     <string name="lookup_model_failed">Could not download the Catalan model.</string>
     <string name="lookup_use_mobile_data">Use mobile data</string>
+    <string name="lookup_done">Got it</string>
     <string name="lookup_explain_more">Explain more</string>
 
     <string name="lookup_save_word">Save this word</string>

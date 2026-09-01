@@ -85,6 +85,7 @@ fun SettingsScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                expandedHeight = Space.topBar,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

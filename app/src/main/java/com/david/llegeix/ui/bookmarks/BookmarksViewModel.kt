@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
+import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.PageBookmark
 import com.david.llegeix.data.db.entity.DocumentEntity
@@ -48,6 +49,11 @@ class BookmarksViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun removeWord(id: Long) = viewModelScope.launch { libraryData.removeWordBookmark(id) }
+
+    /** Tags keyed by document, so bookmark rows match the library's. */
+    val tagsByDocument: StateFlow<Map<String, List<DocumentTag>>> =
+        libraryData.observeTagsByDocument()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
 
     fun removeDocumentBookmark(document: DocumentEntity) = viewModelScope.launch {

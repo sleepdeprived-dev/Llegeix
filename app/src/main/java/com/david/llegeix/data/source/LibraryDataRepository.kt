@@ -8,8 +8,12 @@ import com.david.llegeix.data.db.entity.BookmarkEntity
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.db.entity.RecentlyViewedEntity
+import com.david.llegeix.data.db.dao.DocumentTag
+import com.david.llegeix.data.db.entity.DocumentTagEntity
+import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Everything the app *remembers* about PDFs: folders, bookmarks, colours and
@@ -27,6 +31,7 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     private val bookmarks = database.bookmarkDao()
     private val recents = database.recentlyViewedDao()
     private val words = database.wordBookmarkDao()
+    private val tags = database.tagDao()
 
     // --- Folders -----------------------------------------------------------
 
@@ -212,4 +217,50 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     }
 
     suspend fun removeWordBookmark(id: Long) = words.deleteById(id)
+
+    // ---- Tags -------------------------------------------------------------
+
+    fun observeTags(): Flow<List<TagEntity>> = tags.observeTags()
+
+    /**
+     * Tags grouped by the document they are on.
+     *
+     * Grouped here rather than in the UI so every screen that shows tags reads
+     * the same shape, and so the whole library costs one query instead of one
+     * per visible row.
+     */
+    fun observeTagsByDocument(): Flow<Map<String, List<DocumentTag>>> =
+        tags.observeDocumentTags().map { rows -> rows.groupBy { it.documentUri } }
+
+    /** Creates the tag if the name is new, and returns it either way. */
+    suspend fun createOrGetTag(name: String, colorArgb: Int): TagEntity? {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return null
+        tags.findByName(trimmed)?.let { return it }
+        val id = tags.insertTag(TagEntity(name = trimmed, colorArgb = colorArgb))
+        return if (id > 0) TagEntity(id = id, name = trimmed, colorArgb = colorArgb) else null
+    }
+
+    suspend fun renameTag(tagId: Long, name: String, colorArgb: Int) {
+        val trimmed = name.trim()
+        if (trimmed.isNotEmpty()) tags.update(tagId, trimmed, colorArgb)
+    }
+
+    suspend fun deleteTag(tagId: Long) = tags.deleteTag(tagId)
+
+    /**
+     * Put [tagId] on the document, or take it off if it is already there.
+     *
+     * The document row is ensured first: a PDF found by scanning storage has no
+     * database row until something is remembered about it, and a tag is exactly
+     * that something.
+     */
+    suspend fun toggleTag(uriString: String, displayName: String, tagId: Long) {
+        ensureDocument(uriString, displayName)
+        if (tagId in tags.tagIdsFor(uriString)) {
+            tags.detach(uriString, tagId)
+        } else {
+            tags.attach(DocumentTagEntity(documentUri = uriString, tagId = tagId))
+        }
+    }
 }

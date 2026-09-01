@@ -74,6 +74,18 @@
     <string name="device_scan_title">Escaneja tot el dispositiu</string>
     <string name="device_scan_body">Troba tots els PDF sense haver de triar carpetes. Necessita l\'accés a tots els fitxers, que s\'activa a la configuració del sistema.</string>
 
+    <!-- Etiquetes -->
+    <string name="tags_title">Etiquetes</string>
+    <string name="tags_open">Etiquetes…</string>
+    <string name="tags_none_yet">Encara no hi ha etiquetes. Escriu-ne un nom a sota per crear-ne una.</string>
+    <string name="tags_new_name">Etiqueta nova</string>
+    <string name="tags_add">Afegeix</string>
+    <string name="tags_colour">Color</string>
+    <string name="tags_delete">Suprimeix l\'etiqueta %1$s</string>
+    <string name="tags_on_document">Etiquetat com a %1$s</string>
+    <!-- Es mostra quan una fila té més etiquetes de les que hi caben, p. ex. «+2». -->
+    <string name="tags_overflow">+%1$d</string>
+
     <!-- Recents -->
     <string name="recent_title">Vistos recentment</string>
     <string name="recent_clear_history">Esborra l\'historial</string>
@@ -175,6 +187,7 @@
     <string name="lookup_model_wifi_failed">No s\'ha pogut baixar el model català per Wi-Fi.</string>
     <string name="lookup_model_failed">No s\'ha pogut baixar el model català.</string>
     <string name="lookup_use_mobile_data">Utilitza dades mòbils</string>
+    <string name="lookup_done">Entesos</string>
     <string name="lookup_explain_more">Explica-ho més</string>
 
     <string name="lookup_save_word">Desa aquesta paraula</string>

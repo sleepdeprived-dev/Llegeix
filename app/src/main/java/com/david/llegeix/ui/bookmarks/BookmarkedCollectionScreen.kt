@@ -30,7 +30,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.width
+import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.PdfCover
+import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.pdfTitle
 
@@ -54,6 +59,7 @@ fun BookmarkedCollectionScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                expandedHeight = Space.topBar,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -93,7 +99,7 @@ fun BookmarkedCollectionScreen(
                 contentPadding = PaddingValues(bottom = Space.xxl),
             ) {
                 items(documents, key = { it.uriString }) { document ->
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -105,7 +111,16 @@ fun BookmarkedCollectionScreen(
                                 top = Space.row,
                                 bottom = Space.row,
                             ),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        PdfCover(
+                            uriString = document.uriString,
+                            width = ListCoverWidth,
+                            modifier = Modifier
+                                .width(ListCoverWidth)
+                                .aspectRatio(CoverAspectRatio)
+                                .padding(end = Space.lg),
+                        )
                         Text(
                             text = pdfTitle(document.displayName),
                             style = MaterialTheme.typography.bodyLarge,

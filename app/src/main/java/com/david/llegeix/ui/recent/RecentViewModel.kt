@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.settings.SettingsRepository
+import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.data.source.LibraryDataRepository
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +28,11 @@ class RecentViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.current.libraryLayout)
 
     fun onToggleLayout() = settings.setLibraryLayout(layout.value.toggled())
+
+    /** Tags keyed by document, so recent rows match the library's. */
+    val tagsByDocument: StateFlow<Map<String, List<DocumentTag>>> =
+        libraryData.observeTagsByDocument()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val recents: StateFlow<List<RecentDocument>> = libraryData.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

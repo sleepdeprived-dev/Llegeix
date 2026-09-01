@@ -91,6 +91,7 @@ fun FoldersScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                expandedHeight = Space.topBar,
                 title = { Text(stringResource(R.string.folders_title)) },
             )
         },

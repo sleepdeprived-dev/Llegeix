@@ -41,11 +41,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.annotation.StringRes
 import com.david.llegeix.R
+import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.ui.common.HighlightColors
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.width
+import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.PdfCover
+import com.david.llegeix.ui.common.TagStrip
+import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.pdfTitle
@@ -66,12 +73,14 @@ fun BookmarksScreen(
     val documents by viewModel.bookmarkedDocuments.collectAsStateWithLifecycle()
     val pages by viewModel.pageBookmarks.collectAsStateWithLifecycle()
     val savedWords by viewModel.savedWords.collectAsStateWithLifecycle()
+    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                expandedHeight = Space.topBar,
                 title = { Text(stringResource(R.string.bookmarks_title)) },
             )
         },
@@ -121,6 +130,8 @@ fun BookmarksScreen(
                             BookmarkRow(
                                 title = pdfTitle(document.displayName),
                                 subtitle = null,
+                                documentUri = document.uriString,
+                                tags = tagsByDocument[document.uriString].orEmpty(),
                                 onClick = {
                                     onOpenDocument(document.uriString, document.displayName, null)
                                 },
@@ -140,6 +151,8 @@ fun BookmarksScreen(
                     LazyColumn(contentPadding = PaddingValues(bottom = Space.xxl)) {
                         items(pages, key = { it.id }) { bookmark ->
                             BookmarkRow(
+                                documentUri = bookmark.documentUri,
+                                tags = tagsByDocument[bookmark.documentUri].orEmpty(),
                                 title = pdfTitle(bookmark.displayName),
                                 subtitle = stringResource(
                                     R.string.bookmarks_page_detail,
@@ -230,6 +243,16 @@ private fun SavedWordRow(
             ),
     ) {
         Row(verticalAlignment = Alignment.Top) {
+            word.documentUri?.let { uri ->
+                PdfCover(
+                    uriString = uri,
+                    width = ListCoverWidth,
+                    modifier = Modifier
+                        .width(ListCoverWidth)
+                        .aspectRatio(CoverAspectRatio)
+                        .padding(end = Space.lg),
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = word.word,
@@ -298,6 +321,8 @@ private fun BookmarkRow(
     subtitle: String?,
     onClick: () -> Unit,
     onRemove: () -> Unit,
+    documentUri: String? = null,
+    tags: List<DocumentTag> = emptyList(),
     swatchColor: Int? = null,
 ) {
     Row(
@@ -307,9 +332,21 @@ private fun BookmarkRow(
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The same cover, at the same size, as the library and Recently viewed:
+        // a bookmarked PDF should look like the PDF it is.
+        if (documentUri != null) {
+            PdfCover(
+                uriString = documentUri,
+                width = ListCoverWidth,
+                modifier = Modifier
+                    .width(ListCoverWidth)
+                    .aspectRatio(CoverAspectRatio),
+            )
+        }
         if (swatchColor != null) {
             Box(
                 modifier = Modifier
+                    .padding(start = if (documentUri != null) Space.md else 0.dp)
                     .size(12.dp)
                     .clip(CircleShape)
                     .background(HighlightColors.compose(swatchColor)),
@@ -318,7 +355,12 @@ private fun BookmarkRow(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = if (swatchColor != null) Space.md else 0.dp),
+                .padding(
+                    start = when {
+                        documentUri != null || swatchColor != null -> Space.lg
+                        else -> 0.dp
+                    },
+                ),
         ) {
             Text(
                 text = title,
@@ -337,6 +379,11 @@ private fun BookmarkRow(
                 )
             }
         }
+        // Set apart from the dismiss button on purpose: a coloured chip next to
+        // an X reads as belonging to it, and one is a label while the other
+        // destroys something.
+        TagStrip(tags = tags, modifier = Modifier.padding(start = Space.sm))
+
         IconButton(onClick = onRemove) {
             Icon(
                 imageVector = Icons.Default.Close,

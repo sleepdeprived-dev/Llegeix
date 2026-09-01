@@ -66,7 +66,9 @@ import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.ui.common.MenuEmoji
+import com.david.llegeix.ui.common.TagPickerDialog
 import com.david.llegeix.ui.common.Senyera
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
@@ -93,6 +95,9 @@ fun LibraryScreen(
     var documentToFile by remember { mutableStateOf<PdfDocument?>(null) }
     var showNewFolderFor by remember { mutableStateOf<PdfDocument?>(null) }
     var showSources by remember { mutableStateOf(false) }
+    var tagsFor by remember { mutableStateOf<PdfDocument?>(null) }
+    val allTags by viewModel.tags.collectAsStateWithLifecycle()
+    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
 
     // All Files Access is granted in system Settings, so the only reliable
     // signal that it changed is coming back to the foreground.
@@ -138,6 +143,7 @@ fun LibraryScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                expandedHeight = Space.topBar,
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Senyera()
@@ -219,6 +225,8 @@ fun LibraryScreen(
             LibraryBody(
                 state = state,
                 layout = layout,
+                tagsByDocument = tagsByDocument,
+                onEditTags = { tagsFor = it },
                 onAddFolder = { folderPicker.launch(null) },
                 onScanDevice = ::openAllFilesSettings,
                 onOpenDocument = onOpenDocument,
@@ -239,6 +247,19 @@ fun LibraryScreen(
             onAddFolder = { folderPicker.launch(null) },
             onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
             onRemoveFolder = { viewModel.onFolderRemoved(it.treeUri) },
+        )
+    }
+
+    tagsFor?.let { document ->
+        val selected = tagsByDocument[document.uriString].orEmpty().map { it.id }.toSet()
+        TagPickerDialog(
+            documentTitle = document.title,
+            allTags = allTags,
+            selectedIds = selected,
+            onToggle = { viewModel.onToggleTag(document, it) },
+            onCreate = { name, color -> viewModel.onCreateTag(document, name, color) },
+            onDelete = viewModel::onDeleteTag,
+            onDismiss = { tagsFor = null },
         )
     }
 
@@ -302,6 +323,8 @@ private fun LibraryFilterRow(
 private fun LibraryBody(
     state: LibraryUiState,
     layout: LibraryLayout,
+    tagsByDocument: Map<String, List<DocumentTag>>,
+    onEditTags: (PdfDocument) -> Unit,
     onAddFolder: () -> Unit,
     onScanDevice: () -> Unit,
     onOpenDocument: (PdfDocument) -> Unit,
@@ -383,10 +406,12 @@ private fun LibraryBody(
                     document = document,
                     isBookmarked = state.isBookmarked(document),
                     isReadLater = state.isReadLater(document),
+                    tags = tagsByDocument[document.uriString].orEmpty(),
                     onClick = { onOpenDocument(document) },
                     onMoveToFolder = { onMoveToFolder(document) },
                     onToggleReadLater = { onToggleReadLater(document) },
                     onToggleBookmarked = { onToggleBookmarked(document) },
+                    onEditTags = { onEditTags(document) },
                 )
             }
         }
@@ -400,10 +425,12 @@ private fun LibraryBody(
                     document = document,
                     isBookmarked = state.isBookmarked(document),
                     isReadLater = state.isReadLater(document),
+                    tags = tagsByDocument[document.uriString].orEmpty(),
                     onClick = { onOpenDocument(document) },
                     onMoveToFolder = { onMoveToFolder(document) },
                     onToggleReadLater = { onToggleReadLater(document) },
                     onToggleBookmarked = { onToggleBookmarked(document) },
+                    onEditTags = { onEditTags(document) },
                 )
             }
         }
