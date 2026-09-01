@@ -2,6 +2,7 @@ package com.david.llegeix.ui.reader
 
 import android.graphics.Bitmap
 import android.graphics.RectF
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -165,6 +166,14 @@ fun ReaderScreen(
                 pagerState.scrollToPage(state.initialPage)
             }
         }
+    }
+
+    // Search is a mode with its own chrome, so the system back button has to
+    // leave that mode before it leaves the document. Without this the reader
+    // has no back handling at all and a single press closes the whole PDF —
+    // losing the search and the page you were on in one go.
+    BackHandler(enabled = state.search.isOpen) {
+        viewModel.onCloseSearch()
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
