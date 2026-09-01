@@ -13,12 +13,6 @@
     <string name="nav_recent">Recents</string>
     <string name="nav_bookmarks">Marcadors</string>
     <string name="nav_folders">Carpetes</string>
-    <!--
-        Deliberately shorter than the screen's own title ("Configuració"): five
-        tabs share the width of the navigation bar, and the longer word fills its
-        cell edge to edge.
-    -->
-    <string name="nav_settings">Ajustos</string>
 
     <!-- Accions compartides -->
     <string name="action_cancel">Cancel·la</string>
@@ -27,12 +21,23 @@
     <string name="action_create">Crea</string>
     <string name="action_rename">Reanomena</string>
     <string name="action_clear">Esborra</string>
+    <string name="action_back">Enrere</string>
+    <string name="action_close">Tanca</string>
     <string name="action_more_options">Més opcions</string>
     <string name="action_add_folder">Afegeix una carpeta</string>
     <string name="action_scan_device">Escaneja tot el dispositiu</string>
     <string name="action_open_settings">Obre la configuració</string>
 
     <!-- Biblioteca -->
+    <string name="library_welcome_title">Comença la biblioteca</string>
+    <string name="library_welcome_body">Deixa que Llegeix trobi els PDF que ja tens al dispositiu, o indica-li una sola carpeta.</string>
+    <string name="library_sources">Fonts</string>
+    <string name="library_sources_open">Fonts…</string>
+    <string name="library_sources_body">On busca els PDF, el Llegeix.</string>
+    <string name="library_device_scan_on">S\'escaneja tot el dispositiu</string>
+    <string name="library_device_scan_off">No s\'escaneja tot el dispositiu</string>
+    <string name="library_add_files">Afegeix fitxers PDF</string>
+    <string name="library_watched_folders">Carpetes vigilades</string>
     <string name="library_rescan">Torna a escanejar</string>
     <string name="library_search">Cerca</string>
     <string name="library_clear_search">Esborra la cerca</string>
@@ -42,6 +47,7 @@
     <string name="library_filter_all">Tots</string>
     <string name="library_filter_read_later">Per llegir més tard</string>
     <string name="library_filter_with_count">%1$s (%2$d)</string>
+    <string name="library_sort_by">Ordena per</string>
     <string name="library_sort_recent">Modificats recentment</string>
     <string name="library_sort_name">Nom</string>
     <string name="library_sort_size">Mida</string>
@@ -70,6 +76,7 @@
 
     <!-- Recents -->
     <string name="recent_title">Vistos recentment</string>
+    <string name="recent_clear_history">Esborra l\'historial</string>
     <string name="recent_empty_title">Encara no has llegit res</string>
     <string name="recent_empty_body">Obre un PDF des de la biblioteca i apareixerà aquí, juntament amb la pàgina on vas arribar.</string>
     <string name="recent_page">Pàgina %1$d</string>
@@ -97,7 +104,7 @@
     <string name="folders_title">Carpetes</string>
     <string name="folders_new">Carpeta nova</string>
     <string name="folders_empty_title">Cap carpeta pròpia</string>
-    <string name="folders_empty_body">Toca + per crear-ne una i després hi podràs arxivar PDF des de la biblioteca.</string>
+    <string name="folders_empty_body">Toca + per crear-ne una i després hi podràs moure PDF des de la biblioteca.</string>
     <string name="folders_rename_title">Reanomena la carpeta</string>
     <string name="folders_delete_title">Vols suprimir la carpeta?</string>
     <string name="folders_delete_body">Els PDF que hi ha dins es queden al dispositiu: només deixen d\'estar arxivats aquí.</string>
@@ -152,7 +159,7 @@
     <string name="lookup_no_text">Aquí no hi ha text seleccionable</string>
     <string name="lookup_model_wifi_failed">No s\'ha pogut baixar el model català per Wi-Fi.</string>
     <string name="lookup_model_failed">No s\'ha pogut baixar el model català.</string>
-    <string name="lookup_use_mobile_data">Usa dades mòbils</string>
+    <string name="lookup_use_mobile_data">Utilitza dades mòbils</string>
     <string name="lookup_explain_more">Explica-ho més</string>
     <string name="lookup_explain_more_stub">\"Explica-ho més\" encara no està connectat: demanarà la paraula en context a un LLM.</string>
 
@@ -175,6 +182,10 @@
     <string name="settings_theme_system">Segueix el sistema</string>
     <string name="settings_theme_light">Clar</string>
     <string name="settings_theme_dark">Fosc</string>
+    <!-- Etiquetes del control segmentat: prou curtes per anar de tres en tres. -->
+    <string name="settings_theme_system_short">Sistema</string>
+    <string name="settings_theme_light_short">Clar</string>
+    <string name="settings_theme_dark_short">Fosc</string>
     <string name="settings_accent">Color d\'accent</string>
     <string name="settings_accent_system">Predeterminat del sistema</string>
     <string name="settings_accent_system_summary">Pren el color del fons de pantalla.</string>

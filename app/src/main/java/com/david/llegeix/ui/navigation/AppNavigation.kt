@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -71,7 +73,6 @@ private val topLevelDestinations = listOf(
     TopLevelDestination(Routes.RECENT, R.string.nav_recent, R.drawable.ic_recent),
     TopLevelDestination(Routes.BOOKMARKS, R.string.nav_bookmarks, R.drawable.ic_bookmark),
     TopLevelDestination(Routes.FOLDERS, R.string.nav_folders, R.drawable.ic_folder),
-    TopLevelDestination(Routes.SETTINGS, R.string.nav_settings, R.drawable.ic_settings),
 )
 
 @Composable
@@ -90,7 +91,10 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 0.dp,
+                ) {
                     topLevelDestinations.forEach { destination ->
                         val selected = currentDestination?.hierarchy
                             ?.any { it.route == destination.route } == true
@@ -136,6 +140,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     onOpenDocument = { document ->
                         navController.navigate(Routes.reader(document.uriString, document.displayName))
                     },
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 )
             }
 
@@ -170,7 +175,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
             }
 
             composable(Routes.SETTINGS) {
-                SettingsScreen()
+                SettingsScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Routes.BOOKMARKED_COLLECTION) {

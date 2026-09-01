@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -33,7 +34,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -54,7 +57,10 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.resolved
-import com.david.llegeix.ui.library.LibraryMessage
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.Space
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,10 +86,19 @@ fun FoldersScreen(
         viewModel.onMessageShown()
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.folders_title)) }) },
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.folders_title)) },
+                scrollBehavior = scrollBehavior,
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreateDialog = true }) {
                 Icon(
@@ -93,7 +108,10 @@ fun FoldersScreen(
             }
         },
     ) { innerPadding ->
-        LazyColumn(modifier = Modifier.padding(innerPadding)) {
+        LazyColumn(
+            modifier = Modifier.padding(innerPadding),
+            contentPadding = PaddingValues(bottom = Space.huge),
+        ) {
             // The automatic collection, always first and not user-editable.
             item {
                 BookmarkedCollectionRow(
@@ -104,10 +122,29 @@ fun FoldersScreen(
 
             if (folders.isEmpty()) {
                 item {
-                    LibraryMessage(
-                        title = stringResource(R.string.folders_empty_title),
-                        body = stringResource(R.string.folders_empty_body),
-                    )
+                    // Not the shared EmptyState: this list already has the
+                    // bookmarked collection above it, so filling the screen and
+                    // centring would push that row off the top.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Space.xxl)
+                            .padding(top = Space.huge),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.folders_empty_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            text = stringResource(R.string.folders_empty_body),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = Space.md),
+                        )
+                    }
                 }
             } else {
                 items(folders, key = { it.id }) { folder ->
@@ -199,8 +236,12 @@ private fun BookmarkedCollectionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .padding(top = Space.sm, bottom = Space.lg)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, top = 14.dp, bottom = 14.dp),
+            .padding(horizontal = Space.lg, vertical = Space.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -210,7 +251,7 @@ private fun BookmarkedCollectionRow(
         )
         Column(modifier = Modifier
             .weight(1f)
-            .padding(start = 16.dp)) {
+            .padding(start = Space.lg)) {
             Text(
                 text = stringResource(R.string.bookmarked_collection_title),
                 style = MaterialTheme.typography.bodyLarge,
@@ -223,10 +264,10 @@ private fun BookmarkedCollectionRow(
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
 @Composable
@@ -245,7 +286,7 @@ private fun FolderRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -258,7 +299,7 @@ private fun FolderRow(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 16.dp),
+                .padding(start = Space.lg),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(folder.name, style = MaterialTheme.typography.bodyLarge)
@@ -288,6 +329,7 @@ private fun FolderRow(
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
 
@@ -347,7 +389,6 @@ private fun FolderRow(
             }
         }
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
 @Composable

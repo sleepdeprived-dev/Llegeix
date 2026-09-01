@@ -2,58 +2,59 @@ package com.david.llegeix.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
-import com.david.llegeix.data.model.PdfOrigin
 import com.david.llegeix.data.source.GrantedFolder
+import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.formatSize
 
-/** One PDF in the library list, with its per-document actions. */
+/**
+ * One PDF in the library list.
+ *
+ * No divider underneath: at this row height the title, its detail line and the
+ * gap to the next row carry the separation on their own, and a rule between
+ * every pair of rows turns a list of ten books into a list of twenty lines.
+ */
 @Composable
 fun DocumentRow(
     document: PdfDocument,
@@ -72,19 +73,19 @@ fun DocumentRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = stringResource(R.string.pdf_badge),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -93,7 +94,7 @@ fun DocumentRow(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 16.dp),
+                .padding(start = Space.lg),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isBookmarked) {
@@ -127,6 +128,7 @@ fun DocumentRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }
@@ -190,141 +192,150 @@ fun DocumentRow(
 }
 
 /**
- * The two ways of adding PDFs, plus a chip per folder already being watched.
+ * Everything to do with where PDFs come from, in one place.
  *
- * Presented as buttons rather than the previous chip row: these are the primary
- * actions on an empty library, and burying them in a horizontally scrolling
- * strip made them read as secondary.
+ * Previously two buttons and a chip row sitting above the library at all times.
+ * Setting up a source is a one-off, so keeping it permanently on screen spent
+ * the most valuable part of the layout on a task already finished.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SourceButtons(
+fun SourcesSheet(
     folders: List<GrantedFolder>,
     deviceScanEnabled: Boolean,
+    onDismiss: () -> Unit,
     onScanDevice: () -> Unit,
     onAddFolder: () -> Unit,
+    onAddFiles: () -> Unit,
     onRemoveFolder: (GrantedFolder) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(
+    val sheetState = rememberModalBottomSheetState()
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .navigationBarsPadding()
+                .padding(bottom = Space.xl),
         ) {
-            if (!deviceScanEnabled) {
-                Button(
-                    onClick = onScanDevice,
-                    modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.action_scan_device)) }
+            Column(modifier = Modifier.padding(horizontal = Space.xl)) {
+                Text(
+                    text = stringResource(R.string.library_sources),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = stringResource(R.string.library_sources_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.xs),
+                )
             }
-            OutlinedButton(
-                onClick = onAddFolder,
-                modifier = Modifier.weight(1f),
-            ) { Text(stringResource(R.string.action_add_folder)) }
-        }
 
-        if (folders.isNotEmpty()) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                modifier = Modifier.padding(top = 8.dp),
-            ) {
-                items(folders) { folder ->
-                    InputChip(
-                        selected = true,
-                        onClick = { onRemoveFolder(folder) },
-                        label = {
-                            Text(
-                                text = folder.label,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 160.dp),
-                            )
+            Column(modifier = Modifier.padding(top = Space.xl)) {
+                SourceAction(
+                    // A sweep of the device, not another thing to add.
+                    icon = if (deviceScanEnabled) Icons.Default.Check else Icons.Default.Search,
+                    title = stringResource(R.string.action_scan_device),
+                    subtitle = stringResource(
+                        if (deviceScanEnabled) {
+                            R.string.library_device_scan_on
+                        } else {
+                            R.string.library_device_scan_off
                         },
-                        trailingIcon = {
+                    ),
+                    onClick = {
+                        onScanDevice()
+                        onDismiss()
+                    },
+                )
+                SourceAction(
+                    icon = Icons.Default.Add,
+                    title = stringResource(R.string.action_add_folder),
+                    onClick = {
+                        onAddFolder()
+                        onDismiss()
+                    },
+                )
+                SourceAction(
+                    icon = Icons.Default.Add,
+                    title = stringResource(R.string.library_add_files),
+                    onClick = {
+                        onAddFiles()
+                        onDismiss()
+                    },
+                )
+            }
+
+            if (folders.isNotEmpty()) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = Space.xl, vertical = Space.lg),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.library_watched_folders),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Space.xl, vertical = Space.sm),
+                )
+                folders.forEach { folder ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = Space.xl, top = Space.md, bottom = Space.md),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = folder.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { onRemoveFolder(folder) }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = stringResource(
                                     R.string.source_stop_watching,
                                     folder.label,
                                 ),
-                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                        },
-                    )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-/**
- * Offers the optional whole-device sweep. Shown only while the grant is absent,
- * since there is nothing to do once it is held.
- */
 @Composable
-fun DeviceScanCard(
-    onEnable: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.device_scan_title),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = stringResource(R.string.device_scan_body),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            TextButton(
-                onClick = onEnable,
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                Text(stringResource(R.string.action_open_settings))
-            }
-        }
-    }
-}
-
-/** Centred message used for every empty / not-yet-set-up state. */
-@Composable
-fun LibraryMessage(
+private fun SourceAction(
+    icon: ImageVector,
     title: String,
-    body: String,
-    modifier: Modifier = Modifier,
-    action: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
+    subtitle: String? = null,
 ) {
-    Column(
-        modifier = modifier
+    Row(
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .clickable(onClick = onClick)
+            .padding(horizontal = Space.xl, vertical = Space.lg),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center,
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
         )
-        Text(
-            text = body,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        if (action != null) {
-            Box(modifier = Modifier.padding(top = 16.dp)) { action() }
+        Column(modifier = Modifier.padding(start = Space.lg)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

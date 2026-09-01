@@ -6,26 +6,34 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -33,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -44,77 +53,107 @@ import com.david.llegeix.R
 import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.AppLanguage
 import com.david.llegeix.data.settings.ThemeMode
+import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.theme.isDark
 import com.david.llegeix.ui.theme.swatchOrNull
 
+/**
+ * Three choices, one card each.
+ *
+ * Theme and language were lists of radio rows separated by rules, which made
+ * five settings look like fifteen things to read. Both are now single
+ * segmented controls: the options and the current answer are one glance rather
+ * than a scan down a column, and the space that saves goes into the gaps
+ * between the groups.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }) },
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
+                    }
+                },
+                title = { Text(stringResource(R.string.settings_title)) },
+                scrollBehavior = scrollBehavior,
+            )
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Space.screen)
+                .padding(bottom = Space.huge),
         ) {
             SectionHeader(stringResource(R.string.settings_appearance))
 
-            SubHeader(stringResource(R.string.settings_theme))
-            ThemeMode.entries.forEach { mode ->
-                ChoiceRow(
-                    label = stringResource(mode.labelRes),
-                    selected = mode == settings.themeMode,
-                    onClick = { viewModel.onThemeModeChange(mode) },
+            SettingsCard {
+                FieldLabel(stringResource(R.string.settings_theme))
+                ThemePicker(
+                    current = settings.themeMode,
+                    onChoose = viewModel::onThemeModeChange,
                 )
+
+                Spacer(modifier = Modifier.height(Space.xl))
+                FieldLabel(stringResource(R.string.settings_accent))
+                AccentPicker(
+                    current = settings.accent,
+                    themeMode = settings.themeMode,
+                    onChoose = viewModel::onAccentChange,
+                )
+                Text(
+                    text = stringResource(settings.accent.labelRes),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.md),
+                )
+                if (settings.accent == AccentColor.SYSTEM) {
+                    Text(
+                        text = stringResource(R.string.settings_accent_system_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Space.xs),
+                    )
+                }
             }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
-            SubHeader(
-                title = stringResource(R.string.settings_accent),
-                summary = stringResource(R.string.settings_accent_system_summary)
-                    .takeIf { settings.accent == AccentColor.SYSTEM },
-            )
-            AccentPicker(
-                current = settings.accent,
-                themeMode = settings.themeMode,
-                onChoose = viewModel::onAccentChange,
-            )
-            Text(
-                text = stringResource(settings.accent.labelRes),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 12.dp),
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
             SectionHeader(stringResource(R.string.settings_language))
-            Text(
-                text = stringResource(R.string.settings_language_summary),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
-            )
-            AppLanguage.entries.forEach { language ->
-                ChoiceRow(
-                    label = stringResource(language.labelRes),
-                    selected = language == settings.language,
-                    onClick = { viewModel.onLanguageChange(language) },
+
+            SettingsCard {
+                LanguagePicker(
+                    current = settings.language,
+                    onChoose = viewModel::onLanguageChange,
+                )
+                Text(
+                    text = stringResource(R.string.settings_language_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.lg),
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
             SectionHeader(stringResource(R.string.settings_about))
-            AboutRows()
+
+            SettingsCard {
+                AboutRows()
+            }
         }
     }
 }
@@ -125,41 +164,70 @@ private fun SectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 8.dp),
+        modifier = Modifier.padding(
+            start = Space.xs,
+            top = Space.xxl,
+            bottom = Space.md,
+        ),
+    )
+}
+
+/** A group of related controls, held together by a surface rather than rules. */
+@Composable
+private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(Space.xl),
+        content = content,
     )
 }
 
 @Composable
-private fun SubHeader(title: String, summary: String? = null) {
-    Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)) {
-        Text(text = title, style = MaterialTheme.typography.bodyLarge)
-        if (summary != null) {
-            Text(
-                text = summary,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+private fun FieldLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(bottom = Space.md),
+    )
+}
+
+@Composable
+private fun ThemePicker(current: ThemeMode, onChoose: (ThemeMode) -> Unit) {
+    // Short labels: three of them share one row, and "Follow the system"
+    // written out would force the control to wrap.
+    val labels = mapOf(
+        ThemeMode.SYSTEM to R.string.settings_theme_system_short,
+        ThemeMode.LIGHT to R.string.settings_theme_light_short,
+        ThemeMode.DARK to R.string.settings_theme_dark_short,
+    )
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        ThemeMode.entries.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = mode == current,
+                onClick = { onChoose(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index, ThemeMode.entries.size),
+            ) {
+                Text(stringResource(labels.getValue(mode)))
+            }
         }
     }
 }
 
 @Composable
-private fun ChoiceRow(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Null onClick: the whole row is already clickable, and giving the
-        // button its own handler would announce two targets to a screen reader.
-        RadioButton(selected = selected, onClick = null)
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 12.dp),
-        )
+private fun LanguagePicker(current: AppLanguage, onChoose: (AppLanguage) -> Unit) {
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        AppLanguage.entries.forEachIndexed { index, language ->
+            SegmentedButton(
+                selected = language == current,
+                onClick = { onChoose(language) },
+                shape = SegmentedButtonDefaults.itemShape(index, AppLanguage.entries.size),
+            ) {
+                Text(stringResource(language.labelRes))
+            }
+        }
     }
 }
 
@@ -182,10 +250,8 @@ private fun AccentPicker(
     }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         AccentColor.entries.forEach { accent ->
             val label = stringResource(accent.labelRes)
@@ -213,7 +279,7 @@ private fun AccentSwatch(
 ) {
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(color)
             .border(
@@ -243,25 +309,24 @@ private fun AccentSwatch(
 @Composable
 private fun AboutRows() {
     val context = LocalContext.current
-    // The name is a proper noun and never translated, so it comes straight from
-    // the resource rather than from anything locale-dependent.
     val version = remember(context) {
         runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         }.getOrNull()
     }
 
-    Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 24.dp)) {
+    // The name is a proper noun and never translated, so it comes straight from
+    // the resource rather than from anything locale-dependent.
+    Text(
+        text = stringResource(R.string.app_name),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    if (version != null) {
         Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.bodyLarge,
+            text = stringResource(R.string.settings_version, version),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Space.xs),
         )
-        if (version != null) {
-            Text(
-                text = stringResource(R.string.settings_version, version),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }

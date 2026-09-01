@@ -13,8 +13,18 @@ language. Written in Kotlin with Jetpack Compose.
   Room database.
 - **Translation** — tap and hold a word to translate it with ML Kit's on-device
   translation models.
-- **Settings** — light/dark/system theme, a choice of accent colour (or Material
-  You, taken from the wallpaper), and the app's own language.
+- **Settings** — reached from the gear in the Library app bar: light/dark/system
+  theme, a choice of accent colour (or Material You, taken from the wallpaper),
+  and the app's own language.
+
+## Design
+
+Llegeix is built for reading in a second language with ADHD, so the interface is
+held to one rule: never make the reader work out what to look at. Screens carry
+one obvious action at a time, empty states sit centred in the space they have
+rather than stacked under the app bar, one-off setup lives behind a menu instead
+of on the reading surface, and grouping is done with space rather than a rule
+between every row.
 
 ## Language
 

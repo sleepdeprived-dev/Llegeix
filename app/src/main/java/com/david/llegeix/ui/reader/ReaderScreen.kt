@@ -55,6 +55,7 @@ import com.david.llegeix.ui.common.HighlightColors as Highlights
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -70,7 +71,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import com.david.llegeix.pdf.DEFAULT_PAGE_ASPECT_RATIO
 import com.david.llegeix.R
 import com.david.llegeix.ui.common.resolved
-import com.david.llegeix.ui.library.LibraryMessage
+import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.Space
 import android.graphics.Bitmap
 import android.graphics.RectF
 
@@ -175,13 +177,13 @@ fun ReaderScreen(
             when {
                 state.isOpening -> CircularProgressIndicator()
 
-                state.error != null -> LibraryMessage(
+                state.error != null -> EmptyState(
                     title = stringResource(R.string.reader_open_failed_title),
                     body = state.error?.resolved()
                         ?: stringResource(R.string.reader_open_failed_body),
                 )
 
-                state.pageCount == 0 -> LibraryMessage(
+                state.pageCount == 0 -> EmptyState(
                     title = stringResource(R.string.reader_no_pages_title),
                     body = stringResource(R.string.reader_no_pages_body),
                 )
@@ -331,20 +333,22 @@ private fun WordLookupSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
+                .navigationBarsPadding()
+                .padding(horizontal = Space.xl)
+                .padding(bottom = Space.xxl),
         ) {
-            Text(
-                text = lookup.word,
-                style = MaterialTheme.typography.headlineSmall,
-            )
             Text(
                 text = stringResource(R.string.lookup_direction),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = lookup.word,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(top = Space.xs),
             )
 
-            Box(modifier = Modifier.padding(top = 16.dp)) {
+            Box(modifier = Modifier.padding(top = Space.xl)) {
                 when (lookup.status) {
                     LookupStatus.LOOKING_UP -> Text(
                         text = stringResource(R.string.lookup_translating),
@@ -370,9 +374,12 @@ private fun WordLookupSheet(
                         )
                     }
 
+                    // The answer, given the weight of an answer: this one line
+                    // is why the sheet opened at all.
                     LookupStatus.READY -> Text(
                         text = lookup.translation.orEmpty(),
                         style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
 
                     LookupStatus.FAILED -> Text(
@@ -396,8 +403,8 @@ private fun WordLookupSheet(
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(top = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(Space.md),
+                modifier = Modifier.padding(top = Space.xxl),
             ) {
                 if (lookup.canRetryOnAnyNetwork) {
                     OutlinedButton(onClick = onRetryOnAnyNetwork) {

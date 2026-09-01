@@ -15,15 +15,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,7 +42,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.annotation.StringRes
 import com.david.llegeix.R
 import com.david.llegeix.ui.common.HighlightColors
-import com.david.llegeix.ui.library.LibraryMessage
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.painterResource
+import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.pdfTitle
 
@@ -64,13 +68,24 @@ fun BookmarksScreen(
     val pages by viewModel.pageBookmarks.collectAsStateWithLifecycle()
     val folders by viewModel.bookmarkedFolders.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.bookmarks_title)) }) },
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.bookmarks_title)) },
+                scrollBehavior = scrollBehavior,
+            )
+        },
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            TabRow(selectedTabIndex = selectedTab) {
+            PrimaryTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+            ) {
                 BookmarkTab.entries.forEachIndexed { index, tab ->
                     val count = when (tab) {
                         BookmarkTab.PDFS -> documents.size
@@ -100,12 +115,13 @@ fun BookmarksScreen(
 
             when (BookmarkTab.entries[selectedTab]) {
                 BookmarkTab.PDFS -> if (documents.isEmpty()) {
-                    LibraryMessage(
+                    EmptyState(
                         title = stringResource(R.string.bookmarks_pdfs_empty_title),
                         body = stringResource(R.string.bookmarks_pdfs_empty_body),
+                        icon = painterResource(R.drawable.ic_bookmark),
                     )
                 } else {
-                    LazyColumn {
+                    LazyColumn(contentPadding = PaddingValues(bottom = Space.xxl)) {
                         items(documents, key = { it.uriString }) { document ->
                             BookmarkRow(
                                 title = pdfTitle(document.displayName),
@@ -120,12 +136,13 @@ fun BookmarksScreen(
                 }
 
                 BookmarkTab.PAGES -> if (pages.isEmpty()) {
-                    LibraryMessage(
+                    EmptyState(
                         title = stringResource(R.string.bookmarks_pages_empty_title),
                         body = stringResource(R.string.bookmarks_pages_empty_body),
+                        icon = painterResource(R.drawable.ic_bookmark),
                     )
                 } else {
-                    LazyColumn {
+                    LazyColumn(contentPadding = PaddingValues(bottom = Space.xxl)) {
                         items(pages, key = { it.id }) { bookmark ->
                             BookmarkRow(
                                 title = pdfTitle(bookmark.displayName),
@@ -161,12 +178,13 @@ fun BookmarksScreen(
                 }
 
                 BookmarkTab.FOLDERS -> if (folders.isEmpty()) {
-                    LibraryMessage(
+                    EmptyState(
                         title = stringResource(R.string.bookmarks_folders_empty_title),
                         body = stringResource(R.string.bookmarks_folders_empty_body),
+                        icon = painterResource(R.drawable.ic_folder),
                     )
                 } else {
-                    LazyColumn {
+                    LazyColumn(contentPadding = PaddingValues(bottom = Space.xxl)) {
                         items(folders, key = { it.id }) { folder ->
                             BookmarkRow(
                                 title = folder.name,
@@ -203,7 +221,7 @@ private fun BookmarkRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (swatchColor != null) {
@@ -217,7 +235,7 @@ private fun BookmarkRow(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = if (swatchColor != null) 12.dp else 0.dp),
+                .padding(start = if (swatchColor != null) Space.md else 0.dp),
         ) {
             Text(
                 text = title,
@@ -232,6 +250,7 @@ private fun BookmarkRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }
@@ -243,5 +262,4 @@ private fun BookmarkRow(
             )
         }
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 }

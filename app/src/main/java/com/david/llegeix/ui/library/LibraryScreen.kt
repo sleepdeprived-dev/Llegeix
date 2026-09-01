@@ -28,9 +28,9 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -38,7 +38,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,10 +49,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,7 +62,9 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.data.model.PdfDocument
+import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Senyera
+import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import com.david.llegeix.ui.folders.FolderNameDialog
 import com.david.llegeix.util.allFilesAccessIntents
@@ -75,6 +78,7 @@ fun LibraryScreen(
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = viewModel(factory = LibraryViewModel.Factory),
     onOpenDocument: (PdfDocument) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -83,6 +87,8 @@ fun LibraryScreen(
     val folders by viewModel.folders.collectAsState()
     var documentToFile by remember { mutableStateOf<PdfDocument?>(null) }
     var showNewFolderFor by remember { mutableStateOf<PdfDocument?>(null) }
+    var showSources by remember { mutableStateOf(false) }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     // All Files Access is granted in system Settings, so the only reliable
     // signal that it changed is coming back to the foreground.
@@ -124,10 +130,12 @@ fun LibraryScreen(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Senyera()
@@ -135,7 +143,7 @@ fun LibraryScreen(
                             text = stringResource(R.string.app_name),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(start = 12.dp),
+                            modifier = Modifier.padding(start = Space.md),
                         )
                     }
                 },
@@ -149,12 +157,19 @@ fun LibraryScreen(
                             contentDescription = stringResource(R.string.library_rescan),
                         )
                     }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_settings),
+                            contentDescription = stringResource(R.string.settings_title),
+                        )
+                    }
                     LibraryMenu(
                         currentSort = state.sort,
                         onSortChange = viewModel::onSortChange,
-                        onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
+                        onOpenSources = { showSources = true },
                     )
                 },
+                scrollBehavior = scrollBehavior,
             )
         },
     ) { innerPadding ->
@@ -163,23 +178,9 @@ fun LibraryScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            SourceButtons(
-                folders = state.grantedFolders,
-                deviceScanEnabled = state.deviceScanEnabled,
-                onScanDevice = ::openAllFilesSettings,
-                onAddFolder = { folderPicker.launch(null) },
-                onRemoveFolder = { viewModel.onFolderRemoved(it.treeUri) },
-                modifier = Modifier.padding(top = 12.dp),
-            )
-
+            // Search and filters appear only once there is something to sift
+            // through; on a small library they would be pure noise.
             if (state.totalFound > 0) {
-                LibraryFilterRow(
-                    current = state.filter,
-                    readLaterCount = state.readLaterUris.size,
-                    onFilterChange = viewModel::onFilterChange,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-
                 OutlinedTextField(
                     value = state.query,
                     onValueChange = viewModel::onQueryChange,
@@ -200,7 +201,15 @@ fun LibraryScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = Space.screen)
+                        .padding(top = Space.sm, bottom = Space.md),
+                )
+
+                LibraryFilterRow(
+                    current = state.filter,
+                    readLaterCount = state.readLaterUris.size,
+                    onFilterChange = viewModel::onFilterChange,
+                    modifier = Modifier.padding(bottom = Space.sm),
                 )
             }
 
@@ -215,6 +224,18 @@ fun LibraryScreen(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+
+    if (showSources) {
+        SourcesSheet(
+            folders = state.grantedFolders,
+            deviceScanEnabled = state.deviceScanEnabled,
+            onDismiss = { showSources = false },
+            onScanDevice = ::openAllFilesSettings,
+            onAddFolder = { folderPicker.launch(null) },
+            onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
+            onRemoveFolder = { viewModel.onFolderRemoved(it.treeUri) },
+        )
     }
 
     documentToFile?.let { document ->
@@ -254,8 +275,8 @@ private fun LibraryFilterRow(
 ) {
     LazyRow(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Space.sm),
+        contentPadding = PaddingValues(horizontal = Space.screen),
     ) {
         items(LibraryFilter.entries) { filter ->
             val name = stringResource(filter.labelRes)
@@ -285,7 +306,24 @@ private fun LibraryBody(
     modifier: Modifier = Modifier,
 ) {
     when {
-        !state.hasAnySource -> Box(modifier)
+        // Nothing is set up yet. One obvious way in, with the narrower option
+        // offered underneath rather than beside it.
+        !state.hasAnySource -> EmptyState(
+            title = stringResource(R.string.library_welcome_title),
+            body = stringResource(R.string.library_welcome_body),
+            icon = painterResource(R.drawable.ic_library),
+            modifier = modifier,
+            primaryAction = {
+                Button(onClick = onScanDevice) {
+                    Text(stringResource(R.string.action_scan_device))
+                }
+            },
+            secondaryAction = {
+                TextButton(onClick = onAddFolder) {
+                    Text(stringResource(R.string.action_add_folder))
+                }
+            },
+        )
 
         state.isScanning && state.documents.isEmpty() -> Box(
             modifier = modifier,
@@ -294,25 +332,23 @@ private fun LibraryBody(
             CircularProgressIndicator()
         }
 
-        state.isEmptyAfterScan -> LibraryMessage(
+        state.isEmptyAfterScan -> EmptyState(
             title = stringResource(R.string.library_empty_title),
             body = stringResource(R.string.library_empty_body),
+            icon = painterResource(R.drawable.ic_library),
             modifier = modifier,
-            action = {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (!state.deviceScanEnabled) {
-                        Button(onClick = onScanDevice) {
-                            Text(stringResource(R.string.action_scan_device))
-                        }
-                    }
-                    OutlinedButton(onClick = onAddFolder) {
-                        Text(stringResource(R.string.action_add_folder))
-                    }
-                }
+            primaryAction = if (!state.deviceScanEnabled) {
+                { Button(onClick = onScanDevice) {
+                    Text(stringResource(R.string.action_scan_device))
+                } }
+            } else {
+                { Button(onClick = onAddFolder) {
+                    Text(stringResource(R.string.action_add_folder))
+                } }
             },
         )
 
-        state.isFilteredToNothing -> LibraryMessage(
+        state.isFilteredToNothing -> EmptyState(
             title = if (state.filter == LibraryFilter.READ_LATER) {
                 stringResource(R.string.library_read_later_empty_title)
             } else {
@@ -326,7 +362,10 @@ private fun LibraryBody(
             modifier = modifier,
         )
 
-        else -> LazyColumn(modifier = modifier) {
+        else -> LazyColumn(
+            modifier = modifier,
+            contentPadding = PaddingValues(bottom = Space.xxl),
+        ) {
             items(state.documents, key = { it.uriString }) { document ->
                 DocumentRow(
                     document = document,
@@ -336,10 +375,6 @@ private fun LibraryBody(
                     onMoveToFolder = { onMoveToFolder(document) },
                     onToggleReadLater = { onToggleReadLater(document) },
                     onToggleBookmarked = { onToggleBookmarked(document) },
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = 72.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
                 )
             }
         }
@@ -369,14 +404,16 @@ private fun MoveToFolderDialog(
                     Text(
                         text = stringResource(R.string.library_no_folders_yet),
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 12.dp),
+                        modifier = Modifier.padding(top = Space.lg),
                     )
                 } else {
-                    folders.forEach { folder ->
-                        TextButton(onClick = { onChoose(folder.id) }) { Text(folder.name) }
-                    }
-                    TextButton(onClick = { onChoose(null) }) {
-                        Text(stringResource(R.string.library_remove_from_folder))
+                    Column(modifier = Modifier.padding(top = Space.sm)) {
+                        folders.forEach { folder ->
+                            TextButton(onClick = { onChoose(folder.id) }) { Text(folder.name) }
+                        }
+                        TextButton(onClick = { onChoose(null) }) {
+                            Text(stringResource(R.string.library_remove_from_folder))
+                        }
                     }
                 }
             }
@@ -392,12 +429,19 @@ private fun MoveToFolderDialog(
     )
 }
 
-/** Sort options plus the file picker, kept out of the main surface. */
+/**
+ * Sort order plus the way into source management.
+ *
+ * Adding folders and turning on the device-wide scan used to sit permanently
+ * above the list. They are things you do once and then forget, so they have
+ * moved behind this menu and into [SourcesSheet], leaving the library itself as
+ * just the documents.
+ */
 @Composable
 private fun LibraryMenu(
     currentSort: LibrarySort,
     onSortChange: (LibrarySort) -> Unit,
-    onAddFiles: () -> Unit,
+    onOpenSources: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -409,13 +453,19 @@ private fun LibraryMenu(
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.library_add_pdfs)) },
+                text = { Text(stringResource(R.string.library_sources_open)) },
                 onClick = {
-                    onAddFiles()
+                    onOpenSources()
                     expanded = false
                 },
             )
-            HorizontalDivider()
+            HorizontalDivider(modifier = Modifier.padding(vertical = Space.xs))
+            Text(
+                text = stringResource(R.string.library_sort_by),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Space.lg, vertical = Space.sm),
+            )
             LibrarySort.entries.forEach { sort ->
                 DropdownMenuItem(
                     text = { Text(stringResource(sort.labelRes)) },

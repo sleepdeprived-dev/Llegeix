@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,7 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
-import com.david.llegeix.ui.library.LibraryMessage
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.res.painterResource
+import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.pdfTitle
 
 /**
@@ -79,13 +81,17 @@ fun BookmarkedCollectionScreen(
         },
     ) { innerPadding ->
         if (documents.isEmpty()) {
-            LibraryMessage(
+            EmptyState(
                 title = stringResource(R.string.bookmarked_collection_empty_title),
                 body = stringResource(R.string.bookmarked_collection_empty_body),
+                icon = painterResource(R.drawable.ic_bookmark),
                 modifier = Modifier.padding(innerPadding),
             )
         } else {
-            LazyColumn(modifier = Modifier.padding(innerPadding)) {
+            LazyColumn(
+                modifier = Modifier.padding(innerPadding),
+                contentPadding = PaddingValues(bottom = Space.xxl),
+            ) {
                 items(documents, key = { it.uriString }) { document ->
                     Column(
                         modifier = Modifier
@@ -93,7 +99,12 @@ fun BookmarkedCollectionScreen(
                             .clickable {
                                 onOpenDocument(document.uriString, document.displayName)
                             }
-                            .padding(start = 16.dp, top = 14.dp, bottom = 14.dp),
+                            .padding(
+                                start = Space.screen,
+                                end = Space.screen,
+                                top = Space.row,
+                                bottom = Space.row,
+                            ),
                     ) {
                         Text(
                             text = pdfTitle(document.displayName),
@@ -102,7 +113,6 @@ fun BookmarkedCollectionScreen(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                 }
             }
         }
