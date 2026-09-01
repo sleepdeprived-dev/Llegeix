@@ -19,3 +19,41 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         db.execSQL("ALTER TABLE documents ADD COLUMN isReadLater INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * Adds saved words.
+ *
+ * The table mirrors [com.david.llegeix.data.db.entity.WordBookmarkEntity]: the
+ * document reference is nullable and set to null rather than cascading, so a
+ * word survives the PDF it came from being forgotten.
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `word_bookmarks` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `word` TEXT NOT NULL,
+                `translation` TEXT,
+                `ipa` TEXT,
+                `context` TEXT,
+                `documentUri` TEXT,
+                `displayName` TEXT,
+                `pageIndex` INTEGER NOT NULL,
+                `lineNumber` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                FOREIGN KEY(`documentUri`) REFERENCES `documents`(`uriString`)
+                    ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_word_bookmarks_documentUri` " +
+                "ON `word_bookmarks` (`documentUri`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_word_bookmarks_word` " +
+                "ON `word_bookmarks` (`word`)",
+        )
+    }
+}

@@ -1,0 +1,17 @@
+<!--
+    A solid deep burgundy rather than the parchment the raster icon used.
+
+    Parchment behind a gold book meant the icon's own edge was the lightest thing
+    on the screen, which is what made it look like a sticker pressed onto the
+    launcher. A dark ground puts the gold forward instead, and holds up on a
+    light wallpaper as well as a dark one. Solid rather than a gradient: at
+    48dp a gradient is invisible, and launchers treat a flat background more
+    predictably.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#7A1520" android:pathData="M0,0 h108 v108 h-108 z" />
+</vector>

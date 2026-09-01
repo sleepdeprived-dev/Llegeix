@@ -9,6 +9,7 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.PageBookmark
 import com.david.llegeix.data.db.entity.DocumentEntity
+import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.source.LibraryDataRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,10 +37,18 @@ class BookmarksViewModel(
         libraryData.observePageBookmarks()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val bookmarkedFolders: StateFlow<List<FolderWithCount>> =
-        libraryData.observeFoldersWithCounts()
-            .map { folders -> folders.filter { it.isBookmarked } }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /**
+     * Words and phrases saved while reading.
+     *
+     * This replaced bookmarked folders in the Bookmarks screen. A folder you
+     * starred was a shortcut to a shelf; a word you saved is the thing this app
+     * is for, and the two were competing for the same tab.
+     */
+    val savedWords: StateFlow<List<WordBookmarkEntity>> = libraryData.observeWordBookmarks()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun removeWord(id: Long) = viewModelScope.launch { libraryData.removeWordBookmark(id) }
+
 
     fun removeDocumentBookmark(document: DocumentEntity) = viewModelScope.launch {
         libraryData.setDocumentBookmarked(document.uriString, document.displayName, false)
@@ -49,9 +58,6 @@ class BookmarksViewModel(
         libraryData.deletePageBookmark(bookmarkId)
     }
 
-    fun removeFolderBookmark(folderId: Long) = viewModelScope.launch {
-        libraryData.setFolderBookmarked(folderId, false)
-    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

@@ -157,9 +157,6 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     onOpenDocument = { uriString, title, page ->
                         navController.navigate(Routes.reader(uriString, title, page))
                     },
-                    onOpenFolder = { folderId, name ->
-                        navController.navigate(Routes.folderDetail(folderId, name))
-                    },
                 )
             }
 

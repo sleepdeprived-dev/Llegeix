@@ -44,7 +44,11 @@ class MainActivity : ComponentActivity() {
             }
 
             // Theme and accent need no restart: they are plain composition state.
-            LlegeixTheme(themeMode = settings.themeMode, accent = settings.accent) {
+            LlegeixTheme(
+                themeMode = settings.themeMode,
+                accent = settings.accent,
+                customAccent = settings.customAccent,
+            ) {
                 AppNavigation()
             }
         }

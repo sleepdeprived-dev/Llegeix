@@ -93,14 +93,11 @@
     <string name="bookmarks_title">Bookmarks</string>
     <string name="bookmarks_tab_pdfs">PDFs</string>
     <string name="bookmarks_tab_pages">Pages</string>
-    <string name="bookmarks_tab_folders">Folders</string>
     <string name="bookmarks_tab_with_count">%1$s (%2$d)</string>
     <string name="bookmarks_pdfs_empty_title">No bookmarked PDFs</string>
     <string name="bookmarks_pdfs_empty_body">Bookmark a whole PDF from its menu in the library. Bookmarked PDFs also appear as a \"Bookmarked\" collection under Folders.</string>
     <string name="bookmarks_pages_empty_title">No bookmarked pages</string>
     <string name="bookmarks_pages_empty_body">Tap the star while reading to bookmark the page you are on. Those land here, separately from whole PDFs.</string>
-    <string name="bookmarks_folders_empty_title">No bookmarked folders</string>
-    <string name="bookmarks_folders_empty_body">Bookmark a folder from its menu under Folders.</string>
     <!-- A page bookmark's own label, appended after the page number. -->
     <string name="bookmarks_page_detail">%1$s · %2$s</string>
     <string name="bookmarked_collection_back">Back to folders</string>
@@ -184,6 +181,23 @@
     <string name="lookup_explain_more">Explain more</string>
     <string name="lookup_explain_more_stub">\"Explain more\" is not wired up yet — it will ask an LLM for the word in context.</string>
 
+    <string name="lookup_save_word">Save this word</string>
+    <string name="lookup_unsave_word">Remove from saved words</string>
+    <string name="lookup_word_by_word">Word by word</string>
+    <string name="lookup_in_context">In context</string>
+    <!-- Where a saved word was found, e.g. "Page 12 · line 4". -->
+    <string name="lookup_location">Page %1$d · line %2$d</string>
+    <!-- Marks a transcription whose stressed vowel had to be guessed. -->
+    <string name="lookup_ipa_approximate">approx.</string>
+    <string name="lookup_ipa_note">Central Catalan. Catalan spelling does not record whether a stressed e or o is close or open, so those are marked approximate.</string>
+
+    <!-- Saved words -->
+    <string name="bookmarks_tab_words">Words</string>
+    <string name="bookmarks_words_empty_title">No saved words</string>
+    <string name="bookmarks_words_empty_body">Press and hold a word while reading, then tap the star. Keep holding and drag to save a whole phrase.</string>
+    <string name="words_remove">Remove this word</string>
+    <string name="words_source">%1$s · page %2$d · line %3$d</string>
+
     <!-- Highlight colours -->
     <string name="colour_yellow">Yellow</string>
     <string name="colour_green">Green</string>
@@ -210,6 +224,12 @@
     <string name="settings_accent">Accent colour</string>
     <string name="settings_accent_system">System default</string>
     <string name="settings_accent_system_summary">Takes its colour from your wallpaper.</string>
+    <string name="settings_accent_custom">Custom</string>
+    <string name="settings_accent_custom_open">Choose a colour…</string>
+    <string name="settings_accent_custom_title">Pick a colour</string>
+    <string name="settings_accent_hex">Hex code</string>
+    <string name="settings_accent_hue">Hue</string>
+    <string name="settings_accent_shade">Shade</string>
     <string name="settings_accent_senyera">Senyera</string>
     <string name="settings_accent_blue">Blue</string>
     <string name="settings_accent_green">Green</string>

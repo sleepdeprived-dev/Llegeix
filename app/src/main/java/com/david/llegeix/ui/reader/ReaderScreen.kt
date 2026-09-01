@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -18,12 +19,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -38,6 +42,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -80,6 +85,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -255,12 +261,13 @@ fun ReaderScreen(
                                 viewModel.matchHighlights(index, widthPx, heightPx)
                             },
                             onZoomChanged = viewModel::onZoomChanged,
-                            onLongPress = { x, y, w, h ->
-                                viewModel.onWordPressed(index, x, y, w, h)
+                            onSelect = { x1, y1, x2, y2, w, h ->
+                                viewModel.onSelection(index, x1, y1, x2, y2, w, h)
                             },
-                            lookupHighlight = state.lookup
+                            lookupHighlights = state.lookup
                                 ?.takeIf { it.pageIndex == index }
-                                ?.boundsPx,
+                                ?.boundsPx
+                                .orEmpty(),
                             highlightColor = state.highlightColor,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -286,6 +293,7 @@ fun ReaderScreen(
             onDismiss = viewModel::onDismissLookup,
             onExplainMore = viewModel::onExplainMore,
             onRetryOnAnyNetwork = viewModel::onRetryOnAnyNetwork,
+            onToggleSaved = viewModel::onToggleWordBookmark,
         )
     }
 }
@@ -563,8 +571,12 @@ private fun PdfPage(
     searchMatch: PdfMatch?,
     highlights: suspend (widthPx: Int, heightPx: Int) -> List<RectF>,
     onZoomChanged: (Float) -> Unit,
-    onLongPress: (xPx: Float, yPx: Float, widthPx: Int, heightPx: Int) -> Unit,
-    lookupHighlight: RectF?,
+    onSelect: (
+        startXPx: Float, startYPx: Float,
+        endXPx: Float, endYPx: Float,
+        widthPx: Int, heightPx: Int,
+    ) -> Unit,
+    lookupHighlights: List<RectF>,
     highlightColor: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -651,17 +663,26 @@ private fun PdfPage(
                             onDoubleTap = {
                                 onZoomChanged(if (zoom > 1.01f) 1f else 2f)
                             },
-                            onLongPress = { tap: Offset ->
-                                if (drawnSize.width > 0 && drawnSize.height > 0) {
-                                    val scaleX = rendered.width.toFloat() / drawnSize.width
-                                    val scaleY = rendered.height.toFloat() / drawnSize.height
-                                    onLongPress(
-                                        tap.x * scaleX,
-                                        tap.y * scaleY,
-                                        rendered.width,
-                                        rendered.height,
-                                    )
-                                }
+                        )
+                    }
+                    // Press and hold picks a word; keep dragging and the
+                    // selection grows to a phrase. One gesture, so there is
+                    // nothing extra to learn to select more than one word.
+                    .pointerInput(index, rendered, drawnSize) {
+                        var anchor = Offset.Zero
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { start ->
+                                anchor = start
+                                emitSelection(start, start, rendered, drawnSize, onSelect)
+                            },
+                            onDrag = { change, _ ->
+                                emitSelection(
+                                    anchor,
+                                    change.position,
+                                    rendered,
+                                    drawnSize,
+                                    onSelect,
+                                )
                             },
                         )
                     }
@@ -671,7 +692,7 @@ private fun PdfPage(
                         val scaleX = size.width / rendered.width
                         val scaleY = size.height / rendered.height
 
-                        lookupHighlight?.let { box ->
+                        lookupHighlights.forEach { box ->
                             drawRect(
                                 color = HighlightColors.compose(highlightColor).copy(alpha = 0.4f),
                                 topLeft = Offset(box.left * scaleX, box.top * scaleY),
@@ -703,8 +724,34 @@ private fun PdfPage(
     }
 }
 
+/** Maps two points in the drawn page to bitmap pixels and reports the range. */
+private fun emitSelection(
+    start: Offset,
+    end: Offset,
+    rendered: Bitmap,
+    drawnSize: IntSize,
+    onSelect: (Float, Float, Float, Float, Int, Int) -> Unit,
+) {
+    if (drawnSize.width <= 0 || drawnSize.height <= 0) return
+    val scaleX = rendered.width.toFloat() / drawnSize.width
+    val scaleY = rendered.height.toFloat() / drawnSize.height
+    onSelect(
+        start.x * scaleX,
+        start.y * scaleY,
+        end.x * scaleX,
+        end.y * scaleY,
+        rendered.width,
+        rendered.height,
+    )
+}
+
 /**
- * Shows the pressed word and its translation.
+ * What a selection means, laid out so the answer is found without reading.
+ *
+ * The order is fixed and always the same: the Catalan, its pronunciation, the
+ * English. Everything after that — the line it came from, and for a phrase the
+ * word-by-word breakdown — is supporting detail, set quieter and further down.
+ * Someone who only wants the translation should never have to look for it.
  *
  * Download is its own visible state because the ML Kit models are a
  * tens-of-megabytes fetch on first use; after that every lookup is on-device
@@ -717,27 +764,63 @@ private fun WordLookupSheet(
     onDismiss: () -> Unit,
     onExplainMore: () -> Unit,
     onRetryOnAnyNetwork: () -> Unit,
+    onToggleSaved: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
                 .padding(horizontal = Space.xl)
                 .padding(bottom = Space.xxl),
         ) {
-            Text(
-                text = stringResource(R.string.lookup_direction),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = lookup.word,
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(top = Space.xs),
-            )
+            // ---- The word itself, and the save toggle -----------------------
+            Row(verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.lookup_direction),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = lookup.text,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(top = Space.xs),
+                    )
+                    if (lookup.ipa.isNotBlank()) {
+                        IpaLine(
+                            ipa = lookup.ipa,
+                            isApproximate = lookup.isIpaApproximate,
+                            modifier = Modifier.padding(top = Space.xs),
+                        )
+                    }
+                }
+                IconButton(onClick = onToggleSaved) {
+                    Icon(
+                        imageVector = if (lookup.isSaved) {
+                            Icons.Filled.Star
+                        } else {
+                            Icons.Outlined.Star
+                        },
+                        contentDescription = stringResource(
+                            if (lookup.isSaved) {
+                                R.string.lookup_unsave_word
+                            } else {
+                                R.string.lookup_save_word
+                            },
+                        ),
+                        tint = if (lookup.isSaved) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
 
+            // ---- The answer -------------------------------------------------
             Box(modifier = Modifier.padding(top = Space.xl)) {
                 when (lookup.status) {
                     LookupStatus.LOOKING_UP -> Text(
@@ -781,6 +864,77 @@ private fun WordLookupSheet(
                 }
             }
 
+            // ---- Word by word, only when there is more than one -------------
+            if (lookup.isPhrase && lookup.status == LookupStatus.READY) {
+                DetailCard(
+                    title = stringResource(R.string.lookup_word_by_word),
+                    modifier = Modifier.padding(top = Space.xl),
+                ) {
+                    lookup.words.forEachIndexed { index, gloss ->
+                        if (index > 0) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.padding(vertical = Space.sm),
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.Top) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = gloss.word,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                                if (gloss.ipa.isNotBlank()) {
+                                    Text(
+                                        text = "[${gloss.ipa}]",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            Text(
+                                text = gloss.translation.orEmpty(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ---- Where it came from -----------------------------------------
+            if (lookup.context.isNotBlank() && lookup.context != lookup.text) {
+                DetailCard(
+                    title = stringResource(R.string.lookup_in_context),
+                    modifier = Modifier.padding(top = Space.lg),
+                ) {
+                    Text(
+                        text = lookup.context,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    if (lookup.contextTranslation != null) {
+                        Text(
+                            text = lookup.contextTranslation,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = Space.sm),
+                        )
+                    }
+                    Text(
+                        text = stringResource(
+                            R.string.lookup_location,
+                            lookup.pageIndex + 1,
+                            lookup.lineNumber,
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Space.md),
+                    )
+                }
+            }
+
             // Shown alongside a successful translation too, since the stub
             // message is delivered through the same field.
             if (lookup.status == LookupStatus.READY && lookup.error != null) {
@@ -794,7 +948,7 @@ private fun WordLookupSheet(
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Space.md),
-                modifier = Modifier.padding(top = Space.xxl),
+                modifier = Modifier.padding(top = Space.xl),
             ) {
                 if (lookup.canRetryOnAnyNetwork) {
                     OutlinedButton(onClick = onRetryOnAnyNetwork) {
@@ -808,6 +962,56 @@ private fun WordLookupSheet(
                 Button(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
             }
         }
+    }
+}
+
+/**
+ * The pronunciation line.
+ *
+ * A trailing marker when the transcription had to guess: Catalan spelling does
+ * not record whether a stressed e or o is close or open, so saying so is more
+ * useful than quietly presenting a guess as fact.
+ */
+@Composable
+private fun IpaLine(ipa: String, isApproximate: Boolean, modifier: Modifier = Modifier) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "[$ipa]",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        if (isApproximate) {
+            Text(
+                text = stringResource(R.string.lookup_ipa_approximate),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = Space.sm),
+            )
+        }
+    }
+}
+
+/** A quiet block of supporting detail under the answer. */
+@Composable
+private fun DetailCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(Space.lg),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = Space.sm),
+        )
+        content()
     }
 }
 

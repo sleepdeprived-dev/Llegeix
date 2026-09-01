@@ -8,10 +8,12 @@ import com.david.llegeix.data.db.dao.BookmarkDao
 import com.david.llegeix.data.db.dao.DocumentDao
 import com.david.llegeix.data.db.dao.FolderDao
 import com.david.llegeix.data.db.dao.RecentlyViewedDao
+import com.david.llegeix.data.db.dao.WordBookmarkDao
 import com.david.llegeix.data.db.entity.BookmarkEntity
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.db.entity.RecentlyViewedEntity
+import com.david.llegeix.data.db.entity.WordBookmarkEntity
 
 @Database(
     entities = [
@@ -19,8 +21,9 @@ import com.david.llegeix.data.db.entity.RecentlyViewedEntity
         DocumentEntity::class,
         BookmarkEntity::class,
         RecentlyViewedEntity::class,
+        WordBookmarkEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class LlegeixDatabase : RoomDatabase() {
@@ -29,6 +32,7 @@ abstract class LlegeixDatabase : RoomDatabase() {
     abstract fun documentDao(): DocumentDao
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun recentlyViewedDao(): RecentlyViewedDao
+    abstract fun wordBookmarkDao(): WordBookmarkDao
 
     companion object {
         fun build(context: Context): LlegeixDatabase =
@@ -36,7 +40,7 @@ abstract class LlegeixDatabase : RoomDatabase() {
                 context.applicationContext,
                 LlegeixDatabase::class.java,
                 "llegeix.db",
-            ).addMigrations(MIGRATION_1_2)
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
     }
 }

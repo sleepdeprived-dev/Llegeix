@@ -214,9 +214,12 @@ private val TealSchemes = AccentSchemes(
     ),
 )
 
-/** Null for [AccentColor.SYSTEM], which the platform supplies instead. */
+/**
+ * Null for [AccentColor.SYSTEM], which the platform supplies instead, and for
+ * [AccentColor.CUSTOM], which is built from the reader's own colour.
+ */
 internal fun AccentColor.schemes(): AccentSchemes? = when (this) {
-    AccentColor.SYSTEM -> null
+    AccentColor.SYSTEM, AccentColor.CUSTOM -> null
     AccentColor.SENYERA -> SenyeraSchemes
     AccentColor.BLUE -> BlueSchemes
     AccentColor.GREEN -> GreenSchemes

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.annotation.StringRes
 import com.david.llegeix.R
+import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.ui.common.HighlightColors
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.res.painterResource
@@ -51,20 +53,19 @@ import com.david.llegeix.util.pdfTitle
 private enum class BookmarkTab(@param:StringRes val labelRes: Int) {
     PDFS(R.string.bookmarks_tab_pdfs),
     PAGES(R.string.bookmarks_tab_pages),
-    FOLDERS(R.string.bookmarks_tab_folders),
+    WORDS(R.string.bookmarks_tab_words),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookmarksScreen(
     onOpenDocument: (uriString: String, title: String, page: Int?) -> Unit,
-    onOpenFolder: (folderId: Long, name: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: BookmarksViewModel = viewModel(factory = BookmarksViewModel.Factory),
 ) {
     val documents by viewModel.bookmarkedDocuments.collectAsStateWithLifecycle()
     val pages by viewModel.pageBookmarks.collectAsStateWithLifecycle()
-    val folders by viewModel.bookmarkedFolders.collectAsStateWithLifecycle()
+    val savedWords by viewModel.savedWords.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
@@ -84,7 +85,7 @@ fun BookmarksScreen(
                     val count = when (tab) {
                         BookmarkTab.PDFS -> documents.size
                         BookmarkTab.PAGES -> pages.size
-                        BookmarkTab.FOLDERS -> folders.size
+                        BookmarkTab.WORDS -> savedWords.size
                     }
                     Tab(
                         selected = selectedTab == index,
@@ -171,35 +172,123 @@ fun BookmarksScreen(
                     }
                 }
 
-                BookmarkTab.FOLDERS -> if (folders.isEmpty()) {
+                BookmarkTab.WORDS -> if (savedWords.isEmpty()) {
                     EmptyState(
-                        title = stringResource(R.string.bookmarks_folders_empty_title),
-                        body = stringResource(R.string.bookmarks_folders_empty_body),
-                        icon = painterResource(R.drawable.ic_folder),
+                        title = stringResource(R.string.bookmarks_words_empty_title),
+                        body = stringResource(R.string.bookmarks_words_empty_body),
+                        icon = painterResource(R.drawable.ic_bookmark),
                     )
                 } else {
                     LazyColumn(contentPadding = PaddingValues(bottom = Space.xxl)) {
-                        items(folders, key = { it.id }) { folder ->
-                            BookmarkRow(
-                                title = folder.name,
-                                subtitle = if (folder.documentCount == 0) {
-                                    stringResource(R.string.folders_empty_count)
-                                } else {
-                                    pluralStringResource(
-                                        R.plurals.folders_pdf_count,
-                                        folder.documentCount,
-                                        folder.documentCount,
-                                    )
+                        items(savedWords, key = { it.id }) { word ->
+                            SavedWordRow(
+                                word = word,
+                                onOpen = {
+                                    val uri = word.documentUri
+                                    if (uri != null) {
+                                        onOpenDocument(
+                                            uri,
+                                            word.displayName.orEmpty(),
+                                            word.pageIndex,
+                                        )
+                                    }
                                 },
-                                swatchColor = folder.colorArgb,
-                                onClick = { onOpenFolder(folder.id, folder.name) },
-                                onRemove = { viewModel.removeFolderBookmark(folder.id) },
+                                onRemove = { viewModel.removeWord(word.id) },
                             )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * One saved word, with everything needed to remember why it was saved.
+ *
+ * Catalan and English sit on the same line because they are the same fact seen
+ * twice; the pronunciation follows because it belongs to the Catalan. The line
+ * it came from is quoted underneath, and the document, page and line are the
+ * last thing, because they answer "where was this?" rather than "what does it
+ * mean?".
+ */
+@Composable
+private fun SavedWordRow(
+    word: WordBookmarkEntity,
+    onOpen: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = word.documentUri != null, onClick = onOpen)
+            .padding(
+                start = Space.screen,
+                end = Space.sm,
+                top = Space.lg,
+                bottom = Space.lg,
+            ),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = word.word,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (!word.ipa.isNullOrBlank()) {
+                    Text(
+                        text = "[${word.ipa}]",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 1.dp),
+                    )
+                }
+                if (!word.translation.isNullOrBlank()) {
+                    Text(
+                        text = word.translation,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Space.xs),
+                    )
+                }
+            }
+            IconButton(onClick = onRemove) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.words_remove),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        if (!word.context.isNullOrBlank()) {
+            Text(
+                text = word.context,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .padding(top = Space.sm, end = Space.lg)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(horizontal = Space.md, vertical = Space.sm),
+            )
+        }
+
+        Text(
+            text = stringResource(
+                R.string.words_source,
+                pdfTitle(word.displayName.orEmpty()),
+                word.pageIndex + 1,
+                word.lineNumber,
+            ),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = Space.sm),
+        )
     }
 }
 

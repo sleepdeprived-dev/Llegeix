@@ -29,6 +29,22 @@ data class PdfMatch(
 )
 
 /**
+ * A stretch of text the reader dragged across, with everything needed to make
+ * sense of it later.
+ *
+ * [lineText] is the whole line the selection starts on. Saving a word without
+ * the sentence it was working in throws away most of what makes it learnable,
+ * so the line travels with it.
+ */
+data class PdfSelection(
+    val text: String,
+    val boundsPx: List<RectF>,
+    val lineText: String,
+    /** 1-based, counted from the page's text layer. */
+    val lineNumber: Int,
+)
+
+/**
  * Renders the pages of one open PDF and answers questions about their text.
  *
  * The text half is what forced the backend choice: Android's built-in
@@ -59,6 +75,23 @@ interface PdfPageRenderer : AutoCloseable {
         renderedWidthPx: Int,
         renderedHeightPx: Int,
     ): PdfWord?
+
+    /**
+     * The text between two points on a page, snapped out to whole words.
+     *
+     * Both points are in rendered-bitmap pixels. Passing the same point twice
+     * selects the single word under it, so the press-and-drag gesture and the
+     * plain long press are the same call.
+     */
+    suspend fun selectionBetween(
+        pageIndex: Int,
+        startXPx: Float,
+        startYPx: Float,
+        endXPx: Float,
+        endYPx: Float,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): PdfSelection?
 
     /**
      * Search the whole document for [query], case-insensitively.

@@ -44,6 +44,11 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(libraryLayout = layout)
     }
 
+    fun setCustomAccent(argb: Int) {
+        prefs.edit { putInt(KEY_CUSTOM_ACCENT, argb) }
+        _settings.value = current.copy(customAccent = argb, accent = AccentColor.CUSTOM)
+    }
+
     fun setInvertPages(invert: Boolean) {
         prefs.edit { putBoolean(KEY_INVERT_PAGES, invert) }
         _settings.value = current.copy(invertPages = invert)
@@ -56,6 +61,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_LANGUAGE = "language"
         private const val KEY_LAYOUT = "library_layout"
         private const val KEY_INVERT_PAGES = "invert_pages"
+        private const val KEY_CUSTOM_ACCENT = "custom_accent"
 
         private fun preferences(context: Context): SharedPreferences =
             context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -66,6 +72,7 @@ class SettingsRepository(context: Context) {
             language = AppLanguage.fromTag(prefs.getString(KEY_LANGUAGE, null)),
             libraryLayout = LibraryLayout.fromKey(prefs.getString(KEY_LAYOUT, null)),
             invertPages = prefs.getBoolean(KEY_INVERT_PAGES, false),
+            customAccent = prefs.getInt(KEY_CUSTOM_ACCENT, DEFAULT_CUSTOM_ACCENT),
         )
 
         /**

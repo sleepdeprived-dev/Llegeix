@@ -8,6 +8,7 @@ import com.david.llegeix.data.db.entity.BookmarkEntity
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.db.entity.RecentlyViewedEntity
+import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -25,6 +26,7 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     private val documents = database.documentDao()
     private val bookmarks = database.bookmarkDao()
     private val recents = database.recentlyViewedDao()
+    private val words = database.wordBookmarkDao()
 
     // --- Folders -----------------------------------------------------------
 
@@ -180,4 +182,34 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     private companion object {
         const val DEFAULT_RECENT_LIMIT = 20
     }
+
+    // ---- Saved words ------------------------------------------------------
+
+    fun observeWordBookmarks(): Flow<List<WordBookmarkEntity>> = words.observeAll()
+
+    fun observeWordBookmarkCount(): Flow<Int> = words.observeCount()
+
+    suspend fun findWordBookmark(
+        word: String,
+        documentUri: String?,
+        pageIndex: Int,
+    ): WordBookmarkEntity? = words.find(word, documentUri, pageIndex)
+
+    /**
+     * Save the word, or drop it if this same occurrence is already saved.
+     *
+     * @return true when it ended up saved.
+     */
+    suspend fun toggleWordBookmark(bookmark: WordBookmarkEntity): Boolean {
+        val existing = words.find(bookmark.word, bookmark.documentUri, bookmark.pageIndex)
+        return if (existing == null) {
+            words.insert(bookmark)
+            true
+        } else {
+            words.deleteById(existing.id)
+            false
+        }
+    }
+
+    suspend fun removeWordBookmark(id: Long) = words.deleteById(id)
 }

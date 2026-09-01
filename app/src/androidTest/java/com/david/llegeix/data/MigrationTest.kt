@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.db.MIGRATION_1_2
+import com.david.llegeix.data.db.MIGRATION_2_3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -87,6 +88,74 @@ class MigrationTest {
         db.query("SELECT lastPageIndex FROM recently_viewed").use { cursor ->
             assertTrue("reading position survived", cursor.moveToFirst())
             assertEquals(4, cursor.getInt(0))
+        }
+    }
+
+    @Test
+    fun migrate2To3_addsSavedWordsAndKeepsEverythingElse() {
+        helper.createDatabase(TEST_DB, 2).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO folders (id, name, createdAt, isPinned, isBookmarked, colorArgb)
+                VALUES (1, 'Lectures', 100, 0, 0, NULL)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO documents
+                    (uriString, displayName, folderId, highlightColor, addedAt,
+                     isBookmarked, isReadLater)
+                VALUES ('content://test/1', 'princep.pdf', 1, NULL, 200, 0, 0)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 3, true, MIGRATION_2_3)
+
+        // The new table is usable, including the nullable document reference.
+        db.execSQL(
+            """
+            INSERT INTO word_bookmarks
+                (word, translation, ipa, context, documentUri, displayName,
+                 pageIndex, lineNumber, createdAt)
+            VALUES ('serp', 'snake', 'sɛrp', 'una serp boa', 'content://test/1',
+                    'princep.pdf', 0, 2, 500)
+            """.trimIndent(),
+        )
+        db.query("SELECT word, translation, lineNumber FROM word_bookmarks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("serp", cursor.getString(0))
+            assertEquals("snake", cursor.getString(1))
+            assertEquals(2, cursor.getInt(2))
+        }
+
+        // Nothing that was already there was disturbed.
+        db.query("SELECT displayName FROM documents").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("princep.pdf", cursor.getString(0))
+        }
+    }
+
+    /**
+     * The whole path a real device takes: an install from before folders even
+     * had colours, upgraded twice in a row.
+     */
+    @Test
+    fun migrate1To3_runsBothStepsInSequence() {
+        helper.createDatabase(TEST_DB, 1).use { db ->
+            db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 3, true, MIGRATION_1_2, MIGRATION_2_3)
+
+        db.query("SELECT name, isPinned FROM folders").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Vell", cursor.getString(0))
+            assertEquals(0, cursor.getInt(1))
+        }
+        db.query("SELECT COUNT(*) FROM word_bookmarks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
         }
     }
 }

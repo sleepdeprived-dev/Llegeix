@@ -24,6 +24,9 @@ class SettingsViewModel(
 
     fun onLanguageChange(language: AppLanguage) = settingsRepository.setLanguage(language)
 
+    /** Applies the mixed colour and selects it in one step. */
+    fun onCustomAccentChange(argb: Int) = settingsRepository.setCustomAccent(argb)
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

@@ -25,6 +25,8 @@ enum class ThemeMode(val key: String, @param:StringRes val labelRes: Int) {
  */
 enum class AccentColor(val key: String, @param:StringRes val labelRes: Int) {
     SYSTEM("system", R.string.settings_accent_system),
+    /** A colour the reader mixed themselves; the value lives in [AppSettings.customAccent]. */
+    CUSTOM("custom", R.string.settings_accent_custom),
     SENYERA("senyera", R.string.settings_accent_senyera),
     BLUE("blue", R.string.settings_accent_blue),
     GREEN("green", R.string.settings_accent_green),
@@ -87,4 +89,9 @@ data class AppSettings(
      * page that still looks like paper.
      */
     val invertPages: Boolean = false,
+    /** ARGB for [AccentColor.CUSTOM]. Ignored by every other accent. */
+    val customAccent: Int = DEFAULT_CUSTOM_ACCENT,
 )
+
+/** The colour the custom picker opens on before anything is chosen. */
+const val DEFAULT_CUSTOM_ACCENT: Int = 0xFF7A5AF8.toInt()

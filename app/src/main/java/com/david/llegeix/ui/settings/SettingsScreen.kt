@@ -31,11 +31,14 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,6 +75,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    var showColorPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -110,7 +114,9 @@ fun SettingsScreen(
                 AccentPicker(
                     current = settings.accent,
                     themeMode = settings.themeMode,
+                    customAccent = settings.customAccent,
                     onChoose = viewModel::onAccentChange,
+                    onOpenPicker = { showColorPicker = true },
                 )
                 Text(
                     text = stringResource(settings.accent.labelRes),
@@ -125,6 +131,12 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = Space.xs),
                     )
+                }
+                TextButton(
+                    onClick = { showColorPicker = true },
+                    modifier = Modifier.padding(top = Space.xs),
+                ) {
+                    Text(stringResource(R.string.settings_accent_custom_open))
                 }
             }
 
@@ -149,6 +161,28 @@ fun SettingsScreen(
                 AboutRows()
             }
         }
+    }
+
+    ColorPickerHost(
+        show = showColorPicker,
+        initial = settings.customAccent,
+        onDismiss = { showColorPicker = false },
+        onConfirm = { chosen ->
+            viewModel.onCustomAccentChange(chosen)
+            showColorPicker = false
+        },
+    )
+}
+
+@Composable
+private fun ColorPickerHost(
+    show: Boolean,
+    initial: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    if (show) {
+        ColorPickerDialog(initial = initial, onDismiss = onDismiss, onConfirm = onConfirm)
     }
 }
 
@@ -229,7 +263,9 @@ private fun LanguagePicker(current: AppLanguage, onChoose: (AppLanguage) -> Unit
 private fun AccentPicker(
     current: AccentColor,
     themeMode: ThemeMode,
+    customAccent: Int,
     onChoose: (AccentColor) -> Unit,
+    onOpenPicker: () -> Unit,
 ) {
     // SYSTEM has no colour of its own, so its dot previews what the platform
     // would actually produce. Asked for directly rather than read off
@@ -251,14 +287,21 @@ private fun AccentPicker(
             val label = stringResource(accent.labelRes)
             val selected = accent == current
             AccentSwatch(
-                color = accent.swatchOrNull() ?: dynamicPrimary,
+                color = when (accent) {
+                    AccentColor.CUSTOM -> Color(customAccent)
+                    else -> accent.swatchOrNull() ?: dynamicPrimary
+                },
                 selected = selected,
                 contentDescription = if (selected) {
                     stringResource(R.string.settings_accent_selected, label)
                 } else {
                     label
                 },
-                onClick = { onChoose(accent) },
+                // Tapping the custom dot opens the mixer rather than silently
+                // applying whatever was mixed last.
+                onClick = {
+                    if (accent == AccentColor.CUSTOM) onOpenPicker() else onChoose(accent)
+                },
             )
         }
     }

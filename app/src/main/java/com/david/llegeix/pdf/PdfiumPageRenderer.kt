@@ -177,6 +177,119 @@ class PdfiumPageRenderer private constructor(
         }
     }
 
+    override suspend fun selectionBetween(
+        pageIndex: Int,
+        startXPx: Float,
+        startYPx: Float,
+        endXPx: Float,
+        endYPx: Float,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): PdfSelection? = withContext(Dispatchers.IO) {
+        if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext null
+        mutex.withLock {
+            document.openPage(pageIndex)?.use { page ->
+                page.openTextPage().use { textPage ->
+                    buildSelection(
+                        page, textPage,
+                        startXPx, startYPx, endXPx, endYPx,
+                        renderedWidthPx, renderedHeightPx,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun buildSelection(
+        page: PdfPage,
+        textPage: PdfTextPage,
+        startXPx: Float,
+        startYPx: Float,
+        endXPx: Float,
+        endYPx: Float,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): PdfSelection? {
+        val widthPt = page.getPageWidthPoint().toDouble()
+        val heightPt = page.getPageHeightPoint().toDouble()
+        if (widthPt <= 0.0 || heightPt <= 0.0) return null
+
+        val charCount = textPage.textPageCountChars()
+        if (charCount <= 0) return null
+        val tolerance = widthPt * TOUCH_TOLERANCE_FRACTION
+
+        fun charAt(xPx: Float, yPx: Float): Int {
+            val xPt = xPx * widthPt / renderedWidthPx
+            val yPt = heightPt - (yPx * heightPt / renderedHeightPx)
+            return textPage.textPageGetCharIndexAtPos(xPt, yPt, tolerance, tolerance)
+        }
+
+        val a = charAt(startXPx, startYPx)
+        val b = charAt(endXPx, endYPx)
+        // A drag that started or ended in the margin still has one good end.
+        val anchor = if (a >= 0) a else b
+        if (anchor < 0 || anchor >= charCount) return null
+        var from = minOf(a.takeIf { it >= 0 } ?: anchor, b.takeIf { it >= 0 } ?: anchor)
+        var to = maxOf(a.takeIf { it >= 0 } ?: anchor, b.takeIf { it >= 0 } ?: anchor)
+        if (from !in 0 until charCount || to !in 0 until charCount) return null
+
+        // Snap to whole words: half a word is never what was meant.
+        while (from > 0 && isWordChar(textPage.textPageGetUnicode(from - 1))) from--
+        while (to + 1 < charCount && isWordChar(textPage.textPageGetUnicode(to + 1))) to++
+
+        val text = textPage.textPageGetText(from, to - from + 1)
+            ?.replace(LINE_BREAKS, " ")
+            ?.trim()
+            .orEmpty()
+        if (text.isEmpty()) return null
+
+        val rectCount = textPage.textPageCountRects(from, to - from + 1)
+        val bounds = (0 until rectCount).mapNotNull { i ->
+            textPage.textPageGetRect(i)?.let { box ->
+                toBitmapRect(box, widthPt, heightPt, renderedWidthPx, renderedHeightPx)
+            }
+        }
+
+        val (lineText, lineNumber) = lineAt(textPage, charCount, from)
+        return PdfSelection(
+            text = text,
+            boundsPx = bounds,
+            lineText = lineText,
+            lineNumber = lineNumber,
+        )
+    }
+
+    /**
+     * The line containing [charIndex], and its 1-based number.
+     *
+     * Taken from the page's own text rather than by clustering character boxes:
+     * PDFium already breaks the extracted text where the page breaks lines, and
+     * counting newlines is both cheaper and closer to what the page looks like.
+     */
+    private fun lineAt(
+        textPage: PdfTextPage,
+        charCount: Int,
+        charIndex: Int,
+    ): Pair<String, Int> {
+        val all = textPage.textPageGetText(0, charCount).orEmpty()
+        if (all.isEmpty()) return "" to 1
+        val safeIndex = charIndex.coerceIn(0, all.length - 1)
+
+        var lineStart = 0
+        var lineNumber = 1
+        var i = 0
+        while (i < safeIndex) {
+            if (all[i] == '\n') {
+                lineNumber++
+                lineStart = i + 1
+            }
+            i++
+        }
+        var lineEnd = all.indexOf('\n', startIndex = lineStart)
+        if (lineEnd < 0) lineEnd = all.length
+        return all.substring(lineStart, lineEnd).replace(LINE_BREAKS, " ").trim() to lineNumber
+    }
+
     override suspend fun findMatches(
         query: String,
         limit: Int,
@@ -291,6 +404,9 @@ class PdfiumPageRenderer private constructor(
          * zero tolerance makes the feature feel broken.
          */
         private const val TOUCH_TOLERANCE_FRACTION = 0.012
+
+        /** PDFium reports page line breaks as CR, LF or both. */
+        private val LINE_BREAKS = Regex("[\\r\\n]+")
 
         /**
          * Whether a character belongs to a word, for Catalan.

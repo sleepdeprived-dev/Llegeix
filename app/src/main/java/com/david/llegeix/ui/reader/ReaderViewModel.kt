@@ -10,9 +10,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
+import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.source.LibraryDataRepository
 import android.graphics.RectF
+import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.PdfPageRenderer
@@ -36,20 +38,45 @@ import kotlinx.coroutines.launch
 /** How far a tap-and-hold lookup has got. */
 enum class LookupStatus { LOOKING_UP, DOWNLOADING_MODEL, READY, FAILED }
 
+/** One word of a selected phrase, glossed on its own. */
+data class WordGloss(
+    val word: String,
+    val ipa: String,
+    val translation: String? = null,
+)
+
 /**
- * A word the user pressed and held, plus whatever is known about it so far.
+ * What the reader pressed and held, plus whatever is known about it so far.
+ *
+ * Covers one word and a dragged phrase alike: a phrase is the same thing with
+ * more than one word in it, so [words] carries the per-word breakdown that makes
+ * a phrase readable rather than just translated.
+ *
  * [boundsPx] is in the coordinate space of the rendered page bitmap.
  */
 data class WordLookup(
-    val word: String,
+    val text: String,
     val pageIndex: Int,
-    val boundsPx: RectF,
+    val boundsPx: List<RectF>,
+    /** The line it came from, which is what makes the sense recoverable. */
+    val context: String = "",
+    val lineNumber: Int = 1,
+    val ipa: String = "",
+    /** True when the stressed vowel's aperture had to be guessed. */
+    val isIpaApproximate: Boolean = false,
     val status: LookupStatus = LookupStatus.LOOKING_UP,
     val translation: String? = null,
+    /** Per-word gloss, only worth showing for a phrase. */
+    val words: List<WordGloss> = emptyList(),
+    /** The line translated, so the phrase can be read in place. */
+    val contextTranslation: String? = null,
+    val isSaved: Boolean = false,
     val error: UiText? = null,
     /** True once a Wi-Fi-only download has failed, so retrying is worth offering. */
     val canRetryOnAnyNetwork: Boolean = false,
-)
+) {
+    val isPhrase: Boolean get() = words.size > 1
+}
 
 /** The find-in-document bar and whatever it has turned up so far. */
 data class SearchState(
@@ -309,21 +336,26 @@ class ReaderViewModel(
      * Coordinates arrive in bitmap pixels, which is the space the page was drawn
      * in, so the UI never has to reason about PDF user space.
      */
-    fun onWordPressed(
+    fun onSelection(
         pageIndex: Int,
-        xPx: Float,
-        yPx: Float,
+        startXPx: Float,
+        startYPx: Float,
+        endXPx: Float,
+        endYPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
     ) {
         lookupJob?.cancel()
         lookupJob = viewModelScope.launch {
             val active = renderer ?: return@launch
-            val word = runCatchingCancellable {
-                active.wordAt(pageIndex, xPx, yPx, renderedWidthPx, renderedHeightPx)
+            val selection = runCatchingCancellable {
+                active.selectionBetween(
+                    pageIndex, startXPx, startYPx, endXPx, endYPx,
+                    renderedWidthPx, renderedHeightPx,
+                )
             }.getOrNull()
 
-            if (word == null) {
+            if (selection == null) {
                 // Almost always a scanned page: pixels, no text layer.
                 _uiState.update {
                     it.copy(
@@ -334,19 +366,55 @@ class ReaderViewModel(
                 return@launch
             }
 
+            val pronunciation = CatalanIpa.transcribe(selection.text)
+            val pieces = selection.text.split(WORD_SPLIT).filter { it.isNotBlank() }
+            val saved = libraryData.findWordBookmark(selection.text, uriString, pageIndex) != null
+
             _uiState.update {
                 it.copy(
                     lookupHint = null,
                     lookup = WordLookup(
-                        word = word.text,
+                        text = selection.text,
                         pageIndex = pageIndex,
-                        boundsPx = word.boundsPx,
+                        boundsPx = selection.boundsPx,
+                        context = selection.lineText,
+                        lineNumber = selection.lineNumber,
+                        ipa = pronunciation.ipa,
+                        isIpaApproximate = pronunciation.isApproximate,
+                        words = pieces.map { piece ->
+                            WordGloss(piece, CatalanIpa.transcribe(piece).ipa)
+                        },
+                        isSaved = saved,
                         status = LookupStatus.LOOKING_UP,
                     ),
                 )
             }
-            translate(word.text)
+            translate(selection.text)
         }
+    }
+
+    /**
+     * Save or unsave the selection.
+     *
+     * Everything that makes it learnable is copied in at save time — the
+     * translation, the pronunciation, the line, and where it was found — so the
+     * entry stands on its own even if the PDF is later gone.
+     */
+    fun onToggleWordBookmark() = viewModelScope.launch {
+        val lookup = _uiState.value.lookup ?: return@launch
+        val saved = libraryData.toggleWordBookmark(
+            WordBookmarkEntity(
+                word = lookup.text,
+                translation = lookup.translation,
+                ipa = lookup.ipa,
+                context = lookup.context,
+                documentUri = uriString,
+                displayName = _uiState.value.title,
+                pageIndex = lookup.pageIndex,
+                lineNumber = lookup.lineNumber,
+            ),
+        )
+        updateLookup { it.copy(isSaved = saved) }
     }
 
     /**
@@ -357,7 +425,7 @@ class ReaderViewModel(
      * feature at all — so the failure state offers a way through.
      */
     fun onRetryOnAnyNetwork() {
-        val word = _uiState.value.lookup?.word ?: return
+        val word = _uiState.value.lookup?.text ?: return
         lookupJob?.cancel()
         lookupJob = viewModelScope.launch {
             updateLookup { it.copy(status = LookupStatus.LOOKING_UP, error = null) }
@@ -392,6 +460,7 @@ class ReaderViewModel(
                 updateLookup {
                     it.copy(status = LookupStatus.READY, translation = translation)
                 }
+                glossParts()
             }
             .onFailure { error ->
                 updateLookup {
@@ -401,6 +470,32 @@ class ReaderViewModel(
                     )
                 }
             }
+    }
+
+    /**
+     * Fill in the per-word gloss and the translated line.
+     *
+     * Done after the phrase itself so the answer appears immediately and the
+     * breakdown fills in behind it. This is a structural reading of the
+     * selection, not an explanation: it says what each word means and what the
+     * line around it says, which is what can honestly be done on-device.
+     */
+    private suspend fun glossParts() {
+        val lookup = _uiState.value.lookup ?: return
+        if (lookup.isPhrase) {
+            val glossed = lookup.words.map { gloss ->
+                val translated = runCatchingCancellable {
+                    translator.translate(gloss.word)
+                }.getOrNull()
+                gloss.copy(translation = translated)
+            }
+            updateLookup { it.copy(words = glossed) }
+        }
+        val context = lookup.context
+        if (context.isNotBlank() && context != lookup.text) {
+            val translated = runCatchingCancellable { translator.translate(context) }.getOrNull()
+            updateLookup { it.copy(contextTranslation = translated) }
+        }
     }
 
     /** Apply an edit to the current lookup, if one is still open. */
@@ -456,6 +551,9 @@ class ReaderViewModel(
 
     companion object {
         private const val CACHE_SIZE = 6
+
+        /** Splits a selected phrase into words, on spaces and punctuation. */
+        private val WORD_SPLIT = Regex("[^\\p{L}·'\u2019]+")
         private const val SEARCH_DEBOUNCE_MS = 300L
         private val ZOOM_STEPS = listOf(1f, 1.5f, 2f, 3f)
         const val MIN_ZOOM = 1f

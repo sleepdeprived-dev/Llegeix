@@ -147,9 +147,6 @@ fun FoldersScreen(
                         folder = folder,
                         onClick = { onOpenFolder(folder.id, folder.name) },
                         onTogglePinned = { viewModel.setPinned(folder.id, !folder.isPinned) },
-                        onToggleBookmarked = {
-                            viewModel.setBookmarked(folder.id, !folder.isBookmarked)
-                        },
                         onPickColor = { colorPickerFor = folder },
                         onRename = { renameTarget = folder },
                         onDelete = { pendingDelete = folder.id },
@@ -270,7 +267,6 @@ private fun FolderRow(
     folder: FolderWithCount,
     onClick: () -> Unit,
     onTogglePinned: () -> Unit,
-    onToggleBookmarked: () -> Unit,
     onPickColor: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -298,16 +294,6 @@ private fun FolderRow(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(folder.name, style = MaterialTheme.typography.bodyLarge)
-                if (folder.isBookmarked) {
-                    Icon(
-                        imageVector = Icons.Filled.Star,
-                        contentDescription = stringResource(R.string.document_bookmarked),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .padding(start = 6.dp)
-                            .size(16.dp),
-                    )
-                }
             }
             Text(
                 text = listOfNotNull(
@@ -354,21 +340,6 @@ private fun FolderRow(
                         )
                     },
                     onClick = { onTogglePinned(); menuOpen = false },
-                )
-                DropdownMenuItem(
-                    leadingIcon = { MenuEmoji(if (folder.isBookmarked) "💔" else "⭐") },
-                    text = {
-                        Text(
-                            stringResource(
-                                if (folder.isBookmarked) {
-                                    R.string.document_remove_bookmark
-                                } else {
-                                    R.string.folders_bookmark
-                                },
-                            ),
-                        )
-                    },
-                    onClick = { onToggleBookmarked(); menuOpen = false },
                 )
                 DropdownMenuItem(
                     leadingIcon = { MenuEmoji("🎨") },
