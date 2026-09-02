@@ -10,6 +10,7 @@ import com.david.llegeix.data.settings.AppLanguage
 import com.david.llegeix.data.settings.AppSettings
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.ThemeMode
+import com.david.llegeix.data.settings.TranslationTarget
 import kotlinx.coroutines.flow.StateFlow
 
 class SettingsViewModel(
@@ -23,6 +24,10 @@ class SettingsViewModel(
     fun onAccentChange(accent: AccentColor) = settingsRepository.setAccent(accent)
 
     fun onLanguageChange(language: AppLanguage) = settingsRepository.setLanguage(language)
+
+    /** Which language a tapped word is translated into. */
+    fun onTranslationTargetChange(target: TranslationTarget) =
+        settingsRepository.setTranslationTarget(target)
 
     /** Applies the mixed colour and selects it in one step. */
     fun onCustomAccentChange(argb: Int) = settingsRepository.setCustomAccent(argb)

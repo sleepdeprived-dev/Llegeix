@@ -30,8 +30,8 @@ android {
         applicationId = "com.david.llegeix"
         minSdk = 31
         targetSdk = 37
-        versionCode = 10
-        versionName = "1.9"
+        versionCode = 11
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -61,6 +61,15 @@ android {
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = true
+        }
+    }
+
+    bundle {
+        // Play would otherwise ship only the device's own locale, and the app
+        // switches language itself (createConfigurationContext in AppLocale),
+        // so a Catalan string has to be present on an English phone.
+        language {
+            enableSplit = false
         }
     }
 

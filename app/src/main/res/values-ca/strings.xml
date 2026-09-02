@@ -169,7 +169,9 @@
     <string name="library_view_list">Vista de llista</string>
 
     <!-- Consulta de paraules -->
-    <string name="lookup_direction">Català → anglès</string>
+    <string name="lookup_target_english">anglès</string>
+    <string name="lookup_target_romanian">romanès</string>
+    <string name="lookup_direction">Català → %1$s</string>
     <string name="lookup_translating">S\'està traduint…</string>
     <string name="lookup_downloading_title">S\'està baixant el model d\'idioma català…</string>
     <string name="lookup_downloading_body">És una baixada única per Wi-Fi. Després les consultes són fora de línia i instantànies.</string>
@@ -208,6 +210,28 @@
     <!-- Senyera -->
     <string name="senyera_content_description">La senyera, la bandera catalana</string>
 
+    <!-- Idioma de la traducció -->
+    <string name="settings_translation">Tradueix a</string>
+
+    <!-- Privadesa -->
+    <string name="settings_privacy">Privadesa</string>
+    <string name="settings_privacy_open">Política de privadesa</string>
+    <string name="settings_privacy_summary">El Llegeix no recull res.</string>
+    <string name="privacy_title">Política de privadesa</string>
+    <string name="privacy_body">El Llegeix no recull cap dada teva. Cap ni una.\n\nNo hi ha analítica, ni informes d\'error, ni publicitat, ni comptes. Res del que fas a l\'aplicació s\'envia enlloc, i no hi ha cap servidor seu on enviar-ho.\n\nTot el que l\'aplicació recorda — les carpetes, les etiquetes, els marcadors, les paraules desades, per on vas llegint i la configuració — es desa només en aquest dispositiu, a l\'emmagatzematge privat de l\'aplicació. Si la desinstal·les, tot això s\'esborra.\n\nEls teus PDF es llegeixen d\'allà on ja són al dispositiu. No es copien mai, ni es pugen enlloc, ni els obre res més que aquesta aplicació.\n\nL\'únic moment en què l\'aplicació fa servir internet és per baixar els models de traducció d\'ML Kit de Google, un cop per idioma, perquè tocar una paraula la pugui traduir. Aquesta petició va a Google i està subjecta a la política de privadesa de Google; l\'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot fora de línia.\n\nL\'aplicació demana permís per llegir fitxers per poder trobar els teus PDF, i accés a la xarxa només per a aquesta baixada de models.</string>
+    <string name="privacy_updated">Darrera actualització: 2 de setembre del 2026</string>
+
+    <!-- Vistos recentment -->
+    <string name="recent_remove">Treu de recents</string>
+    <string name="recent_remove_title">Vols treure %1$s?</string>
+    <string name="recent_remove_body">Desapareixerà de Vistos recentment. El PDF es queda al dispositiu.</string>
+
+    <!-- Paraules desades -->
+    <string name="words_search">Cerca paraules</string>
+    <string name="words_sort_recent">Més recents primer</string>
+    <string name="words_sort_alphabetical">De la A a la Z</string>
+    <string name="words_none_match">Cap paraula desada coincideix amb \"%1$s\".</string>
+
     <!-- Configuració -->
     <string name="settings_title">Configuració</string>
     <string name="settings_appearance">Aparença</string>
@@ -236,8 +260,7 @@
     <string name="settings_accent_blue">Blau</string>
     <string name="settings_accent_purple">Lila</string>
     <string name="settings_accent_selected">%1$s, seleccionat</string>
-    <string name="settings_language">Idioma</string>
-    <string name="settings_language_summary">Només s\'aplica a l\'aplicació. En canviar-lo, la pantalla es torna a carregar.</string>
+    <string name="settings_language">Llengua de l\'aplicació</string>
     <string name="settings_about">Quant a</string>
     <string name="settings_version">Versió %1$s</string>
 

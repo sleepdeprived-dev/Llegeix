@@ -12,7 +12,10 @@ import com.david.llegeix.data.db.dao.PageBookmark
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.source.LibraryDataRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -49,6 +52,46 @@ class BookmarksViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun removeWord(id: Long) = viewModelScope.launch { libraryData.removeWordBookmark(id) }
+
+    private val _wordQuery = MutableStateFlow("")
+    val wordQuery: StateFlow<String> = _wordQuery.asStateFlow()
+
+    private val _wordsAlphabetical = MutableStateFlow(false)
+    val wordsAlphabetical: StateFlow<Boolean> = _wordsAlphabetical.asStateFlow()
+
+    fun onWordQueryChange(query: String) {
+        _wordQuery.value = query
+    }
+
+    fun onToggleWordSort() {
+        _wordsAlphabetical.value = !_wordsAlphabetical.value
+    }
+
+    /**
+     * Saved words, filtered and ordered for the screen.
+     *
+     * The search looks at the translation and the surrounding line as well as
+     * the word: a reader hunting for something they saved is as likely to
+     * remember the English or the sentence as the Catalan itself.
+     */
+    val visibleWords: StateFlow<List<WordBookmarkEntity>> =
+        combine(savedWords, _wordQuery, _wordsAlphabetical) { words, query, alphabetical ->
+            val needle = query.trim()
+            val matched = if (needle.isEmpty()) {
+                words
+            } else {
+                words.filter {
+                    it.word.contains(needle, ignoreCase = true) ||
+                        it.translation?.contains(needle, ignoreCase = true) == true ||
+                        it.context?.contains(needle, ignoreCase = true) == true
+                }
+            }
+            if (alphabetical) {
+                matched.sortedBy { it.word.lowercase() }
+            } else {
+                matched
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Tags keyed by document, so bookmark rows match the library's. */
     val tagsByDocument: StateFlow<Map<String, List<DocumentTag>>> =

@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
+import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.pdf.DEFAULT_PAGE_ASPECT_RATIO
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.ui.common.EmptyState
@@ -300,6 +301,7 @@ fun ReaderScreen(
     state.lookup?.let { lookup ->
         WordLookupSheet(
             lookup = lookup,
+            target = state.translationTarget,
             onDismiss = viewModel::onDismissLookup,
             onRetryOnAnyNetwork = viewModel::onRetryOnAnyNetwork,
             onToggleSaved = viewModel::onToggleWordBookmark,
@@ -788,6 +790,7 @@ private fun emitSelection(
 @Composable
 private fun WordLookupSheet(
     lookup: WordLookup,
+    target: TranslationTarget,
     onDismiss: () -> Unit,
     onRetryOnAnyNetwork: () -> Unit,
     onToggleSaved: () -> Unit,
@@ -806,7 +809,10 @@ private fun WordLookupSheet(
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.lookup_direction),
+                        text = stringResource(
+                            R.string.lookup_direction,
+                            stringResource(target.directionRes),
+                        ),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )

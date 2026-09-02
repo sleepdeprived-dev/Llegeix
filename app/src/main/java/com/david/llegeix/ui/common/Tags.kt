@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -194,6 +195,8 @@ fun TagPickerDialog(
 ) {
     var newName by remember { mutableStateOf("") }
     var colorIndex by remember { mutableIntStateOf(0) }
+    var newPaletteOpen by remember { mutableStateOf(false) }
+    val pickColourLabel = stringResource(R.string.tags_pick_colour)
     // Which existing tag has its palette open, if any.
     var recolouring by remember { mutableStateOf<TagEntity?>(null) }
 
@@ -237,25 +240,57 @@ fun TagPickerDialog(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.padding(top = Space.lg),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(vertical = Space.lg),
+                )
+
+                // The colour dot used to cycle silently on tap, so the only way
+                // to find a colour was to keep tapping and watch. It opens the
+                // same palette the existing tags use, which also makes the new
+                // row and the rows above it behave identically.
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(28.dp)
                             .clip(CircleShape)
-                            .background(Color(TagPalette[colorIndex]))
-                            .clickable { colorIndex = (colorIndex + 1) % TagPalette.size },
-                    )
+                            .clickable { newPaletteOpen = !newPaletteOpen }
+                            .semantics { contentDescription = pickColourLabel },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(Color(TagPalette[colorIndex]))
+                                .border(
+                                    width = if (newPaletteOpen) 2.dp else 0.dp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    shape = CircleShape,
+                                ),
+                        )
+                    }
                     OutlinedTextField(
                         value = newName,
                         onValueChange = { newName = it },
                         label = { Text(stringResource(R.string.tags_new_name)) },
                         singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(1f)
                             .padding(start = Space.md),
+                    )
+                }
+
+                if (newPaletteOpen) {
+                    ColourPalette(
+                        selected = TagPalette[colorIndex],
+                        onPick = { argb ->
+                            colorIndex = TagPalette.indexOf(argb).coerceAtLeast(0)
+                            newPaletteOpen = false
+                        },
+                        modifier = Modifier.padding(start = Space.xl, top = Space.md),
                     )
                 }
             }
@@ -358,37 +393,51 @@ private fun TagRow(
         }
 
         if (paletteOpen) {
-            // The fixed palette only. A tag is a glance-level marker in a list;
-            // the hex mixer belongs to the app's accent, where one colour is
-            // worth fussing over.
-            Row(
+            ColourPalette(
+                selected = tag.colorArgb,
+                onPick = onPickColour,
+                modifier = Modifier.padding(start = Space.xl, bottom = Space.sm),
+            )
+        }
+    }
+}
+
+/**
+ * The colours a tag can be.
+ *
+ * The fixed palette only — no hex mixer. A tag is a glance-level marker in a
+ * list, and the one colour worth fussing over is the app's own accent. Shared
+ * by the existing tags and the new-tag row so both behave the same way.
+ */
+@Composable
+private fun ColourPalette(
+    selected: Int,
+    onPick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val label = stringResource(R.string.tags_pick_colour)
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Space.sm),
+    ) {
+        TagPalette.forEach { argb ->
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = Space.xl, bottom = Space.sm),
-                horizontalArrangement = Arrangement.spacedBy(Space.sm),
-            ) {
-                TagPalette.forEach { argb ->
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(Color(argb))
-                            .border(
-                                width = if (argb == tag.colorArgb) 2.dp else 1.dp,
-                                color = if (argb == tag.colorArgb) {
-                                    MaterialTheme.colorScheme.onSurface
-                                } else {
-                                    MaterialTheme.colorScheme.outlineVariant
-                                },
-                                shape = CircleShape,
-                            )
-                            .clickable { onPickColour(argb) }
-                            .semantics {
-                                contentDescription = pickColourLabel
-                            },
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(Color(argb))
+                    .border(
+                        width = if (argb == selected) 2.dp else 1.dp,
+                        color = if (argb == selected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        },
+                        shape = CircleShape,
                     )
-                }
-            }
+                    .clickable { onPick(argb) }
+                    .semantics { contentDescription = label },
+            )
         }
     }
 }

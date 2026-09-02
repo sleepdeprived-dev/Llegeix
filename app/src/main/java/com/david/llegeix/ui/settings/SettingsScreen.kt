@@ -3,6 +3,7 @@ package com.david.llegeix.ui.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -20,7 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,12 +56,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.AppLanguage
+import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.settings.ThemeMode
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.theme.hslColor
@@ -82,6 +88,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     var showColorPicker by remember { mutableStateOf(false) }
+    var showPrivacy by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -148,12 +155,42 @@ fun SettingsScreen(
                     current = settings.language,
                     onChoose = viewModel::onLanguageChange,
                 )
-                Text(
-                    text = stringResource(R.string.settings_language_summary),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Space.lg),
+
+                Spacer(modifier = Modifier.height(Space.xl))
+                FieldLabel(stringResource(R.string.settings_translation))
+                TranslationPicker(
+                    current = settings.translationTarget,
+                    onChoose = viewModel::onTranslationTargetChange,
                 )
+            }
+
+            SectionHeader(stringResource(R.string.settings_privacy))
+
+            SettingsCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPrivacy = true },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_privacy_open),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_privacy_summary),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = Space.xs),
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             SectionHeader(stringResource(R.string.settings_about))
@@ -162,6 +199,10 @@ fun SettingsScreen(
                 AboutRows()
             }
         }
+    }
+
+    if (showPrivacy) {
+        PrivacyDialog(onDismiss = { showPrivacy = false })
     }
 
     ColorPickerHost(
@@ -185,6 +226,38 @@ private fun ColorPickerHost(
     if (show) {
         ColorPickerDialog(initial = initial, onDismiss = onDismiss, onConfirm = onConfirm)
     }
+}
+
+/**
+ * The privacy policy, in full, in the app.
+ *
+ * Kept as text rather than a link to a web page: a policy you have to be online
+ * to read is a poor fit for an app whose whole point is working offline, and a
+ * link is one more place for the truth to drift from the code.
+ */
+@Composable
+private fun PrivacyDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.privacy_title)) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = stringResource(R.string.privacy_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = stringResource(R.string.privacy_updated),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.lg),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+        },
+    )
 }
 
 @Composable
@@ -223,24 +296,144 @@ private fun FieldLabel(text: String) {
     )
 }
 
+/**
+ * Four tiles rather than four segments in a row.
+ *
+ * A segmented control divides the width equally regardless of the words in it,
+ * so "Sistema" — the longest label and the default — was wrapping to two lines
+ * inside its segment and clipping. Shrinking the type would have fixed the
+ * symptom and made the control harder to read. A tile has room for its label
+ * and, more to the point, room to *show* what it does: each one previews its
+ * own background and text colour, so the choice is visible rather than named.
+ */
 @Composable
 private fun ThemePicker(current: ThemeMode, onChoose: (ThemeMode) -> Unit) {
-    // Short labels: three of them share one row, and "Follow the system"
-    // written out would force the control to wrap.
     val labels = mapOf(
         ThemeMode.SYSTEM to R.string.settings_theme_system_short,
         ThemeMode.LIGHT to R.string.settings_theme_light_short,
         ThemeMode.DARK to R.string.settings_theme_dark_short,
         ThemeMode.AMOLED to R.string.settings_theme_amoled_short,
     )
+    val systemIsDark = isSystemInDarkTheme()
+
+    Column(verticalArrangement = Arrangement.spacedBy(Space.md)) {
+        ThemeMode.entries.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
+                row.forEach { mode ->
+                    ThemeTile(
+                        label = stringResource(labels.getValue(mode)),
+                        preview = mode.previewColors(systemIsDark),
+                        selected = mode == current,
+                        onClick = { onChoose(mode) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The page and ink a mode produces, for the tile to show. */
+private fun ThemeMode.previewColors(systemIsDark: Boolean): Pair<Color, Color> = when {
+    this == ThemeMode.LIGHT -> Color(0xFFFCFCFC) to Color(0xFF14151A)
+    this == ThemeMode.DARK -> Color(0xFF1C1B20) to Color(0xFFE6E1E9)
+    this == ThemeMode.AMOLED -> Color.Black to Color(0xFFEDEDED)
+    systemIsDark -> Color(0xFF1C1B20) to Color(0xFFE6E1E9)
+    else -> Color(0xFFFCFCFC) to Color(0xFF14151A)
+}
+
+@Composable
+private fun ThemeTile(
+    label: String,
+    preview: Pair<Color, Color>,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val (page, ink) = preview
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant
+                },
+                shape = RoundedCornerShape(14.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(Space.md),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // A scrap of page with two lines of text on it.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(34.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(page)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(
+                    Modifier
+                        .width(38.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(ink),
+                )
+                Box(
+                    Modifier
+                        .width(24.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(ink.copy(alpha = 0.55f)),
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.padding(top = Space.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .padding(end = 2.dp),
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TranslationPicker(
+    current: TranslationTarget,
+    onChoose: (TranslationTarget) -> Unit,
+) {
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        ThemeMode.entries.forEachIndexed { index, mode ->
+        TranslationTarget.entries.forEachIndexed { index, target ->
             SegmentedButton(
-                selected = mode == current,
-                onClick = { onChoose(mode) },
-                shape = SegmentedButtonDefaults.itemShape(index, ThemeMode.entries.size),
+                selected = target == current,
+                onClick = { onChoose(target) },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index,
+                    TranslationTarget.entries.size,
+                ),
             ) {
-                Text(stringResource(labels.getValue(mode)))
+                Text(stringResource(target.labelRes))
             }
         }
     }

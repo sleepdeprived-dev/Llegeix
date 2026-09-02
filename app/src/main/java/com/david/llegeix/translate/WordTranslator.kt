@@ -12,7 +12,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * On-device Catalan to English lookup, via ML Kit Translate.
+ * On-device Catalan lookup, via ML Kit Translate.
  *
  * Catalan is genuinely supported: `TranslateLanguage.CATALAN` ("ca") is present
  * in the shipped artifact, which is what this was checked against rather than
@@ -24,8 +24,8 @@ import kotlin.coroutines.resumeWithException
  * rather than leaving the user staring at a spinner.
  */
 class WordTranslator(
+    val targetLanguage: String = TranslateLanguage.ENGLISH,
     sourceLanguage: String = TranslateLanguage.CATALAN,
-    targetLanguage: String = TranslateLanguage.ENGLISH,
 ) : AutoCloseable {
 
     private val translator = Translation.getClient(

@@ -1,8 +1,0 @@
-<!-- Material "view_list". Local vector rather than the extended icon artifact. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp"
-    android:viewportWidth="24" android:viewportHeight="24"
-    android:autoMirrored="true">
-    <path android:fillColor="@android:color/white"
-        android:pathData="M3,5h4v4H3V5zM9,5h12v4H9V5zM3,10h4v4H3V10zM9,10h12v4H9V10zM3,15h4v4H3V15zM9,15h12v4H9V15z" />
-</vector>

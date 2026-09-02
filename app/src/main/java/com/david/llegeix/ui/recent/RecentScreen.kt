@@ -1,5 +1,7 @@
 package com.david.llegeix.ui.recent
 
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.settings.LibraryLayout
+import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuEmoji
@@ -54,7 +59,7 @@ import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.pdfTitle
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun RecentScreen(
     onOpenDocument: (uriString: String, title: String) -> Unit,
@@ -65,6 +70,8 @@ fun RecentScreen(
     val layout by viewModel.layout.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
+    // Which entry the reader is holding, if any.
+    var pendingRemoval by remember { mutableStateOf<RecentDocument?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -149,9 +156,12 @@ fun RecentScreen(
                     Column(
                         modifier = Modifier
                             .clip(RoundedCornerShape(14.dp))
-                            .clickable {
-                                onOpenDocument(recent.uriString, recent.displayName)
-                            }
+                            .combinedClickable(
+                                onClick = {
+                                    onOpenDocument(recent.uriString, recent.displayName)
+                                },
+                                onLongClick = { pendingRemoval = recent },
+                            )
                             .padding(Space.sm),
                     ) {
                         PdfCover(
@@ -189,9 +199,15 @@ fun RecentScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                onOpenDocument(recent.uriString, recent.displayName)
-                            }
+                            // Hold to remove. A row of X buttons would put a
+                            // destructive control next to every entry in a list
+                            // whose whole purpose is being tapped quickly.
+                            .combinedClickable(
+                                onClick = {
+                                    onOpenDocument(recent.uriString, recent.displayName)
+                                },
+                                onLongClick = { pendingRemoval = recent },
+                            )
                             .padding(
                                 start = Space.screen,
                                 end = Space.screen,
@@ -236,5 +252,29 @@ fun RecentScreen(
                 }
             }
         }
+    }
+
+    pendingRemoval?.let { recent ->
+        val title = pdfTitle(recent.displayName)
+        AlertDialog(
+            onDismissRequest = { pendingRemoval = null },
+            title = { Text(stringResource(R.string.recent_remove_title, title)) },
+            text = { Text(stringResource(R.string.recent_remove_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.remove(recent.uriString)
+                        pendingRemoval = null
+                    },
+                ) {
+                    Text(stringResource(R.string.recent_remove))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoval = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 }

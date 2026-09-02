@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SettingsRepository
+import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
 import android.graphics.RectF
 import com.david.llegeix.lang.CatalanIpa
@@ -113,6 +114,8 @@ data class ReaderUiState(
     val invertPages: Boolean = false,
     /** Page magnification, driven by pinch, double tap, or the zoom button. */
     val zoom: Float = 1f,
+    /** Named in the sheet's "Catalan → …" line. */
+    val translationTarget: TranslationTarget = TranslationTarget.Default,
 ) {
     /** The filename trimmed for the app bar. */
     val displayTitle: String get() = pdfTitle(title)
@@ -138,7 +141,12 @@ class ReaderViewModel(
 
     private var renderer: PdfPageRenderer? = null
 
-    private val translator = WordTranslator()
+    /**
+     * Rebuilt when the target language changes: an ML Kit translator is bound to
+     * its language pair at construction, so switching target means a new one.
+     * The old one is closed, since each holds a native model handle.
+     */
+    private var translator = WordTranslator(settings.current.translationTarget.code)
 
     private var lookupJob: Job? = null
 
@@ -156,7 +164,16 @@ class ReaderViewModel(
         observeStoredState()
         viewModelScope.launch {
             settings.settings.collect { current ->
-                _uiState.update { it.copy(invertPages = current.invertPages) }
+                _uiState.update {
+                    it.copy(
+                        invertPages = current.invertPages,
+                        translationTarget = current.translationTarget,
+                    )
+                }
+                if (translator.targetLanguage != current.translationTarget.code) {
+                    translator.close()
+                    translator = WordTranslator(current.translationTarget.code)
+                }
             }
         }
     }

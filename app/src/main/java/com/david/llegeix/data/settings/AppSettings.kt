@@ -76,6 +76,32 @@ enum class AppLanguage(val tag: String, @param:StringRes val labelRes: Int) {
     }
 }
 
+/**
+ * The language a tapped word is translated into.
+ *
+ * English is the default because that is what the app was built around, but the
+ * reader is not necessarily an English speaker — someone learning Catalan from
+ * Romanian is served badly by being routed through a third language. Both are
+ * listed in their own language, so the choice is readable whichever is active.
+ */
+enum class TranslationTarget(
+    val code: String,
+    @param:StringRes val labelRes: Int,
+    /** Named inside the sentence "Catalan → …", so it inflects with the UI. */
+    @param:StringRes val directionRes: Int,
+) {
+    ENGLISH("en", R.string.settings_translation_english, R.string.lookup_target_english),
+    ROMANIAN("ro", R.string.settings_translation_romanian, R.string.lookup_target_romanian),
+    ;
+
+    companion object {
+        val Default: TranslationTarget = ENGLISH
+
+        fun fromCode(code: String?): TranslationTarget =
+            entries.firstOrNull { it.code == code } ?: Default
+    }
+}
+
 /** Whether documents are listed as rows or as a grid of covers. */
 enum class LibraryLayout(val key: String) {
     LIST("list"),
@@ -95,6 +121,7 @@ data class AppSettings(
     val accent: AccentColor = AccentColor.SYSTEM,
     val language: AppLanguage = AppLanguage.Default,
     val libraryLayout: LibraryLayout = LibraryLayout.LIST,
+    val translationTarget: TranslationTarget = TranslationTarget.Default,
     /**
      * Inverts the rendered page so a white PDF reads as light-on-dark.
      *

@@ -239,7 +239,7 @@ fun LibraryScreen(
                         // it. The bar, the field and the filters were three
                         // stacked objects in the top fifth of the screen with
                         // nothing between them.
-                        .padding(top = Space.lg, bottom = Space.lg),
+                        .padding(top = Space.xxl, bottom = Space.lg),
                 )
 
                 LibraryFilterRow(
