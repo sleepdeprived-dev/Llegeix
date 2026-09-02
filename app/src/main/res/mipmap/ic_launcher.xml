@@ -4,10 +4,16 @@
     <!--
         A raster foreground, deliberately. The artwork is a rendered illustration
         with shading and bevels that no hand-written vector would reproduce
-        honestly. What made the previous raster icon look like a sticker was not
-        the format but the framing: it filled its canvas, so every launcher mask
-        cut into it. These are generated at ~62% of the canvas, inside the safe
-        zone, so nothing can crop the book.
+        honestly.
+
+        The framing is the part that has to be right. A launcher shows the
+        middle 72dp of this 108dp canvas and chooses the shape of the hole
+        itself. The book used to stand 85dp tall — this file once claimed 62%
+        and had never been generated that way — so a Pixel's round mask took
+        the covers, the spine and the page edges and left a rose on some
+        stripes. It is 56dp now: the largest the book can be and still arrive
+        whole through a circle, with the charcoal reading as a ring around it
+        instead of as four leftover corners.
     -->
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
     <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
