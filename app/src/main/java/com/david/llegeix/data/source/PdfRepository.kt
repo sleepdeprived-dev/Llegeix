@@ -1,6 +1,7 @@
 package com.david.llegeix.data.source
 
 import android.content.Context
+import com.david.llegeix.data.settings.SettingsRepository
 import android.net.Uri
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.data.model.PdfOrigin
@@ -32,17 +33,28 @@ class PdfRepository(
     private val safSource: SafPdfSource,
     private val deviceSource: MediaStorePdfSource,
     private val pickedFileSource: PickedFilePdfSource,
+    /**
+     * Consulted only for whether the reader wants the whole-device sweep run.
+     * Null in tests, where the sweep is always allowed to run.
+     */
+    private val settings: SettingsRepository? = null,
 ) {
 
-    constructor(context: Context) : this(
+    constructor(context: Context, settings: SettingsRepository) : this(
         SafPdfSource(context.applicationContext),
         MediaStorePdfSource(context.applicationContext),
         PickedFilePdfSource(context.applicationContext),
+        settings,
     )
 
     fun grantedFolders(): List<GrantedFolder> = safSource.grantedFolders()
 
-    fun isDeviceScanEnabled(): Boolean = deviceSource.isAvailable()
+    /** Whether Android currently allows the whole-device sweep at all. */
+    fun isDeviceScanPermitted(): Boolean = deviceSource.isAvailable()
+
+    /** Whether the sweep is both permitted and switched on. */
+    fun isDeviceScanEnabled(): Boolean =
+        isDeviceScanPermitted() && settings?.current?.deviceScanOptOut != true
 
     fun addFolder(treeUri: Uri) = safSource.persistGrant(treeUri)
 
@@ -60,7 +72,9 @@ class PdfRepository(
      */
     suspend fun loadLibrary(): LibrarySnapshot = coroutineScope {
         val fromFolders = async { safSource.findPdfs() }
-        val fromDevice = async { deviceSource.findPdfs() }
+        val fromDevice = async {
+            if (isDeviceScanEnabled()) deviceSource.findPdfs() else emptyList()
+        }
         val fromPicked = async { pickedFileSource.findPdfs() }
 
         val merged = mergePdfDocuments(
@@ -70,7 +84,7 @@ class PdfRepository(
         LibrarySnapshot(
             documents = merged,
             grantedFolders = safSource.grantedFolders(),
-            deviceScanEnabled = deviceSource.isAvailable(),
+            deviceScanEnabled = isDeviceScanEnabled(),
         )
     }
 }

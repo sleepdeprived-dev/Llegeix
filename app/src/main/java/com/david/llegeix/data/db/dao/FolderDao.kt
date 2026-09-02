@@ -58,4 +58,8 @@ interface FolderDao {
 
     @Query("UPDATE folders SET colorArgb = :color WHERE id = :folderId")
     suspend fun setColor(folderId: Long, color: Int?)
+
+    /** Empties the table, for the "erase everything" action in Configuració. */
+    @Query("DELETE FROM folders")
+    suspend fun clear()
 }

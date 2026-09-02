@@ -8,6 +8,7 @@ import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.db.MIGRATION_1_2
 import com.david.llegeix.data.db.MIGRATION_2_3
 import com.david.llegeix.data.db.MIGRATION_3_4
+import com.david.llegeix.data.db.MIGRATION_4_5
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -230,6 +231,49 @@ class MigrationTest {
         db.query("SELECT COUNT(*) FROM document_tags").use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals(0, cursor.getInt(0))
+        }
+    }
+
+    @Test
+    fun migrate4To5AddsFolderRulesAndKeepsEverythingElse() {
+        helper.createDatabase(TEST_DB, 4).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO documents
+                    (uriString, displayName, folderId, highlightColor, addedAt,
+                     isBookmarked, isReadLater)
+                VALUES ('content://test/1', 'princep.pdf', NULL, NULL, 200, 0, 0)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "INSERT INTO tags (name, colorArgb, createdAt) VALUES ('Historia', -1, 1)",
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 5, true, MIGRATION_4_5)
+
+        // The new table is usable, and it starts empty, which is what makes the
+        // upgrade invisible: no rules means every folder is still shown.
+        db.query("SELECT COUNT(*) FROM folder_rules").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        db.execSQL(
+            "INSERT INTO folder_rules (path, included) VALUES ('Documents/Feina', 0)",
+        )
+        db.query("SELECT included FROM folder_rules WHERE path = 'Documents/Feina'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals(0, it.getInt(0))
+        }
+
+        // Nothing from before the upgrade was disturbed.
+        db.query("SELECT displayName FROM documents").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("princep.pdf", cursor.getString(0))
+        }
+        db.query("SELECT name FROM tags").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Historia", cursor.getString(0))
         }
     }
 }

@@ -60,6 +60,23 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(invertPages = invert)
     }
 
+    /** Whether the whole-device sweep is switched off in Fonts. */
+    fun setDeviceScanOptOut(optOut: Boolean) {
+        prefs.edit { putBoolean(KEY_DEVICE_SCAN_OPT_OUT, optOut) }
+        _settings.value = read(prefs)
+    }
+
+    /**
+     * Put every preference back to its default.
+     *
+     * Part of "erase everything": a wipe that left the theme and the chosen
+     * language behind would not be the clean slate the dialog promises.
+     */
+    fun resetToDefaults() {
+        prefs.edit { clear() }
+        _settings.value = read(prefs)
+    }
+
     companion object {
         private const val PREFS_NAME = "llegeix.settings"
         private const val KEY_THEME = "theme_mode"
@@ -68,6 +85,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_LAYOUT = "library_layout"
         private const val KEY_TRANSLATION = "translation_target"
         private const val KEY_INVERT_PAGES = "invert_pages"
+        private const val KEY_DEVICE_SCAN_OPT_OUT = "device_scan_opt_out"
         private const val KEY_CUSTOM_ACCENT = "custom_accent"
 
         private fun preferences(context: Context): SharedPreferences =
@@ -79,6 +97,7 @@ class SettingsRepository(context: Context) {
             language = AppLanguage.fromTag(prefs.getString(KEY_LANGUAGE, null)),
             libraryLayout = LibraryLayout.fromKey(prefs.getString(KEY_LAYOUT, null)),
             translationTarget = TranslationTarget.fromCode(prefs.getString(KEY_TRANSLATION, null)),
+            deviceScanOptOut = prefs.getBoolean(KEY_DEVICE_SCAN_OPT_OUT, false),
             invertPages = prefs.getBoolean(KEY_INVERT_PAGES, false),
             customAccent = prefs.getInt(KEY_CUSTOM_ACCENT, DEFAULT_CUSTOM_ACCENT),
         )

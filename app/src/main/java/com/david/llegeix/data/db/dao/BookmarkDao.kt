@@ -62,4 +62,8 @@ interface BookmarkDao {
 
     @Query("UPDATE bookmarks SET label = :label WHERE id = :bookmarkId")
     suspend fun setLabel(bookmarkId: Long, label: String?)
+
+    /** Empties the table, for the "erase everything" action in Configuració. */
+    @Query("DELETE FROM bookmarks")
+    suspend fun clear()
 }

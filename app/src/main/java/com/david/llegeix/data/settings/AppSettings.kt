@@ -152,6 +152,16 @@ data class AppSettings(
      * different surfaces, and plenty of people want a dark interface around a
      * page that still looks like paper.
      */
+    /**
+     * Set when the reader has switched the whole-device sweep off in Fonts.
+     *
+     * Held apart from the permission because the two are different questions:
+     * Android says whether the app *may* sweep the phone, this says whether it
+     * *should*. Erasing everything sets it, since an app cannot revoke its own
+     * all-files access and a library that refills itself two seconds after
+     * being emptied is not an erased library.
+     */
+    val deviceScanOptOut: Boolean = false,
     val invertPages: Boolean = false,
     /** ARGB for [AccentColor.CUSTOM]. Ignored by every other accent. */
     val customAccent: Int = DEFAULT_CUSTOM_ACCENT,

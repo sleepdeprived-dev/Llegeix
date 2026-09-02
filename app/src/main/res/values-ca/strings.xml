@@ -31,6 +31,13 @@
     <string name="library_sources">Fonts</string>
     <string name="library_sources_open">Fonts…</string>
     <string name="library_sources_body">On cerca els PDF, el Llegeix.</string>
+    <string name="sources_explainer">Tot el que mostra la biblioteca ve d\'aquí. Si desmarques una carpeta, l\'aplicació deixa de mostrar-la; no s\'esborra mai res del telèfon.</string>
+    <string name="sources_count">%1$d PDF</string>
+    <string name="sources_scan_paused">Desactivat. Els teus PDF es queden on són.</string>
+    <string name="sources_count_partial">Es mostren %1$d PDF de %2$d</string>
+    <string name="sources_remove_title">Vols deixar d\'utilitzar %1$s?</string>
+    <string name="sources_remove_body">L\'aplicació s\'oblida d\'aquesta carpeta i els PDF que conté desapareixen de la biblioteca. La carpeta i els fitxers es queden al telèfon.</string>
+    <string name="sources_remove_confirm">Deixa d\'utilitzar-la</string>
     <string name="library_device_scan_on">Actiu</string>
     <string name="library_device_scan_off">Cal accés a tots els fitxers</string>
     <string name="library_add_files">Afegeix fitxers PDF</string>
@@ -276,6 +283,13 @@
     <string name="settings_accent_purple">Lila</string>
     <string name="settings_accent_selected">%1$s, seleccionat</string>
     <string name="settings_language">Llengua de l\'aplicació</string>
+    <string name="settings_data">Dades</string>
+    <string name="settings_erase">Esborra-ho tot</string>
+    <string name="settings_erase_summary">Deixa l\'aplicació tal com estava el dia que la vas instal·lar.</string>
+    <string name="erase_title">Vols esborrar-ho tot?</string>
+    <string name="erase_body">Això buida la biblioteca, les carpetes, els marcadors, les paraules desades i les etiquetes, retorna totes les carpetes a què has donat accés a l\'aplicació, esborra els models de traducció baixats i torna totes les opcions al seu valor inicial. També desactiva l\'escaneig de tot el dispositiu, perquè la biblioteca no es torni a omplir tota sola; el pots tornar a activar a Fonts.\n\nEls teus PDF no es toquen. Es queden exactament on són al telèfon.\n\nAixò no es pot desfer.</string>
+    <string name="erase_confirm">Esborra-ho tot</string>
+    <string name="erase_running">S\'està esborrant\u2026</string>
     <string name="settings_about">Quant a</string>
     <string name="settings_credits_thesaurus">Les definicions provenen del Viccionari, el diccionari lliure en català, sota llicència CC BY-SA. Els sinònims provenen del Diccionari de sinònims de català de Jaume Ortolà i Softcatalà, sota llicència CC BY 4.0.</string>
     <string name="settings_version">Versió %1$s</string>

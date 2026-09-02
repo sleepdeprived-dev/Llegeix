@@ -60,4 +60,11 @@ interface TagDao {
 
     @Query("SELECT tagId FROM document_tags WHERE documentUri = :uriString")
     suspend fun tagIdsFor(uriString: String): List<Long>
+
+    /** Empties the table, for the "erase everything" action in Configuració. */
+    @Query("DELETE FROM document_tags")
+    suspend fun clearDocumentTags()
+
+    @Query("DELETE FROM tags")
+    suspend fun clearTags()
 }

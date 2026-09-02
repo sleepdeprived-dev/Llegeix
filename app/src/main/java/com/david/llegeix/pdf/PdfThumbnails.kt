@@ -75,4 +75,10 @@ class PdfThumbnails(private val context: Context) {
         /** PDFium opens are heavy; four at once keeps scrolling responsive. */
         const val MAX_CONCURRENT_OPENS = 4
     }
+
+    /** Drop every cached cover and every remembered failure. */
+    fun clear() {
+        cache.evictAll()
+        synchronized(failed) { failed.clear() }
+    }
 }

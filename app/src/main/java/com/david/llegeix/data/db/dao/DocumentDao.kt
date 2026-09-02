@@ -58,4 +58,8 @@ interface DocumentDao {
 
     @Query("UPDATE documents SET isReadLater = :readLater WHERE uriString = :uriString")
     suspend fun setReadLater(uriString: String, readLater: Boolean)
+
+    /** Empties the table, for the "erase everything" action in Configuració. */
+    @Query("DELETE FROM documents")
+    suspend fun clear()
 }

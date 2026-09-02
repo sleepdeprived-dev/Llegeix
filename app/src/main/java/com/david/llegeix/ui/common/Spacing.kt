@@ -29,11 +29,12 @@ object Space {
     /**
      * Height of the app bar, against Material's default of 64dp.
      *
-     * A 24dp icon with 8dp of air above and below. Going further would start
-     * clipping the glyphs themselves: the icon buttons keep their full 48dp
-     * touch target regardless — Compose reserves that independently of the
-     * visual size — so this is as short as the bar can look without becoming
-     * harder to hit than it looks.
+     * A 24dp icon with 12dp of air above and below. It was 40dp, which was
+     * genuinely too tight once the duplicated status-bar inset that had been
+     * inflating it was fixed — the bar finally measured what it claimed to, and
+     * what it claimed to was cramped. This is the same height as an icon
+     * button's touch target, so the bar is now exactly as tall as the things
+     * inside it need, and no taller.
      */
-    val topBar = 40.dp
+    val topBar = 48.dp
 }

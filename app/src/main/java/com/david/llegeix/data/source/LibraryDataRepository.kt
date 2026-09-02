@@ -10,6 +10,7 @@ import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.db.entity.RecentlyViewedEntity
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.DocumentTagEntity
+import com.david.llegeix.data.db.entity.FolderRuleEntity
 import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +33,7 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     private val recents = database.recentlyViewedDao()
     private val words = database.wordBookmarkDao()
     private val tags = database.tagDao()
+    private val folderRules = database.folderRuleDao()
 
     // --- Folders -----------------------------------------------------------
 
@@ -219,6 +221,44 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     suspend fun removeWordBookmark(id: Long) = words.deleteById(id)
 
     // ---- Tags -------------------------------------------------------------
+
+    // ---- Folder rules -----------------------------------------------------
+
+    fun observeFolderRules(): Flow<FolderRules> =
+        folderRules.observeAll().map { rows ->
+            FolderRules(rows.associate { it.path to it.included })
+        }
+
+    /** Record a decision about one folder, replacing any decision it had. */
+    suspend fun setFolderRule(path: String, included: Boolean) =
+        folderRules.upsert(FolderRuleEntity(path, included))
+
+    /** Forget this folder's own decision, so it follows the folder above it. */
+    suspend fun clearFolderRule(path: String) = folderRules.delete(path)
+
+    /** Forget a source's decisions, used when the source itself is given back. */
+    suspend fun clearFolderRules(prefix: String) = folderRules.deleteTree(prefix)
+
+    // ---- Erasing everything ------------------------------------------------
+
+    /**
+     * Empty every table the app writes to.
+     *
+     * Deliberately not a `clearAllTables()`: that also resets Room's internal
+     * bookkeeping and is a blunter instrument than this needs to be. Each table
+     * is emptied in dependency order so the foreign keys stay satisfied on the
+     * way down.
+     */
+    suspend fun eraseEverything() {
+        folderRules.clear()
+        words.clear()
+        bookmarks.clear()
+        recents.clear()
+        tags.clearDocumentTags()
+        tags.clearTags()
+        documents.clear()
+        folders.clear()
+    }
 
     fun observeTags(): Flow<List<TagEntity>> = tags.observeTags()
 

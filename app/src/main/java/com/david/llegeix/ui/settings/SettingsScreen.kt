@@ -41,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,6 +91,8 @@ fun SettingsScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     var showColorPicker by remember { mutableStateOf(false) }
     var showPrivacy by remember { mutableStateOf(false) }
+    var showErase by remember { mutableStateOf(false) }
+    val isErasing by viewModel.isErasing.collectAsState()
 
     Scaffold(
         // The app shell's Scaffold has already inset this screen for the
@@ -200,6 +203,36 @@ fun SettingsScreen(
                 }
             }
 
+            SectionHeader(stringResource(R.string.settings_data))
+
+            SettingsCard {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showErase = true },
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_erase),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_erase_summary),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = Space.xs),
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             SectionHeader(stringResource(R.string.settings_about))
 
             SettingsCard {
@@ -210,6 +243,14 @@ fun SettingsScreen(
 
     if (showPrivacy) {
         PrivacyDialog(onDismiss = { showPrivacy = false })
+    }
+
+    if (showErase) {
+        EraseDialog(
+            isErasing = isErasing,
+            onConfirm = { viewModel.onEraseEverything { showErase = false } },
+            onDismiss = { showErase = false },
+        )
     }
 
     ColorPickerHost(
@@ -242,6 +283,48 @@ private fun ColorPickerHost(
  * to read is a poor fit for an app whose whole point is working offline, and a
  * link is one more place for the truth to drift from the code.
  */
+/**
+ * The confirmation for erasing everything.
+ *
+ * It lists what goes, including the two things Android's own "clear storage"
+ * leaves behind — the folder permissions and the downloaded translation models
+ * — because those are the reason the reader is looking at this dialog rather
+ * than at the system one. The confirm button is coloured as the destructive
+ * action it is, and there is no undo, so the wording says that too.
+ */
+@Composable
+private fun EraseDialog(
+    isErasing: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isErasing) onDismiss() },
+        title = { Text(stringResource(R.string.erase_title)) },
+        text = {
+            Text(
+                text = stringResource(R.string.erase_body),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = !isErasing) {
+                Text(
+                    text = stringResource(
+                        if (isErasing) R.string.erase_running else R.string.erase_confirm,
+                    ),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isErasing) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
 @Composable
 private fun PrivacyDialog(onDismiss: () -> Unit) {
     AlertDialog(

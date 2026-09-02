@@ -101,3 +101,24 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         )
     }
 }
+
+/**
+ * Adds the per-folder decisions behind the sources screen.
+ *
+ * Nothing is inserted: an empty table means every folder inside every granted
+ * source is shown, which is exactly how the app behaved before this table
+ * existed.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `folder_rules` (
+                `path` TEXT NOT NULL,
+                `included` INTEGER NOT NULL,
+                PRIMARY KEY(`path`)
+            )
+            """.trimIndent(),
+        )
+    }
+}

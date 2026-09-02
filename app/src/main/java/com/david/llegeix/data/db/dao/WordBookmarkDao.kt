@@ -37,4 +37,8 @@ interface WordBookmarkDao {
 
     @Query("SELECT COUNT(*) FROM word_bookmarks")
     fun observeCount(): Flow<Int>
+
+    /** Empties the table, for the "erase everything" action in Configuració. */
+    @Query("DELETE FROM word_bookmarks")
+    suspend fun clear()
 }

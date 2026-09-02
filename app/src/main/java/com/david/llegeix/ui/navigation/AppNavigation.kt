@@ -35,6 +35,7 @@ import com.david.llegeix.ui.library.LibraryScreen
 import com.david.llegeix.ui.reader.ReaderScreen
 import com.david.llegeix.ui.recent.RecentScreen
 import com.david.llegeix.ui.settings.SettingsScreen
+import com.david.llegeix.ui.sources.SourcesScreen
 
 private object Routes {
     const val LIBRARY = "library"
@@ -42,6 +43,7 @@ private object Routes {
     const val BOOKMARKS = "bookmarks"
     const val FOLDERS = "folders"
     const val SETTINGS = "settings"
+    const val SOURCES = "sources"
 
     /** The derived "Bookmarked" collection, which is not a real folder row. */
     const val BOOKMARKED_COLLECTION = "collection/bookmarked"
@@ -141,7 +143,12 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                         navController.navigate(Routes.reader(document.uriString, document.displayName))
                     },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                    onOpenSources = { navController.navigate(Routes.SOURCES) },
                 )
+            }
+
+            composable(Routes.SOURCES) {
+                SourcesScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Routes.RECENT) {

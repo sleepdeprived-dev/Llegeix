@@ -80,8 +80,6 @@ import com.david.llegeix.ui.folders.FolderNameDialog
 import com.david.llegeix.util.allFilesAccessIntents
 import kotlinx.coroutines.launch
 
-private const val PDF_MIME_TYPE = "application/pdf"
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
@@ -89,6 +87,7 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = viewModel(factory = LibraryViewModel.Factory),
     onOpenDocument: (PdfDocument) -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenSources: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -98,7 +97,6 @@ fun LibraryScreen(
     val layout by viewModel.layout.collectAsStateWithLifecycle()
     var documentToFile by remember { mutableStateOf<PdfDocument?>(null) }
     var showNewFolderFor by remember { mutableStateOf<PdfDocument?>(null) }
-    var showSources by remember { mutableStateOf(false) }
     var tagsFor by remember { mutableStateOf<PdfDocument?>(null) }
     val allTags by viewModel.tags.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
@@ -112,12 +110,6 @@ fun LibraryScreen(
     val folderPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree(),
     ) { treeUri -> if (treeUri != null) viewModel.onFolderPicked(treeUri) }
-
-    // Filtered to PDFs, so nothing else is offered. Still the only route to a
-    // file in Downloads, which Android refuses to grant as a watched folder.
-    val filePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments(),
-    ) { uris -> viewModel.onFilesPicked(uris) }
 
     // The result code is meaningless for the Settings screen; ON_RESUME above
     // is what actually picks up the new grant.
@@ -186,7 +178,7 @@ fun LibraryScreen(
                         layout = layout,
                         onSortChange = viewModel::onSortChange,
                         onToggleLayout = viewModel::onToggleLayout,
-                        onOpenSources = { showSources = true },
+                        onOpenSources = onOpenSources,
                     )
                 },
             )
@@ -271,18 +263,6 @@ fun LibraryScreen(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-    }
-
-    if (showSources) {
-        SourcesSheet(
-            folders = state.grantedFolders,
-            deviceScanEnabled = state.deviceScanEnabled,
-            onDismiss = { showSources = false },
-            onScanDevice = ::openAllFilesSettings,
-            onAddFolder = { folderPicker.launch(null) },
-            onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
-            onRemoveFolder = { viewModel.onFolderRemoved(it.treeUri) },
-        )
     }
 
     tagsFor?.let { document ->
@@ -526,7 +506,7 @@ private fun MoveToFolderDialog(
  *
  * Adding folders and turning on the device-wide scan used to sit permanently
  * above the list. They are things you do once and then forget, so they have
- * moved behind this menu and into [SourcesSheet], leaving the library itself as
+ * moved behind this menu and into [com.david.llegeix.ui.sources.SourcesScreen], leaving the library itself as
  * just the documents.
  */
 @Composable

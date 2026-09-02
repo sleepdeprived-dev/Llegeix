@@ -17,7 +17,9 @@ import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.source.LibraryDataRepository
+import com.david.llegeix.data.source.FolderRules
 import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.data.source.applyFolderRules
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,6 +73,16 @@ class LibraryViewModel(
         libraryData.renameTag(tag.id, tag.name, colorArgb)
     }
 
+    /**
+     * Which folders inside the granted sources reach the library.
+     *
+     * Database-backed, so it is safe to collect from `init` — a Room flow has
+     * nothing to emit until the query runs, unlike a StateFlow that would fire
+     * during construction.
+     */
+    val folderRules: StateFlow<FolderRules> = libraryData.observeFolderRules()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FolderRules.Empty)
+
     /** Folders offered by the "move to folder" sheet. */
     val folders: StateFlow<List<FolderEntity>> = libraryData.observeFolders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -122,6 +134,14 @@ class LibraryViewModel(
                 if (_uiState.value.sort == LibrarySort.TAG) {
                     _uiState.update { state -> state.withVisibleDocuments() }
                 }
+            }
+        }
+
+        // Hiding a folder should take effect straight away, without a rescan:
+        // the documents are already in hand, only the filter has changed.
+        viewModelScope.launch {
+            folderRules.collect {
+                _uiState.update { state -> state.withVisibleDocuments() }
             }
         }
 
@@ -261,9 +281,12 @@ class LibraryViewModel(
     /** Apply the current query and sort to [allDocuments]. */
     private fun LibraryUiState.withVisibleDocuments(): LibraryUiState {
         val needle = query.trim()
+        // Folders the reader has switched off in Fonts never reach the library,
+        // whichever filter or search is running over it.
+        val allowed = applyFolderRules(allDocuments, folderRules.value)
         val inFilter = when (filter) {
-            LibraryFilter.ALL -> allDocuments
-            LibraryFilter.READ_LATER -> allDocuments.filter { it.uriString in readLaterUris }
+            LibraryFilter.ALL -> allowed
+            LibraryFilter.READ_LATER -> allowed.filter { it.uriString in readLaterUris }
         }
         val matches = if (needle.isEmpty()) {
             inFilter
@@ -281,7 +304,7 @@ class LibraryViewModel(
                     tagsByDocument.value[document.uriString]?.firstOrNull()?.name
                 },
             ),
-            totalFound = allDocuments.size,
+            totalFound = allowed.size,
         )
     }
 

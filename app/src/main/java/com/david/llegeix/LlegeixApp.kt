@@ -7,6 +7,7 @@ import com.david.llegeix.lang.ApertureLexicon
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.data.DataEraser
 import com.david.llegeix.pdf.PdfThumbnails
 
 /**
@@ -26,7 +27,7 @@ class LlegeixApp : Application() {
     }
 
     /** What is on the device. */
-    val pdfRepository: PdfRepository by lazy { PdfRepository(this) }
+    val pdfRepository: PdfRepository by lazy { PdfRepository(this, settingsRepository) }
 
     /** What the app remembers about it. */
     val libraryDataRepository: LibraryDataRepository by lazy {
@@ -35,6 +36,11 @@ class LlegeixApp : Application() {
 
     /** First-page covers for the library, shared so the cache outlives a screen. */
     val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(this) }
+
+    /** Puts the app back to how it was before it was ever opened. */
+    val dataEraser: DataEraser by lazy {
+        DataEraser(this, libraryDataRepository, settingsRepository, pdfThumbnails)
+    }
 
     /** Theme, accent, language and reading preferences. */
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
