@@ -179,7 +179,7 @@
     <string name="reader_find_close">Tanca la cerca</string>
     <string name="reader_find_next">Coincidència següent</string>
     <string name="reader_find_previous">Coincidència anterior</string>
-    <string name="reader_find_none">Cap coincidència</string>
+    <string name="reader_find_none">cap</string>
     <!-- Posició dins dels resultats, p. ex. «3 / 47». -->
     <string name="reader_find_position">%1$d / %2$d</string>
     <string name="reader_zoom">Amplia</string>
@@ -187,7 +187,7 @@
     <string name="reader_invert_on">Colors de la pàgina invertits</string>
     <string name="reader_invert_off">Inverteix els colors de la pàgina</string>
     <!-- El comptador de pàgines flotant, p. ex. «12 / 340». -->
-    <string name="reader_page_position">%1$d / %2$d</string>
+    <string name="reader_page_position">Pàgina %1$d de %2$d</string>
     <string name="library_view_grid">Vista de graella</string>
     <string name="library_view_list">Vista de llista</string>
 

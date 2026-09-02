@@ -4,11 +4,13 @@ import android.graphics.Bitmap
 import android.graphics.RectF
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -77,6 +79,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -85,6 +88,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -134,6 +138,12 @@ private val InvertFilter = ColorFilter.colorMatrix(
 
 /** The gutter colour around an inverted page. */
 private val InvertedSurround = Color(0xFF0E0E0E)
+
+/** Enough lift to give the page an edge, not enough to become a card. */
+private val PageElevation = 3.dp
+
+/** The hairline that gives an inverted page an edge the shadow cannot. */
+private val InvertedPageEdge = Color(0x1FFFFFFF)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -216,6 +226,7 @@ fun ReaderScreen(
                     onClose = viewModel::onCloseSearch,
                 )
             } else {
+                Column {
                 ReaderBar(
                     title = state.displayTitle,
                     isBookmarked = state.isCurrentPageBookmarked,
@@ -229,6 +240,11 @@ fun ReaderScreen(
                     onToggleBookmark = viewModel::onToggleBookmark,
                     onColorChosen = viewModel::onHighlightColorChosen,
                 )
+                    ReadingProgress(
+                        page = state.currentPage,
+                        pageCount = state.pageCount,
+                    )
+                }
             }
         },
     ) { innerPadding ->
@@ -510,7 +526,18 @@ private fun BookmarkButton(
     }
 }
 
-/** Replaces the reader bar while a search is running. */
+/**
+ * Replaces the reader bar while a search is running.
+ *
+ * Its own row rather than a TopAppBar. A text field needs more height than a
+ * row of icons, and forcing one into the 48dp reading bar left its outline
+ * sliced off at the top and spilling over the page at the bottom.
+ *
+ * The match count sits inside the field, where every browser puts it. Loose in
+ * the bar it rendered as "1 / 8" a thumb's width from the page counter's
+ * "1 / 8" — the same six characters, on screen at the same time, meaning two
+ * different things. Inside the box it can only be about the search.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchBar(
@@ -522,62 +549,76 @@ private fun SearchBar(
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    val hasMatches = search.matches.isNotEmpty()
 
-    Column {
-        TopAppBar(
-            windowInsets = WindowInsets(0, 0, 0, 0),
-            expandedHeight = Space.topBar,
-            navigationIcon = {
-                IconButton(onClick = onClose) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = stringResource(R.string.reader_find_close),
-                    )
-                }
-            },
-            title = {
-                OutlinedTextField(
-                    value = search.query,
-                    onValueChange = onQueryChange,
-                    placeholder = { Text(stringResource(R.string.reader_find_hint)) },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester),
+    Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(SearchBarHeight)
+                .padding(horizontal = Space.xs),
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.reader_find_close),
                 )
-            },
-            actions = {
-                Text(
-                    text = when {
+            }
+            OutlinedTextField(
+                value = search.query,
+                onValueChange = onQueryChange,
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.reader_find_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                shape = RoundedCornerShape(50),
+                trailingIcon = {
+                    val counter = when {
+                        search.query.isBlank() -> null
                         search.isEmptyResult -> stringResource(R.string.reader_find_none)
-                        search.matches.isEmpty() -> ""
-                        else -> stringResource(
+                        hasMatches -> stringResource(
                             R.string.reader_find_position,
                             search.currentIndex + 1,
                             search.matches.size,
                         )
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                        // Still working, and nothing to report yet: the line
+                        // under the bar is already saying so.
+                        else -> null
+                    }
+                    if (counter != null) {
+                        Text(
+                            text = counter,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            modifier = Modifier.padding(end = Space.lg),
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 44.dp)
+                    .padding(horizontal = Space.xs)
+                    .focusRequester(focusRequester),
+            )
+            IconButton(onClick = onPrevious, enabled = hasMatches) {
+                Icon(
+                    Icons.Default.KeyboardArrowUp,
+                    contentDescription = stringResource(R.string.reader_find_previous),
                 )
-                IconButton(onClick = onPrevious, enabled = search.matches.isNotEmpty()) {
-                    Icon(
-                        Icons.Default.KeyboardArrowUp,
-                        contentDescription = stringResource(R.string.reader_find_previous),
-                    )
-                }
-                IconButton(onClick = onNext, enabled = search.matches.isNotEmpty()) {
-                    Icon(
-                        Icons.Default.KeyboardArrowDown,
-                        contentDescription = stringResource(R.string.reader_find_next),
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
-        )
+            }
+            IconButton(onClick = onNext, enabled = hasMatches) {
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = stringResource(R.string.reader_find_next),
+                )
+            }
+        }
         // Progress rather than a spinner: a long document takes a moment, and
         // matches keep arriving while it does.
         AnimatedVisibility(visible = search.isSearching) {
@@ -586,7 +627,49 @@ private fun SearchBar(
     }
 }
 
-/** The floating page counter, in place of a whole bar. */
+/** Taller than the reading bar, because a text field is taller than an icon. */
+private val SearchBarHeight = 56.dp
+
+/**
+ * How far through the document you are, as a hairline under the bar.
+ *
+ * "4 / 31" is a fact you have to do arithmetic on. A line you have to do
+ * nothing to is the difference between knowing you are near the end and working
+ * it out, and it costs the page two pixels to say so.
+ */
+@Composable
+private fun ReadingProgress(page: Int, pageCount: Int) {
+    if (pageCount <= 1) return
+    val fraction by animateFloatAsState(
+        targetValue = ((page + 1).toFloat() / pageCount).coerceIn(0f, 1f),
+        label = "readingProgress",
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(ProgressLineHeight)
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(fraction)
+                .height(ProgressLineHeight)
+                // Quiet on purpose: it is there to be glanced at, never read.
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+        )
+    }
+}
+
+private val ProgressLineHeight = 2.dp
+
+/**
+ * The floating page counter, in place of a whole bar.
+ *
+ * It says "Page 3 of 8" rather than "3 / 8". The find bar counts matches in
+ * exactly the same shape, and two identical pairs of numbers on screen at once
+ * meaning different things is a puzzle nobody asked for. Four extra characters
+ * settle it for good.
+ */
 @Composable
 private fun PagePill(
     page: Int,
@@ -710,6 +793,26 @@ private fun PdfPage(
                         translationX = offset.x
                         translationY = offset.y
                     }
+                    // Inside the transform, so the shadow moves and grows with
+                    // the page rather than staying behind where it started.
+                    // A page with no edge on a pale ground is a white rectangle
+                    // that happens to have words on it; this makes it paper.
+                    .shadow(
+                        elevation = PageElevation,
+                        shape = RectangleShape,
+                        clip = false,
+                    )
+                    // A shadow is invisible on a near-black ground, so the
+                    // inverted page gets a hairline instead. Without one, black
+                    // paper on a black desk has no edge at all, and a page
+                    // pushed around while magnified has nothing to push.
+                    .then(
+                        if (invert) {
+                            Modifier.border(1.dp, InvertedPageEdge)
+                        } else {
+                            Modifier
+                        },
+                    )
                     .onSizeChanged { drawnSize = it }
                     .pinchToZoom(
                         key = index,
@@ -1108,17 +1211,20 @@ private fun WordLookupSheet(
                 horizontalArrangement = Arrangement.spacedBy(Space.md),
                 modifier = Modifier.padding(top = Space.xl),
             ) {
+                // The filled button last, with the quieter ones before it.
+                // It used to sit in the middle of the row, so the eye landed on
+                // "Done" on its way to the thing it was actually looking for.
                 if (lookup.canRetryOnAnyNetwork) {
                     OutlinedButton(onClick = onRetryOnAnyNetwork) {
                         Text(stringResource(R.string.lookup_use_mobile_data))
                     }
                 }
-                Button(onClick = onDismiss) { Text(stringResource(R.string.lookup_done)) }
                 if (lookup.dictionary.status == DictionaryStatus.CLOSED) {
                     OutlinedButton(onClick = onShowDictionary) {
                         Text(stringResource(R.string.lookup_dictionary))
                     }
                 }
+                Button(onClick = onDismiss) { Text(stringResource(R.string.lookup_done)) }
             }
         }
     }

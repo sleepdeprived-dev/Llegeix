@@ -181,7 +181,7 @@
     <string name="reader_find_close">Close search</string>
     <string name="reader_find_next">Next match</string>
     <string name="reader_find_previous">Previous match</string>
-    <string name="reader_find_none">No matches</string>
+    <string name="reader_find_none">none</string>
     <!-- Position within the results, e.g. "3 / 47". -->
     <string name="reader_find_position">%1$d / %2$d</string>
     <string name="reader_zoom">Zoom</string>
@@ -189,7 +189,7 @@
     <string name="reader_invert_on">Page colours inverted</string>
     <string name="reader_invert_off">Invert page colours</string>
     <!-- The floating page counter over the page, e.g. "12 / 340". -->
-    <string name="reader_page_position">%1$d / %2$d</string>
+    <string name="reader_page_position">Page %1$d of %2$d</string>
     <string name="library_view_grid">Grid view</string>
     <string name="library_view_list">List view</string>
 

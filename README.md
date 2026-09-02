@@ -26,7 +26,12 @@ language. Written in Kotlin with Jetpack Compose.
 - **Reader** — page rendering via [PdfiumAndroid](https://github.com/johngray1965/PdfiumAndroid),
   with a selectable text layer, pinch and double-tap zoom, find-in-document
   across every page, and an invert toggle that darkens the page itself without
-  touching the app's theme. One slim bar, no bottom chrome.
+  touching the app's theme. One slim bar, no bottom chrome. The page is lifted
+  off its ground by a shadow so it reads as paper rather than as a white
+  rectangle, a hairline under the bar says how far through the document you are
+  without any arithmetic, and the page counter and the find counter are worded
+  differently on purpose — they used to be the same two numbers in the same
+  shape, on screen together, meaning different things.
 - **Organisation** — folders, tags with a colour you can change at any time and
   sort by, recently viewed, and bookmarks, persisted in a Room database. A
   folder's colour is a disc behind its icon rather than a tint on the outline,
