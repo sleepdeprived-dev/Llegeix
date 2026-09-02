@@ -17,10 +17,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
@@ -64,6 +67,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -94,6 +98,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
@@ -105,6 +110,8 @@ import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import kotlin.math.roundToInt
+import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 /**
  * Inverts a rendered page: light text on a dark ground, without touching the
@@ -147,6 +154,7 @@ fun ReaderScreen(
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { state.pageCount })
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.onPageChanged(pagerState.currentPage)
@@ -284,9 +292,24 @@ fun ReaderScreen(
                                 viewModel.onSelectionPreview(index, x1, y1, x2, y2, w, h)
                             },
                             onSelectCommit = { x1, y1, x2, y2, w, h ->
-                                viewModel.onSelectionCommitted(index, x1, y1, x2, y2, w, h)
+                                // Not while the pager is still settling. A
+                                // sheet that animates up as the page slides
+                                // under it fights the fling, and both look
+                                // broken.
+                                if (pagerState.isScrollInProgress) {
+                                    viewModel.onSelectionCancelled()
+                                } else {
+                                    viewModel.onSelectionCommitted(index, x1, y1, x2, y2, w, h)
+                                }
                             },
                             onSelectCancel = viewModel::onSelectionCancelled,
+                            onTurnPage = { step ->
+                                val target = (index + step)
+                                    .coerceIn(0, state.pageCount - 1)
+                                if (target != index) {
+                                    scope.launch { pagerState.animateScrollToPage(target) }
+                                }
+                            },
                             // While the finger is down the highlight comes from
                             // the preview; once the sheet is open it comes from
                             // the lookup it is showing.
@@ -324,7 +347,7 @@ fun ReaderScreen(
             onRetryOnAnyNetwork = viewModel::onRetryOnAnyNetwork,
             onToggleSaved = viewModel::onToggleWordBookmark,
             onToggleTarget = viewModel::onToggleTranslationTarget,
-            onShowSynonyms = viewModel::onShowSynonyms,
+            onShowDictionary = viewModel::onShowDictionary,
         )
     }
 }
@@ -618,6 +641,8 @@ private fun PdfPage(
         widthPx: Int, heightPx: Int,
     ) -> Unit,
     onSelectCancel: () -> Unit,
+    /** Called with -1 or +1 when a magnified page is pushed past its edge. */
+    onTurnPage: (Int) -> Unit,
     lookupHighlights: List<RectF>,
     highlightColor: Int,
     modifier: Modifier = Modifier,
@@ -697,18 +722,55 @@ private fun PdfPage(
                     // horizontal drags the rest of the time.
                     .then(
                         if (isZoomed) {
-                            Modifier.pointerInput(index, zoom) {
-                                detectDragGestures { change, drag ->
+                            // Keyed on the page alone. Including the zoom here
+                            // restarted the detector every time the zoom
+                            // changed, which cancelled the drag that was in
+                            // flight the moment a pinch ended.
+                            Modifier.pointerInput(index) {
+                                var edgePush = 0f
+                                detectDragGestures(
+                                    onDragEnd = { edgePush = 0f },
+                                    onDragCancel = { edgePush = 0f },
+                                ) { change, drag ->
                                     change.consume()
+                                    val live = currentZoom
+                                    // This modifier sits inside the graphics
+                                    // layer, so the drag arrives already
+                                    // divided by the zoom. Undo that, or
+                                    // panning crawls at half speed at 2x and a
+                                    // third at 3x.
+                                    val moved = drag * live
                                     // Horizontally the page grows both ways from
                                     // the centre; vertically only downward,
                                     // because the top edge is pinned.
-                                    val maxX = size.width * (zoom - 1f) / 2f
-                                    val minY = -size.height * (zoom - 1f)
+                                    val maxX = size.width * (live - 1f) / 2f
+                                    val minY = -size.height * (live - 1f)
+                                    val wantedX = offset.x + moved.x
+                                    val settledX = wantedX.coerceIn(-maxX, maxX)
                                     offset = Offset(
-                                        (offset.x + drag.x).coerceIn(-maxX, maxX),
-                                        (offset.y + drag.y).coerceIn(minY, 0f),
+                                        settledX,
+                                        (offset.y + moved.y).coerceIn(minY, 0f),
                                     )
+
+                                    // Once the page can go no further sideways,
+                                    // keep pushing and it turns. Insisting is
+                                    // the whole point: a small nudge past the
+                                    // edge while reading should do nothing, so
+                                    // only a sustained push in one direction
+                                    // counts, and the count resets the moment
+                                    // the finger goes the other way.
+                                    val spare = wantedX - settledX
+                                    if (spare != 0f && abs(moved.x) > abs(moved.y)) {
+                                        if (spare > 0f != edgePush > 0f) edgePush = 0f
+                                        edgePush += spare
+                                        if (abs(edgePush) > PAGE_TURN_PUSH_PX) {
+                                            edgePush = 0f
+                                            // Pushing the page to the right
+                                            // reveals what is to its left, so
+                                            // that is a step backwards.
+                                            onTurnPage(if (spare > 0f) -1 else 1)
+                                        }
+                                    }
                                 }
                             }
                         } else {
@@ -835,7 +897,7 @@ private fun WordLookupSheet(
     onRetryOnAnyNetwork: () -> Unit,
     onToggleSaved: () -> Unit,
     onToggleTarget: () -> Unit,
-    onShowSynonyms: () -> Unit,
+    onShowDictionary: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -899,7 +961,15 @@ private fun WordLookupSheet(
             }
 
             // ---- The answer -------------------------------------------------
-            Box(modifier = Modifier.padding(top = Space.xl)) {
+            //
+            // A floor under the height on purpose. The translation lands a
+            // moment after the sheet starts animating up, and without this the
+            // sheet grew mid-animation and the whole thing juddered.
+            Box(
+                modifier = Modifier
+                    .padding(top = Space.xl)
+                    .heightIn(min = ANSWER_MIN_HEIGHT),
+            ) {
                 when (lookup.status) {
                     LookupStatus.LOOKING_UP -> Text(
                         text = stringResource(R.string.lookup_translating),
@@ -1025,10 +1095,10 @@ private fun WordLookupSheet(
                 )
             }
 
-            // ---- Synonyms, once they have been asked for --------------------
-            if (lookup.synonyms.status != SynonymsStatus.CLOSED) {
-                SynonymsCard(
-                    synonyms = lookup.synonyms,
+            // ---- The dictionary, once it has been asked for ------------------
+            if (lookup.dictionary.status != DictionaryStatus.CLOSED) {
+                DictionaryCard(
+                    entry = lookup.dictionary,
                     selected = lookup.text,
                     modifier = Modifier.padding(top = Space.lg),
                 )
@@ -1044,9 +1114,9 @@ private fun WordLookupSheet(
                     }
                 }
                 Button(onClick = onDismiss) { Text(stringResource(R.string.lookup_done)) }
-                if (lookup.synonyms.status == SynonymsStatus.CLOSED) {
-                    OutlinedButton(onClick = onShowSynonyms) {
-                        Text(stringResource(R.string.lookup_synonyms))
+                if (lookup.dictionary.status == DictionaryStatus.CLOSED) {
+                    OutlinedButton(onClick = onShowDictionary) {
+                        Text(stringResource(R.string.lookup_dictionary))
                     }
                 }
             }
@@ -1101,80 +1171,96 @@ private fun TargetFlags(target: TranslationTarget, onPick: () -> Unit) {
 }
 
 /**
- * Synonyms and antonyms for what was selected.
+ * The dictionary panel: what the selection means, and what else it could be.
  *
- * Sense groups are kept apart, because a Catalan word with six meanings gives
- * six unrelated lists and running them together would be worse than useless to
- * someone learning. Each list is capped: this is a nudge towards another way of
- * saying it, not the dictionary page.
+ * The order is the order of usefulness. The definition comes first, in Catalan,
+ * because someone reading Catalan to learn it is better served by a Catalan
+ * definition than by a second translation. Synonyms and antonyms follow as
+ * quieter, labelled blocks.
+ *
+ * Everything is capped. A word like *gran* has six senses and forty synonyms in
+ * the sources, and printing all of them would turn a quick check into a wall of
+ * text — which is exactly the thing this app exists not to do.
  */
 @Composable
-private fun SynonymsCard(
-    synonyms: SynonymsState,
+private fun DictionaryCard(
+    entry: DictionaryState,
     /** What the reader actually selected, so the card can avoid repeating it. */
     selected: String,
     modifier: Modifier = Modifier,
 ) {
-    DetailCard(title = stringResource(R.string.lookup_synonyms), modifier = modifier) {
+    DetailCard(title = stringResource(R.string.lookup_dictionary), modifier = modifier) {
         when {
-            synonyms.status == SynonymsStatus.LOADING -> Text(
-                text = stringResource(R.string.lookup_synonyms_loading),
+            entry.status == DictionaryStatus.LOADING -> Text(
+                text = stringResource(R.string.lookup_dictionary_loading),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            synonyms.entries.isEmpty() -> Text(
-                text = stringResource(R.string.lookup_synonyms_none),
+            entry.entries.isEmpty() -> Text(
+                text = stringResource(R.string.lookup_dictionary_none),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            else -> synonyms.entries.forEachIndexed { index, entry ->
+            else -> entry.entries.forEachIndexed { index, word ->
                 if (index > 0) {
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.padding(vertical = Space.md),
+                        modifier = Modifier.padding(vertical = Space.lg),
                     )
                 }
-                // Naming the word again is only worth the line when it is not
-                // the word already set in headline type at the top of the
-                // sheet: a phrase's several entries, or a plural answered by
-                // its singular.
-                if (synonyms.entries.size > 1 || entry.headword != selected.lowercase()) {
+                // Naming the word again is only worth a line when it is not the
+                // word already set in headline type at the top of the sheet: a
+                // phrase's several entries, or a plural answered by its lemma.
+                if (entry.entries.size > 1 || word.headword != selected.lowercase()) {
                     Text(
-                        text = entry.headword,
+                        text = word.headword,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = Space.xs),
+                        modifier = Modifier.padding(bottom = Space.sm),
                     )
                 }
-                entry.senses.take(MAX_SENSES_SHOWN).forEachIndexed { sense_index, sense ->
-                    Text(
-                        text = sense.words.take(MAX_SYNONYMS_SHOWN).joinToString(" · "),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        // Each group is a different meaning of the same word, so
-                        // they need enough air between them to read as separate
-                        // answers rather than as one long list.
-                        modifier = Modifier.padding(
-                            top = if (sense_index == 0) Space.xs else Space.md,
+
+                word.definitions.take(MAX_PARTS_OF_SPEECH).forEachIndexed { part, definition ->
+                    if (part > 0) Spacer(modifier = Modifier.height(Space.md))
+                    partOfSpeechLabel(definition.partOfSpeech)?.let { label ->
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    definition.meanings.take(MAX_MEANINGS).forEach { meaning ->
+                        Text(
+                            text = meaning,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(top = Space.xs),
+                        )
+                    }
+                }
+
+                if (word.senses.isNotEmpty()) {
+                    DictionarySection(
+                        label = stringResource(R.string.lookup_synonyms),
+                        // Two groups, not one. The groups are separate senses
+                        // and the sources do not agree on their order, so
+                        // showing only the first can print the synonyms for
+                        // "heap" under the definition of "mountain".
+                        lines = word.senses
+                            .take(MAX_SENSE_GROUPS)
+                            .map { it.words.take(MAX_SYNONYMS_SHOWN).joinToString(" · ") },
+                        topPadding = if (word.definitions.isEmpty()) Space.xs else Space.lg,
+                    )
+                }
+                if (word.antonyms.isNotEmpty()) {
+                    DictionarySection(
+                        label = stringResource(R.string.lookup_antonyms),
+                        lines = listOf(
+                            word.antonyms.take(MAX_SYNONYMS_SHOWN).joinToString(" · "),
                         ),
-                    )
-                }
-                if (entry.antonyms.isNotEmpty()) {
-                    Text(
-                        text = stringResource(R.string.lookup_antonyms),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = Space.md),
-                    )
-                    Text(
-                        text = entry.antonyms
-                            .take(MAX_SYNONYMS_SHOWN)
-                            .joinToString(" · "),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = Space.xs),
+                        topPadding = Space.lg,
                     )
                 }
             }
@@ -1182,8 +1268,62 @@ private fun SynonymsCard(
     }
 }
 
-/** Sense groups shown before the card would start to read as a list of lists. */
-private const val MAX_SENSES_SHOWN = 3
+/** A labelled block of words inside the dictionary card. */
+@Composable
+private fun DictionarySection(label: String, lines: List<String>, topPadding: Dp) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = topPadding),
+    )
+    lines.forEach { line ->
+        Text(
+            text = line,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Space.xs),
+        )
+    }
+}
+
+/** The dictionary's part-of-speech code, in the reader's own language. */
+@Composable
+private fun partOfSpeechLabel(code: String): String? = when (code) {
+    "nom" -> stringResource(R.string.pos_nom)
+    "verb" -> stringResource(R.string.pos_verb)
+    "adj" -> stringResource(R.string.pos_adj)
+    "adv" -> stringResource(R.string.pos_adv)
+    "interj" -> stringResource(R.string.pos_interj)
+    "loc" -> stringResource(R.string.pos_loc)
+    else -> null
+}
+
+/**
+ * A floor under the height of the sheet's answer area.
+ *
+ * Enough for two lines of the headline style the translation is set in, so the
+ * sheet is already the size it will end up at before the answer arrives.
+ */
+private val ANSWER_MIN_HEIGHT = 72.dp
+
+/**
+ * How far a magnified page must be pushed past its edge before it turns.
+ *
+ * Roughly a third of a phone's width. Short enough that turning the page is a
+ * single deliberate swipe, long enough that nudging the text sideways while
+ * reading never turns it by accident.
+ */
+private const val PAGE_TURN_PUSH_PX = 320f
+
+/** Parts of speech shown before the card becomes a grammar lesson. */
+private const val MAX_PARTS_OF_SPEECH = 2
+
+/** Meanings shown per part of speech. */
+private const val MAX_MEANINGS = 2
+
+/** Synonym groups shown, each one being a different sense of the word. */
+private const val MAX_SENSE_GROUPS = 2
 
 /** Words shown per group, which is about one comfortable line and a half. */
 private const val MAX_SYNONYMS_SHOWN = 6

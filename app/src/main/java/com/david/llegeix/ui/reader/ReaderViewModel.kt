@@ -16,8 +16,8 @@ import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
 import android.graphics.RectF
 import com.david.llegeix.lang.CatalanIpa
-import com.david.llegeix.lang.CatalanThesaurus
-import com.david.llegeix.lang.ThesaurusEntry
+import com.david.llegeix.lang.CatalanWordBank
+import com.david.llegeix.lang.WordReference
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.PdfPageRenderer
@@ -44,18 +44,19 @@ import kotlinx.coroutines.withContext
 /** How far a tap-and-hold lookup has got. */
 enum class LookupStatus { LOOKING_UP, DOWNLOADING_MODEL, READY, FAILED }
 
-/** How far the optional synonym lookup has got. */
-enum class SynonymsStatus { CLOSED, LOADING, READY }
+/** How far the optional dictionary lookup has got. */
+enum class DictionaryStatus { CLOSED, LOADING, READY }
 
 /**
- * The thesaurus panel, which stays shut until it is asked for.
+ * The dictionary panel, which stays shut until it is asked for.
  *
- * The dictionary is five megabytes and most lookups never want it, so it is
- * read on the first request rather than when the reader opens.
+ * The reference files are sixteen megabytes together and most lookups never
+ * want them, so they are read on the first request rather than when the reader
+ * opens.
  */
-data class SynonymsState(
-    val status: SynonymsStatus = SynonymsStatus.CLOSED,
-    val entries: List<ThesaurusEntry> = emptyList(),
+data class DictionaryState(
+    val status: DictionaryStatus = DictionaryStatus.CLOSED,
+    val entries: List<WordReference> = emptyList(),
 )
 
 /**
@@ -107,8 +108,8 @@ data class WordLookup(
     val error: UiText? = null,
     /** True once a Wi-Fi-only download has failed, so retrying is worth offering. */
     val canRetryOnAnyNetwork: Boolean = false,
-    /** Synonyms and antonyms, once the reader has asked for them. */
-    val synonyms: SynonymsState = SynonymsState(),
+    /** Definitions, synonyms and antonyms, once the reader has asked. */
+    val dictionary: DictionaryState = DictionaryState(),
 ) {
     val isPhrase: Boolean get() = words.size > 1
 }
@@ -531,16 +532,16 @@ class ReaderViewModel(
     }
 
     /**
-     * Load synonyms and antonyms for what is selected.
+     * Load what the references have for what is selected.
      *
      * A phrase is looked up word by word, keeping only the words the dictionary
      * actually knows, so a selected sentence does not produce a wall of lists
      * with empty gaps in it.
      */
-    fun onShowSynonyms() {
+    fun onShowDictionary() {
         val lookup = _uiState.value.lookup ?: return
-        if (lookup.synonyms.status != SynonymsStatus.CLOSED) return
-        updateLookup { it.copy(synonyms = SynonymsState(status = SynonymsStatus.LOADING)) }
+        if (lookup.dictionary.status != DictionaryStatus.CLOSED) return
+        updateLookup { it.copy(dictionary = DictionaryState(status = DictionaryStatus.LOADING)) }
         viewModelScope.launch {
             val words = if (lookup.isPhrase) {
                 lookup.words.map { it.word }
@@ -548,14 +549,14 @@ class ReaderViewModel(
                 listOf(lookup.text)
             }
             val found = withContext(Dispatchers.IO) {
-                val dictionary = CatalanThesaurus.get(application)
-                words.filter { CatalanThesaurus.isWorthLookingUp(it) }
+                val dictionary = CatalanWordBank.get(application)
+                words.filter { CatalanWordBank.isWorthLookingUp(it) }
                     .take(MAX_THESAURUS_WORDS)
                     .mapNotNull { dictionary.lookup(it) }
                     .filterNot { it.isEmpty }
             }
             updateLookup {
-                it.copy(synonyms = SynonymsState(SynonymsStatus.READY, found))
+                it.copy(dictionary = DictionaryState(DictionaryStatus.READY, found))
             }
         }
     }

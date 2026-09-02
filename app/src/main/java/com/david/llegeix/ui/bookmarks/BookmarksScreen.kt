@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +30,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -275,8 +275,17 @@ fun BookmarksScreen(
     }
 }
 
-/** The search field and the ordering toggle above the saved words. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Search and ordering for the saved words.
+ *
+ * Two lines rather than one. Sharing a row, the field and the chip squeezed
+ * each other until the placeholder read "Cerca para…", and two controls of
+ * different shapes and weights sat side by side competing for the same
+ * attention. Given the width it asks for, the field matches the one in the
+ * library exactly, so search looks and behaves the same everywhere in the app.
+ * Ordering is the smaller question, so it sits underneath, quieter, and out of
+ * the way of the thing most people came here to do.
+ */
 @Composable
 private fun WordControls(
     query: String,
@@ -284,20 +293,16 @@ private fun WordControls(
     onQueryChange: (String) -> Unit,
     onToggleSort: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Space.screen)
-            .padding(top = Space.sm, bottom = Space.sm),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(top = Space.lg, bottom = Space.md),
     ) {
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
             placeholder = {
-                // Single line, always. The field shares its row with the sort
-                // chip, so a placeholder long enough to wrap turns a 42dp field
-                // into a 140dp one.
                 Text(
                     text = stringResource(R.string.words_search),
                     style = MaterialTheme.typography.bodyMedium,
@@ -332,28 +337,37 @@ private fun WordControls(
                 }
             },
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .heightIn(min = 42.dp),
         )
         // A toggle rather than a menu: there are two orders, and a menu to pick
-        // between two things is a menu too many.
-        FilterChip(
-            selected = alphabetical,
+        // between two things is a menu too many. Set as plain text, not a
+        // filled chip, so it reads as a note about the list rather than as a
+        // second thing to decide.
+        TextButton(
             onClick = onToggleSort,
-            label = {
-                Text(
-                    text = stringResource(
-                        if (alphabetical) {
-                            R.string.words_sort_alphabetical
-                        } else {
-                            R.string.words_sort_recent
-                        },
-                    ),
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            },
-            modifier = Modifier.padding(start = Space.sm),
-        )
+            contentPadding = PaddingValues(horizontal = Space.sm, vertical = 0.dp),
+            modifier = Modifier
+                .align(Alignment.End)
+                .padding(top = Space.sm),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_sort),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = stringResource(
+                    if (alphabetical) {
+                        R.string.words_sort_alphabetical
+                    } else {
+                        R.string.words_sort_recent
+                    },
+                ),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(start = Space.sm),
+            )
+        }
     }
 }
 
