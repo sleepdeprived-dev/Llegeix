@@ -533,9 +533,9 @@ private fun BookmarkButton(
 /**
  * Replaces the reader bar while a search is running.
  *
- * Its own row rather than a TopAppBar. A text field needs more height than a
- * row of icons, and forcing one into the 48dp reading bar left its outline
- * sliced off at the top and spilling over the page at the bottom.
+ * Its own row rather than a TopAppBar, so its height is stated here and cannot
+ * be quietly clipped: forced into the bar as a title, the field's outline was
+ * sliced off at the top and spilled over the page at the bottom.
  *
  * The match count sits inside the field, where every browser puts it. Loose in
  * the bar it rendered as "1 / 8" a thumb's width from the page counter's
@@ -562,7 +562,7 @@ private fun SearchBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(SearchBarHeight)
+                .height(Space.topBar)
                 .padding(horizontal = Space.xs),
         ) {
             IconButton(onClick = onClose) {
@@ -633,9 +633,6 @@ private fun SearchBar(
         }
     }
 }
-
-/** Taller than the reading bar, because a text field is taller than an icon. */
-private val SearchBarHeight = 56.dp
 
 /**
  * How far through the document you are, as a hairline under the bar.

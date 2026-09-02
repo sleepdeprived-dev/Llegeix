@@ -29,12 +29,13 @@ object Space {
     /**
      * Height of the app bar, against Material's default of 64dp.
      *
-     * A 24dp icon with 12dp of air above and below. It was 40dp, which was
-     * genuinely too tight once the duplicated status-bar inset that had been
-     * inflating it was fixed — the bar finally measured what it claimed to, and
-     * what it claimed to was cramped. This is the same height as an icon
-     * button's touch target, so the bar is now exactly as tall as the things
-     * inside it need, and no taller.
+     * It has been 40dp, then 48dp, and is now 56dp. 48 was the height of an
+     * icon button's touch target and therefore the least the bar could measure
+     * without cutting into one — but "no taller than it strictly needs" turned
+     * out to read as cramped rather than as calm, with the title sitting hard
+     * against the status bar above it. 56dp gives a 24dp icon 16dp of air on
+     * each side, is the same height as the reader's find field so the two swap
+     * without the screen jumping, and is still a step below Material's own.
      */
-    val topBar = 48.dp
+    val topBar = 56.dp
 }

@@ -62,6 +62,15 @@ interface PdfPageRenderer : AutoCloseable {
     suspend fun renderPage(index: Int, targetWidthPx: Int): Bitmap
 
     /**
+     * Whether [pageIndex] carries a text layer at all.
+     *
+     * The difference between "you pressed a margin" and "this page is a
+     * photograph of writing", which are the same silence to a reader and want
+     * completely different answers from the app.
+     */
+    suspend fun hasTextLayer(pageIndex: Int): Boolean
+
+    /**
      * The word under a point, or null where the page has no selectable text
      * there — a scanned page, an image, or simply blank space.
      *

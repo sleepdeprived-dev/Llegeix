@@ -219,7 +219,8 @@
     <string name="lookup_downloading_title">Downloading the Catalan language model…</string>
     <string name="lookup_downloading_body">One-time download over Wi-Fi. Lookups are offline and instant afterwards.</string>
     <string name="lookup_failed">Could not translate that word</string>
-    <string name="lookup_no_text">No selectable text there</string>
+    <string name="lookup_no_word_there">No word there</string>
+    <string name="lookup_page_unreadable">This page is an image, and nothing readable was found on it.</string>
     <string name="lookup_model_wifi_failed">Could not download the Catalan model over Wi-Fi.</string>
     <string name="lookup_model_failed">Could not download the Catalan model.</string>
     <string name="lookup_use_mobile_data">Use mobile data</string>

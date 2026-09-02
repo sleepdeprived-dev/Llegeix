@@ -60,7 +60,17 @@ class CatalanWordBoundaryTest {
     }
 
     @Test
-    fun `digits are not word characters`() {
-        assertFalse(isWordChar('7'))
+    fun `digits are word characters, so a press on a number answers`() {
+        // They used not to be. Translating "1975" is useless, but a press that
+        // selects nothing at all is worse: on a page of dates or prices it
+        // looked like the app was broken.
+        assertTrue(isWordChar('7'))
+    }
+
+    @Test
+    fun `a letter and a digit together stay one word`() {
+        // "3r", "km2", "s21" are one thing each, not two.
+        assertTrue(isWordChar('3'))
+        assertTrue(isWordChar('r'))
     }
 }

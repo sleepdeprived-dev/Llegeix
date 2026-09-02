@@ -69,6 +69,14 @@ class PdfiumPageRenderer private constructor(
             }
         }
 
+    override suspend fun hasTextLayer(pageIndex: Int): Boolean = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            document.openPage(pageIndex)?.use { page ->
+                page.openTextPage().use { it.textPageCountChars() > 0 }
+            } ?: false
+        }
+    }
+
     override suspend fun wordAt(
         pageIndex: Int,
         xPx: Float,
@@ -443,9 +451,16 @@ class PdfiumPageRenderer private constructor(
          * splitting on it would send "intel" to the dictionary instead of
          * "intel·ligent". The apostrophe is deliberately excluded, so "l'aigua"
          * looks up "aigua" rather than the elided article.
+         *
+         * Digits count too, which they did not used to. Translating "1975" is
+         * of no use to anybody, but a press that selects nothing at all is
+         * worse: on a page of dates, prices or numbered notes it looked exactly
+         * like the app being broken. Selecting the number and getting the
+         * number back at least answers the press, and it lets "3r" and "km2"
+         * hold together instead of losing half of themselves.
          */
         internal fun isWordChar(character: Char): Boolean =
-            character.isLetter() || character == '·'
+            character.isLetterOrDigit() || character == '·'
 
         /**
          * Open [uri] for rendering. Throws [IOException] when the document

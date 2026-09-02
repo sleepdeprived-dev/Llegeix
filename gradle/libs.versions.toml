@@ -11,6 +11,7 @@ navigationCompose = "2.10.0"
 room = "2.8.4"
 pdfium = "2.0.3"
 mlkitTranslate = "17.0.3"
+mlkitTextRecognition = "16.0.1"
 ksp = "2.2.10-2.0.2"
 
 junit = "4.13.2"
@@ -37,6 +38,7 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 mlkit-translate = { group = "com.google.mlkit", name = "translate", version.ref = "mlkitTranslate" }
+mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 pdfiumandroid = { group = "io.legere", name = "pdfiumandroid", version.ref = "pdfium" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

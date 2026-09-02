@@ -217,7 +217,8 @@
     <string name="lookup_downloading_title">S\'està baixant el model d\'idioma català…</string>
     <string name="lookup_downloading_body">És una baixada única per Wi-Fi. Després les consultes són fora de línia i instantànies.</string>
     <string name="lookup_failed">No s\'ha pogut traduir aquesta paraula</string>
-    <string name="lookup_no_text">Aquí no hi ha text seleccionable</string>
+    <string name="lookup_no_word_there">Aquí no hi ha cap paraula</string>
+    <string name="lookup_page_unreadable">Aquesta pàgina és una imatge i no s\'hi ha pogut llegir res.</string>
     <string name="lookup_model_wifi_failed">No s\'ha pogut baixar el model català per Wi-Fi.</string>
     <string name="lookup_model_failed">No s\'ha pogut baixar el model català.</string>
     <string name="lookup_use_mobile_data">Utilitza dades mòbils</string>

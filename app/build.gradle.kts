@@ -30,8 +30,8 @@ android {
         applicationId = "com.david.llegeix"
         minSdk = 31
         targetSdk = 37
-        versionCode = 19
-        versionName = "2.8"
+        versionCode = 20
+        versionName = "2.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -132,6 +132,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.pdfiumandroid)
     implementation(libs.mlkit.translate)
+    // The bundled Latin recogniser rather than the Play-Services one: reading a
+    // scanned page has to work the first time it is asked for, offline, on a
+    // phone that has never seen the app before.
+    implementation(libs.mlkit.text.recognition)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

@@ -22,6 +22,7 @@ import com.david.llegeix.lang.CatalanWordBank
 import com.david.llegeix.lang.WordReference
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
+import com.david.llegeix.pdf.PageOcr
 import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.pdf.PdfSelection
 import com.david.llegeix.translate.WordTranslator
@@ -180,6 +181,12 @@ class ReaderViewModel(
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
     private var renderer: PdfPageRenderer? = null
+
+    /** Reads the words off pages that have none of their own. */
+    private val pageOcr = PageOcr()
+
+    /** Which pages carry a text layer, so the answer is worked out once each. */
+    private val textLayers = HashMap<Int, Boolean>()
 
     /**
      * Rebuilt when the target language changes: an ML Kit translator is bound to
@@ -436,6 +443,7 @@ class ReaderViewModel(
             val selection = resolveSelection(
                 pageIndex, startXPx, startYPx, endXPx, endYPx,
                 renderedWidthPx, renderedHeightPx,
+                mayRead = false,
             ) ?: return@launch
             _uiState.update {
                 it.copy(selectionPreview = SelectionPreview(pageIndex, selection.boundsPx))
@@ -472,15 +480,30 @@ class ReaderViewModel(
             val selection = resolveSelection(
                 pageIndex, startXPx, startYPx, endXPx, endYPx,
                 renderedWidthPx, renderedHeightPx,
+                mayRead = true,
             )
 
             if (selection == null) {
-                // Almost always a scanned page: pixels, no text layer.
+                // Two different silences, and they deserve different answers:
+                // a page with words in it that were not where the finger went,
+                // and a page that is a picture with nothing readable in it.
+                //
+                // Which one it is turns on whether words were found at all,
+                // from either source — not on where they came from. A scan
+                // that was read perfectly well and then pressed in the margin
+                // is the first case, not the second.
+                val hasWords = hasTextLayer(pageIndex) ||
+                    pageOcr.cached(pageIndex, renderedWidthPx)?.isEmpty == false
+                val message = if (hasWords) {
+                    R.string.lookup_no_word_there
+                } else {
+                    R.string.lookup_page_unreadable
+                }
                 _uiState.update {
                     it.copy(
                         lookup = null,
                         selectionPreview = null,
-                        lookupHint = UiText.of(R.string.lookup_no_text),
+                        lookupHint = UiText.of(message),
                     )
                 }
                 return@launch
@@ -522,14 +545,58 @@ class ReaderViewModel(
         endYPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        /**
+         * Whether a page with no text of its own may be read now.
+         *
+         * False while the finger is still down. Recognition takes a moment and
+         * the preview fires on every movement of the drag, so asking there
+         * would start a job the next movement cancels, over and over, and the
+         * page would never actually get read. The commit does the reading; the
+         * preview uses it once it exists, which from the second press on a page
+         * is immediately.
+         */
+        mayRead: Boolean,
     ): PdfSelection? {
         val active = renderer ?: return null
-        return runCatchingCancellable {
+        val fromPage = runCatchingCancellable {
             active.selectionBetween(
                 pageIndex, startXPx, startYPx, endXPx, endYPx,
                 renderedWidthPx, renderedHeightPx,
             )
         }.getOrNull()
+        if (fromPage != null) return fromPage
+        // A page with text of its own that gave nothing back means the press
+        // landed between words, and no amount of looking at the pixels will
+        // change that.
+        if (hasTextLayer(pageIndex)) return null
+
+        val read = pageOcr.cached(pageIndex, renderedWidthPx)
+            ?: if (mayRead) {
+                val bitmap = renderPage(pageIndex, renderedWidthPx) ?: return null
+                runCatchingCancellable { pageOcr.read(pageIndex, bitmap) }.getOrNull()
+            } else {
+                null
+            }
+            ?: return null
+
+        return read.selectionBetween(
+            startXPx, startYPx, endXPx, endYPx,
+            tolerance = renderedWidthPx * OCR_TOUCH_TOLERANCE_FRACTION,
+        )
+    }
+
+    /**
+     * Whether a page has any text of its own, asked once per page.
+     *
+     * Cached because the preview asks on every movement of a drag, and each
+     * answer costs opening the page and its text layer.
+     */
+    private suspend fun hasTextLayer(pageIndex: Int): Boolean {
+        textLayers[pageIndex]?.let { return it }
+        val active = renderer ?: return true
+        val answer = runCatchingCancellable { active.hasTextLayer(pageIndex) }.getOrDefault(true)
+        textLayers[pageIndex] = answer
+        return answer
     }
 
     /**
@@ -716,10 +783,20 @@ class ReaderViewModel(
         renderer?.close()
         renderer = null
         translator.close()
+        pageOcr.close()
         pageCache.evictAll()
     }
 
     companion object {
+        /**
+         * How far a press may miss a read word and still count, as a fraction
+         * of the page's width.
+         *
+         * Looser than the text layer's, because a box drawn around a word by
+         * recognition sits tighter to the ink than the one a PDF declares.
+         */
+        private const val OCR_TOUCH_TOLERANCE_FRACTION = 0.02f
+
         private const val CACHE_SIZE = 6
 
         /** Words of a selected phrase looked up in the thesaurus. */

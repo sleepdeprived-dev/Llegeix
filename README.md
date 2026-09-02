@@ -41,6 +41,13 @@ language. Written in Kotlin with Jetpack Compose.
 - **Translation** — press and hold a word to translate it with ML Kit's on-device
   models; keep holding and drag to take a whole phrase, which comes back
   translated, broken down word by word, and set in the line it came from.
+- **Scanned pages** — a scan is a photograph of writing: there is no text in
+  the file, so press-and-hold used to do nothing at all and there was no way to
+  tell that from a missed press. Now a page with no text of its own is read with
+  on-device recognition the first time somebody presses on it, and the words
+  become selectable, translatable and saveable like any others. The model is
+  bundled rather than downloaded, so it works offline the first time it is
+  asked. Nothing is read until it is needed, and a page is only read once.
 - **Pronunciation** — Central Catalan IPA, generated from the spelling rather
   than looked up, so it works for any word including names and inflections,
   backed by a word list for the one thing spelling cannot record. See the note
