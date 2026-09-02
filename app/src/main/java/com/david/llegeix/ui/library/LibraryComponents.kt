@@ -59,6 +59,14 @@ fun DocumentRow(
     tags: List<DocumentTag>,
     /** The user's folder this PDF is filed in, or null if it is unfiled. */
     folderName: String?,
+    /**
+     * Whether to say where on the device the file is.
+     *
+     * False while browsing folders: every row in an open folder would repeat
+     * the folder the reader is standing in, which is the path bar's job and is
+     * three words of noise on every line.
+     */
+    showLocation: Boolean,
     onClick: () -> Unit,
     onMoveToFolder: () -> Unit,
     onToggleReadLater: () -> Unit,
@@ -114,7 +122,7 @@ fun DocumentRow(
                 // mistaken for each other: this one is a decision the reader
                 // made, the other is where the file happens to live.
                 folderName?.let { stringResource(R.string.library_filed_in, it) },
-                document.parentLabel?.takeIf { it.isNotBlank() },
+                document.parentLabel?.takeIf { showLocation && it.isNotBlank() },
                 formatSize(context, document.sizeBytes).takeIf { it.isNotBlank() },
                 formatModified(document.lastModified).takeIf { it.isNotBlank() },
             ).joinToString(" · ")

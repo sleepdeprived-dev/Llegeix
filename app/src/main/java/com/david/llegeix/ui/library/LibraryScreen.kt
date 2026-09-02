@@ -1,6 +1,7 @@
 package com.david.llegeix.ui.library
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,19 +16,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -67,6 +72,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -74,6 +80,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
+import com.david.llegeix.data.source.LibraryFolder
 import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.model.PdfDocument
@@ -111,6 +118,12 @@ fun LibraryScreen(
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     val folderIdByDocument by viewModel.folderIdByDocument.collectAsStateWithLifecycle()
     val folderNameByDocument by viewModel.folderNameByDocument.collectAsStateWithLifecycle()
+
+    // Back goes up a folder before it leaves the library. Anything else makes
+    // going three folders deep a thing you need a plan to get out of.
+    BackHandler(enabled = state.isBrowsing && state.path != null) {
+        viewModel.onNavigateUp()
+    }
 
     // All Files Access is granted in system Settings, so the only reliable
     // signal that it changed is coming back to the foreground.
@@ -249,11 +262,20 @@ fun LibraryScreen(
                         .padding(top = Space.xxl, bottom = Space.lg),
                 )
 
-                LibraryFilterRow(
-                    current = state.filter,
+                LibraryViewRow(
+                    current = state.view,
                     readLaterCount = state.readLaterUris.size,
-                    onFilterChange = viewModel::onFilterChange,
+                    onViewChange = viewModel::onViewChange,
                     modifier = Modifier.padding(bottom = Space.lg),
+                )
+            }
+
+            if (state.isBrowsing && state.path != null) {
+                PathBar(
+                    path = state.path.orEmpty(),
+                    onUp = { viewModel.onNavigateUp() },
+                    onOpenPath = { viewModel.onOpenPath(it) },
+                    modifier = Modifier.padding(bottom = Space.md),
                 )
             }
 
@@ -262,6 +284,7 @@ fun LibraryScreen(
                 layout = layout,
                 tagsByDocument = tagsByDocument,
                 folderNameByDocument = folderNameByDocument,
+                onOpenFolder = viewModel::onOpenFolder,
                 onEditTags = { tagsFor = it },
                 onAddFolder = { folderPicker.launch(null) },
                 onScanDevice = ::openAllFilesSettings,
@@ -316,12 +339,18 @@ fun LibraryScreen(
     }
 }
 
-/** "All" / "Read later", the quick way into the read-later shelf. */
+/**
+ * How the library is arranged: by folder, everything at once, or read-later.
+ *
+ * Chips rather than a menu item, because which of the three you are looking at
+ * changes what the whole screen means, and a mode you cannot see is a mode you
+ * have to remember.
+ */
 @Composable
-private fun LibraryFilterRow(
-    current: LibraryFilter,
+private fun LibraryViewRow(
+    current: LibraryView,
     readLaterCount: Int,
-    onFilterChange: (LibraryFilter) -> Unit,
+    onViewChange: (LibraryView) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -329,19 +358,183 @@ private fun LibraryFilterRow(
         horizontalArrangement = Arrangement.spacedBy(Space.sm),
         contentPadding = PaddingValues(horizontal = Space.screen),
     ) {
-        items(LibraryFilter.entries) { filter ->
-            val name = stringResource(filter.labelRes)
-            val label = if (filter == LibraryFilter.READ_LATER && readLaterCount > 0) {
+        items(LibraryView.entries) { view ->
+            val name = stringResource(view.labelRes)
+            val label = if (view == LibraryView.READ_LATER && readLaterCount > 0) {
                 stringResource(R.string.library_filter_with_count, name, readLaterCount)
             } else {
                 name
             }
             FilterChip(
-                selected = filter == current,
-                onClick = { onFilterChange(filter) },
+                selected = view == current,
+                onClick = { onViewChange(view) },
                 label = { Text(label) },
             )
         }
+    }
+}
+
+/**
+ * Where you are, and the way back out.
+ *
+ * The arrow and the trail say the same thing twice on purpose: the arrow is
+ * the target you hit without thinking, and the trail is the answer to "how did
+ * I get here" that means you never have to reconstruct it. It scrolls sideways
+ * rather than wrapping, so a deep path costs the list no height, and it keeps
+ * the end of the path in view because that is the part you are in.
+ */
+@Composable
+private fun PathBar(
+    path: String,
+    onUp: () -> Unit,
+    onOpenPath: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val segments = path.split('/')
+    val listState = rememberLazyListState()
+    LaunchedEffect(path) {
+        if (segments.isNotEmpty()) listState.scrollToItem(segments.lastIndex)
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = Space.md, end = Space.screen),
+    ) {
+        IconButton(onClick = onUp) {
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_up),
+                contentDescription = stringResource(R.string.library_folder_up),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        LazyRow(
+            state = listState,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f),
+        ) {
+            item {
+                PathSegment(
+                    label = stringResource(R.string.library_path_root),
+                    isCurrent = false,
+                    onClick = { onOpenPath(null) },
+                )
+            }
+            items(segments.size) { index ->
+                val isCurrent = index == segments.lastIndex
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "/",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                    PathSegment(
+                        label = segments[index],
+                        isCurrent = isCurrent,
+                        onClick = {
+                            if (!isCurrent) onOpenPath(segments.take(index + 1).joinToString("/"))
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PathSegment(label: String, isCurrent: Boolean, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyMedium,
+        color = if (isCurrent) {
+            MaterialTheme.colorScheme.onSurface
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        fontWeight = if (isCurrent) FontWeight.Medium else null,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .then(if (isCurrent) Modifier else Modifier.clickable(onClick = onClick))
+            .padding(horizontal = Space.sm, vertical = Space.xs),
+    )
+}
+
+/**
+ * One folder in the library, as a row you go into.
+ *
+ * The same tinted disc the Folders screen uses, so a folder looks like a
+ * folder wherever the app draws one. The count is everything below it rather
+ * than what is directly inside: a closed folder is being asked whether it is
+ * worth opening.
+ */
+@Composable
+private fun LibraryFolderRow(
+    folder: LibraryFolder,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = Space.screen, end = Space.md)
+            .padding(vertical = Space.md),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_folder),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.lg),
+        ) {
+            Text(
+                text = folder.name,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = listOfNotNull(
+                    pluralStringResource(
+                        R.plurals.folders_pdf_count,
+                        folder.documentCount,
+                        folder.documentCount,
+                    ),
+                    if (folder.folderCount > 0) {
+                        pluralStringResource(
+                            R.plurals.sources_folder_count,
+                            folder.folderCount,
+                            folder.folderCount,
+                        )
+                    } else {
+                        null
+                    },
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -352,6 +545,7 @@ private fun LibraryBody(
     tagsByDocument: Map<String, List<DocumentTag>>,
     /** The user's folder each PDF is filed in, for the row's detail line. */
     folderNameByDocument: Map<String, String>,
+    onOpenFolder: (String) -> Unit,
     onEditTags: (PdfDocument) -> Unit,
     onAddFolder: () -> Unit,
     onScanDevice: () -> Unit,
@@ -381,7 +575,7 @@ private fun LibraryBody(
             },
         )
 
-        state.isScanning && state.documents.isEmpty() -> Box(
+        state.isScanning && state.documents.isEmpty() && state.folders.isEmpty() -> Box(
             modifier = modifier,
             contentAlignment = Alignment.Center,
         ) {
@@ -405,12 +599,12 @@ private fun LibraryBody(
         )
 
         state.isFilteredToNothing -> EmptyState(
-            title = if (state.filter == LibraryFilter.READ_LATER) {
+            title = if (state.view == LibraryView.READ_LATER) {
                 stringResource(R.string.library_read_later_empty_title)
             } else {
                 stringResource(R.string.library_no_matches_title)
             },
-            body = if (state.filter == LibraryFilter.READ_LATER) {
+            body = if (state.view == LibraryView.READ_LATER) {
                 stringResource(R.string.library_read_later_empty_body)
             } else {
                 stringResource(R.string.library_no_matches_body, state.totalFound, state.query)
@@ -429,6 +623,26 @@ private fun LibraryBody(
                 bottom = Space.lg,
             ),
         ) {
+            // Folders keep the full width even in the grid: they are not
+            // covers, and a folder shaped like a book is a folder you open by
+            // mistake.
+            items(
+                state.folders,
+                key = { "folder:" + it.path },
+                span = { GridItemSpan(maxLineSpan) },
+            ) { folder ->
+                LibraryFolderRow(folder = folder, onClick = { onOpenFolder(folder.path) })
+            }
+            if (state.folders.isNotEmpty() && state.documents.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier
+                            .padding(horizontal = Space.screen)
+                            .padding(top = Space.sm, bottom = Space.md),
+                    )
+                }
+            }
             items(state.documents, key = { it.uriString }) { document ->
                 DocumentCell(
                     document = document,
@@ -448,6 +662,21 @@ private fun LibraryBody(
             modifier = modifier,
             contentPadding = PaddingValues(bottom = Space.lg),
         ) {
+            items(state.folders, key = { "folder:" + it.path }) { folder ->
+                LibraryFolderRow(folder = folder, onClick = { onOpenFolder(folder.path) })
+            }
+            // The one rule this screen draws, and it earns it: above the line
+            // are places to go, below it are things to read.
+            if (state.folders.isNotEmpty() && state.documents.isNotEmpty()) {
+                item {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier
+                            .padding(horizontal = Space.screen)
+                            .padding(top = Space.sm, bottom = Space.xs),
+                    )
+                }
+            }
             items(state.documents, key = { it.uriString }) { document ->
                 DocumentRow(
                     document = document,
@@ -455,6 +684,7 @@ private fun LibraryBody(
                     isReadLater = state.isReadLater(document),
                     tags = tagsByDocument[document.uriString].orEmpty(),
                     folderName = folderNameByDocument[document.uriString],
+                    showLocation = !state.isBrowsing,
                     onClick = { onOpenDocument(document) },
                     onMoveToFolder = { onMoveToFolder(document) },
                     onToggleReadLater = { onToggleReadLater(document) },

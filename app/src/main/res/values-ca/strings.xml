@@ -59,6 +59,10 @@
     <string name="library_scan_failed">No s\'han pogut cercar els PDF</string>
     <string name="library_filter_all">Tots</string>
     <string name="library_filter_read_later">Per llegir més tard</string>
+    <string name="library_view_by_folder">Per carpetes</string>
+    <!-- El punt de partida de la biblioteca, al camí de carpetes. -->
+    <string name="library_path_root">Biblioteca</string>
+    <string name="library_folder_up">Puja una carpeta</string>
     <string name="library_filter_with_count">%1$s (%2$d)</string>
     <string name="library_sort_by">Ordena per</string>
     <string name="library_sort_recent">Modificats recentment</string>

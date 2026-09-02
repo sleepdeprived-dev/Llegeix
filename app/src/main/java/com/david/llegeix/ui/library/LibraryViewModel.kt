@@ -20,6 +20,9 @@ import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.FolderRules
 import com.david.llegeix.data.source.PdfRepository
 import com.david.llegeix.data.source.applyFolderRules
+import com.david.llegeix.data.source.documentsIn
+import com.david.llegeix.data.source.foldersIn
+import com.david.llegeix.data.source.nearestLivePath
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -253,8 +256,33 @@ class LibraryViewModel(
         _uiState.update { it.copy(sort = sort).withVisibleDocuments() }
     }
 
-    fun onFilterChange(filter: LibraryFilter) {
-        _uiState.update { it.copy(filter = filter).withVisibleDocuments() }
+    fun onViewChange(view: LibraryView) {
+        // The open folder is kept rather than reset: looking at everything for
+        // a moment and coming back should come back to where you were.
+        _uiState.update { it.copy(view = view).withVisibleDocuments() }
+    }
+
+    /** Go into a folder. */
+    fun onOpenFolder(path: String) {
+        _uiState.update { it.copy(path = path).withVisibleDocuments() }
+    }
+
+    /**
+     * Go to a folder above the current one, or to the top when [path] is null.
+     *
+     * Returns false when there was nowhere to go, which is what tells the
+     * system back button to leave the screen instead of being swallowed.
+     */
+    fun onOpenPath(path: String?): Boolean {
+        if (_uiState.value.path == null && path == null) return false
+        _uiState.update { it.copy(path = path).withVisibleDocuments() }
+        return true
+    }
+
+    /** One folder up, for the back button and the arrow beside the path. */
+    fun onNavigateUp(): Boolean {
+        val current = _uiState.value.path ?: return false
+        return onOpenPath(current.substringBeforeLast('/', "").ifEmpty { null })
     }
 
     fun onToggleReadLater(document: PdfDocument) = viewModelScope.launch {
@@ -298,32 +326,52 @@ class LibraryViewModel(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    /** Apply the current query and sort to [allDocuments]. */
+    /**
+     * Work out what is on screen: which folders, which documents, in what order.
+     *
+     * The three views are three different questions and are answered
+     * separately. Browsing asks what is in one folder; the flat views ask what
+     * exists at all. A search overrides every one of them and looks everywhere,
+     * because a name half-remembered is not a name you know the folder of.
+     */
     private fun LibraryUiState.withVisibleDocuments(): LibraryUiState {
         val needle = query.trim()
         // Folders the reader has switched off in Fonts never reach the library,
-        // whichever filter or search is running over it.
+        // whichever view or search is running over it.
         val allowed = applyFolderRules(allDocuments, folderRules.value)
-        val inFilter = when (filter) {
-            LibraryFilter.ALL -> allowed
-            LibraryFilter.READ_LATER -> allowed.filter { it.uriString in readLaterUris }
-        }
-        val matches = if (needle.isEmpty()) {
-            inFilter
-        } else {
-            inFilter.filter {
+        val searching = needle.isNotEmpty()
+        // A rescan or a folder switched off can empty the folder being looked
+        // at; land on the nearest one still holding something instead.
+        val here = nearestLivePath(path, allowed)
+
+        val visible = when {
+            searching -> allowed.filter {
                 it.displayName.contains(needle, ignoreCase = true) ||
                     it.parentLabel?.contains(needle, ignoreCase = true) == true
             }
+
+            view == LibraryView.READ_LATER -> allowed.filter { it.uriString in readLaterUris }
+            view == LibraryView.ALL -> allowed
+            else -> documentsIn(here, allowed)
         }
+
         return copy(
-            documents = matches.sortedWith(
+            path = here,
+            documents = visible.sortedWith(
                 sort.comparator { document ->
                     // Already alphabetical from the DAO, so the first is the
                     // one the row displays.
                     tagsByDocument.value[document.uriString]?.firstOrNull()?.name
                 },
             ),
+            // Folders are always alphabetical, whatever the documents are
+            // sorted by: a folder has no size and no date of its own, and a
+            // place you are looking for should be where it was last time.
+            folders = if (view == LibraryView.FOLDERS && !searching) {
+                foldersIn(here, allowed)
+            } else {
+                emptyList()
+            },
             totalFound = allowed.size,
         )
     }

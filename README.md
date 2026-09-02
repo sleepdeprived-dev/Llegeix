@@ -10,6 +10,12 @@ language. Written in Kotlin with Jetpack Compose.
   cover thumbnails, and a choice of list or grid. Sorting, the layout, a rescan
   and the way into Sources all live behind the one overflow menu, so the app bar
   carries the app's name and nothing else it does not need.
+- **Browsing** — the library opens as a small file manager over the folders the
+  PDFs are already in: folders first with a count of everything below them, then
+  the documents that sit in this folder, with a path along the top and the back
+  button walking up it. A flat list of everything and the read-later shelf are
+  each one chip away, and a search leaves the folder you are in and looks
+  through all of them.
 - **Sources** — one screen for where the library's documents come from: the
   whole-device scan, the folders you have granted, and the folders found inside
   them. Each source arrives folded and says what it holds — "48 PDFs · 12
@@ -45,8 +51,10 @@ language. Written in Kotlin with Jetpack Compose.
 ## Design
 
 Llegeix is built for reading in a second language with ADHD, so the interface is
-held to one rule: never make the reader work out what to look at. Screens carry
-one obvious action at a time, empty states sit centred in the space they have
+held to one rule: never make the reader work out what to look at. A library of
+two hundred PDFs in one list is a list with nowhere to start, so the default is
+to walk the folders they are already filed in and let each screen ask one
+question — what is in here. Screens carry one obvious action at a time, empty states sit centred in the space they have
 rather than stacked under the app bar, one-off setup lives behind a menu instead
 of on the reading surface, and grouping is done with space rather than a rule
 between every row. Menu items are marked with a single-colour glyph in the

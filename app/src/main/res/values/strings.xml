@@ -63,6 +63,10 @@
     <string name="library_scan_failed">Could not scan for PDFs</string>
     <string name="library_filter_all">All</string>
     <string name="library_filter_read_later">Read later</string>
+    <string name="library_view_by_folder">By folder</string>
+    <!-- The top of the library, as the first step of the path bar. -->
+    <string name="library_path_root">Library</string>
+    <string name="library_folder_up">Up one folder</string>
     <!-- A filter chip with a count, e.g. "Read later (3)". -->
     <string name="library_filter_with_count">%1$s (%2$d)</string>
     <string name="library_sort_by">Sort by</string>
