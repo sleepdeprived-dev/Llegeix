@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,7 +69,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
@@ -186,6 +189,11 @@ fun ReaderScreen(
     }
 
     Scaffold(
+        // The app shell's Scaffold has already inset this screen for the
+        // status bar and the navigation bar; counting them a second time
+        // put a dead band above the bottom bar and made every top bar
+        // 24dp taller than it asks to be.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         // One bar, and only one. The bottom bar this screen used to carry took a
@@ -272,13 +280,23 @@ fun ReaderScreen(
                                 viewModel.matchHighlights(index, widthPx, heightPx)
                             },
                             onZoomChanged = viewModel::onZoomChanged,
-                            onSelect = { x1, y1, x2, y2, w, h ->
-                                viewModel.onSelection(index, x1, y1, x2, y2, w, h)
+                            onSelectPreview = { x1, y1, x2, y2, w, h ->
+                                viewModel.onSelectionPreview(index, x1, y1, x2, y2, w, h)
                             },
-                            lookupHighlights = state.lookup
+                            onSelectCommit = { x1, y1, x2, y2, w, h ->
+                                viewModel.onSelectionCommitted(index, x1, y1, x2, y2, w, h)
+                            },
+                            onSelectCancel = viewModel::onSelectionCancelled,
+                            // While the finger is down the highlight comes from
+                            // the preview; once the sheet is open it comes from
+                            // the lookup it is showing.
+                            lookupHighlights = state.selectionPreview
                                 ?.takeIf { it.pageIndex == index }
                                 ?.boundsPx
-                                .orEmpty(),
+                                ?: state.lookup
+                                    ?.takeIf { it.pageIndex == index }
+                                    ?.boundsPx
+                                    .orEmpty(),
                             highlightColor = state.highlightColor,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -305,6 +323,8 @@ fun ReaderScreen(
             onDismiss = viewModel::onDismissLookup,
             onRetryOnAnyNetwork = viewModel::onRetryOnAnyNetwork,
             onToggleSaved = viewModel::onToggleWordBookmark,
+            onToggleTarget = viewModel::onToggleTranslationTarget,
+            onShowSynonyms = viewModel::onShowSynonyms,
         )
     }
 }
@@ -335,6 +355,7 @@ private fun ReaderBar(
     var colorMenuOpen by remember { mutableStateOf(false) }
 
     TopAppBar(
+        windowInsets = WindowInsets(0, 0, 0, 0),
 
         expandedHeight = Space.topBar,
         navigationIcon = {
@@ -481,6 +502,7 @@ private fun SearchBar(
 
     Column {
         TopAppBar(
+            windowInsets = WindowInsets(0, 0, 0, 0),
             expandedHeight = Space.topBar,
             navigationIcon = {
                 IconButton(onClick = onClose) {
@@ -585,11 +607,17 @@ private fun PdfPage(
     searchMatch: PdfMatch?,
     highlights: suspend (widthPx: Int, heightPx: Int) -> List<RectF>,
     onZoomChanged: (Float) -> Unit,
-    onSelect: (
+    onSelectPreview: (
         startXPx: Float, startYPx: Float,
         endXPx: Float, endYPx: Float,
         widthPx: Int, heightPx: Int,
     ) -> Unit,
+    onSelectCommit: (
+        startXPx: Float, startYPx: Float,
+        endXPx: Float, endYPx: Float,
+        widthPx: Int, heightPx: Int,
+    ) -> Unit,
+    onSelectCancel: () -> Unit,
     lookupHighlights: List<RectF>,
     highlightColor: Int,
     modifier: Modifier = Modifier,
@@ -697,22 +725,34 @@ private fun PdfPage(
                     // Press and hold picks a word; keep dragging and the
                     // selection grows to a phrase. One gesture, so there is
                     // nothing extra to learn to select more than one word.
+                    //
+                    // Nothing is looked up until the finger lifts. Opening the
+                    // sheet on the first word, as this used to, put a panel
+                    // over the very text the reader was still trying to drag
+                    // across.
                     .pointerInput(index, rendered, drawnSize) {
                         var anchor = Offset.Zero
+                        var last = Offset.Zero
                         detectDragGesturesAfterLongPress(
                             onDragStart = { start ->
                                 anchor = start
-                                emitSelection(start, start, rendered, drawnSize, onSelect)
+                                last = start
+                                emitSelection(start, start, rendered, drawnSize, onSelectPreview)
                             },
                             onDrag = { change, _ ->
+                                last = change.position
                                 emitSelection(
                                     anchor,
-                                    change.position,
+                                    last,
                                     rendered,
                                     drawnSize,
-                                    onSelect,
+                                    onSelectPreview,
                                 )
                             },
+                            onDragEnd = {
+                                emitSelection(anchor, last, rendered, drawnSize, onSelectCommit)
+                            },
+                            onDragCancel = onSelectCancel,
                         )
                     }
                     .drawWithContent {
@@ -794,6 +834,8 @@ private fun WordLookupSheet(
     onDismiss: () -> Unit,
     onRetryOnAnyNetwork: () -> Unit,
     onToggleSaved: () -> Unit,
+    onToggleTarget: () -> Unit,
+    onShowSynonyms: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -805,30 +847,22 @@ private fun WordLookupSheet(
                 .padding(horizontal = Space.xl)
                 .padding(bottom = Space.xxl),
         ) {
-            // ---- The word itself, and the save toggle -----------------------
-            Row(verticalAlignment = Alignment.Top) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(
-                            R.string.lookup_direction,
-                            stringResource(target.directionRes),
-                        ),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = lookup.text,
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(top = Space.xs),
-                    )
-                    if (lookup.ipa.isNotBlank()) {
-                        IpaLine(
-                            ipa = lookup.ipa,
-                            isApproximate = lookup.isIpaApproximate,
-                            modifier = Modifier.padding(top = Space.xs),
-                        )
-                    }
-                }
+            // ---- Which way it is being translated, and the two controls ------
+            //
+            // The quiet row: what the sheet is doing, the language it is doing
+            // it into, and whether the word is kept. The word itself gets the
+            // full width underneath, where a long phrase has room.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(
+                        R.string.lookup_direction,
+                        stringResource(target.directionRes),
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
+                )
+                TargetFlags(target = target, onPick = onToggleTarget)
                 IconButton(onClick = onToggleSaved) {
                     Icon(
                         imageVector = if (lookup.isSaved) {
@@ -850,6 +884,18 @@ private fun WordLookupSheet(
                         },
                     )
                 }
+            }
+            Text(
+                text = lookup.text,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(top = Space.xs),
+            )
+            if (lookup.ipa.isNotBlank()) {
+                IpaLine(
+                    ipa = lookup.ipa,
+                    isApproximate = lookup.isIpaApproximate,
+                    modifier = Modifier.padding(top = Space.xs),
+                )
             }
 
             // ---- The answer -------------------------------------------------
@@ -979,6 +1025,15 @@ private fun WordLookupSheet(
                 )
             }
 
+            // ---- Synonyms, once they have been asked for --------------------
+            if (lookup.synonyms.status != SynonymsStatus.CLOSED) {
+                SynonymsCard(
+                    synonyms = lookup.synonyms,
+                    selected = lookup.text,
+                    modifier = Modifier.padding(top = Space.lg),
+                )
+            }
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Space.md),
                 modifier = Modifier.padding(top = Space.xl),
@@ -989,10 +1044,149 @@ private fun WordLookupSheet(
                     }
                 }
                 Button(onClick = onDismiss) { Text(stringResource(R.string.lookup_done)) }
+                if (lookup.synonyms.status == SynonymsStatus.CLOSED) {
+                    OutlinedButton(onClick = onShowSynonyms) {
+                        Text(stringResource(R.string.lookup_synonyms))
+                    }
+                }
             }
         }
     }
 }
+
+/**
+ * The two-flag switch for the translation language.
+ *
+ * Flags rather than words because this sits in the corner of a sheet whose
+ * subject is a word: two more words there would compete with it. Both are
+ * always visible, so switching is one tap and the current choice is not
+ * something to work out.
+ */
+@Composable
+private fun TargetFlags(target: TranslationTarget, onPick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .padding(Space.xs),
+        horizontalArrangement = Arrangement.spacedBy(Space.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TranslationTarget.entries.forEach { entry ->
+            val selected = entry == target
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            Color.Transparent
+                        },
+                    )
+                    .clickable(enabled = !selected, onClick = onPick)
+                    .padding(horizontal = Space.sm, vertical = 6.dp),
+            ) {
+                Image(
+                    painter = painterResource(entry.flagRes),
+                    contentDescription = stringResource(entry.switchRes),
+                    modifier = Modifier
+                        .size(width = 22.dp, height = 15.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .alpha(if (selected) 1f else 0.4f),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Synonyms and antonyms for what was selected.
+ *
+ * Sense groups are kept apart, because a Catalan word with six meanings gives
+ * six unrelated lists and running them together would be worse than useless to
+ * someone learning. Each list is capped: this is a nudge towards another way of
+ * saying it, not the dictionary page.
+ */
+@Composable
+private fun SynonymsCard(
+    synonyms: SynonymsState,
+    /** What the reader actually selected, so the card can avoid repeating it. */
+    selected: String,
+    modifier: Modifier = Modifier,
+) {
+    DetailCard(title = stringResource(R.string.lookup_synonyms), modifier = modifier) {
+        when {
+            synonyms.status == SynonymsStatus.LOADING -> Text(
+                text = stringResource(R.string.lookup_synonyms_loading),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            synonyms.entries.isEmpty() -> Text(
+                text = stringResource(R.string.lookup_synonyms_none),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            else -> synonyms.entries.forEachIndexed { index, entry ->
+                if (index > 0) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(vertical = Space.md),
+                    )
+                }
+                // Naming the word again is only worth the line when it is not
+                // the word already set in headline type at the top of the
+                // sheet: a phrase's several entries, or a plural answered by
+                // its singular.
+                if (synonyms.entries.size > 1 || entry.headword != selected.lowercase()) {
+                    Text(
+                        text = entry.headword,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = Space.xs),
+                    )
+                }
+                entry.senses.take(MAX_SENSES_SHOWN).forEachIndexed { sense_index, sense ->
+                    Text(
+                        text = sense.words.take(MAX_SYNONYMS_SHOWN).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        // Each group is a different meaning of the same word, so
+                        // they need enough air between them to read as separate
+                        // answers rather than as one long list.
+                        modifier = Modifier.padding(
+                            top = if (sense_index == 0) Space.xs else Space.md,
+                        ),
+                    )
+                }
+                if (entry.antonyms.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.lookup_antonyms),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = Space.md),
+                    )
+                    Text(
+                        text = entry.antonyms
+                            .take(MAX_SYNONYMS_SHOWN)
+                            .joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Space.xs),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Sense groups shown before the card would start to read as a list of lists. */
+private const val MAX_SENSES_SHOWN = 3
+
+/** Words shown per group, which is about one comfortable line and a half. */
+private const val MAX_SYNONYMS_SHOWN = 6
 
 /**
  * The pronunciation line.

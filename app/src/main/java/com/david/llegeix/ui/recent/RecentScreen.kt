@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -74,9 +75,15 @@ fun RecentScreen(
     var pendingRemoval by remember { mutableStateOf<RecentDocument?>(null) }
 
     Scaffold(
+        // The app shell's Scaffold has already inset this screen for the
+        // status bar and the navigation bar; counting them a second time
+        // put a dead band above the bottom bar and made every top bar
+        // 24dp taller than it asks to be.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
                 title = { Text(stringResource(R.string.recent_title)) },
                 actions = {
@@ -149,7 +156,7 @@ fun RecentScreen(
                 contentPadding = PaddingValues(
                     start = Space.md,
                     end = Space.md,
-                    bottom = Space.xxl,
+                    bottom = Space.lg,
                 ),
             ) {
                 items(recents, key = { it.uriString }) { recent ->
@@ -193,7 +200,7 @@ fun RecentScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.padding(innerPadding),
-                contentPadding = PaddingValues(bottom = Space.xxl),
+                contentPadding = PaddingValues(bottom = Space.lg),
             ) {
                 items(recents, key = { it.uriString }) { recent ->
                     Row(

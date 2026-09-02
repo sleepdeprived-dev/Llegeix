@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -87,10 +88,16 @@ fun FoldersScreen(
 
 
     Scaffold(
+        // The app shell's Scaffold has already inset this screen for the
+        // status bar and the navigation bar; counting them a second time
+        // put a dead band above the bottom bar and made every top bar
+        // 24dp taller than it asks to be.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
                 title = { Text(stringResource(R.string.folders_title)) },
             )
@@ -106,7 +113,7 @@ fun FoldersScreen(
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.padding(innerPadding),
-            contentPadding = PaddingValues(bottom = Space.huge),
+            contentPadding = PaddingValues(bottom = Space.lg),
         ) {
             // The automatic collection, always first and not user-editable.
             item {

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -142,10 +143,16 @@ fun LibraryScreen(
     }
 
     Scaffold(
+        // The app shell's Scaffold has already inset this screen for the
+        // status bar and the navigation bar; counting them a second time
+        // put a dead band above the bottom bar and made every top bar
+        // 24dp taller than it asks to be.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -427,7 +434,7 @@ private fun LibraryBody(
             contentPadding = PaddingValues(
                 start = Space.md,
                 end = Space.md,
-                bottom = Space.xxl,
+                bottom = Space.lg,
             ),
         ) {
             items(state.documents, key = { it.uriString }) { document ->
@@ -447,7 +454,7 @@ private fun LibraryBody(
 
         else -> LazyColumn(
             modifier = modifier,
-            contentPadding = PaddingValues(bottom = Space.xxl),
+            contentPadding = PaddingValues(bottom = Space.lg),
         ) {
             items(state.documents, key = { it.uriString }) { document ->
                 DocumentRow(

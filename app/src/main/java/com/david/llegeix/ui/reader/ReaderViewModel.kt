@@ -16,15 +16,19 @@ import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
 import android.graphics.RectF
 import com.david.llegeix.lang.CatalanIpa
+import com.david.llegeix.lang.CatalanThesaurus
+import com.david.llegeix.lang.ThesaurusEntry
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.PdfPageRenderer
+import com.david.llegeix.pdf.PdfSelection
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.R
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.util.pdfTitle
 import com.david.llegeix.util.runCatchingCancellable
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -35,9 +39,37 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** How far a tap-and-hold lookup has got. */
 enum class LookupStatus { LOOKING_UP, DOWNLOADING_MODEL, READY, FAILED }
+
+/** How far the optional synonym lookup has got. */
+enum class SynonymsStatus { CLOSED, LOADING, READY }
+
+/**
+ * The thesaurus panel, which stays shut until it is asked for.
+ *
+ * The dictionary is five megabytes and most lookups never want it, so it is
+ * read on the first request rather than when the reader opens.
+ */
+data class SynonymsState(
+    val status: SynonymsStatus = SynonymsStatus.CLOSED,
+    val entries: List<ThesaurusEntry> = emptyList(),
+)
+
+/**
+ * What is under the finger while a selection is still being dragged.
+ *
+ * Held apart from [WordLookup] so the page can highlight the growing selection
+ * without the sheet opening over it: the sheet is what made picking a phrase
+ * so awkward, since it appeared on the first word and covered everything the
+ * reader was still trying to reach.
+ */
+data class SelectionPreview(
+    val pageIndex: Int,
+    val boundsPx: List<RectF>,
+)
 
 /** One word of a selected phrase, glossed on its own. */
 data class WordGloss(
@@ -75,6 +107,8 @@ data class WordLookup(
     val error: UiText? = null,
     /** True once a Wi-Fi-only download has failed, so retrying is worth offering. */
     val canRetryOnAnyNetwork: Boolean = false,
+    /** Synonyms and antonyms, once the reader has asked for them. */
+    val synonyms: SynonymsState = SynonymsState(),
 ) {
     val isPhrase: Boolean get() = words.size > 1
 }
@@ -107,6 +141,8 @@ data class ReaderUiState(
     /** The document's chosen highlight colour, or the app default. */
     val highlightColor: Int = HighlightColors.Default,
     val lookup: WordLookup? = null,
+    /** Highlighted while the finger is still down, before the sheet opens. */
+    val selectionPreview: SelectionPreview? = null,
     /** Shown briefly when a long press lands on a page with no text layer. */
     val lookupHint: UiText? = null,
     val search: SearchState = SearchState(),
@@ -150,6 +186,8 @@ class ReaderViewModel(
 
     private var lookupJob: Job? = null
 
+    private var previewJob: Job? = null
+
     private var searchJob: Job? = null
 
     /**
@@ -173,6 +211,21 @@ class ReaderViewModel(
                 if (translator.targetLanguage != current.translationTarget.code) {
                     translator.close()
                     translator = WordTranslator(current.translationTarget.code)
+                    // A sheet open at the moment of the switch should answer in
+                    // the new language rather than keep the old answer.
+                    _uiState.value.lookup?.let { open ->
+                        updateLookup {
+                            it.copy(
+                                status = LookupStatus.LOOKING_UP,
+                                translation = null,
+                                contextTranslation = null,
+                                error = null,
+                                words = it.words.map { gloss -> gloss.copy(translation = null) },
+                            )
+                        }
+                        lookupJob?.cancel()
+                        lookupJob = viewModelScope.launch { translate(open.text) }
+                    }
                 }
             }
         }
@@ -348,12 +401,13 @@ class ReaderViewModel(
     }
 
     /**
-     * Handle a tap-and-hold on a page: find the word, then translate it.
+     * Track a selection while the finger is still down.
      *
-     * Coordinates arrive in bitmap pixels, which is the space the page was drawn
-     * in, so the UI never has to reason about PDF user space.
+     * Highlights what is currently covered and nothing more. No translation is
+     * started and no sheet is opened, so the reader can keep dragging until the
+     * selection is the phrase they meant.
      */
-    fun onSelection(
+    fun onSelectionPreview(
         pageIndex: Int,
         startXPx: Float,
         startYPx: Float,
@@ -362,21 +416,55 @@ class ReaderViewModel(
         renderedWidthPx: Int,
         renderedHeightPx: Int,
     ) {
+        previewJob?.cancel()
+        previewJob = viewModelScope.launch {
+            val selection = resolveSelection(
+                pageIndex, startXPx, startYPx, endXPx, endYPx,
+                renderedWidthPx, renderedHeightPx,
+            ) ?: return@launch
+            _uiState.update {
+                it.copy(selectionPreview = SelectionPreview(pageIndex, selection.boundsPx))
+            }
+        }
+    }
+
+    /** Drop the highlight when a gesture is cancelled rather than finished. */
+    fun onSelectionCancelled() {
+        previewJob?.cancel()
+        _uiState.update { it.copy(selectionPreview = null) }
+    }
+
+    /**
+     * Finish a tap-and-hold: find the words, then translate them.
+     *
+     * Called when the finger lifts, which is the first moment the selection is
+     * known to be final. Coordinates arrive in bitmap pixels, which is the
+     * space the page was drawn in, so the UI never has to reason about PDF user
+     * space.
+     */
+    fun onSelectionCommitted(
+        pageIndex: Int,
+        startXPx: Float,
+        startYPx: Float,
+        endXPx: Float,
+        endYPx: Float,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ) {
+        previewJob?.cancel()
         lookupJob?.cancel()
         lookupJob = viewModelScope.launch {
-            val active = renderer ?: return@launch
-            val selection = runCatchingCancellable {
-                active.selectionBetween(
-                    pageIndex, startXPx, startYPx, endXPx, endYPx,
-                    renderedWidthPx, renderedHeightPx,
-                )
-            }.getOrNull()
+            val selection = resolveSelection(
+                pageIndex, startXPx, startYPx, endXPx, endYPx,
+                renderedWidthPx, renderedHeightPx,
+            )
 
             if (selection == null) {
                 // Almost always a scanned page: pixels, no text layer.
                 _uiState.update {
                     it.copy(
                         lookup = null,
+                        selectionPreview = null,
                         lookupHint = UiText.of(R.string.lookup_no_text),
                     )
                 }
@@ -390,6 +478,7 @@ class ReaderViewModel(
             _uiState.update {
                 it.copy(
                     lookupHint = null,
+                    selectionPreview = null,
                     lookup = WordLookup(
                         text = selection.text,
                         pageIndex = pageIndex,
@@ -407,6 +496,67 @@ class ReaderViewModel(
                 )
             }
             translate(selection.text)
+        }
+    }
+
+    private suspend fun resolveSelection(
+        pageIndex: Int,
+        startXPx: Float,
+        startYPx: Float,
+        endXPx: Float,
+        endYPx: Float,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): PdfSelection? {
+        val active = renderer ?: return null
+        return runCatchingCancellable {
+            active.selectionBetween(
+                pageIndex, startXPx, startYPx, endXPx, endYPx,
+                renderedWidthPx, renderedHeightPx,
+            )
+        }.getOrNull()
+    }
+
+    /**
+     * Switch which language the sheet translates into, and redo the lookup.
+     *
+     * The setting is the same one Configuració writes, so a switch made here
+     * while reading is the switch the app keeps.
+     */
+    fun onToggleTranslationTarget() {
+        val current = _uiState.value.translationTarget
+        val next = TranslationTarget.entries
+            .getOrNull(current.ordinal + 1) ?: TranslationTarget.entries.first()
+        settings.setTranslationTarget(next)
+    }
+
+    /**
+     * Load synonyms and antonyms for what is selected.
+     *
+     * A phrase is looked up word by word, keeping only the words the dictionary
+     * actually knows, so a selected sentence does not produce a wall of lists
+     * with empty gaps in it.
+     */
+    fun onShowSynonyms() {
+        val lookup = _uiState.value.lookup ?: return
+        if (lookup.synonyms.status != SynonymsStatus.CLOSED) return
+        updateLookup { it.copy(synonyms = SynonymsState(status = SynonymsStatus.LOADING)) }
+        viewModelScope.launch {
+            val words = if (lookup.isPhrase) {
+                lookup.words.map { it.word }
+            } else {
+                listOf(lookup.text)
+            }
+            val found = withContext(Dispatchers.IO) {
+                val dictionary = CatalanThesaurus.get(application)
+                words.filter { CatalanThesaurus.isWorthLookingUp(it) }
+                    .take(MAX_THESAURUS_WORDS)
+                    .mapNotNull { dictionary.lookup(it) }
+                    .filterNot { it.isEmpty }
+            }
+            updateLookup {
+                it.copy(synonyms = SynonymsState(SynonymsStatus.READY, found))
+            }
         }
     }
 
@@ -556,6 +706,9 @@ class ReaderViewModel(
 
     companion object {
         private const val CACHE_SIZE = 6
+
+        /** Words of a selected phrase looked up in the thesaurus. */
+        private const val MAX_THESAURUS_WORDS = 4
 
         /** Splits a selected phrase into words, on spaces and punctuation. */
         private val WORD_SPLIT = Regex("[^\\p{L}·'\u2019]+")

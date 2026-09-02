@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -94,9 +95,15 @@ fun BookmarksScreen(
     val selectedTab = pagerState.currentPage
 
     Scaffold(
+        // The app shell's Scaffold has already inset this screen for the
+        // status bar and the navigation bar; counting them a second time
+        // put a dead band above the bottom bar and made every top bar
+        // 24dp taller than it asks to be.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
                 title = { Text(stringResource(R.string.bookmarks_title)) },
             )
@@ -151,7 +158,7 @@ fun BookmarksScreen(
                         icon = painterResource(R.drawable.ic_bookmark),
                     )
                 } else {
-                    LazyColumn(contentPadding = PaddingValues(bottom = Space.xxl)) {
+                    LazyColumn(contentPadding = PaddingValues(bottom = Space.lg)) {
                         items(documents, key = { it.uriString }) { document ->
                             BookmarkRow(
                                 title = pdfTitle(document.displayName),
@@ -174,7 +181,7 @@ fun BookmarksScreen(
                         icon = painterResource(R.drawable.ic_bookmark),
                     )
                 } else {
-                    LazyColumn(contentPadding = PaddingValues(bottom = Space.xxl)) {
+                    LazyColumn(contentPadding = PaddingValues(bottom = Space.lg)) {
                         items(pages, key = { it.id }) { bookmark ->
                             BookmarkRow(
                                 documentUri = bookmark.documentUri,
@@ -235,7 +242,7 @@ fun BookmarksScreen(
                             )
                         } else {
                             LazyColumn(
-                                contentPadding = PaddingValues(bottom = Space.xxl),
+                                contentPadding = PaddingValues(bottom = Space.lg),
                                 // Saved words are dense blocks of their own —
                                 // word, pronunciation, translation, the quoted
                                 // line and the source. Without a real gap two

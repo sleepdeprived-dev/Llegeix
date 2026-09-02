@@ -224,8 +224,27 @@ class PdfiumPageRenderer private constructor(
             return textPage.textPageGetCharIndexAtPos(xPt, yPt, tolerance, tolerance)
         }
 
-        val a = charAt(startXPx, startYPx)
-        val b = charAt(endXPx, endYPx)
+        /**
+         * The character under a point, or the nearest one back towards [towardXPx].
+         *
+         * A finger dragged to the end of a sentence usually stops just past the
+         * full stop, in the margin, where there is no character at all. Taking
+         * that as "no selection" collapsed the whole drag back to the word it
+         * started on, which made selecting to the end of a line almost
+         * impossible. Walking back towards the other end of the drag finds the
+         * last word the reader actually crossed.
+         */
+        fun charNear(xPx: Float, yPx: Float, towardXPx: Float): Int {
+            charAt(xPx, yPx).let { if (it >= 0) return it }
+            for (step in 1..MARGIN_PROBE_STEPS) {
+                val ratio = step.toFloat() / MARGIN_PROBE_STEPS
+                charAt(xPx + (towardXPx - xPx) * ratio, yPx).let { if (it >= 0) return it }
+            }
+            return -1
+        }
+
+        val a = charNear(startXPx, startYPx, endXPx)
+        val b = charNear(endXPx, endYPx, startXPx)
         // A drag that started or ended in the margin still has one good end.
         val anchor = if (a >= 0) a else b
         if (anchor < 0 || anchor >= charCount) return null
@@ -404,6 +423,14 @@ class PdfiumPageRenderer private constructor(
          * zero tolerance makes the feature feel broken.
          */
         private const val TOUCH_TOLERANCE_FRACTION = 0.012
+
+        /**
+         * Probes taken back along a drag when its end landed on no character.
+         *
+         * Enough to cross a wide margin in small steps without ever jumping
+         * over a word, and cheap: each probe is one lookup in the text page.
+         */
+        private const val MARGIN_PROBE_STEPS = 16
 
         /** PDFium reports page line breaks as CR, LF or both. */
         private val LINE_BREAKS = Regex("[\\r\\n]+")

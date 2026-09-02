@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -91,9 +92,15 @@ fun SettingsScreen(
     var showPrivacy by remember { mutableStateOf(false) }
 
     Scaffold(
+        // The app shell's Scaffold has already inset this screen for the
+        // status bar and the navigation bar; counting them a second time
+        // put a dead band above the bottom bar and made every top bar
+        // 24dp taller than it asks to be.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -112,7 +119,7 @@ fun SettingsScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = Space.screen)
-                .padding(bottom = Space.huge),
+                .padding(bottom = Space.xl),
         ) {
             SectionHeader(stringResource(R.string.settings_appearance))
 
@@ -616,4 +623,12 @@ private fun AboutRows() {
             modifier = Modifier.padding(top = Space.xs),
         )
     }
+    // The synonym dictionary is CC BY 4.0, which asks for the credit to travel
+    // with it. It is also simply the right place to say whose work this is.
+    Text(
+        text = stringResource(R.string.settings_credits_thesaurus),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = Space.md),
+    )
 }

@@ -3,6 +3,7 @@ package com.david.llegeix.ui.folders
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -55,9 +56,15 @@ fun FolderDetailScreen(
     val documents by viewModel.documents.collectAsStateWithLifecycle()
 
     Scaffold(
+        // The app shell's Scaffold has already inset this screen for the
+        // status bar and the navigation bar; counting them a second time
+        // put a dead band above the bottom bar and made every top bar
+        // 24dp taller than it asks to be.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -81,7 +88,7 @@ fun FolderDetailScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.padding(innerPadding),
-                contentPadding = PaddingValues(bottom = Space.xxl),
+                contentPadding = PaddingValues(bottom = Space.lg),
             ) {
                 items(documents, key = { it.uriString }) { document ->
                     Row(

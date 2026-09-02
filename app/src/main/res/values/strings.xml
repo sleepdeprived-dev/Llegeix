@@ -174,6 +174,14 @@
     <!-- Word lookup -->
     <string name="lookup_target_english">English</string>
     <string name="lookup_target_romanian">Romanian</string>
+
+    <!-- The reader's quick language switch and the thesaurus panel. -->
+    <string name="lookup_switch_english">Translate into English</string>
+    <string name="lookup_switch_romanian">Translate into Romanian</string>
+    <string name="lookup_synonyms">Synonyms</string>
+    <string name="lookup_antonyms">Antonyms</string>
+    <string name="lookup_synonyms_loading">Searching the dictionary\u2026</string>
+    <string name="lookup_synonyms_none">The dictionary has nothing for this selection.</string>
     <string name="lookup_direction">Catalan → %1$s</string>
     <string name="lookup_translating">Translating…</string>
     <string name="lookup_downloading_title">Downloading the Catalan language model…</string>
@@ -271,6 +279,7 @@
     <string name="settings_language_catalan" translatable="false">Català</string>
     <string name="settings_language_english" translatable="false">English</string>
     <string name="settings_about">About</string>
+    <string name="settings_credits_thesaurus">Synonyms from the Diccionari de sinònims de català by Jaume Ortolà and Softcatalà, used under CC BY 4.0.</string>
     <string name="settings_version">Version %1$s</string>
 
 </resources>

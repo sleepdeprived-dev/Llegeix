@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The Union Jack, drawn at flag proportions rather than as a square icon so it
+    reads as a flag at 22dp rather than as a blue blob.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="16dp"
+    android:viewportWidth="24"
+    android:viewportHeight="16">
+    <path
+        android:fillColor="#012169"
+        android:pathData="M0,0h24v16h-24z" />
+    <group>
+        <clip-path android:pathData="M0,0h24v16h-24z" />
+        <path
+            android:pathData="M0,0L24,16 M24,0L0,16"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3.4" />
+        <path
+            android:pathData="M0,0L24,16 M24,0L0,16"
+            android:strokeColor="#C8102E"
+            android:strokeWidth="1.6" />
+    </group>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M9.4,0h5.2v16h-5.2z M0,5.4h24v5.2h-24z" />
+    <path
+        android:fillColor="#C8102E"
+        android:pathData="M10.7,0h2.6v16h-2.6z M0,6.7h24v2.6h-24z" />
+</vector>

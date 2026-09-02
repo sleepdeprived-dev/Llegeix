@@ -171,6 +171,14 @@
     <!-- Consulta de paraules -->
     <string name="lookup_target_english">anglès</string>
     <string name="lookup_target_romanian">romanès</string>
+
+    <!-- El canvi ràpid de llengua del lector i el quadre de sinònims. -->
+    <string name="lookup_switch_english">Tradueix a l\'anglès</string>
+    <string name="lookup_switch_romanian">Tradueix al romanès</string>
+    <string name="lookup_synonyms">Sinònims</string>
+    <string name="lookup_antonyms">Antònims</string>
+    <string name="lookup_synonyms_loading">S\'està cercant al diccionari\u2026</string>
+    <string name="lookup_synonyms_none">El diccionari no té res per a aquesta selecció.</string>
     <string name="lookup_direction">Català → %1$s</string>
     <string name="lookup_translating">S\'està traduint…</string>
     <string name="lookup_downloading_title">S\'està baixant el model d\'idioma català…</string>
@@ -262,6 +270,7 @@
     <string name="settings_accent_selected">%1$s, seleccionat</string>
     <string name="settings_language">Llengua de l\'aplicació</string>
     <string name="settings_about">Quant a</string>
+    <string name="settings_credits_thesaurus">Els sinònims provenen del Diccionari de sinònims de català de Jaume Ortolà i Softcatalà, sota llicència CC BY 4.0.</string>
     <string name="settings_version">Versió %1$s</string>
 
 </resources>

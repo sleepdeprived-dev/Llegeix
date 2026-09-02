@@ -1,5 +1,6 @@
 package com.david.llegeix.data.settings
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import com.david.llegeix.R
 
@@ -89,9 +90,31 @@ enum class TranslationTarget(
     @param:StringRes val labelRes: Int,
     /** Named inside the sentence "Catalan → …", so it inflects with the UI. */
     @param:StringRes val directionRes: Int,
+    /** Shown on the reader's quick toggle, where a flag reads faster than a word. */
+    @param:DrawableRes val flagRes: Int,
+    /**
+     * What that flag is called out loud.
+     *
+     * Its own string rather than one sentence with the language slotted in:
+     * Catalan contracts the article differently for each one — *a l'anglès*
+     * but *al romanès* — and a template would get one of them wrong.
+     */
+    @param:StringRes val switchRes: Int,
 ) {
-    ENGLISH("en", R.string.settings_translation_english, R.string.lookup_target_english),
-    ROMANIAN("ro", R.string.settings_translation_romanian, R.string.lookup_target_romanian),
+    ENGLISH(
+        "en",
+        R.string.settings_translation_english,
+        R.string.lookup_target_english,
+        R.drawable.ic_flag_uk,
+        R.string.lookup_switch_english,
+    ),
+    ROMANIAN(
+        "ro",
+        R.string.settings_translation_romanian,
+        R.string.lookup_target_romanian,
+        R.drawable.ic_flag_ro,
+        R.string.lookup_switch_romanian,
+    ),
     ;
 
     companion object {
