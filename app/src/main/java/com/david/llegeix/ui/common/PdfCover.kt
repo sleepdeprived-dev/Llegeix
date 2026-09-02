@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
@@ -98,15 +97,3 @@ fun PdfCover(
 
 /** Covers are drawn at the proportions of an unopened A4 page. */
 val CoverAspectRatio: Float = 1f / 1.35f
-
-/**
- * An emoji used as a menu item's leading icon.
- *
- * Menus in this app are lists of similar-length phrases, which are slow to scan
- * when every line looks the same. A glyph per action gives each one a shape you
- * can aim at without reading it.
- */
-@Composable
-fun MenuEmoji(emoji: String) {
-    Text(text = emoji, fontSize = 18.sp)
-}

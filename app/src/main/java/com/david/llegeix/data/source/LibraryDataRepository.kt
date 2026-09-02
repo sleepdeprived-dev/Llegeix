@@ -87,6 +87,18 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     suspend fun moveToFolder(uriString: String, folderId: Long?) =
         documents.setFolder(uriString, folderId)
 
+    /**
+     * Which folder each filed document sits in, keyed by URI.
+     *
+     * The library list comes from storage and knows nothing about folders, so
+     * this is what lets a row say where it has been filed and lets the "move
+     * to folder" picker show the folder the document is already in.
+     */
+    fun observeFolderAssignments(): Flow<Map<String, Long>> =
+        documents.observeAll().map { rows ->
+            rows.mapNotNull { row -> row.folderId?.let { row.uriString to it } }.toMap()
+        }
+
     suspend fun setDocumentHighlightColor(uriString: String, color: Int?) =
         documents.setHighlightColor(uriString, color)
 

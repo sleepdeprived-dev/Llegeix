@@ -14,6 +14,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -57,7 +62,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -65,13 +73,14 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
-import com.david.llegeix.data.db.entity.FolderEntity
+import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.MenuIcon
+import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.data.db.dao.DocumentTag
-import com.david.llegeix.ui.common.MenuEmoji
 import com.david.llegeix.ui.common.TagPickerDialog
 import com.david.llegeix.ui.common.Senyera
 import com.david.llegeix.ui.common.Space
@@ -100,6 +109,8 @@ fun LibraryScreen(
     var tagsFor by remember { mutableStateOf<PdfDocument?>(null) }
     val allTags by viewModel.tags.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
+    val folderIdByDocument by viewModel.folderIdByDocument.collectAsStateWithLifecycle()
+    val folderNameByDocument by viewModel.folderNameByDocument.collectAsStateWithLifecycle()
 
     // All Files Access is granted in system Settings, so the only reliable
     // signal that it changed is coming back to the foreground.
@@ -158,15 +169,10 @@ fun LibraryScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = viewModel::refresh,
-                        enabled = !state.isScanning,
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.library_rescan),
-                        )
-                    }
+                    // Two icons and no more. Rescanning is something you do
+                    // when you know you have added a file, which is exactly the
+                    // kind of thing that belongs behind the menu rather than
+                    // permanently beside the app's name.
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             painter = painterResource(R.drawable.ic_settings),
@@ -176,8 +182,10 @@ fun LibraryScreen(
                     LibraryMenu(
                         currentSort = state.sort,
                         layout = layout,
+                        isScanning = state.isScanning,
                         onSortChange = viewModel::onSortChange,
                         onToggleLayout = viewModel::onToggleLayout,
+                        onRescan = viewModel::refresh,
                         onOpenSources = onOpenSources,
                     )
                 },
@@ -253,6 +261,7 @@ fun LibraryScreen(
                 state = state,
                 layout = layout,
                 tagsByDocument = tagsByDocument,
+                folderNameByDocument = folderNameByDocument,
                 onEditTags = { tagsFor = it },
                 onAddFolder = { folderPicker.launch(null) },
                 onScanDevice = ::openAllFilesSettings,
@@ -283,6 +292,7 @@ fun LibraryScreen(
         MoveToFolderDialog(
             document = document,
             folders = folders,
+            currentFolderId = folderIdByDocument[document.uriString],
             onDismiss = { documentToFile = null },
             onChoose = { folderId ->
                 viewModel.moveToFolder(document, folderId)
@@ -340,6 +350,8 @@ private fun LibraryBody(
     state: LibraryUiState,
     layout: LibraryLayout,
     tagsByDocument: Map<String, List<DocumentTag>>,
+    /** The user's folder each PDF is filed in, for the row's detail line. */
+    folderNameByDocument: Map<String, String>,
     onEditTags: (PdfDocument) -> Unit,
     onAddFolder: () -> Unit,
     onScanDevice: () -> Unit,
@@ -442,6 +454,7 @@ private fun LibraryBody(
                     isBookmarked = state.isBookmarked(document),
                     isReadLater = state.isReadLater(document),
                     tags = tagsByDocument[document.uriString].orEmpty(),
+                    folderName = folderNameByDocument[document.uriString],
                     onClick = { onOpenDocument(document) },
                     onMoveToFolder = { onMoveToFolder(document) },
                     onToggleReadLater = { onToggleReadLater(document) },
@@ -453,11 +466,21 @@ private fun LibraryBody(
     }
 }
 
-/** Picks the folder a PDF should be filed into, or unfiles it. */
+/**
+ * Picks the folder a PDF should be filed into, or unfiles it.
+ *
+ * A list of bare text buttons before, which said nothing about which folder the
+ * document was already in, nothing about what was in each folder, and lost the
+ * colours the reader had chosen on the Folders screen. Filing is a choice
+ * between things you made, so this shows them the way you made them, ticks the
+ * one already in force, and puts "no folder" among the options instead of
+ * hiding it as a separate verb.
+ */
 @Composable
 private fun MoveToFolderDialog(
     document: PdfDocument,
-    folders: List<FolderEntity>,
+    folders: List<FolderWithCount>,
+    currentFolderId: Long?,
     onDismiss: () -> Unit,
     onChoose: (Long?) -> Unit,
     onCreateNew: () -> Unit,
@@ -471,6 +494,8 @@ private fun MoveToFolderDialog(
                     text = document.title,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 if (folders.isEmpty()) {
                     Text(
@@ -479,12 +504,25 @@ private fun MoveToFolderDialog(
                         modifier = Modifier.padding(top = Space.lg),
                     )
                 } else {
-                    Column(modifier = Modifier.padding(top = Space.sm)) {
+                    Column(
+                        // Capped and scrollable: a reader with twenty folders
+                        // should still be able to reach the buttons underneath.
+                        modifier = Modifier
+                            .padding(top = Space.md)
+                            .heightIn(max = 320.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        FolderChoiceRow(
+                            folder = null,
+                            selected = currentFolderId == null,
+                            onClick = { onChoose(null) },
+                        )
                         folders.forEach { folder ->
-                            TextButton(onClick = { onChoose(folder.id) }) { Text(folder.name) }
-                        }
-                        TextButton(onClick = { onChoose(null) }) {
-                            Text(stringResource(R.string.library_remove_from_folder))
+                            FolderChoiceRow(
+                                folder = folder,
+                                selected = folder.id == currentFolderId,
+                                onClick = { onChoose(folder.id) },
+                            )
                         }
                     }
                 }
@@ -502,19 +540,97 @@ private fun MoveToFolderDialog(
 }
 
 /**
- * Sort order plus the way into source management.
+ * One line in the folder picker. A null [folder] is the "no folder" choice.
+ *
+ * The swatch keeps its column whether or not there is a colour to put in it, so
+ * every name in the list starts at the same place. A ragged left edge is the
+ * quickest way to make four short words look like a form to be worked out.
+ */
+@Composable
+private fun FolderChoiceRow(
+    folder: FolderWithCount?,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .heightIn(min = 52.dp)
+            .padding(end = Space.sm),
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Box(
+            modifier = Modifier.size(16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (folder != null) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(
+                            folder.colorArgb?.let { HighlightColors.compose(it) }
+                                ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        ),
+                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.md),
+        ) {
+            Text(
+                text = folder?.name ?: stringResource(R.string.library_no_folder),
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (folder != null) {
+                Text(
+                    text = if (folder.documentCount == 0) {
+                        stringResource(R.string.folders_empty_count)
+                    } else {
+                        pluralStringResource(
+                            R.plurals.folders_pdf_count,
+                            folder.documentCount,
+                            folder.documentCount,
+                        )
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Sort order, how the library is drawn, and the way into source management.
  *
  * Adding folders and turning on the device-wide scan used to sit permanently
  * above the list. They are things you do once and then forget, so they have
- * moved behind this menu and into [com.david.llegeix.ui.sources.SourcesScreen], leaving the library itself as
+ * moved behind this menu and into
+ * [com.david.llegeix.ui.sources.SourcesScreen], leaving the library itself as
  * just the documents.
+ *
+ * The menu is read top to bottom as three questions getting smaller: where the
+ * documents come from, how they are drawn, and in what order. The divider is
+ * there because the sort options are a set of alternatives and the items above
+ * them are not, and a list where everything looks equally clickable is a list
+ * you have to read twice.
  */
 @Composable
 private fun LibraryMenu(
     currentSort: LibrarySort,
     layout: LibraryLayout,
+    isScanning: Boolean,
     onSortChange: (LibrarySort) -> Unit,
     onToggleLayout: () -> Unit,
+    onRescan: () -> Unit,
     onOpenSources: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -527,7 +643,7 @@ private fun LibraryMenu(
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                leadingIcon = { MenuEmoji("📂") },
+                leadingIcon = { MenuIcon(painterResource(R.drawable.ic_folder)) },
                 text = { Text(stringResource(R.string.library_sources_open)) },
                 onClick = {
                     onOpenSources()
@@ -535,7 +651,17 @@ private fun LibraryMenu(
                 },
             )
             DropdownMenuItem(
-                leadingIcon = { MenuEmoji(if (layout == LibraryLayout.GRID) "☰" else "🔳") },
+                leadingIcon = {
+                    MenuIcon(
+                        painterResource(
+                            if (layout == LibraryLayout.GRID) {
+                                R.drawable.ic_list
+                            } else {
+                                R.drawable.ic_grid
+                            },
+                        ),
+                    )
+                },
                 text = {
                     Text(
                         stringResource(
@@ -549,6 +675,17 @@ private fun LibraryMenu(
                 },
                 onClick = {
                     onToggleLayout()
+                    expanded = false
+                },
+            )
+            DropdownMenuItem(
+                leadingIcon = { MenuIcon(Icons.Default.Refresh) },
+                text = { Text(stringResource(R.string.library_rescan)) },
+                // A scan already running is the one case where the menu would
+                // otherwise accept a tap and do nothing with it.
+                enabled = !isScanning,
+                onClick = {
+                    onRescan()
                     expanded = false
                 },
             )

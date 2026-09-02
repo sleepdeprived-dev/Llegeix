@@ -6,27 +6,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,13 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
-import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.ui.common.CoverAspectRatio
-import com.david.llegeix.ui.common.MenuEmoji
+import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.ui.common.Space
@@ -64,6 +57,8 @@ fun DocumentRow(
     isBookmarked: Boolean,
     isReadLater: Boolean,
     tags: List<DocumentTag>,
+    /** The user's folder this PDF is filed in, or null if it is unfiled. */
+    folderName: String?,
     onClick: () -> Unit,
     onMoveToFolder: () -> Unit,
     onToggleReadLater: () -> Unit,
@@ -115,6 +110,10 @@ fun DocumentRow(
             val readLater = stringResource(R.string.document_read_later)
             val details = listOfNotNull(
                 readLater.takeIf { isReadLater },
+                // Ahead of the folder on disk, and phrased so the two cannot be
+                // mistaken for each other: this one is a decision the reader
+                // made, the other is where the file happens to live.
+                folderName?.let { stringResource(R.string.library_filed_in, it) },
                 document.parentLabel?.takeIf { it.isNotBlank() },
                 formatSize(context, document.sizeBytes).takeIf { it.isNotBlank() },
                 formatModified(document.lastModified).takeIf { it.isNotBlank() },
@@ -175,7 +174,7 @@ private fun DocumentMenu(
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
-            leadingIcon = { MenuEmoji(if (isBookmarked) "💔" else "⭐") },
+            leadingIcon = { MenuIcon(Icons.Default.Star) },
             text = {
                 Text(
                     stringResource(
@@ -193,7 +192,7 @@ private fun DocumentMenu(
             },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuEmoji(if (isReadLater) "✅" else "🔖") },
+            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_bookmark)) },
             text = {
                 Text(
                     stringResource(
@@ -211,7 +210,7 @@ private fun DocumentMenu(
             },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuEmoji("📁") },
+            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_folder)) },
             text = { Text(stringResource(R.string.document_move_to_folder)) },
             onClick = {
                 onMoveToFolder()
@@ -219,7 +218,7 @@ private fun DocumentMenu(
             },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuEmoji("🏷️") },
+            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_tag)) },
             text = { Text(stringResource(R.string.tags_open)) },
             onClick = {
                 onEditTags()
@@ -333,148 +332,3 @@ fun DocumentCell(
 /** Cover sizes, named so the list and the grid stay in proportion. */
 val ListCoverWidth = 46.dp
 val GridCoverWidth = 150.dp
-
-/**
- * Everything to do with where PDFs come from, in one place.
- *
- * Previously two buttons and a chip row sitting above the library at all times.
- * Setting up a source is a one-off, so keeping it permanently on screen spent
- * the most valuable part of the layout on a task already finished.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SourcesSheet(
-    folders: List<GrantedFolder>,
-    deviceScanEnabled: Boolean,
-    onDismiss: () -> Unit,
-    onScanDevice: () -> Unit,
-    onAddFolder: () -> Unit,
-    onAddFiles: () -> Unit,
-    onRemoveFolder: (GrantedFolder) -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState()
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(bottom = Space.xl),
-        ) {
-            Column(modifier = Modifier.padding(horizontal = Space.xl)) {
-                Text(
-                    text = stringResource(R.string.library_sources),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-                Text(
-                    text = stringResource(R.string.library_sources_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Space.xs),
-                )
-            }
-
-            Column(modifier = Modifier.padding(top = Space.xl)) {
-                SourceAction(
-                    // A sweep of the device, not another thing to add.
-                    emoji = if (deviceScanEnabled) "✅" else "🔍",
-                    title = stringResource(R.string.action_scan_device),
-                    subtitle = stringResource(
-                        if (deviceScanEnabled) {
-                            R.string.library_device_scan_on
-                        } else {
-                            R.string.library_device_scan_off
-                        },
-                    ),
-                    onClick = {
-                        onScanDevice()
-                        onDismiss()
-                    },
-                )
-                SourceAction(
-                    emoji = "📁",
-                    title = stringResource(R.string.action_add_folder),
-                    onClick = {
-                        onAddFolder()
-                        onDismiss()
-                    },
-                )
-                SourceAction(
-                    emoji = "📄",
-                    title = stringResource(R.string.library_add_files),
-                    onClick = {
-                        onAddFiles()
-                        onDismiss()
-                    },
-                )
-            }
-
-            if (folders.isNotEmpty()) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = Space.xl, vertical = Space.lg),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.library_watched_folders),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = Space.xl, vertical = Space.sm),
-                )
-                folders.forEach { folder ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = Space.xl, top = Space.md, bottom = Space.md),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = folder.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { onRemoveFolder(folder) }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(
-                                    R.string.source_stop_watching,
-                                    folder.label,
-                                ),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SourceAction(
-    emoji: String,
-    title: String,
-    onClick: () -> Unit,
-    subtitle: String? = null,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = Space.xl, vertical = Space.lg),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MenuEmoji(emoji)
-        Column(modifier = Modifier.padding(start = Space.lg)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}

@@ -14,7 +14,7 @@ import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.data.db.dao.DocumentTag
-import com.david.llegeix.data.db.entity.FolderEntity
+import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.FolderRules
@@ -24,6 +24,7 @@ import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
@@ -83,9 +84,28 @@ class LibraryViewModel(
     val folderRules: StateFlow<FolderRules> = libraryData.observeFolderRules()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FolderRules.Empty)
 
-    /** Folders offered by the "move to folder" sheet. */
-    val folders: StateFlow<List<FolderEntity>> = libraryData.observeFolders()
+    /** Folders offered by the "move to folder" dialog, with what is in them. */
+    val folders: StateFlow<List<FolderWithCount>> = libraryData.observeFoldersWithCounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The folder each filed document is in, so the picker can tick it. */
+    val folderIdByDocument: StateFlow<Map<String, Long>> =
+        libraryData.observeFolderAssignments()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * The same thing by name, for the library row's detail line.
+     *
+     * Filing a PDF used to leave no trace anywhere the reader could see it: the
+     * folder screen knew, and the library — the screen they were looking at
+     * when they filed it — did not.
+     */
+    val folderNameByDocument: StateFlow<Map<String, String>> =
+        combine(libraryData.observeFolderAssignments(), libraryData.observeFolders()) {
+            assignments, folders ->
+            val byId = folders.associateBy { it.id }
+            assignments.mapNotNull { (uri, id) -> byId[id]?.let { uri to it.name } }.toMap()
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     init {
         // Bookmark and read-later flags live in the database while the document

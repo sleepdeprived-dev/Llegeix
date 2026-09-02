@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -51,7 +52,7 @@ import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
-import com.david.llegeix.ui.common.MenuEmoji
+import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.library.GridCoverWidth
@@ -105,8 +106,14 @@ fun RecentScreen(
                             ) {
                                 DropdownMenuItem(
                                     leadingIcon = {
-                                        MenuEmoji(
-                                            if (layout == LibraryLayout.GRID) "☰" else "🔳",
+                                        MenuIcon(
+                                            painterResource(
+                                                if (layout == LibraryLayout.GRID) {
+                                                    R.drawable.ic_list
+                                                } else {
+                                                    R.drawable.ic_grid
+                                                },
+                                            ),
                                         )
                                     },
                                     text = {
@@ -126,7 +133,7 @@ fun RecentScreen(
                                     },
                                 )
                                 DropdownMenuItem(
-                                    leadingIcon = { MenuEmoji("🧹") },
+                                    leadingIcon = { MenuIcon(Icons.Default.Delete) },
                                     text = {
                                         Text(stringResource(R.string.recent_clear_history))
                                     },

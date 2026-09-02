@@ -7,13 +7,26 @@ language. Written in Kotlin with Jetpack Compose.
 
 - **Library** — discovers PDFs on the device through MediaStore, the Storage
   Access Framework, and direct file picks, with sorting, search, first-page
-  cover thumbnails, and a choice of list or grid.
+  cover thumbnails, and a choice of list or grid. Sorting, the layout, a rescan
+  and the way into Sources all live behind the one overflow menu, so the app bar
+  carries the app's name and nothing else it does not need.
+- **Sources** — one screen for where the library's documents come from: the
+  whole-device scan, the folders you have granted, and the folders found inside
+  them. Each source arrives folded and says what it holds — "48 PDFs · 12
+  folders" — and opens into a tree of tick boxes. The source's own box is
+  three-state, so one that is only partly in the library says so without being
+  opened, and ticking it is the quick way back to all of it or none of it.
+  Nothing on this screen deletes anything from the phone.
 - **Reader** — page rendering via [PdfiumAndroid](https://github.com/johngray1965/PdfiumAndroid),
   with a selectable text layer, pinch and double-tap zoom, find-in-document
   across every page, and an invert toggle that darkens the page itself without
   touching the app's theme. One slim bar, no bottom chrome.
 - **Organisation** — folders, tags with a colour you can change at any time and
-  sort by, recently viewed, and bookmarks, persisted in a Room database.
+  sort by, recently viewed, and bookmarks, persisted in a Room database. A
+  folder's colour is a disc behind its icon rather than a tint on the outline,
+  the picker that files a PDF shows those colours along with what each folder
+  holds and which one the document is in already, and the library row says where
+  a PDF has been filed.
 - **Translation** — press and hold a word to translate it with ML Kit's on-device
   models; keep holding and drag to take a whole phrase, which comes back
   translated, broken down word by word, and set in the line it came from.
@@ -36,7 +49,9 @@ held to one rule: never make the reader work out what to look at. Screens carry
 one obvious action at a time, empty states sit centred in the space they have
 rather than stacked under the app bar, one-off setup lives behind a menu instead
 of on the reading surface, and grouping is done with space rather than a rule
-between every row.
+between every row. Menu items are marked with a single-colour glyph in the
+menu's own ink rather than a colour emoji — a mark you can aim at without
+reading it, which does not then compete with the words for attention.
 
 ## Language
 

@@ -78,6 +78,9 @@ class SourcesViewModel(
     private var rules: FolderRules = FolderRules.Empty
     private var scanJob: Job? = null
 
+    /** So the courtesy expansion below happens once, not on every rebuild. */
+    private var autoExpanded = false
+
     init {
         viewModelScope.launch {
             libraryData.observeFolderRules().collect { current ->
@@ -135,6 +138,19 @@ class SourcesViewModel(
         } else {
             libraryData.setFolderRule(path, visible)
         }
+    }
+
+    /**
+     * Switch a whole source on or off.
+     *
+     * Unlike a folder inside it, this clears every decision made underneath
+     * first. The box at the top of a source means "all of it" or "none of it",
+     * and a ticked source that still quietly misses four subfolders someone
+     * unticked last month is the kind of thing this screen exists to prevent.
+     */
+    fun onSetSourceVisible(root: String, visible: Boolean) = viewModelScope.launch {
+        libraryData.clearFolderRules(root)
+        if (!visible) libraryData.setFolderRule(root, false)
     }
 
     /**
@@ -200,11 +216,22 @@ class SourcesViewModel(
                     rootVisible = rules.allows(root),
                 )
             }
+        // A reader with one source should not have to open it before seeing
+        // anything. With several, everything arrives folded so the screen is a
+        // list of sources rather than a list of every folder on the phone.
+        val roots = groups.map { it.folder.label } + deviceGroups.map { it.folder.label }
+        val opened = if (!autoExpanded && roots.size == 1) {
+            autoExpanded = true
+            roots.toSet()
+        } else {
+            null
+        }
         _uiState.update { state ->
             state.copy(
                 groups = groups,
                 deviceScanCount = loose.size,
                 deviceGroups = deviceGroups,
+                expanded = opened?.let { state.expanded + it } ?: state.expanded,
             )
         }
     }

@@ -35,18 +35,27 @@
     <string name="library_welcome_body">Let Llegeix find the PDFs already on your device, or point it at a single folder.</string>
     <string name="library_sources">Sources</string>
     <string name="library_sources_open">Sources…</string>
-    <string name="library_sources_body">Where Llegeix looks for PDFs.</string>
     <string name="sources_explainer">Everything the library shows comes from here. Unticking a folder hides it from the app; nothing is ever deleted from your phone.</string>
-    <string name="sources_count">%1$d PDFs</string>
     <string name="sources_scan_paused">Switched off. Your PDFs stay where they are.</string>
     <string name="sources_count_partial">%1$d of %2$d PDFs shown</string>
     <string name="sources_remove_title">Stop using %1$s?</string>
     <string name="sources_remove_body">The app forgets this folder and the PDFs in it disappear from the library. The folder and its files stay on your phone.</string>
     <string name="sources_remove_confirm">Stop using it</string>
-    <string name="library_device_scan_on">On</string>
+    <!-- One source, collapsed: "48 PDFs · 12 folders". -->
+    <plurals name="sources_folder_count">
+        <item quantity="one">%1$d folder</item>
+        <item quantity="other">%1$d folders</item>
+    </plurals>
+    <string name="sources_none_shown">Hidden from the library</string>
+    <string name="sources_show_folders">Show the folders in %1$s</string>
+    <string name="sources_hide_folders">Hide the folders in %1$s</string>
+    <string name="sources_include">Show %1$s in the library</string>
+    <string name="sources_add_title">Add another source</string>
+    <string name="sources_found_by_scan">Folders the scan found</string>
+    <string name="sources_add_folder_body">Watch a folder and everything inside it</string>
+    <string name="sources_add_files_body">Pick single PDFs, cloud files included</string>
     <string name="library_device_scan_off">Needs all-files access</string>
     <string name="library_add_files">Add PDF files</string>
-    <string name="library_watched_folders">Watched folders</string>
     <string name="library_rescan">Rescan</string>
     <string name="library_search">Search</string>
     <string name="library_clear_search">Clear search</string>
@@ -69,8 +78,10 @@
     <string name="library_no_matches_body">None of the %1$d PDFs match \"%2$s\".</string>
     <string name="library_move_to_folder">Move to folder</string>
     <string name="library_no_folders_yet">You have no folders yet.</string>
-    <string name="library_remove_from_folder">Remove from folder</string>
     <string name="library_new_folder_ellipsis">New folder…</string>
+    <string name="library_no_folder">No folder</string>
+    <!-- The folder a PDF is filed in, on the library row's detail line. -->
+    <string name="library_filed_in">In %1$s</string>
 
     <!-- Document row -->
     <string name="document_bookmarked">Bookmarked</string>

@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,18 +13,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,9 +36,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.Switch
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,15 +47,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.TextButton
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.data.source.SourceFolder
+import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.allFilesAccessIntents
 
@@ -68,11 +78,11 @@ private const val PDF_MIME_TYPE = "application/pdf"
  * one folder can bring in a hundred others, and deciding which of those belong
  * in a reading library needs room to look at them.
  *
- * Each source lists the folders found inside it, indented, with a checkbox
- * apiece. Unticking a folder hides it and everything below it; ticking one
- * inside an unticked folder brings just that one back. Nothing is deleted from
- * the phone by anything on this screen, which the wording is careful to keep
- * saying.
+ * Each source is one card that says what it holds — "48 PDFs · 12 folders" —
+ * and opens to show the folders inside it, each with a tick. Unticking a folder
+ * hides it and everything below it; ticking one inside an unticked folder
+ * brings just that one back. Nothing is deleted from the phone by anything on
+ * this screen, which the wording is careful to keep saying.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,16 +137,16 @@ fun SourcesScreen(
             )
         },
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            if (state.isScanning) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
+        // The progress bar floats over the list rather than sitting above it:
+        // as a row of its own it pushed every card down four pixels the moment
+        // a rescan started, which is a whole screen twitching for no reason.
+        Box(modifier = Modifier.padding(innerPadding)) {
             LazyColumn(
                 contentPadding = PaddingValues(
                     start = Space.screen,
                     end = Space.screen,
                     top = Space.lg,
-                    bottom = Space.lg,
+                    bottom = Space.xxl,
                 ),
                 verticalArrangement = Arrangement.spacedBy(Space.md),
                 modifier = Modifier.fillMaxSize(),
@@ -156,6 +166,7 @@ fun SourcesScreen(
                         expanded = state.expanded,
                         onToggleExpanded = viewModel::onToggleExpanded,
                         onSetVisible = viewModel::onSetVisible,
+                        onSetSourceVisible = viewModel::onSetSourceVisible,
                         onRemove = { removing = group.folder },
                     )
                 }
@@ -171,6 +182,16 @@ fun SourcesScreen(
                     )
                 }
 
+                if (state.deviceScanEnabled && state.deviceGroups.isNotEmpty()) {
+                    item {
+                        // Without this the sweep's folders look like more
+                        // granted sources: the same card, in the same column,
+                        // meaning something quite different. One quiet line
+                        // says whose they are.
+                        SectionLabel(stringResource(R.string.sources_found_by_scan))
+                    }
+                }
+
                 if (state.deviceScanEnabled) {
                     items(state.deviceGroups, key = { "device:" + it.folder.label }) { group ->
                         SourceCard(
@@ -178,6 +199,7 @@ fun SourcesScreen(
                             expanded = state.expanded,
                             onToggleExpanded = viewModel::onToggleExpanded,
                             onSetVisible = viewModel::onSetVisible,
+                            onSetSourceVisible = viewModel::onSetSourceVisible,
                             // Nothing to hand back: the sweep is a permission,
                             // not a folder the app was given.
                             onRemove = null,
@@ -186,28 +208,20 @@ fun SourcesScreen(
                 }
 
                 item {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Space.sm),
-                        modifier = Modifier.padding(top = Space.sm),
-                    ) {
-                        TextButton(onClick = { folderPicker.launch(null) }) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                text = stringResource(R.string.action_add_folder),
-                                modifier = Modifier.padding(start = Space.sm),
-                            )
-                        }
-                        TextButton(
-                            onClick = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
-                        ) {
-                            Text(stringResource(R.string.library_add_files))
-                        }
-                    }
+                    AddSourceCard(
+                        onAddFolder = { folderPicker.launch(null) },
+                        onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
+                        modifier = Modifier.padding(top = Space.xl),
+                    )
                 }
+            }
+
+            if (state.isScanning) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter),
+                )
             }
         }
     }
@@ -234,34 +248,72 @@ fun SourcesScreen(
     }
 }
 
-/** One granted source: what it is, how much of it counts, and what is inside. */
+/**
+ * One granted source: what it is, how much of it counts, and what is inside.
+ *
+ * Folded shut unless someone opens it. A source is one line about a place —
+ * "Documents, 48 PDFs in 12 folders" — and only becomes forty rows of folders
+ * when that is the question being asked.
+ */
 @Composable
 private fun SourceCard(
     group: SourceGroup,
     expanded: Set<String>,
     onToggleExpanded: (String) -> Unit,
     onSetVisible: (String, Boolean) -> Unit,
+    onSetSourceVisible: (String, Boolean) -> Unit,
     /** Null for a source that cannot be given back, such as the device sweep. */
     onRemove: (() -> Unit)?,
 ) {
+    val root = group.folder.label
+    val subfolders = (group.tree.size - 1).coerceAtLeast(0)
+    val isOpen = root in expanded
+    // Three states, because two cannot say "most of this source, but not all".
+    // Without the middle one, a library quietly missing a folder looks exactly
+    // like a library showing everything.
+    val checkedState = when {
+        group.totalCount == 0 -> if (group.rootVisible) {
+            ToggleableState.On
+        } else {
+            ToggleableState.Off
+        }
+        group.visibleCount == group.totalCount -> ToggleableState.On
+        group.visibleCount == 0 -> ToggleableState.Off
+        else -> ToggleableState.Indeterminate
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(vertical = Space.md),
+            .padding(vertical = Space.sm),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = Space.sm, end = Space.sm),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (subfolders > 0) {
+                        Modifier.clickable { onToggleExpanded(root) }
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(start = Space.sm, end = Space.sm, top = Space.xs, bottom = Space.xs),
         ) {
-            // The root gets a box of its own so the awkward case works: untick
-            // the whole source, then tick back the one folder inside it that is
-            // worth reading. Without this, keeping one folder out of forty
-            // means unticking thirty-nine.
-            Checkbox(
-                checked = group.rootVisible,
-                onCheckedChange = { onSetVisible(group.folder.label, it) },
+            // The root box is all-or-nothing on purpose: it is the fastest way
+            // to say "not this one at all", and the folders below it are where
+            // the finer answer lives.
+            val includeLabel = stringResource(R.string.sources_include, root)
+            TriStateCheckbox(
+                state = checkedState,
+                onClick = {
+                    onSetSourceVisible(root, checkedState != ToggleableState.On)
+                },
+                // Named, because on its own a tick box in a row of its own says
+                // "on or off" without ever saying what of.
+                modifier = Modifier.semantics { contentDescription = includeLabel },
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -271,18 +323,25 @@ private fun SourceCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = if (group.visibleCount == group.totalCount) {
-                        stringResource(R.string.sources_count, group.totalCount)
-                    } else {
-                        stringResource(
-                            R.string.sources_count_partial,
-                            group.visibleCount,
-                            group.totalCount,
-                        )
-                    },
+                    text = sourceSummary(group, subfolders),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            if (subfolders > 0) {
+                Icon(
+                    imageVector = if (isOpen) {
+                        Icons.Default.KeyboardArrowDown
+                    } else {
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight
+                    },
+                    contentDescription = stringResource(
+                        if (isOpen) R.string.sources_hide_folders else R.string.sources_show_folders,
+                        root,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Space.sm),
                 )
             }
             if (onRemove != null) {
@@ -302,21 +361,44 @@ private fun SourceCard(
         // Only the folders below the root, and only those the reader has opened
         // their way down to. A source with sixty folders should not arrive as
         // sixty rows.
-        val visibleRows = group.tree.filter { folder ->
-            folder.depth > 0 && isReachable(folder.path, group.folder.label, expanded)
-        }
-        if (group.tree.size > 1) {
-            visibleRows.forEach { folder ->
-                FolderRow(
-                    folder = folder,
-                    hasChildren = group.tree.any { it.path.startsWith("${folder.path}/") },
-                    isOpen = folder.path in expanded,
-                    onToggleExpanded = { onToggleExpanded(folder.path) },
-                    onSetVisible = { onSetVisible(folder.path, it) },
-                )
-            }
+        if (isOpen) {
+            group.tree
+                .filter { it.depth > 0 && isReachable(it.path, root, expanded) }
+                .forEach { folder ->
+                    FolderRow(
+                        folder = folder,
+                        hasChildren = group.tree.any { it.path.startsWith("${folder.path}/") },
+                        isOpen = folder.path in expanded,
+                        onToggleExpanded = { onToggleExpanded(folder.path) },
+                        onSetVisible = { onSetVisible(folder.path, it) },
+                    )
+                }
         }
     }
+}
+
+/** "48 PDFs · 12 folders", or what is left of that once things are hidden. */
+@Composable
+private fun sourceSummary(group: SourceGroup, subfolders: Int): String {
+    val documents = when {
+        group.visibleCount == 0 && group.totalCount > 0 ->
+            stringResource(R.string.sources_none_shown)
+
+        group.visibleCount < group.totalCount -> stringResource(
+            R.string.sources_count_partial,
+            group.visibleCount,
+            group.totalCount,
+        )
+
+        else -> pluralStringResource(
+            R.plurals.folders_pdf_count,
+            group.totalCount,
+            group.totalCount,
+        )
+    }
+    if (subfolders == 0) return documents
+    val folders = pluralStringResource(R.plurals.sources_folder_count, subfolders, subfolders)
+    return "$documents · $folders"
 }
 
 /** A folder is listed once every folder above it has been opened. */
@@ -329,6 +411,14 @@ private fun isReachable(path: String, root: String, expanded: Set<String>): Bool
     return true
 }
 
+/**
+ * One folder inside a source.
+ *
+ * The whole row is the tick, not just the little box: the question the row asks
+ * is "does this folder count", and answering it should not require hitting an
+ * 18dp target. Opening a folder to see what is under it is the separate,
+ * smaller gesture, so it keeps the arrow to itself.
+ */
 @Composable
 private fun FolderRow(
     folder: SourceFolder,
@@ -341,52 +431,63 @@ private fun FolderRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = hasChildren, onClick = onToggleExpanded)
+            .toggleable(
+                value = folder.visible,
+                role = Role.Checkbox,
+                onValueChange = onSetVisible,
+            )
+            .heightIn(min = 44.dp)
             .padding(
                 // Indented by depth, so the shape of the folder tree is the
                 // thing you see first.
-                start = Space.md + (Space.lg * (folder.depth - 1)),
+                start = Space.xs + (Space.lg * (folder.depth - 1)),
                 end = Space.lg,
-                top = Space.xs,
-                bottom = Space.xs,
             ),
     ) {
         if (hasChildren) {
-            Icon(
-                imageVector = if (isOpen) {
-                    Icons.Default.KeyboardArrowDown
-                } else {
-                    Icons.Default.KeyboardArrowRight
-                },
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
+            IconButton(onClick = onToggleExpanded, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    imageVector = if (isOpen) {
+                        Icons.Default.KeyboardArrowDown
+                    } else {
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight
+                    },
+                    contentDescription = stringResource(
+                        if (isOpen) R.string.sources_hide_folders else R.string.sources_show_folders,
+                        folder.name,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         } else {
-            Spacer(modifier = Modifier.width(18.dp))
+            Spacer(modifier = Modifier.width(28.dp))
         }
-        Checkbox(
-            checked = folder.visible,
-            onCheckedChange = onSetVisible,
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = folder.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (folder.decidedHere) FontWeight.Medium else null,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (folder.visible) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
-        }
+        Checkbox(checked = folder.visible, onCheckedChange = null)
         Text(
-            text = folder.total.toString(),
+            text = folder.name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (folder.decidedHere) FontWeight.Medium else null,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = if (folder.visible) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.sm),
+        )
+        Text(
+            text = pluralStringResource(
+                R.plurals.folders_pdf_count,
+                folder.total,
+                folder.total,
+            ),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = Space.sm),
         )
     }
 }
@@ -427,7 +528,7 @@ private fun DeviceScanCard(
             Text(
                 text = when {
                     !permitted -> stringResource(R.string.library_device_scan_off)
-                    enabled -> stringResource(R.string.sources_count, count)
+                    enabled -> pluralStringResource(R.plurals.folders_pdf_count, count, count)
                     else -> stringResource(R.string.sources_scan_paused)
                 },
                 style = MaterialTheme.typography.bodySmall,
@@ -439,9 +540,88 @@ private fun DeviceScanCard(
             Switch(checked = enabled, onCheckedChange = onSetEnabled)
         } else {
             Icon(
-                Icons.Default.KeyboardArrowRight,
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * The two ways to bring in something new.
+ *
+ * They were a pair of text buttons at the foot of the list, which read as an
+ * afterthought and sat wherever the last source happened to end. As a card with
+ * a heading they are the one thing on this screen that is clearly an action
+ * rather than a setting, and each says what it is actually for — "a folder and
+ * everything inside it" against "single PDFs" is the distinction people get
+ * wrong, and it costs one line to answer it in advance.
+ */
+@Composable
+private fun AddSourceCard(
+    onAddFolder: () -> Unit,
+    onAddFiles: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        SectionLabel(stringResource(R.string.sources_add_title))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(vertical = Space.sm),
+        ) {
+            AddSourceRow(
+                icon = painterResource(R.drawable.ic_folder),
+                title = stringResource(R.string.action_add_folder),
+                body = stringResource(R.string.sources_add_folder_body),
+                onClick = onAddFolder,
+            )
+            AddSourceRow(
+                icon = painterResource(R.drawable.ic_file),
+                title = stringResource(R.string.library_add_files),
+                body = stringResource(R.string.sources_add_files_body),
+                onClick = onAddFiles,
+            )
+        }
+    }
+}
+
+/** The quiet heading that says what the cards below it are. */
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = Space.xs, top = Space.sm, bottom = Space.xs),
+    )
+}
+
+@Composable
+private fun AddSourceRow(
+    icon: Painter,
+    title: String,
+    body: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = Space.lg, vertical = Space.md),
+    ) {
+        MenuIcon(icon)
+        Column(modifier = Modifier.padding(start = Space.lg)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
     }

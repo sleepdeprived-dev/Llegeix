@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -56,7 +58,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.ui.common.HighlightColors
-import com.david.llegeix.ui.common.MenuEmoji
+import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.resolved
 import androidx.compose.foundation.layout.PaddingValues
 import com.david.llegeix.ui.common.EmptyState
@@ -285,6 +287,9 @@ private fun FolderRow(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
 
+    val tint = folder.colorArgb?.let { HighlightColors.compose(it) }
+        ?: MaterialTheme.colorScheme.onSurfaceVariant
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -292,12 +297,24 @@ private fun FolderRow(
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_folder),
-            contentDescription = null,
-            tint = folder.colorArgb?.let { HighlightColors.compose(it) }
-                ?: MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // The colour as a disc behind the icon rather than on the glyph itself.
+        // Tinting a 24dp outline is the smallest possible way to show a colour
+        // someone deliberately chose, and at a glance down a list of folders it
+        // was doing almost none of the telling-apart it was picked for.
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(tint.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_folder),
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(22.dp),
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -349,7 +366,7 @@ private fun FolderRow(
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
-                    leadingIcon = { MenuEmoji("📌") },
+                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
                     text = {
                         Text(
                             stringResource(
@@ -364,7 +381,7 @@ private fun FolderRow(
                     onClick = { onTogglePinned(); menuOpen = false },
                 )
                 DropdownMenuItem(
-                    leadingIcon = { MenuEmoji(if (folder.isBookmarked) "💔" else "⭐") },
+                    leadingIcon = { MenuIcon(Icons.Default.Star) },
                     text = {
                         Text(
                             stringResource(
@@ -379,18 +396,18 @@ private fun FolderRow(
                     onClick = { onToggleBookmarked(); menuOpen = false },
                 )
                 DropdownMenuItem(
-                    leadingIcon = { MenuEmoji("🎨") },
+                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_circle)) },
                     text = { Text(stringResource(R.string.folders_colour)) },
                     onClick = { onPickColor(); menuOpen = false },
                 )
                 DropdownMenuItem(
-                    leadingIcon = { MenuEmoji("✏️") },
+                    leadingIcon = { MenuIcon(Icons.Default.Edit) },
                     text = { Text(stringResource(R.string.folders_rename)) },
                     onClick = { onRename(); menuOpen = false },
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
-                    leadingIcon = { MenuEmoji("🗑️") },
+                    leadingIcon = { MenuIcon(Icons.Default.Delete) },
                     text = { Text(stringResource(R.string.action_delete)) },
                     onClick = { onDelete(); menuOpen = false },
                 )
