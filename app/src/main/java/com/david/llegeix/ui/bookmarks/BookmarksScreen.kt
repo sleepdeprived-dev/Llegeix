@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,7 +26,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +58,8 @@ import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.library.ListCoverWidth
+import com.david.llegeix.ui.common.SearchField
+import com.david.llegeix.ui.common.SearchHistoryRow
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import kotlinx.coroutines.launch
@@ -84,6 +84,7 @@ fun BookmarksScreen(
     val visibleWords by viewModel.visibleWords.collectAsStateWithLifecycle()
     val wordQuery by viewModel.wordQuery.collectAsStateWithLifecycle()
     val wordsAlphabetical by viewModel.wordsAlphabetical.collectAsStateWithLifecycle()
+    val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     // The pager owns the position; the tab row follows it, so a swipe and a tap
     // cannot disagree about which tab is showing.
@@ -229,8 +230,10 @@ fun BookmarksScreen(
                         WordControls(
                             query = wordQuery,
                             alphabetical = wordsAlphabetical,
+                            recentSearches = recentSearches,
                             onQueryChange = viewModel::onWordQueryChange,
                             onToggleSort = viewModel::onToggleWordSort,
+                            onForgetSearches = viewModel::onForgetSearches,
                         )
                         if (visibleWords.isEmpty()) {
                             EmptyState(
@@ -290,61 +293,24 @@ fun BookmarksScreen(
 private fun WordControls(
     query: String,
     alphabetical: Boolean,
+    recentSearches: List<String>,
     onQueryChange: (String) -> Unit,
     onToggleSort: () -> Unit,
+    onForgetSearches: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Space.screen)
             .padding(top = Space.lg, bottom = Space.md),
     ) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            placeholder = {
-                Text(
-                    text = stringResource(R.string.words_search),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium,
-            shape = RoundedCornerShape(50),
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-            },
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(
-                        onClick = { onQueryChange("") },
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = stringResource(
-                                R.string.library_clear_search,
-                            ),
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 42.dp),
-        )
-        // A toggle rather than a menu: there are two orders, and a menu to pick
-        // between two things is a menu too many. Set as plain text, not a
-        // filled chip, so it reads as a note about the list rather than as a
-        // second thing to decide.
-        TextButton(
+        Column(modifier = Modifier.padding(horizontal = Space.screen)) {
+            SearchField(
+                query = query,
+                placeholder = stringResource(R.string.words_search),
+                onQueryChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            TextButton(
             onClick = onToggleSort,
             contentPadding = PaddingValues(horizontal = Space.sm, vertical = 0.dp),
             modifier = Modifier
@@ -366,6 +332,18 @@ private fun WordControls(
                 ),
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(start = Space.sm),
+            )
+            }
+        }
+
+        // Full width rather than inside the margin, so a long history scrolls
+        // off the edge of the screen instead of stopping short of it.
+        if (query.isBlank()) {
+            SearchHistoryRow(
+                history = recentSearches,
+                onPick = onQueryChange,
+                onClear = onForgetSearches,
+                modifier = Modifier.padding(top = Space.sm),
             )
         }
     }

@@ -3,6 +3,7 @@ package com.david.llegeix.data
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.pdf.PdfThumbnails
@@ -37,6 +38,7 @@ class DataEraser(
     private val context: Context,
     private val libraryData: LibraryDataRepository,
     private val settings: SettingsRepository,
+    private val searchHistory: SearchHistoryRepository,
     private val thumbnails: PdfThumbnails,
 ) {
 
@@ -52,6 +54,7 @@ class DataEraser(
         runCatching { deleteTranslationModels() }
         runCatching { libraryData.eraseEverything() }
         thumbnails.clear()
+        searchHistory.clear()
         runCatching { context.cacheDir.deleteRecursively() }
         settings.resetToDefaults()
         // Last, and after the reset so it is not undone by it: without this the

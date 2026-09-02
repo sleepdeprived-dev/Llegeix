@@ -2,6 +2,7 @@ package com.david.llegeix
 
 import android.app.Application
 import com.david.llegeix.data.db.LlegeixDatabase
+import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.lang.ApertureLexicon
 import com.david.llegeix.lang.CatalanIpa
@@ -39,9 +40,20 @@ class LlegeixApp : Application() {
 
     /** Puts the app back to how it was before it was ever opened. */
     val dataEraser: DataEraser by lazy {
-        DataEraser(this, libraryDataRepository, settingsRepository, pdfThumbnails)
+        DataEraser(
+            this,
+            libraryDataRepository,
+            settingsRepository,
+            searchHistoryRepository,
+            pdfThumbnails,
+        )
     }
 
     /** Theme, accent, language and reading preferences. */
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
+
+    /** What the reader has searched for lately, in the library and in a page. */
+    val searchHistoryRepository: SearchHistoryRepository by lazy {
+        SearchHistoryRepository(this)
+    }
 }

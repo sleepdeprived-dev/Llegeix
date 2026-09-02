@@ -11,6 +11,8 @@ import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.PageBookmark
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
+import com.david.llegeix.data.settings.SearchHistoryRepository
+import com.david.llegeix.data.settings.SearchScope
 import com.david.llegeix.data.source.LibraryDataRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +21,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -31,7 +35,20 @@ import kotlinx.coroutines.launch
  */
 class BookmarksViewModel(
     private val libraryData: LibraryDataRepository,
+    private val searchHistory: SearchHistoryRepository,
 ) : ViewModel() {
+
+    /**
+     * Words searched for lately — the same list the reader's find bar keeps.
+     *
+     * Shared on purpose: the word you chased across a page is the one you come
+     * back to look for in your own saved list.
+     */
+    val recentSearches: StateFlow<List<String>> = searchHistory.history(SearchScope.WORDS)
+
+    fun onForgetSearches() = searchHistory.forget(SearchScope.WORDS)
+
+    private var rememberJob: Job? = null
 
     val bookmarkedDocuments: StateFlow<List<DocumentEntity>> =
         libraryData.observeBookmarkedDocuments()
@@ -59,8 +76,21 @@ class BookmarksViewModel(
     private val _wordsAlphabetical = MutableStateFlow(false)
     val wordsAlphabetical: StateFlow<Boolean> = _wordsAlphabetical.asStateFlow()
 
+    /** Kept once the typing has stopped and the search has actually matched. */
+    private fun rememberSearchLater(query: String) {
+        rememberJob?.cancel()
+        if (query.isBlank()) return
+        rememberJob = viewModelScope.launch {
+            delay(SEARCH_SETTLE_MS)
+            if (_wordQuery.value == query && visibleWords.value.isNotEmpty()) {
+                searchHistory.record(SearchScope.WORDS, query)
+            }
+        }
+    }
+
     fun onWordQueryChange(query: String) {
         _wordQuery.value = query
+        rememberSearchLater(query)
     }
 
     fun onToggleWordSort() {
@@ -113,8 +143,11 @@ class BookmarksViewModel(
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                     as LlegeixApp
-                BookmarksViewModel(app.libraryDataRepository)
+                BookmarksViewModel(app.libraryDataRepository, app.searchHistoryRepository)
             }
         }
     }
 }
+
+/** Long enough that a pause means the reader stopped to read the result. */
+private const val SEARCH_SETTLE_MS = 1_200L

@@ -30,7 +30,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
@@ -48,7 +47,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -86,6 +84,8 @@ import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuIcon
+import com.david.llegeix.ui.common.SearchField
+import com.david.llegeix.ui.common.SearchHistoryRow
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.ui.common.TagPickerDialog
@@ -118,6 +118,7 @@ fun LibraryScreen(
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     val folderIdByDocument by viewModel.folderIdByDocument.collectAsStateWithLifecycle()
     val folderNameByDocument by viewModel.folderNameByDocument.collectAsStateWithLifecycle()
+    val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
 
     // Back goes up a folder before it leaves the library. Anything else makes
     // going three folders deep a thing you need a plan to get out of.
@@ -213,47 +214,12 @@ fun LibraryScreen(
             // Search and filters appear only once there is something to sift
             // through; on a small library they would be pure noise.
             if (state.totalFound > 0) {
-                // A compact field rather than the default 56dp one with a
-                // floating label. Search is a thing you reach for occasionally;
-                // it should not be the tallest object above the library.
-                OutlinedTextField(
-                    value = state.query,
-                    onValueChange = viewModel::onQueryChange,
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.library_search),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    shape = RoundedCornerShape(50),
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    },
-                    trailingIcon = {
-                        if (state.query.isNotEmpty()) {
-                            IconButton(
-                                onClick = { viewModel.onQueryChange("") },
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = stringResource(
-                                        R.string.library_clear_search,
-                                    ),
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        }
-                    },
+                SearchField(
+                    query = state.query,
+                    placeholder = stringResource(R.string.library_search),
+                    onQueryChange = viewModel::onQueryChange,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 42.dp)
                         .padding(horizontal = Space.screen)
                         // Dropped clear of the app bar rather than tucked under
                         // it. The bar, the field and the filters were three
@@ -261,6 +227,17 @@ fun LibraryScreen(
                         // nothing between them.
                         .padding(top = Space.xxl, bottom = Space.lg),
                 )
+
+                // Only under an empty field: once there is a query on screen,
+                // the last one is history in the unhelpful sense.
+                if (state.query.isBlank()) {
+                    SearchHistoryRow(
+                        history = recentSearches,
+                        onPick = viewModel::onQueryChange,
+                        onClear = viewModel::onForgetSearches,
+                        modifier = Modifier.padding(bottom = Space.md),
+                    )
+                }
 
                 LibraryViewRow(
                     current = state.view,

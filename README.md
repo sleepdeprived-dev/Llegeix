@@ -48,6 +48,13 @@ language. Written in Kotlin with Jetpack Compose.
 - **Saved words** — star a word or phrase and it is kept with its translation,
   its pronunciation, the line it appeared in, and the document, page and line it
   came from.
+- **Search** — one field, in the library, in the saved words and in the reader's
+  find bar, so searching looks and behaves the same wherever you do it. Each
+  offers back what was searched for last, under the field while it is still
+  empty. Only searches that actually found something are kept, which is what
+  keeps half-typed words out of the list; the reader's find and the saved words
+  share one, because a word chased across a page is the one you come back
+  looking for in your own list.
 - **Settings** — reached from the gear in the Library app bar: light, dark,
   AMOLED black or follow-the-system, an accent colour (Material You from the
   wallpaper, one of six named colours, or one mixed by hand with a hue slider

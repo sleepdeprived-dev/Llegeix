@@ -59,6 +59,9 @@
     <string name="library_rescan">Rescan</string>
     <string name="library_search">Search</string>
     <string name="library_clear_search">Clear search</string>
+    <!-- The row of past searches offered under an empty search field. -->
+    <string name="search_recent">Recent</string>
+    <string name="search_recent_clear">Clear</string>
     <string name="library_settings_unavailable">Could not open Settings. Grant \"All files access\" manually.</string>
     <string name="library_scan_failed">Could not scan for PDFs</string>
     <string name="library_filter_all">All</string>

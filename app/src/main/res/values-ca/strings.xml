@@ -55,6 +55,9 @@
     <string name="library_rescan">Torna a escanejar</string>
     <string name="library_search">Cerca</string>
     <string name="library_clear_search">Esborra la cerca</string>
+    <!-- La fila de cerques anteriors, sota un camp de cerca buit. -->
+    <string name="search_recent">Recents</string>
+    <string name="search_recent_clear">Esborra</string>
     <string name="library_settings_unavailable">No s\'ha pogut obrir la configuració. Concedeix l\'\"Accés a tots els fitxers\" manualment.</string>
     <string name="library_scan_failed">No s\'han pogut cercar els PDF</string>
     <string name="library_filter_all">Tots</string>

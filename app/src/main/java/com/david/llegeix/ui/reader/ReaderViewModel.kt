@@ -11,6 +11,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
+import com.david.llegeix.data.settings.SearchHistoryRepository
+import com.david.llegeix.data.settings.SearchScope
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
@@ -168,6 +170,7 @@ class ReaderViewModel(
     private val uriString: String,
     private val libraryData: LibraryDataRepository,
     private val settings: SettingsRepository,
+    private val searchHistory: SearchHistoryRepository,
     title: String,
     /** Page to open on, overriding the remembered position. */
     private val targetPage: Int? = null,
@@ -259,6 +262,11 @@ class ReaderViewModel(
 
     // ---- Find in document -------------------------------------------------
 
+    /** Words looked for lately, shared with the saved-words screen. */
+    val recentSearches: StateFlow<List<String>> = searchHistory.history(SearchScope.WORDS)
+
+    fun onForgetSearches() = searchHistory.forget(SearchScope.WORDS)
+
     fun onOpenSearch() {
         _uiState.update { it.copy(search = it.search.copy(isOpen = true)) }
     }
@@ -302,6 +310,12 @@ class ReaderViewModel(
                 }
             }
             _uiState.update { it.copy(search = it.search.copy(isSearching = false)) }
+            // Kept only now, and only if it found something. The sweep is the
+            // answer to "was that worth searching for", so there is no need to
+            // guess at it with a timer the way the filtering fields have to.
+            if (_uiState.value.search.matches.isNotEmpty()) {
+                searchHistory.record(SearchScope.WORDS, query)
+            }
         }
     }
 
@@ -731,6 +745,7 @@ class ReaderViewModel(
                     uriString,
                     app.libraryDataRepository,
                     app.settingsRepository,
+                    app.searchHistoryRepository,
                     title,
                     targetPage,
                 )

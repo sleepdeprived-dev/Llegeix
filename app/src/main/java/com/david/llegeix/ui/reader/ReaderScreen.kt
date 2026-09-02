@@ -56,7 +56,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -111,6 +110,8 @@ import com.david.llegeix.pdf.DEFAULT_PAGE_ASPECT_RATIO
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.HighlightColors
+import com.david.llegeix.ui.common.SearchField
+import com.david.llegeix.ui.common.SearchHistoryRow
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import kotlin.math.roundToInt
@@ -163,6 +164,7 @@ fun ReaderScreen(
         factory = ReaderViewModel.factory(uriString, title, targetPage),
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { state.pageCount })
     val scope = rememberCoroutineScope()
 
@@ -220,10 +222,12 @@ fun ReaderScreen(
             if (state.search.isOpen) {
                 SearchBar(
                     search = state.search,
+                    recentSearches = recentSearches,
                     onQueryChange = viewModel::onSearchQueryChange,
                     onNext = viewModel::onNextMatch,
                     onPrevious = viewModel::onPreviousMatch,
                     onClose = viewModel::onCloseSearch,
+                    onForgetSearches = viewModel::onForgetSearches,
                 )
             } else {
                 Column {
@@ -542,10 +546,12 @@ private fun BookmarkButton(
 @Composable
 private fun SearchBar(
     search: SearchState,
+    recentSearches: List<String>,
     onQueryChange: (String) -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onClose: () -> Unit,
+    onForgetSearches: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -565,19 +571,12 @@ private fun SearchBar(
                     contentDescription = stringResource(R.string.reader_find_close),
                 )
             }
-            OutlinedTextField(
-                value = search.query,
-                onValueChange = onQueryChange,
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.reader_find_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium,
-                shape = RoundedCornerShape(50),
-                trailingIcon = {
+            SearchField(
+                query = search.query,
+                placeholder = stringResource(R.string.reader_find_hint),
+                onQueryChange = onQueryChange,
+                focusRequester = focusRequester,
+                trailing = {
                     val counter = when {
                         search.query.isBlank() -> null
                         search.isEmptyResult -> stringResource(R.string.reader_find_none)
@@ -596,15 +595,12 @@ private fun SearchBar(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            modifier = Modifier.padding(end = Space.lg),
                         )
                     }
                 },
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 44.dp)
-                    .padding(horizontal = Space.xs)
-                    .focusRequester(focusRequester),
+                    .padding(horizontal = Space.xs),
             )
             IconButton(onClick = onPrevious, enabled = hasMatches) {
                 Icon(
@@ -623,6 +619,17 @@ private fun SearchBar(
         // matches keep arriving while it does.
         AnimatedVisibility(visible = search.isSearching) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        // An empty find bar is the moment the last few words are worth having
+        // back: opening find and typing the same word again is most of what
+        // find gets used for in a book you are working through.
+        if (search.query.isBlank()) {
+            SearchHistoryRow(
+                history = recentSearches,
+                onPick = onQueryChange,
+                onClear = onForgetSearches,
+                modifier = Modifier.padding(bottom = Space.sm),
+            )
         }
     }
 }

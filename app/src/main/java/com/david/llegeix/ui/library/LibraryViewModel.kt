@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.settings.LibraryLayout
+import com.david.llegeix.data.settings.SearchHistoryRepository
+import com.david.llegeix.data.settings.SearchScope
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.R
@@ -25,6 +27,7 @@ import com.david.llegeix.data.source.foldersIn
 import com.david.llegeix.data.source.nearestLivePath
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -39,7 +42,37 @@ class LibraryViewModel(
     private val repository: PdfRepository,
     private val libraryData: LibraryDataRepository,
     private val settings: SettingsRepository,
+    private val searchHistory: SearchHistoryRepository,
 ) : ViewModel() {
+
+    /** Searches that found a document, offered back under an empty field. */
+    val recentSearches: StateFlow<List<String>> =
+        searchHistory.history(SearchScope.DOCUMENTS)
+
+    fun onForgetSearches() = searchHistory.forget(SearchScope.DOCUMENTS)
+
+    private var rememberJob: Job? = null
+
+    /**
+     * Keep a search once it has settled and actually found something.
+     *
+     * Waiting is what keeps the list clean. These fields filter as you type, so
+     * every prefix of every word passes through them; recording immediately
+     * would fill the history with "c", "ca", "car". A pause means the reader
+     * stopped to look at the result, and a result means it was worth stopping
+     * for.
+     */
+    private fun rememberSearchLater(query: String) {
+        rememberJob?.cancel()
+        if (query.isBlank()) return
+        rememberJob = viewModelScope.launch {
+            delay(SEARCH_SETTLE_MS)
+            val state = _uiState.value
+            if (state.query == query && state.documents.isNotEmpty()) {
+                searchHistory.record(SearchScope.DOCUMENTS, query)
+            }
+        }
+    }
 
     /** Rows or covers. Shared with Recent so the app looks like one app. */
     val layout: StateFlow<LibraryLayout> = settings.settings
@@ -250,6 +283,7 @@ class LibraryViewModel(
 
     fun onQueryChange(query: String) {
         _uiState.update { it.copy(query = query).withVisibleDocuments() }
+        rememberSearchLater(query)
     }
 
     fun onSortChange(sort: LibrarySort) {
@@ -380,8 +414,16 @@ class LibraryViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as LlegeixApp
-                LibraryViewModel(app.pdfRepository, app.libraryDataRepository, app.settingsRepository)
+                LibraryViewModel(
+                    app.pdfRepository,
+                    app.libraryDataRepository,
+                    app.settingsRepository,
+                    app.searchHistoryRepository,
+                )
             }
         }
     }
 }
+
+/** Long enough that a pause means the reader stopped to read the result. */
+private const val SEARCH_SETTLE_MS = 1_200L
