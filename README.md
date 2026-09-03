@@ -48,7 +48,13 @@ language. Written in Kotlin with Jetpack Compose.
   a PDF has been filed.
 - **Translation** — press and hold a word to translate it with ML Kit's on-device
   models; keep holding and drag to take a whole phrase, which comes back
-  translated, broken down word by word, and set in the line it came from.
+  translated, broken down word by word, and set in the line it came from. The
+  hold is shorter than the platform's and answered with a tick of haptics the
+  moment it takes, the highlight follows the finger without the stutter of a
+  job started per pointer event, another tick marks each word the selection
+  takes in, and the finished highlight is left alone for a beat before the
+  sheet rises over it — long enough to see what was picked, short enough that
+  nothing feels slow.
 - **Dictionary** — a tab of its own, because a word you want to check is not
   always a word in front of you. Type any Catalan word and the bundled
   Viccionari and thesaurus are searched as you go: the headwords you could mean

@@ -43,12 +43,31 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** How far a tap-and-hold lookup has got. */
 enum class LookupStatus { LOOKING_UP, DOWNLOADING_MODEL, READY, FAILED }
+
+/**
+ * A stretch of a page the finger is covering, as asked about.
+ *
+ * The whole gesture in one value, so the answer to it can be kept beside it and
+ * recognised again: the commit that follows a drag arrives with exactly the
+ * coordinates of the last preview, and comparing two of these is how the reader
+ * gets the sheet without waiting for the page to be read a second time.
+ */
+private data class SelectionRequest(
+    val pageIndex: Int,
+    val startXPx: Float,
+    val startYPx: Float,
+    val endXPx: Float,
+    val endYPx: Float,
+    val renderedWidthPx: Int,
+    val renderedHeightPx: Int,
+)
 
 /**
  * What is under the finger while a selection is still being dragged.
@@ -61,6 +80,16 @@ enum class LookupStatus { LOOKING_UP, DOWNLOADING_MODEL, READY, FAILED }
 data class SelectionPreview(
     val pageIndex: Int,
     val boundsPx: List<RectF>,
+    /**
+     * How many words are currently covered.
+     *
+     * Carried so the screen can tick under the finger each time the selection
+     * takes in another word, the way the platform's own text selection does.
+     * It is the count rather than the text because that is all the tick needs,
+     * and a preview that redraws on every pointer event should carry as little
+     * as it can.
+     */
+    val wordCount: Int = 1,
 )
 
 /**
@@ -230,7 +259,27 @@ class ReaderViewModel(
 
     private var lookupJob: Job? = null
 
-    private var previewJob: Job? = null
+    /**
+     * Where the finger is now, for the highlight to catch up with.
+     *
+     * A [MutableStateFlow] rather than a job per pointer event. A drag across a
+     * line produces dozens of events and each one used to cancel the last
+     * coroutine and start another, which piles up cancellations against the
+     * PDFium lock and makes the highlight arrive in fits. A state flow is
+     * conflated by definition: whatever the finger is doing while an answer is
+     * being worked out, only its latest position is asked about next, and every
+     * position it passed through in between is dropped unread.
+     */
+    private val previewRequests = MutableStateFlow<SelectionRequest?>(null)
+
+    /**
+     * The last request that was resolved and what it came back as.
+     *
+     * Kept so that lifting the finger does not ask the page a question it has
+     * just answered: the commit arrives with the same coordinates as the last
+     * preview, and re-resolving them is a wait for something already on hand.
+     */
+    private var resolvedPreview: Pair<SelectionRequest, PdfSelection>? = null
 
     private var searchJob: Job? = null
 
@@ -244,6 +293,7 @@ class ReaderViewModel(
     init {
         openDocument()
         observeStoredState()
+        trackSelection()
         viewModelScope.launch {
             settings.settings.collect { current ->
                 _uiState.update {
@@ -512,22 +562,47 @@ class ReaderViewModel(
         renderedWidthPx: Int,
         renderedHeightPx: Int,
     ) {
-        previewJob?.cancel()
-        previewJob = viewModelScope.launch {
-            val selection = resolveSelection(
-                pageIndex, startXPx, startYPx, endXPx, endYPx,
-                renderedWidthPx, renderedHeightPx,
-                mayRead = false,
-            ) ?: return@launch
+        previewRequests.value = SelectionRequest(
+            pageIndex, startXPx, startYPx, endXPx, endYPx,
+            renderedWidthPx, renderedHeightPx,
+        )
+    }
+
+    /**
+     * Keep the highlight under the finger as it moves.
+     *
+     * One collector for the life of the screen instead of a coroutine per
+     * pointer event. `collectLatest` is the point of it: a finger that has
+     * already moved on makes the answer to where it was worthless, so the
+     * resolution in flight is abandoned mid-way rather than allowed to finish
+     * and paint a highlight the finger has left behind.
+     *
+     * Nothing here has to check whether the answer changed. The state is a data
+     * class of value types, so a drag that stays inside one word resolves to a
+     * highlight equal to the one already showing, and an equal value is not an
+     * emission — the page is not asked to redraw for it.
+     */
+    private fun trackSelection() = viewModelScope.launch {
+        previewRequests.collectLatest { request ->
+            if (request == null) return@collectLatest
+            val selection = resolveSelection(request, mayRead = false) ?: return@collectLatest
+            resolvedPreview = request to selection
             _uiState.update {
-                it.copy(selectionPreview = SelectionPreview(pageIndex, selection.boundsPx))
+                it.copy(selectionPreview = previewOf(request.pageIndex, selection))
             }
         }
     }
 
+    private fun previewOf(pageIndex: Int, selection: PdfSelection) = SelectionPreview(
+        pageIndex = pageIndex,
+        boundsPx = selection.boundsPx,
+        wordCount = selection.text.split(WORD_SPLIT).count { it.isNotBlank() },
+    )
+
     /** Drop the highlight when a gesture is cancelled rather than finished. */
     fun onSelectionCancelled() {
-        previewJob?.cancel()
+        previewRequests.value = null
+        resolvedPreview = null
         _uiState.update { it.copy(selectionPreview = null) }
     }
 
@@ -548,14 +623,20 @@ class ReaderViewModel(
         renderedWidthPx: Int,
         renderedHeightPx: Int,
     ) {
-        previewJob?.cancel()
+        val request = SelectionRequest(
+            pageIndex, startXPx, startYPx, endXPx, endYPx,
+            renderedWidthPx, renderedHeightPx,
+        )
+        previewRequests.value = null
         lookupJob?.cancel()
         lookupJob = viewModelScope.launch {
-            val selection = resolveSelection(
-                pageIndex, startXPx, startYPx, endXPx, endYPx,
-                renderedWidthPx, renderedHeightPx,
-                mayRead = true,
-            )
+            // The finger has not moved since the last preview, so the page has
+            // already been asked this. Re-asking it is a wait for an answer
+            // that is sitting in a field, and it is the wait that makes lifting
+            // a finger feel like it did not register.
+            val selection = resolvedPreview?.takeIf { it.first == request }?.second
+                ?: resolveSelection(request, mayRead = true)
+            resolvedPreview = null
 
             if (selection == null) {
                 // Two different silences, and they deserve different answers:
@@ -587,6 +668,20 @@ class ReaderViewModel(
             val pieces = selection.text.split(WORD_SPLIT).filter { it.isNotBlank() }
             val saved = libraryData.findWordBookmark(selection.text, uriString, pageIndex) != null
 
+            // The selection the finger left behind, held on its own for a beat
+            // before the sheet arrives over it.
+            //
+            // A panel that springs up on the very frame the finger lifts reads
+            // as an interruption: there is no moment in which the reader is
+            // shown what they picked, only a page and then a panel. A beat is
+            // long enough to see the highlight settle on the words that were
+            // chosen and short enough that nothing feels slow — the sheet is
+            // already animating in by the time a wait would be noticed.
+            _uiState.update {
+                it.copy(selectionPreview = previewOf(pageIndex, selection))
+            }
+            delay(SHEET_SETTLE_MS)
+
             _uiState.update {
                 it.copy(
                     lookupHint = null,
@@ -613,13 +708,7 @@ class ReaderViewModel(
     }
 
     private suspend fun resolveSelection(
-        pageIndex: Int,
-        startXPx: Float,
-        startYPx: Float,
-        endXPx: Float,
-        endYPx: Float,
-        renderedWidthPx: Int,
-        renderedHeightPx: Int,
+        request: SelectionRequest,
         /**
          * Whether a page with no text of its own may be read now.
          *
@@ -631,7 +720,7 @@ class ReaderViewModel(
          * is immediately.
          */
         mayRead: Boolean,
-    ): PdfSelection? {
+    ): PdfSelection? = with(request) {
         val active = renderer ?: return null
         val fromPage = runCatchingCancellable {
             active.selectionBetween(
@@ -654,7 +743,7 @@ class ReaderViewModel(
             }
             ?: return null
 
-        return read.selectionBetween(
+        read.selectionBetween(
             startXPx, startYPx, endXPx, endYPx,
             tolerance = renderedWidthPx * OCR_TOUCH_TOLERANCE_FRACTION,
         )
@@ -958,6 +1047,17 @@ class ReaderViewModel(
         /** Splits a selected phrase into words, on spaces and punctuation. */
         private val WORD_SPLIT = Regex("[^\\p{L}·'\u2019]+")
         private const val SEARCH_DEBOUNCE_MS = 300L
+
+        /**
+         * How long the finished highlight is left alone before the sheet rises
+         * over it.
+         *
+         * Tuned by feel on a device rather than reasoned about. Nothing at all
+         * and the panel is simply where the page was, so the reader never sees
+         * what they picked; a third of a second and lifting a finger starts to
+         * feel like it did not take.
+         */
+        private const val SHEET_SETTLE_MS = 180L
         private val ZOOM_STEPS = listOf(1f, 1.5f, 2f, 3f)
         const val MIN_ZOOM = 1f
         const val MAX_ZOOM = 4f

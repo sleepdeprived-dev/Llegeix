@@ -79,6 +79,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -91,7 +92,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -146,6 +149,9 @@ private val PageElevation = 3.dp
 
 /** The hairline that gives an inverted page an edge the shadow cannot. */
 private val InvertedPageEdge = Color(0x1FFFFFFF)
+
+/** Corner on a highlight: enough to soften a block, too little to be a shape. */
+private val HighlightCorner = 3.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -208,6 +214,24 @@ fun ReaderScreen(
         } else {
             viewModel.onCloseSearch()
         }
+    }
+
+    // A tick each time the growing selection takes in another word, which is
+    // what the platform's own text selection does and what makes dragging
+    // across a phrase feel like it is gripping the words rather than sliding
+    // over them. Not on the first one: the press that started the selection has
+    // already been answered with a tick of its own, and two together read as a
+    // stutter.
+    val haptics = LocalHapticFeedback.current
+    val selectedWords = state.selectionPreview?.wordCount
+    var lastSelectedWords by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(selectedWords) {
+        if (selectedWords != null && lastSelectedWords != null &&
+            selectedWords != lastSelectedWords
+        ) {
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+        }
+        lastSelectedWords = selectedWords
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -779,6 +803,7 @@ private fun PdfPage(
     highlightColor: Int,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = LocalHapticFeedback.current
     BoxWithConstraints(
         // Without this a magnified page paints straight over the pages either
         // side of it in the pager, so page 1 at 2x shows a slice of page 2.
@@ -806,192 +831,212 @@ private fun PdfPage(
 
         val rendered = bitmap
         if (rendered != null) {
-            // The composable is given the bitmap's exact aspect ratio, so a touch
-            // offset maps to bitmap pixels by a single scale factor with no
-            // letterboxing to compensate for.
-            var drawnSize by remember { mutableStateOf(IntSize.Zero) }
-            var searchRects by remember(index, rendered) { mutableStateOf(emptyList<RectF>()) }
+            // Everything below holds to the reader's own press timing rather
+            // than the platform's; see SelectionTiming.
+            SelectionTiming {
+                // The composable is given the bitmap's exact aspect ratio, so a touch
+                // offset maps to bitmap pixels by a single scale factor with no
+                // letterboxing to compensate for.
+                var drawnSize by remember { mutableStateOf(IntSize.Zero) }
+                var searchRects by remember(index, rendered) { mutableStateOf(emptyList<RectF>()) }
 
-            LaunchedEffect(index, rendered, drawnSize, searchMatch) {
-                searchRects = if (searchMatch != null && drawnSize.width > 0) {
-                    highlights(rendered.width, rendered.height)
-                } else {
-                    emptyList()
-                }
-            }
-
-            Image(
-                bitmap = rendered.asImageBitmap(),
-                contentDescription = stringResource(
-                    R.string.reader_page_content_description,
-                    index + 1,
-                ),
-                contentScale = ContentScale.Fit,
-                colorFilter = if (invert) InvertFilter else null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Space.sm, vertical = Space.sm)
-                    .aspectRatio(rendered.width.toFloat() / rendered.height.toFloat())
-                    .graphicsLayer {
-                        scaleX = zoom
-                        scaleY = zoom
-                        // Anchored at the top, not the centre. A page's text
-                        // starts at the top, so centre-anchored zoom throws you
-                        // into the middle of the margin and looks broken.
-                        transformOrigin = TransformOrigin(0.5f, 0f)
-                        translationX = offset.x
-                        translationY = offset.y
+                LaunchedEffect(index, rendered, drawnSize, searchMatch) {
+                    searchRects = if (searchMatch != null && drawnSize.width > 0) {
+                        highlights(rendered.width, rendered.height)
+                    } else {
+                        emptyList()
                     }
-                    // Inside the transform, so the shadow moves and grows with
-                    // the page rather than staying behind where it started.
-                    // A page with no edge on a pale ground is a white rectangle
-                    // that happens to have words on it; this makes it paper.
-                    .shadow(
-                        elevation = PageElevation,
-                        shape = RectangleShape,
-                        clip = false,
-                    )
-                    // A shadow is invisible on a near-black ground, so the
-                    // inverted page gets a hairline instead. Without one, black
-                    // paper on a black desk has no edge at all, and a page
-                    // pushed around while magnified has nothing to push.
-                    .then(
-                        if (invert) {
-                            Modifier.border(1.dp, InvertedPageEdge)
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .onSizeChanged { drawnSize = it }
-                    .pinchToZoom(
-                        key = index,
-                        currentZoom = { currentZoom },
-                        minZoom = ReaderViewModel.MIN_ZOOM,
-                        maxZoom = ReaderViewModel.MAX_ZOOM,
-                        onZoomChanged = onZoomChanged,
-                    )
-                    // Dragging pans, but only while magnified — the pager owns
-                    // horizontal drags the rest of the time.
-                    .then(
-                        if (isZoomed) {
-                            // Keyed on the page alone. Including the zoom here
-                            // restarted the detector every time the zoom
-                            // changed, which cancelled the drag that was in
-                            // flight the moment a pinch ended.
-                            Modifier.pointerInput(index) {
-                                var edgePush = 0f
-                                detectDragGestures(
-                                    onDragEnd = { edgePush = 0f },
-                                    onDragCancel = { edgePush = 0f },
-                                ) { change, drag ->
-                                    change.consume()
-                                    val live = currentZoom
-                                    // This modifier sits inside the graphics
-                                    // layer, so the drag arrives already
-                                    // divided by the zoom. Undo that, or
-                                    // panning crawls at half speed at 2x and a
-                                    // third at 3x.
-                                    val moved = drag * live
-                                    // Horizontally the page grows both ways from
-                                    // the centre; vertically only downward,
-                                    // because the top edge is pinned.
-                                    val maxX = size.width * (live - 1f) / 2f
-                                    val minY = -size.height * (live - 1f)
-                                    val wantedX = offset.x + moved.x
-                                    val settledX = wantedX.coerceIn(-maxX, maxX)
-                                    offset = Offset(
-                                        settledX,
-                                        (offset.y + moved.y).coerceIn(minY, 0f),
-                                    )
+                }
 
-                                    // Once the page can go no further sideways,
-                                    // keep pushing and it turns. Insisting is
-                                    // the whole point: a small nudge past the
-                                    // edge while reading should do nothing, so
-                                    // only a sustained push in one direction
-                                    // counts, and the count resets the moment
-                                    // the finger goes the other way.
-                                    val spare = wantedX - settledX
-                                    if (spare != 0f && abs(moved.x) > abs(moved.y)) {
-                                        if (spare > 0f != edgePush > 0f) edgePush = 0f
-                                        edgePush += spare
-                                        if (abs(edgePush) > PAGE_TURN_PUSH_PX) {
-                                            edgePush = 0f
-                                            // Pushing the page to the right
-                                            // reveals what is to its left, so
-                                            // that is a step backwards.
-                                            onTurnPage(if (spare > 0f) -1 else 1)
+                Image(
+                    bitmap = rendered.asImageBitmap(),
+                    contentDescription = stringResource(
+                        R.string.reader_page_content_description,
+                        index + 1,
+                    ),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = if (invert) InvertFilter else null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Space.sm, vertical = Space.sm)
+                        .aspectRatio(rendered.width.toFloat() / rendered.height.toFloat())
+                        .graphicsLayer {
+                            scaleX = zoom
+                            scaleY = zoom
+                            // Anchored at the top, not the centre. A page's text
+                            // starts at the top, so centre-anchored zoom throws you
+                            // into the middle of the margin and looks broken.
+                            transformOrigin = TransformOrigin(0.5f, 0f)
+                            translationX = offset.x
+                            translationY = offset.y
+                        }
+                        // Inside the transform, so the shadow moves and grows with
+                        // the page rather than staying behind where it started.
+                        // A page with no edge on a pale ground is a white rectangle
+                        // that happens to have words on it; this makes it paper.
+                        .shadow(
+                            elevation = PageElevation,
+                            shape = RectangleShape,
+                            clip = false,
+                        )
+                        // A shadow is invisible on a near-black ground, so the
+                        // inverted page gets a hairline instead. Without one, black
+                        // paper on a black desk has no edge at all, and a page
+                        // pushed around while magnified has nothing to push.
+                        .then(
+                            if (invert) {
+                                Modifier.border(1.dp, InvertedPageEdge)
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .onSizeChanged { drawnSize = it }
+                        .pinchToZoom(
+                            key = index,
+                            currentZoom = { currentZoom },
+                            minZoom = ReaderViewModel.MIN_ZOOM,
+                            maxZoom = ReaderViewModel.MAX_ZOOM,
+                            onZoomChanged = onZoomChanged,
+                        )
+                        // Dragging pans, but only while magnified — the pager owns
+                        // horizontal drags the rest of the time.
+                        .then(
+                            if (isZoomed) {
+                                // Keyed on the page alone. Including the zoom here
+                                // restarted the detector every time the zoom
+                                // changed, which cancelled the drag that was in
+                                // flight the moment a pinch ended.
+                                Modifier.pointerInput(index) {
+                                    var edgePush = 0f
+                                    detectDragGestures(
+                                        onDragEnd = { edgePush = 0f },
+                                        onDragCancel = { edgePush = 0f },
+                                    ) { change, drag ->
+                                        change.consume()
+                                        val live = currentZoom
+                                        // This modifier sits inside the graphics
+                                        // layer, so the drag arrives already
+                                        // divided by the zoom. Undo that, or
+                                        // panning crawls at half speed at 2x and a
+                                        // third at 3x.
+                                        val moved = drag * live
+                                        // Horizontally the page grows both ways from
+                                        // the centre; vertically only downward,
+                                        // because the top edge is pinned.
+                                        val maxX = size.width * (live - 1f) / 2f
+                                        val minY = -size.height * (live - 1f)
+                                        val wantedX = offset.x + moved.x
+                                        val settledX = wantedX.coerceIn(-maxX, maxX)
+                                        offset = Offset(
+                                            settledX,
+                                            (offset.y + moved.y).coerceIn(minY, 0f),
+                                        )
+
+                                        // Once the page can go no further sideways,
+                                        // keep pushing and it turns. Insisting is
+                                        // the whole point: a small nudge past the
+                                        // edge while reading should do nothing, so
+                                        // only a sustained push in one direction
+                                        // counts, and the count resets the moment
+                                        // the finger goes the other way.
+                                        val spare = wantedX - settledX
+                                        if (spare != 0f && abs(moved.x) > abs(moved.y)) {
+                                            if (spare > 0f != edgePush > 0f) edgePush = 0f
+                                            edgePush += spare
+                                            if (abs(edgePush) > PAGE_TURN_PUSH_PX) {
+                                                edgePush = 0f
+                                                // Pushing the page to the right
+                                                // reveals what is to its left, so
+                                                // that is a step backwards.
+                                                onTurnPage(if (spare > 0f) -1 else 1)
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .doubleTapToZoom(
-                        key = index,
-                        currentZoom = { currentZoom },
-                        minZoom = ReaderViewModel.MIN_ZOOM,
-                        magnified = DOUBLE_TAP_ZOOM,
-                        onZoomChanged = onZoomChanged,
-                    )
-                    // Press and hold picks a word; keep dragging and the
-                    // selection grows to a phrase. One gesture, so there is
-                    // nothing extra to learn to select more than one word.
-                    //
-                    // Nothing is looked up until the finger lifts. Opening the
-                    // sheet on the first word, as this used to, put a panel
-                    // over the very text the reader was still trying to drag
-                    // across.
-                    .pointerInput(index, rendered, drawnSize) {
-                        var anchor = Offset.Zero
-                        var last = Offset.Zero
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { start ->
-                                anchor = start
-                                last = start
-                                emitSelection(start, start, rendered, drawnSize, onSelectPreview)
+                            } else {
+                                Modifier
                             },
-                            onDrag = { change, _ ->
-                                last = change.position
-                                emitSelection(
-                                    anchor,
-                                    last,
-                                    rendered,
-                                    drawnSize,
-                                    onSelectPreview,
-                                )
-                            },
-                            onDragEnd = {
-                                emitSelection(anchor, last, rendered, drawnSize, onSelectCommit)
-                            },
-                            onDragCancel = onSelectCancel,
                         )
-                    }
-                    .drawWithContent {
-                        drawContent()
-                        if (drawnSize.width <= 0) return@drawWithContent
-                        val scaleX = size.width / rendered.width
-                        val scaleY = size.height / rendered.height
+                        .doubleTapToZoom(
+                            key = index,
+                            currentZoom = { currentZoom },
+                            minZoom = ReaderViewModel.MIN_ZOOM,
+                            magnified = DOUBLE_TAP_ZOOM,
+                            onZoomChanged = onZoomChanged,
+                        )
+                        // Press and hold picks a word; keep dragging and the
+                        // selection grows to a phrase. One gesture, so there is
+                        // nothing extra to learn to select more than one word.
+                        //
+                        // Nothing is looked up until the finger lifts. Opening the
+                        // sheet on the first word, as this used to, put a panel
+                        // over the very text the reader was still trying to drag
+                        // across.
+                        .pointerInput(index, rendered, drawnSize) {
+                            var anchor = Offset.Zero
+                            var last = Offset.Zero
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { start ->
+                                    anchor = start
+                                    last = start
+                                    // Before anything is looked up, and before the
+                                    // page has even been asked what is there. The
+                                    // hold is over the moment it is over, and
+                                    // saying so on that frame is most of what makes
+                                    // it feel immediate — the highlight is a few
+                                    // milliseconds behind and nobody notices,
+                                    // because the gesture has already been
+                                    // answered.
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    emitSelection(start, start, rendered, drawnSize, onSelectPreview)
+                                },
+                                onDrag = { change, _ ->
+                                    last = change.position
+                                    emitSelection(
+                                        anchor,
+                                        last,
+                                        rendered,
+                                        drawnSize,
+                                        onSelectPreview,
+                                    )
+                                },
+                                onDragEnd = {
+                                    emitSelection(anchor, last, rendered, drawnSize, onSelectCommit)
+                                },
+                                onDragCancel = onSelectCancel,
+                            )
+                        }
+                        .drawWithContent {
+                            drawContent()
+                            if (drawnSize.width <= 0) return@drawWithContent
+                            val scaleX = size.width / rendered.width
+                            val scaleY = size.height / rendered.height
+                            // Rounded, and rounded in screen pixels rather than in
+                            // the page's, so the corner keeps its size as the page
+                            // is magnified. A run of hard-cornered blocks over a
+                            // line of type reads as a redaction; the platform's own
+                            // selection is rounded for the same reason.
+                            val corner = CornerRadius(HighlightCorner.toPx())
 
-                        lookupHighlights.forEach { box ->
-                            drawRect(
-                                color = HighlightColors.compose(highlightColor).copy(alpha = 0.4f),
+                            fun mark(box: RectF, color: Color) = drawRoundRect(
+                                color = color,
                                 topLeft = Offset(box.left * scaleX, box.top * scaleY),
                                 size = Size(box.width() * scaleX, box.height() * scaleY),
+                                cornerRadius = corner,
                             )
-                        }
-                        searchRects.forEach { box ->
-                            drawRect(
-                                color = HighlightColors.compose(HighlightColors.Blue)
-                                    .copy(alpha = 0.45f),
-                                topLeft = Offset(box.left * scaleX, box.top * scaleY),
-                                size = Size(box.width() * scaleX, box.height() * scaleY),
-                            )
-                        }
-                    },
-            )
+
+                            lookupHighlights.forEach { box ->
+                                mark(box, HighlightColors.compose(highlightColor).copy(alpha = 0.4f))
+                            }
+                            searchRects.forEach { box ->
+                                mark(
+                                    box,
+                                    HighlightColors.compose(HighlightColors.Blue).copy(alpha = 0.45f),
+                                )
+                            }
+                        },
+                )
+            }
         } else {
             Box(
                 modifier = Modifier
@@ -1007,7 +1052,17 @@ private fun PdfPage(
     }
 }
 
-/** Maps two points in the drawn page to bitmap pixels and reports the range. */
+/**
+ * Maps two points in the drawn page to bitmap pixels and reports the range.
+ *
+ * Both ends are held inside the page. Dragging off the edge of it is what
+ * reaching the end of a line actually looks like — the finger overshoots into
+ * the margin and then off the paper altogether — and a point on no page at all
+ * finds no character, which collapsed the whole selection back to the word it
+ * started on at the exact moment the reader got to the end of the phrase they
+ * were after. Clamped, the drag simply stops at the edge and keeps everything
+ * it crossed.
+ */
 private fun emitSelection(
     start: Offset,
     end: Offset,
@@ -1018,11 +1073,13 @@ private fun emitSelection(
     if (drawnSize.width <= 0 || drawnSize.height <= 0) return
     val scaleX = rendered.width.toFloat() / drawnSize.width
     val scaleY = rendered.height.toFloat() / drawnSize.height
+    fun onPageX(value: Float) = (value * scaleX).coerceIn(0f, rendered.width - 1f)
+    fun onPageY(value: Float) = (value * scaleY).coerceIn(0f, rendered.height - 1f)
     onSelect(
-        start.x * scaleX,
-        start.y * scaleY,
-        end.x * scaleX,
-        end.y * scaleY,
+        onPageX(start.x),
+        onPageY(start.y),
+        onPageX(end.x),
+        onPageY(end.y),
         rendered.width,
         rendered.height,
     )
