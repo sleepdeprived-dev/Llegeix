@@ -26,47 +26,99 @@ object ContextualGloss {
      * The run of words [whole] has and [ablated] does not, or null when the two
      * translations are too far apart to be compared.
      *
-     * Matched from both ends rather than by set difference: what is wanted is
-     * the place the sentences diverge, and a word that merely moved is not a
-     * word that was contributed. A set difference reported *contenty tail* and
-     * *bank to get the* on real output, which is how this ended up anchored.
+     * Aligned *locally* rather than end to end. Anchoring on both ends of the
+     * sentence was the obvious way to do this and it refuses to answer the case
+     * the feature exists for: taking *cap* out of "va lligar el cap de la corda
+     * al pal més alt" leaves the model free to re-read the rest of the line, and
+     * it does —
+     *
+     *     He tied the head of the rope to the highest bar.
+     *     He tied the one of the rope to the tall post of the boat.
+     *
+     * — so the two sentences share three words at the front, nothing at the
+     * back, and an end-to-end diff calls the whole tail the meaning of *cap*
+     * and then throws it away for being too long. But the divergence itself is
+     * as clean as it could be: *head* against *one*, in the same place, with
+     * the sentence coming straight back together on *of the rope*. The
+     * rewritten clause at the end has nothing to do with the missing word.
+     *
+     * So what is looked for is a short gap that both sentences come out of
+     * together: some words matching before it, at most [MAX_SPAN_WORDS] words
+     * in it, and a run of words matching again after it. What is inside that
+     * gap is what the word contributed. Everything past the point where the
+     * sentences come back together is ignored, which is the whole point — that
+     * is where a sentence model does its rewriting.
+     *
+     * Silence is still the failure mode, and there is a good deal of it: the
+     * anchor either side has to be real, so a line the model rewrote from its
+     * first word is refused outright rather than guessed at.
      */
     fun difference(whole: String, ablated: String, language: String): String? {
         val full = whole.split(WHITESPACE).filter { it.isNotBlank() }
         val short = ablated.split(WHITESPACE).filter { it.isNotBlank() }
         if (full.size < MIN_SENTENCE_WORDS || short.size < MIN_SENTENCE_WORDS) return null
-        // Not necessarily shorter: a model that loses a word often puts another
-        // in its place rather than closing the gap, turning *tied the head of
-        // the rope* into *tied the one of the rope*. What matters is that the
-        // sentences diverge in one place, not that one of them got shorter.
 
-        // Both walks are bounded by the *shorter* sentence, not by the ablated
-        // one. Removing a word does not reliably shorten the translation — the
-        // model re-reads the line and can come back with more words than it
-        // started with — so bounding by either sentence alone walks off the end
-        // of the other.
-        val common = minOf(full.size, short.size)
-
-        var prefix = 0
-        while (prefix < common && same(full[prefix], short[prefix])) prefix++
-
-        var suffix = 0
-        while (
-            suffix < common - prefix &&
-            same(full[full.size - 1 - suffix], short[short.size - 1 - suffix])
-        ) {
-            suffix++
-        }
-
-        // Most of the shorter sentence has to have survived unmoved. When it
-        // has not, the model rewrote the line rather than dropping a word from
-        // it, and whatever sits in the gap is not the word's meaning.
-        if (prefix + suffix < short.size * MIN_ANCHOR_FRACTION) return null
-
-        val span = full.subList(prefix, full.size - suffix)
-        if (span.isEmpty() || span.size > MAX_SPAN_WORDS) return null
+        // Read forwards, and if the sentence gives nothing that way, backwards:
+        // a word at the very start of the line has no anchor in front of it and
+        // all of its anchor behind. The reversed views hand back the span in
+        // reversed order, so it is turned round again before it is read.
+        val span = spanBetweenAnchors(full, short)
+            ?: spanBetweenAnchors(full.asReversed(), short.asReversed())?.asReversed()
+            ?: return null
 
         return trim(span, language)?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * The words of [full] sitting in a gap that [short] does not have, found by
+     * matching forwards from the start of both.
+     *
+     * Smallest gap first, and a gap that swallows a neighbour is refused rather
+     * than reported: it is better to say nothing than to tell a reader that
+     * *cap* means "red one".
+     */
+    private fun spanBetweenAnchors(full: List<String>, short: List<String>): List<String>? {
+        var prefix = 0
+        val common = minOf(full.size, short.size)
+        while (prefix < common && same(full[prefix], short[prefix])) prefix++
+
+        // Nothing diverged, or it diverged immediately: with no anchor in front
+        // of the gap there is nothing to say the two sentences were ever
+        // describing the same thing.
+        if (prefix >= full.size || prefix < MIN_ANCHOR_WORDS) return null
+
+        for (taken in 1..MAX_SPAN_WORDS) {
+            if (prefix + taken > full.size) break
+            for (replaced in 0..MAX_REPLACEMENT_WORDS) {
+                if (prefix + replaced > short.size) break
+                if (rejoins(full, prefix + taken, short, prefix + replaced)) {
+                    return full.subList(prefix, prefix + taken)
+                }
+            }
+        }
+        return null
+    }
+
+    /**
+     * Whether the two sentences are saying the same thing again from [a] and
+     * [b] onwards.
+     *
+     * [MIN_REJOIN_WORDS] of them, or all of whatever is left when one of the
+     * sentences simply ends there. A shorter run than that happens by accident
+     * on ordinary words — *of the* turns up everywhere — and an accident is
+     * what would let a rewritten clause be read as a word's meaning.
+     */
+    private fun rejoins(full: List<String>, a: Int, short: List<String>, b: Int): Boolean {
+        var matched = 0
+        while (a + matched < full.size && b + matched < short.size &&
+            same(full[a + matched], short[b + matched])
+        ) {
+            matched++
+        }
+        if (matched >= MIN_REJOIN_WORDS) return true
+        // Both running out together is the sentences ending in agreement, which
+        // is as good an anchor as any number of matching words.
+        return a + matched == full.size && b + matched == short.size
     }
 
     /**
@@ -137,8 +189,26 @@ object ContextualGloss {
     /** Below this a sentence has no anchor either side of the missing word. */
     private const val MIN_SENTENCE_WORDS = 4
 
-    /** How much of the shorter translation must line up word for word. */
-    private const val MIN_ANCHOR_FRACTION = 0.6
+    /** Matching words needed in front of the gap before it is believed. */
+    private const val MIN_ANCHOR_WORDS = 2
+
+    /**
+     * Matching words needed after it.
+     *
+     * Three rather than two: *of the* is not evidence of anything in English,
+     * and neither is *de la* in Romanian.
+     */
+    private const val MIN_REJOIN_WORDS = 3
+
+    /**
+     * Words the ablated sentence may put in the gap's place.
+     *
+     * A model that loses a word usually replaces it rather than closing up —
+     * *the head of the rope* becomes *the one of the rope* — and occasionally
+     * takes two words to do it. Past that the sentence is being rewritten, not
+     * patched.
+     */
+    private const val MAX_REPLACEMENT_WORDS = 2
 
     /**
      * Longer than this and the gap is a phrase the model rebuilt, not a word.

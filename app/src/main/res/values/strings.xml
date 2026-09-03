@@ -188,6 +188,22 @@
     <string name="reader_find_none">none</string>
     <!-- Position within the results, e.g. "3 / 47". -->
     <string name="reader_find_position">%1$d / %2$d</string>
+    <!-- The strip under the find bar, e.g. "18 matches · 7 pages". -->
+    <plurals name="reader_find_match_count">
+        <item quantity="one">%1$d match</item>
+        <item quantity="other">%1$d matches</item>
+    </plurals>
+    <plurals name="reader_find_page_count">
+        <item quantity="one">%1$d page</item>
+        <item quantity="other">%1$d pages</item>
+    </plurals>
+    <string name="reader_find_results_show">Show the results</string>
+    <string name="reader_find_results_hide">Hide the results</string>
+    <!-- Heading over the hits found on one page. -->
+    <string name="reader_find_result_page">Page %1$d</string>
+    <string name="reader_find_empty_title">Nothing found</string>
+    <string name="reader_find_empty_body">No part of this document contains “%1$s”. A scanned page holds no text to search.</string>
+    <string name="reader_find_limit">Showing the first %1$d matches only. Search for something longer to narrow it down.</string>
     <string name="reader_zoom">Zoom</string>
     <string name="reader_zoom_level">%1$s×</string>
     <string name="reader_invert_on">Page colours inverted</string>

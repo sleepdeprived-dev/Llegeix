@@ -32,6 +32,14 @@ language. Written in Kotlin with Jetpack Compose.
   without any arithmetic, and the page counter and the find counter are worded
   differently on purpose — they used to be the same two numbers in the same
   shape, on screen together, meaning different things.
+- **Find** — a search says how many times the word is in the book and where,
+  and then shows them: every occurrence quoted in the line it was found in,
+  grouped under its page, with the word itself the only coloured thing on the
+  row. Tapping one goes straight to it. A strip under the field carries the
+  count and opens and closes the list, the row you are on is marked so stepping
+  with the arrows never loses your place, and picking a result hands the whole
+  screen back to the page.
+
 - **Organisation** — folders, tags with a colour you can change at any time and
   sort by, recently viewed, and bookmarks, persisted in a Room database. A
   folder's colour is a disc behind its icon rather than a tint on the outline,

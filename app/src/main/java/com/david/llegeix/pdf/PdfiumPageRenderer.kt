@@ -341,7 +341,7 @@ class PdfiumPageRenderer private constructor(
         // close() alone. FindResult.close() and closeFind() both call the same
         // native closeFind on the same handle, so calling both is a double free
         // and aborts the process inside the allocator.
-        return textPage.findStart(term, emptySet(), 0)?.use { find ->
+        val found = textPage.findStart(term, emptySet(), 0)?.use { find ->
             buildList {
                 while (size < remaining && find.findNext()) {
                     val index = find.getSchResultIndex()
@@ -352,6 +352,21 @@ class PdfiumPageRenderer private constructor(
                 }
             }
         }.orEmpty()
+        if (found.isEmpty()) return found
+
+        // The page's text is pulled once, here, and only for a page that
+        // actually matched. It is what the snippets are cut out of, and the
+        // alternative — asking PDFium for each match's surroundings separately —
+        // is one call per hit on a page that can hold dozens.
+        val pageText = textPage.textPageGetText(0, textPage.textPageCountChars()).orEmpty()
+        return found.map { match ->
+            val snippet = MatchSnippet.around(pageText, match.charIndex, match.charCount)
+            match.copy(
+                snippet = snippet.text,
+                snippetStart = snippet.start,
+                snippetEnd = snippet.end,
+            )
+        }
     }
 
     override suspend fun matchBoundsPx(

@@ -21,11 +21,22 @@ data class PdfWord(
  * Stored as a range rather than as rectangles because the rectangles depend on
  * the size the page is currently rendered at, which changes with rotation and
  * zoom; the range does not.
+ *
+ * [snippet] is the range with the words either side of it, carried along
+ * because the results list has to show what was found rather than only where.
+ * It is filled in as the page is searched, while its text is already open;
+ * fetching it later would mean opening every page a second time.
  */
 data class PdfMatch(
     val pageIndex: Int,
     val charIndex: Int,
     val charCount: Int,
+    /** The line around the match, tidied and cut to a scannable length. */
+    val snippet: String = "",
+    /** Where the term sits inside [snippet], so the row can mark it. */
+    val snippetStart: Int = 0,
+    /** One past the end of the term inside [snippet]. */
+    val snippetEnd: Int = 0,
 )
 
 /**
@@ -121,7 +132,7 @@ interface PdfPageRenderer : AutoCloseable {
      */
     suspend fun findMatches(
         query: String,
-        limit: Int = 500,
+        limit: Int = MATCH_LIMIT,
         onBatch: suspend (List<PdfMatch>) -> Unit,
     )
 
@@ -136,6 +147,17 @@ interface PdfPageRenderer : AutoCloseable {
         renderedHeightPx: Int,
     ): List<RectF>
 }
+
+/**
+ * How many matches one search keeps.
+ *
+ * A cap rather than a promise: a common word in a long book has thousands of
+ * occurrences, and neither the list nor the reader has any use for the four
+ * thousandth. Named here rather than left as a default argument so the results
+ * list can say when it is showing all there is and when it is showing the
+ * first of many.
+ */
+const val MATCH_LIMIT: Int = 500
 
 /**
  * A4 portrait, used to size the placeholder before a page's real dimensions are

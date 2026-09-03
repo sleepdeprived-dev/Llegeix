@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
@@ -196,8 +197,17 @@ fun ReaderScreen(
     // leave that mode before it leaves the document. Without this the reader
     // has no back handling at all and a single press closes the whole PDF —
     // losing the search and the page you were on in one go.
+    //
+    // The list of results is a step of its own inside that mode, and back
+    // undoes one step at a time: the list first, the search after. Closing both
+    // at once would throw away a sweep of the whole document for a press that
+    // only meant "let me see the page".
     BackHandler(enabled = state.search.isOpen) {
-        viewModel.onCloseSearch()
+        if (state.search.showResults && state.search.matches.isNotEmpty()) {
+            viewModel.onToggleResults()
+        } else {
+            viewModel.onCloseSearch()
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -228,6 +238,7 @@ fun ReaderScreen(
                     onPrevious = viewModel::onPreviousMatch,
                     onClose = viewModel::onCloseSearch,
                     onForgetSearches = viewModel::onForgetSearches,
+                    onToggleResults = viewModel::onToggleResults,
                 )
             } else {
                 Column {
@@ -355,6 +366,24 @@ fun ReaderScreen(
                             .padding(bottom = Space.lg),
                     )
                 }
+            }
+
+            // Over the page rather than beside it, and only once there is
+            // something to say: a panel that appears on the first keystroke and
+            // empties itself on the second is a flicker where an answer should
+            // be. Padded for the keyboard, since the field above it is still
+            // focused and half the list would otherwise be underneath it.
+            if (state.search.isOpen &&
+                state.search.showResults &&
+                (state.search.matches.isNotEmpty() || state.search.isEmptyResult)
+            ) {
+                SearchResultsPanel(
+                    search = state.search,
+                    onSelect = viewModel::onSelectMatch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .imePadding(),
+                )
             }
         }
     }
@@ -552,6 +581,7 @@ private fun SearchBar(
     onPrevious: () -> Unit,
     onClose: () -> Unit,
     onForgetSearches: () -> Unit,
+    onToggleResults: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -619,6 +649,21 @@ private fun SearchBar(
         // matches keep arriving while it does.
         AnimatedVisibility(visible = search.isSearching) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        // What was found, and the way in and out of the list of it. Counting
+        // the pages as well as the hits because they answer different
+        // questions: forty hits on one page is a word this document is about,
+        // and forty across thirty pages is a word to go looking through.
+        if (hasMatches) {
+            val pagesWithMatches = remember(search.matches) {
+                search.matches.distinctBy { it.pageIndex }.size
+            }
+            SearchResultsBar(
+                matchCount = search.matches.size,
+                pageCount = pagesWithMatches,
+                isOpen = search.showResults,
+                onToggle = onToggleResults,
+            )
         }
         // An empty find bar is the moment the last few words are worth having
         // back: opening find and typing the same word again is most of what

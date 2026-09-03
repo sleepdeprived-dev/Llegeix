@@ -20,6 +20,7 @@ import android.graphics.RectF
 import com.david.llegeix.lang.CatalanContext
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.CatalanWordBank
+import com.david.llegeix.pdf.MATCH_LIMIT
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.PageOcr
@@ -140,12 +141,28 @@ data class SearchState(
     val matches: List<PdfMatch> = emptyList(),
     val currentIndex: Int = 0,
     val isSearching: Boolean = false,
+    /**
+     * Whether the list of results is covering the page.
+     *
+     * Open by default, because a reader who has just typed a word is looking
+     * for the list rather than for the page behind it. It closes the moment one
+     * result is picked, and the strip under the bar puts it back.
+     */
+    val showResults: Boolean = true,
 ) {
     val current: PdfMatch? get() = matches.getOrNull(currentIndex)
 
     /** True once a completed search has come back with nothing. */
     val isEmptyResult: Boolean
         get() = !isSearching && query.isNotBlank() && matches.isEmpty()
+
+    /**
+     * True when the sweep stopped at the cap rather than at the end.
+     *
+     * Worth saying out loud: a list that silently ends at five hundred is a
+     * list that has lied about how common the word is.
+     */
+    val isAtLimit: Boolean get() = matches.size >= MATCH_LIMIT
 }
 
 data class ReaderUiState(
@@ -309,6 +326,9 @@ class ReaderViewModel(
                     matches = emptyList(),
                     currentIndex = 0,
                     isSearching = query.isNotBlank(),
+                    // A new word deserves its list back, whether or not the last
+                    // one was dismissed to look at the page.
+                    showResults = true,
                 ),
             )
         }
@@ -318,18 +338,27 @@ class ReaderViewModel(
             // Typing a word produces a search per keystroke otherwise, and each
             // one sweeps the whole document.
             delay(SEARCH_DEBOUNCE_MS)
-            val active = renderer ?: return@launch
-            var jumped = false
-            runCatchingCancellable {
-                active.findMatches(query) { batch ->
-                    _uiState.update { state ->
-                        state.copy(search = state.search.copy(matches = state.search.matches + batch))
-                    }
-                    // Land on the first hit as soon as there is one, rather than
-                    // waiting for the whole document to be swept.
-                    if (!jumped) {
-                        jumped = true
-                        _pageJumps.emit(batch.first().pageIndex)
+            // A renderer that is not there yet is not an error, but the bar has
+            // to stop saying it is working — an early return left the progress
+            // line running under a search that had already given up.
+            val active = renderer
+            if (active != null) {
+                var jumped = false
+                runCatchingCancellable {
+                    active.findMatches(query) { batch ->
+                        _uiState.update { state ->
+                            state.copy(
+                                search = state.search.copy(
+                                    matches = state.search.matches + batch,
+                                ),
+                            )
+                        }
+                        // Land on the first hit as soon as there is one, rather
+                        // than waiting for the whole document to be swept.
+                        if (!jumped) {
+                            jumped = true
+                            _pageJumps.emit(batch.first().pageIndex)
+                        }
                     }
                 }
             }
@@ -353,6 +382,34 @@ class ReaderViewModel(
         val next = (search.currentIndex + delta).mod(search.matches.size)
         _uiState.update { it.copy(search = it.search.copy(currentIndex = next)) }
         viewModelScope.launch { _pageJumps.emit(search.matches[next].pageIndex) }
+    }
+
+    /**
+     * Show or hide the list of results.
+     *
+     * The list and the page are alternatives rather than layers: on a phone
+     * there is no room to read one over the other, and half of each is worse
+     * than all of either.
+     */
+    fun onToggleResults() {
+        _uiState.update {
+            it.copy(search = it.search.copy(showResults = !it.search.showResults))
+        }
+    }
+
+    /**
+     * Go to the match the reader picked out of the list.
+     *
+     * The list closes on the way, because picking a result is a way of saying
+     * "that one" about the page, and leaving the list up would hide the page it
+     * was asked for.
+     */
+    fun onSelectMatch(index: Int) {
+        val match = _uiState.value.search.matches.getOrNull(index) ?: return
+        _uiState.update {
+            it.copy(search = it.search.copy(currentIndex = index, showResults = false))
+        }
+        viewModelScope.launch { _pageJumps.emit(match.pageIndex) }
     }
 
     /** Where the search wants the pager to go. */

@@ -54,6 +54,38 @@ class ContextualGlossTest {
     }
 
     @Test
+    fun `reads the gap even when the model rewrote the far end of the line`() {
+        // Captured from the device, on the line this whole feature was built
+        // for. The model keeps the front of the sentence and re-reads the rest
+        // of it: "to the highest bar" becomes "to the tall post of the boat",
+        // which has nothing to do with the word that was taken out. Anchoring
+        // on both ends of the sentence gives up here, and giving up here is
+        // giving up on the example in the release notes.
+        assertEquals(
+            "head",
+            ContextualGloss.difference(
+                whole = "He tied the head of the rope to the highest bar.",
+                ablated = "He tied the one of the rope to the tall post of the boat.",
+                language = "en",
+            ),
+        )
+    }
+
+    @Test
+    fun `needs the sentence to come back together, not merely to start alike`() {
+        // The same three words in front, and nothing agreeing afterwards. Two
+        // sentences that share an opening and then go their own ways are not
+        // evidence of anything.
+        assertNull(
+            ContextualGloss.difference(
+                whole = "He tied the head of the rope to the mast",
+                ablated = "He tied the boat firmly against the wooden pier",
+                language = "en",
+            ),
+        )
+    }
+
+    @Test
     fun `gives up when the model rewrote the sentence`() {
         // Removing the word moved the subject and changed the verb; whatever
         // sits in the gap is not what the word meant.

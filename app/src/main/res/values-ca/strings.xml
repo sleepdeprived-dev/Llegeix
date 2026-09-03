@@ -186,6 +186,22 @@
     <string name="reader_find_none">cap</string>
     <!-- Posició dins dels resultats, p. ex. «3 / 47». -->
     <string name="reader_find_position">%1$d / %2$d</string>
+    <plurals name="reader_find_match_count">
+        <item quantity="one">%1$d coincidència</item>
+        <item quantity="many">%1$d coincidències</item>
+        <item quantity="other">%1$d coincidències</item>
+    </plurals>
+    <plurals name="reader_find_page_count">
+        <item quantity="one">%1$d pàgina</item>
+        <item quantity="many">%1$d pàgines</item>
+        <item quantity="other">%1$d pàgines</item>
+    </plurals>
+    <string name="reader_find_results_show">Mostra els resultats</string>
+    <string name="reader_find_results_hide">Amaga els resultats</string>
+    <string name="reader_find_result_page">Pàgina %1$d</string>
+    <string name="reader_find_empty_title">No s\'ha trobat res</string>
+    <string name="reader_find_empty_body">Cap part d\'aquest document conté «%1$s». Una pàgina escanejada no té text per cercar.</string>
+    <string name="reader_find_limit">Només es llisten les %1$d primeres coincidències. Cerca alguna cosa més llarga per acotar-ho.</string>
     <string name="reader_zoom">Amplia</string>
     <string name="reader_zoom_level">%1$s×</string>
     <string name="reader_invert_on">Colors de la pàgina invertits</string>
