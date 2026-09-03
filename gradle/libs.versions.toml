@@ -12,7 +12,10 @@ room = "2.8.4"
 pdfium = "2.0.3"
 mlkitTranslate = "17.0.3"
 mlkitTextRecognition = "16.0.1"
-ksp = "2.2.10-2.0.2"
+# KSP2 versions its own way rather than tracking the Kotlin release it runs
+# under; the older <kotlin>-<ksp> scheme pinned it to 2.2.10 and every build
+# warned that it was too old for Kotlin 2.4.
+ksp = "2.3.11"
 
 junit = "4.13.2"
 # Espresso 3.5.x reflects on InputManager.getInstance, which API 36 removed —

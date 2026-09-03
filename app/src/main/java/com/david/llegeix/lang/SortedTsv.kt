@@ -44,6 +44,60 @@ class SortedTsv private constructor(
         return null
     }
 
+    /**
+     * Keys that begin with [prefix], in the file's own order, at most [limit].
+     *
+     * The same binary search as [find], stopped at the first line that could
+     * match rather than at an exact hit, then walked forward. That is what makes
+     * a live suggestion list affordable over forty thousand headwords: no index
+     * is built and no key but the handful being offered is ever turned into a
+     * string.
+     */
+    fun keysStartingWith(prefix: String, limit: Int): List<String> {
+        if (prefix.isEmpty() || limit <= 0 || isEmpty) return emptyList()
+        val needle = prefix.toByteArray(Charsets.UTF_8)
+        var low = 0
+        var high = lineStarts.size
+        while (low < high) {
+            val mid = (low + high) ushr 1
+            if (comparePrefixAt(lineStarts[mid], needle) < 0) low = mid + 1 else high = mid
+        }
+        val found = ArrayList<String>(limit)
+        var index = low
+        while (index < lineStarts.size && found.size < limit) {
+            if (comparePrefixAt(lineStarts[index], needle) != 0) break
+            found += keyAt(lineStarts[index])
+            index++
+        }
+        return found
+    }
+
+    /**
+     * Whether the key at [start] sorts before, inside, or after [needle]'s
+     * prefix range: negative, zero, positive. A key shorter than the prefix
+     * sorts before it, which is what keeps the lower-bound search honest.
+     */
+    private fun comparePrefixAt(start: Int, needle: ByteArray): Int {
+        var i = start
+        var j = 0
+        while (j < needle.size) {
+            if (i >= data.size || data[i] == TAB || data[i] == NEWLINE) return -1
+            val a = data[i].toInt() and 0xFF
+            val b = needle[j].toInt() and 0xFF
+            if (a != b) return a - b
+            i++
+            j++
+        }
+        return 0
+    }
+
+    /** Just the key of the line starting at [start]. */
+    private fun keyAt(start: Int): String {
+        var end = start
+        while (end < data.size && data[end] != TAB && data[end] != NEWLINE) end++
+        return String(data, start, end - start, Charsets.UTF_8)
+    }
+
     /** Compares the key of the line starting at [start] against [needle]. */
     private fun compareKeyAt(start: Int, needle: ByteArray): Int {
         var i = start

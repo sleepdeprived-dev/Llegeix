@@ -38,7 +38,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -432,13 +431,20 @@ private fun SavedWordRow(
             )
         }
 
+        // A word starred in the Dictionary tab has no page behind it, so it
+        // says where it came from instead of quoting a page and a line it was
+        // never on.
         Text(
-            text = stringResource(
-                R.string.words_source,
-                pdfTitle(word.displayName.orEmpty()),
-                word.pageIndex + 1,
-                word.lineNumber,
-            ),
+            text = if (word.documentUri == null) {
+                stringResource(R.string.words_from_dictionary)
+            } else {
+                stringResource(
+                    R.string.words_source,
+                    pdfTitle(word.displayName.orEmpty()),
+                    word.pageIndex + 1,
+                    word.lineNumber,
+                )
+            },
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,

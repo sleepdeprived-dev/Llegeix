@@ -10,6 +10,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.abs
@@ -109,7 +110,14 @@ class PageOcr {
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     }
 
-    private val cache = HashMap<String, OcrPage>()
+    /**
+     * Concurrent because the two callers are not the same call: [read] writes
+     * under [mutex] from the coroutine doing the recognition, while [cached] is
+     * a plain read from wherever the question is being asked. They happen to
+     * share a dispatcher today, and a map that quietly depends on that is a map
+     * that breaks the day one of them moves.
+     */
+    private val cache = ConcurrentHashMap<String, OcrPage>()
     private val mutex = Mutex()
 
     /** What has already been read for this page, without reading it again. */

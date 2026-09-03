@@ -29,6 +29,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.david.llegeix.ui.bookmarks.BookmarkedCollectionScreen
 import com.david.llegeix.ui.bookmarks.BookmarksScreen
+import com.david.llegeix.ui.dictionary.DictionaryScreen
 import com.david.llegeix.ui.folders.FolderDetailScreen
 import com.david.llegeix.ui.folders.FoldersScreen
 import com.david.llegeix.ui.library.LibraryScreen
@@ -39,6 +40,7 @@ import com.david.llegeix.ui.sources.SourcesScreen
 
 private object Routes {
     const val LIBRARY = "library"
+    const val DICTIONARY = "dictionary"
     const val RECENT = "recent"
     const val BOOKMARKS = "bookmarks"
     const val FOLDERS = "folders"
@@ -70,8 +72,17 @@ private data class TopLevelDestination(
     @param:DrawableRes val iconRes: Int,
 )
 
+/**
+ * The tabs, in the order a reader meets them.
+ *
+ * The dictionary sits second, next to the library rather than out at the end,
+ * because it is the other reason to open this app at all: the library is the
+ * books, and the dictionary is the language. Everything after it — recent,
+ * bookmarks, folders — is a way back to something you have already seen.
+ */
 private val topLevelDestinations = listOf(
     TopLevelDestination(Routes.LIBRARY, R.string.nav_library, R.drawable.ic_library),
+    TopLevelDestination(Routes.DICTIONARY, R.string.nav_dictionary, R.drawable.ic_dictionary),
     TopLevelDestination(Routes.RECENT, R.string.nav_recent, R.drawable.ic_recent),
     TopLevelDestination(Routes.BOOKMARKS, R.string.nav_bookmarks, R.drawable.ic_bookmark),
     TopLevelDestination(Routes.FOLDERS, R.string.nav_folders, R.drawable.ic_folder),
@@ -83,8 +94,8 @@ fun AppNavigation(modifier: Modifier = Modifier) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
 
-    // The bar belongs to the three top-level tabs only; the reader and a folder's
-    // contents are pushed on top of them and get the whole screen.
+    // The bar belongs to the top-level tabs only; the reader, a folder's
+    // contents and Settings are pushed on top of them and get the whole screen.
     val showBottomBar = topLevelDestinations.any { destination ->
         currentDestination?.hierarchy?.any { it.route == destination.route } == true
     }
@@ -149,6 +160,10 @@ fun AppNavigation(modifier: Modifier = Modifier) {
 
             composable(Routes.SOURCES) {
                 SourcesScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Routes.DICTIONARY) {
+                DictionaryScreen()
             }
 
             composable(Routes.RECENT) {

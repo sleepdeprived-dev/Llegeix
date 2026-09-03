@@ -127,4 +127,50 @@ class CatalanWordBankTest {
         assertTrue(CatalanWordBank.isWorthLookingUp("bonica"))
         assertTrue(CatalanWordBank.isWorthLookingUp("Història"))
     }
+
+    // ---- Suggestions, for the dictionary screen ---------------------------
+
+    @Test
+    fun `suggestions come back shortest first`() {
+        // "cas" is what was typed; burying it under "casa" would make the list
+        // something to read rather than something to aim at.
+        assertEquals(listOf("cas", "casa"), bank.suggest("cas"))
+    }
+
+    @Test
+    fun `suggestions draw on both the definitions and the thesaurus`() {
+        // "gran" and "història" are only in the thesaurus, "muntanya" only in
+        // the definitions; a word missing from the list reads as a word the app
+        // does not know.
+        assertEquals(listOf("gran"), bank.suggest("gra"))
+        assertEquals(listOf("muntanya"), bank.suggest("munt"))
+    }
+
+    @Test
+    fun `a headword is offered by its own full spelling`() {
+        assertEquals(listOf("col·legi"), bank.suggest("col·legi"))
+        assertEquals(listOf("història"), bank.suggest("hist"))
+    }
+
+    @Test
+    fun `suggestions are normalised the way lookups are`() {
+        assertEquals(listOf("casa"), bank.suggest("  CASA "))
+    }
+
+    @Test
+    fun `a prefix nothing starts with suggests nothing`() {
+        assertTrue(bank.suggest("zzz").isEmpty())
+        assertTrue(bank.suggest("").isEmpty())
+    }
+
+    @Test
+    fun `the limit is honoured`() {
+        assertEquals(1, bank.suggest("cas", limit = 1).size)
+        assertTrue(bank.suggest("cas", limit = 0).isEmpty())
+    }
+
+    @Test
+    fun `empty references suggest nothing rather than failing`() {
+        assertTrue(CatalanWordBank.of().suggest("casa").isEmpty())
+    }
 }

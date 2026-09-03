@@ -73,6 +73,28 @@ class CatalanWordBank private constructor(
         return null
     }
 
+    /**
+     * Headwords beginning with [prefix], for the dictionary screen's list of
+     * what the reader might mean.
+     *
+     * Both files are asked, because they do not hold the same words: the
+     * Viccionari has definitions the thesaurus has never heard of and the other
+     * way round, and a word missing from a suggestion list reads as a word the
+     * app does not know.
+     *
+     * Shortest first, then alphabetical. Typing *cas* should offer *cas* before
+     * *casament*: the word itself is what was typed, and a list that buries it
+     * under its own derivations is a list you have to read rather than aim at.
+     */
+    fun suggest(prefix: String, limit: Int = MAX_SUGGESTIONS): List<String> {
+        val key = normalise(prefix)
+        if (key.isEmpty()) return emptyList()
+        val found = LinkedHashSet<String>(limit * 2)
+        found += definitions.keysStartingWith(key, limit)
+        found += thesaurus.keysStartingWith(key, limit)
+        return found.sortedWith(compareBy({ it.length }, { it })).take(limit)
+    }
+
     /** The forms to try, in order of how much they can be trusted. */
     private fun candidates(key: String): List<String> {
         val tried = LinkedHashSet<String>()
@@ -116,6 +138,9 @@ class CatalanWordBank private constructor(
         private const val DEFINITIONS_ASSET = "catalan-dictionary.tsv"
         private const val THESAURUS_ASSET = "catalan-thesaurus.tsv"
         private const val LEMMAS_ASSET = "catalan-lemmas.tsv"
+
+        /** Suggestions offered while typing: a list you scroll is not a shortcut. */
+        const val MAX_SUGGESTIONS = 12
 
         /** Separates the meanings inside one definition field. */
         private const val UNIT_SEPARATOR = '\u001F'

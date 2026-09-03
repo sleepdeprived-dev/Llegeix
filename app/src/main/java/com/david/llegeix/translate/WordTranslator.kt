@@ -5,6 +5,9 @@ import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.TranslatorOptions
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -49,15 +52,32 @@ class WordTranslator(
      *
      * @param requireWifi avoids a large download over mobile data. Worth keeping
      *   on by default; the caller can retry unmetered if it fails.
+     * @param onDownloading called only once the wait is long enough to be a real
+     *   download. ML Kit has no cheap "is it there" question — the same call
+     *   fetches the models and confirms models already on the device — and a
+     *   fresh translator starts every screen not knowing which it will be. Said
+     *   immediately, "one-time download over Wi-Fi" flashed up on the first
+     *   lookup of every session for a model that had been on the phone for
+     *   weeks, which is a sentence that teaches the reader to distrust the app.
      */
-    suspend fun ensureModel(requireWifi: Boolean = true) {
+    suspend fun ensureModel(requireWifi: Boolean = true, onDownloading: () -> Unit = {}) {
         if (modelReady) return
         downloadLock.withLock {
             if (modelReady) return
             val conditions = DownloadConditions.Builder()
                 .apply { if (requireWifi) requireWifi() }
                 .build()
-            translator.downloadModelIfNeeded(conditions).await()
+            coroutineScope {
+                val notice = launch {
+                    delay(DOWNLOAD_NOTICE_DELAY_MS)
+                    onDownloading()
+                }
+                try {
+                    translator.downloadModelIfNeeded(conditions).await()
+                } finally {
+                    notice.cancel()
+                }
+            }
             modelReady = true
         }
     }
@@ -70,6 +90,15 @@ class WordTranslator(
 
     override fun close() {
         translator.close()
+    }
+
+    private companion object {
+        /**
+         * Long enough that confirming a model already on the device stays
+         * silent, short enough that a real download is announced before the
+         * reader concludes nothing is happening.
+         */
+        const val DOWNLOAD_NOTICE_DELAY_MS = 600L
     }
 }
 

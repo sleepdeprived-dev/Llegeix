@@ -19,7 +19,6 @@ import com.david.llegeix.data.source.LibraryDataRepository
 import android.graphics.RectF
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.CatalanWordBank
-import com.david.llegeix.lang.WordReference
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.PageOcr
@@ -27,6 +26,8 @@ import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.pdf.PdfSelection
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.R
+import com.david.llegeix.ui.common.DictionaryState
+import com.david.llegeix.ui.common.DictionaryStatus
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.util.pdfTitle
@@ -46,21 +47,6 @@ import kotlinx.coroutines.withContext
 
 /** How far a tap-and-hold lookup has got. */
 enum class LookupStatus { LOOKING_UP, DOWNLOADING_MODEL, READY, FAILED }
-
-/** How far the optional dictionary lookup has got. */
-enum class DictionaryStatus { CLOSED, LOADING, READY }
-
-/**
- * The dictionary panel, which stays shut until it is asked for.
- *
- * The reference files are sixteen megabytes together and most lookups never
- * want them, so they are read on the first request rather than when the reader
- * opens.
- */
-data class DictionaryState(
-    val status: DictionaryStatus = DictionaryStatus.CLOSED,
-    val entries: List<WordReference> = emptyList(),
-)
 
 /**
  * What is under the finger while a selection is still being dragged.
@@ -684,8 +670,11 @@ class ReaderViewModel(
 
     private suspend fun translate(word: String, requireWifi: Boolean = true) {
         if (!translator.isModelReady) {
-            updateLookup { it.copy(status = LookupStatus.DOWNLOADING_MODEL) }
-            val downloaded = runCatchingCancellable { translator.ensureModel(requireWifi) }
+            val downloaded = runCatchingCancellable {
+                translator.ensureModel(requireWifi) {
+                    updateLookup { it.copy(status = LookupStatus.DOWNLOADING_MODEL) }
+                }
+            }
             if (downloaded.isFailure) {
                 updateLookup {
                     it.copy(

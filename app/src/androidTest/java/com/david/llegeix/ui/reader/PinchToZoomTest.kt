@@ -9,6 +9,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
 import androidx.compose.ui.test.swipeLeft
@@ -150,5 +156,95 @@ class PinchToZoomTest {
         rule.waitForIdle()
 
         assertTrue("zoom escaped its ceiling: $zoom", zoom <= maxZoom + 0.001f)
+    }
+
+    // ---- Double tap -------------------------------------------------------
+
+    @Test
+    fun aDoubleTapMagnifiesAnUnmagnifiedPage() {
+        var zoom = 1f
+        rule.setContent {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .testTag("page")
+                    .doubleTapToZoom(
+                        key = Unit,
+                        currentZoom = { zoom },
+                        minZoom = minZoom,
+                        magnified = 2f,
+                        onZoomChanged = { zoom = it },
+                    ),
+            )
+        }
+
+        rule.onNodeWithTag("page").performTouchInput { doubleClick() }
+        rule.waitForIdle()
+
+        assertEquals(2f, zoom, 0.001f)
+    }
+
+    /**
+     * The regression this exists for.
+     *
+     * The keys deliberately leave the zoom out, so the detector is not restarted
+     * every time a pinch moves it — which means a handler that *captured* the
+     * zoom went stale on the first pinch. Written that way, a double tap after
+     * zooming still believed the page was at 1x and magnified it again, and
+     * there was no way to leave a magnified page at all.
+     *
+     * So the zoom is changed here from outside the gesture, exactly as a pinch
+     * or the zoom button does, and then the page is double tapped.
+     */
+    @Test
+    fun aDoubleTapAfterZoomingElsewhereReturnsThePage() {
+        var zoom by mutableFloatStateOf(1f)
+        rule.setContent {
+            // The same holder the reader uses, so the test exercises the wiring
+            // and not merely the modifier in isolation.
+            val live by rememberUpdatedState(zoom)
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .testTag("page")
+                    .doubleTapToZoom(
+                        key = Unit,
+                        currentZoom = { live },
+                        minZoom = minZoom,
+                        magnified = 2f,
+                        onZoomChanged = { zoom = it },
+                    ),
+            )
+        }
+
+        rule.runOnIdle { zoom = 1.5f }
+        rule.onNodeWithTag("page").performTouchInput { doubleClick() }
+        rule.waitForIdle()
+
+        assertEquals("a double tap on a magnified page must put it back", 1f, zoom, 0.001f)
+    }
+
+    @Test
+    fun aSingleTapLeavesTheZoomAlone() {
+        var zoom = 1f
+        rule.setContent {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .testTag("page")
+                    .doubleTapToZoom(
+                        key = Unit,
+                        currentZoom = { zoom },
+                        minZoom = minZoom,
+                        magnified = 2f,
+                        onZoomChanged = { zoom = it },
+                    ),
+            )
+        }
+
+        rule.onNodeWithTag("page").performTouchInput { click() }
+        rule.waitForIdle()
+
+        assertEquals(1f, zoom, 0.001f)
     }
 }

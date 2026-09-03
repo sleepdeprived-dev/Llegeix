@@ -10,6 +10,7 @@
 
     <!-- Navegació -->
     <string name="nav_library">Biblioteca</string>
+    <string name="nav_dictionary">Diccionari</string>
     <string name="nav_recent">Recents</string>
     <string name="nav_bookmarks">Marcadors</string>
     <string name="nav_folders">Carpetes</string>
@@ -204,7 +205,7 @@
     <string name="lookup_synonyms">Sinònims</string>
     <string name="lookup_dictionary">Diccionari</string>
     <string name="lookup_dictionary_loading">S\'està cercant al diccionari\u2026</string>
-    <string name="lookup_dictionary_none">El diccionari no té res per a aquesta selecció.</string>
+    <string name="lookup_dictionary_none">El diccionari no té res per a això.</string>
     <string name="pos_nom">nom</string>
     <string name="pos_verb">verb</string>
     <string name="pos_adj">adjectiu</string>
@@ -236,7 +237,7 @@
     <!-- Paraules desades -->
     <string name="bookmarks_tab_words">Paraules</string>
     <string name="bookmarks_words_empty_title">Cap paraula desada</string>
-    <string name="bookmarks_words_empty_body">Mantén premuda una paraula mentre llegeixes i toca l\'estrella. Si continues arrossegant, en pots desar tota una frase.</string>
+    <string name="bookmarks_words_empty_body">Mantén premuda una paraula mentre llegeixes i toca l\'estrella. Si continues arrossegant, en pots desar tota una frase, o marca-la des de la pestanya Diccionari.</string>
     <string name="words_remove">Treu aquesta paraula</string>
     <string name="words_source">%1$s · pàgina %2$d · línia %3$d</string>
 
@@ -269,6 +270,13 @@
     <string name="recent_remove_body">Desapareixerà de Vistos recentment. El PDF es queda al dispositiu.</string>
 
     <!-- Paraules desades -->
+    <!-- Diccionari -->
+    <string name="dictionary_title">Diccionari</string>
+    <string name="dictionary_search">Cerca una paraula catalana</string>
+    <string name="dictionary_empty_title">Consulta qualsevol paraula</string>
+    <string name="dictionary_empty_body">Escriu una paraula catalana per veure com es pronuncia, què vol dir i què més podria ser. Marca-la amb l\'estrella per desar-la amb les teves paraules.</string>
+    <string name="words_from_dictionary">Consultada al diccionari</string>
+
     <string name="words_search">Cerca paraules</string>
     <string name="words_sort_recent">Més recents primer</string>
     <string name="words_sort_alphabetical">De la A a la Z</string>

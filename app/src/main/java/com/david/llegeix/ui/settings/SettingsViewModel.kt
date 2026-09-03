@@ -51,9 +51,15 @@ class SettingsViewModel(
      */
     fun onEraseEverything(onDone: () -> Unit) = viewModelScope.launch {
         _isErasing.value = true
-        dataEraser.eraseEverything()
-        _isErasing.value = false
-        onDone()
+        // In a finally, because the dialog disables its own dismiss button
+        // while this flag is set: anything thrown on the way through would
+        // otherwise leave the reader looking at a dialog with no way out.
+        try {
+            dataEraser.eraseEverything()
+        } finally {
+            _isErasing.value = false
+            onDone()
+        }
     }
 
     companion object {

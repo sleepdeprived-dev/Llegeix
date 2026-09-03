@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
@@ -27,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
@@ -53,10 +56,23 @@ fun SearchField(
     /** Sits before the clear button — the reader puts its match count here. */
     trailing: (@Composable () -> Unit)? = null,
     focusRequester: FocusRequester? = null,
+    /**
+     * Set where the field commits rather than filters as you type.
+     *
+     * The library and the saved words narrow a list on every keystroke, so
+     * there is nothing for a keyboard key to do and they leave this null. The
+     * dictionary has to be told when the word is finished, so it gets the
+     * keyboard's search key.
+     */
+    onSubmit: (() -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
+        keyboardOptions = KeyboardOptions(
+            imeAction = if (onSubmit != null) ImeAction.Search else ImeAction.Default,
+        ),
+        keyboardActions = KeyboardActions(onSearch = { onSubmit?.invoke() }),
         placeholder = {
             Text(
                 text = placeholder,

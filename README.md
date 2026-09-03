@@ -41,6 +41,16 @@ language. Written in Kotlin with Jetpack Compose.
 - **Translation** — press and hold a word to translate it with ML Kit's on-device
   models; keep holding and drag to take a whole phrase, which comes back
   translated, broken down word by word, and set in the line it came from.
+- **Dictionary** — a tab of its own, because a word you want to check is not
+  always a word in front of you. Type any Catalan word and the bundled
+  Viccionari and thesaurus are searched as you go: the headwords you could mean
+  appear under the field, shortest first, and what you actually typed is always
+  the row at the top, so a plural, a conjugated verb or a name nobody listed is
+  still something you can look up. The answer is the reader's own lookup panel —
+  the word, its pronunciation, the translation, the definition in Catalan, the
+  synonyms and the antonyms — because a word checked here and the same word
+  pressed while reading should not look like two different words. The star keeps
+  it with everything else you have saved.
 - **Scanned pages** — a scan is a photograph of writing: there is no text in
   the file, so press-and-hold used to do nothing at all and there was no way to
   tell that from a missed press. Now a page with no text of its own is read with
@@ -54,14 +64,16 @@ language. Written in Kotlin with Jetpack Compose.
   below.
 - **Saved words** — star a word or phrase and it is kept with its translation,
   its pronunciation, the line it appeared in, and the document, page and line it
-  came from.
-- **Search** — one field, in the library, in the saved words and in the reader's
-  find bar, so searching looks and behaves the same wherever you do it. Each
-  offers back what was searched for last, under the field while it is still
-  empty. Only searches that actually found something are kept, which is what
-  keeps half-typed words out of the list; the reader's find and the saved words
-  share one, because a word chased across a page is the one you come back
-  looking for in your own list.
+  came from. One starred in the Dictionary has no page behind it and says so,
+  rather than quoting a line it was never on.
+- **Search** — one field, in the library, in the dictionary, in the saved words
+  and in the reader's find bar, so searching looks and behaves the same wherever
+  you do it. Each offers back what was searched for last, under the field while
+  it is still empty. Only searches that actually found something are kept, which
+  is what keeps half-typed words out of the list; the reader's find, the
+  dictionary and the saved words share one pile, because a word chased across a
+  page is the one you come back looking for in the dictionary, and then in your
+  own list.
 - **Settings** — reached from the gear in the Library app bar: light, dark,
   AMOLED black or follow-the-system, an accent colour (Material You from the
   wallpaper, one of six named colours, or one mixed by hand with a hue slider
