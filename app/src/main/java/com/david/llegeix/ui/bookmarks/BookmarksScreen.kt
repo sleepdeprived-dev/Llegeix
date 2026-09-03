@@ -406,6 +406,26 @@ private fun SavedWordRow(
                         modifier = Modifier.padding(top = Space.xs),
                     )
                 }
+                // What it meant in the line it was saved from, when that was
+                // not what it means alone. Kept next to the plain translation
+                // and labelled, exactly as the reader's sheet showed it — the
+                // note should not quietly become more certain than the moment
+                // it was made in.
+                if (!word.senseTranslation.isNullOrBlank()) {
+                    Text(
+                        text = word.senseSource?.takeIf { it.isNotBlank() }
+                            ?.let { stringResource(R.string.words_sense_from, it) }
+                            ?: stringResource(R.string.lookup_here),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = Space.sm),
+                    )
+                    Text(
+                        text = word.senseTranslation,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
             IconButton(onClick = onRemove) {
                 Icon(
@@ -417,18 +437,34 @@ private fun SavedWordRow(
         }
 
         if (!word.context.isNullOrBlank()) {
-            Text(
-                text = word.context,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
+            Column(
                 modifier = Modifier
                     .padding(top = Space.sm, end = Space.lg)
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .padding(horizontal = Space.md, vertical = Space.sm),
-            )
+            ) {
+                Text(
+                    text = word.context,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // The quoted line is only worth quoting if it can be read, and
+                // the whole point of saving a word in a language you are
+                // learning is the sentence it was doing a job in.
+                if (!word.contextTranslation.isNullOrBlank()) {
+                    Text(
+                        text = word.contextTranslation,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = Space.xs),
+                    )
+                }
+            }
         }
 
         // A word starred in the Dictionary tab has no page behind it, so it

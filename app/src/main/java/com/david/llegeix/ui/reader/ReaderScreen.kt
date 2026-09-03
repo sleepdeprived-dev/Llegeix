@@ -1119,6 +1119,30 @@ private fun WordLookupSheet(
                 }
             }
 
+            // ---- The expression the word turned out to belong to -------------
+            // Directly under the answer, and given the same weight, because
+            // this is a headword in the dictionary rather than a guess: "a boca
+            // de canó" is what the reader is looking at, and *canó* on its own
+            // comes back as "Canyon".
+            lookup.here?.takeIf { it.isPhrase }?.let { here ->
+                DetailCard(
+                    title = stringResource(R.string.lookup_here_phrase),
+                    modifier = Modifier.padding(top = Space.lg),
+                ) {
+                    Text(
+                        text = here.source,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = here.translation,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = Space.xs),
+                    )
+                }
+            }
+
             // ---- Word by word, only when there is more than one -------------
             if (lookup.isPhrase && lookup.status == LookupStatus.READY) {
                 DetailCard(
@@ -1175,6 +1199,32 @@ private fun WordLookupSheet(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = Space.sm),
+                        )
+                    }
+                    // The reading taken from the line belongs beside the line it
+                    // was taken from, not up beside the answer. It is only as
+                    // good as the translation printed directly above it — when
+                    // that line reads as nonsense, so does this — and putting
+                    // the two together lets the reader see that for themselves
+                    // instead of being asked to trust a second confident word.
+                    lookup.here?.takeIf { !it.isPhrase }?.let { here ->
+                        Text(
+                            text = stringResource(R.string.lookup_here),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = Space.md),
+                        )
+                        Text(
+                            text = here.translation,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(top = Space.xs),
+                        )
+                        Text(
+                            text = stringResource(R.string.lookup_here_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = Space.xs),
                         )
                     }
                     Text(

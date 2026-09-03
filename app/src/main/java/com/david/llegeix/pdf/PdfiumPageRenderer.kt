@@ -277,45 +277,22 @@ class PdfiumPageRenderer private constructor(
             }
         }
 
-        val (lineText, lineNumber) = lineAt(textPage, charCount, from)
+        val located = lineAt(textPage, charCount, from)
         return PdfSelection(
             text = text,
             boundsPx = bounds,
-            lineText = lineText,
-            lineNumber = lineNumber,
+            lineText = located.text,
+            lineNumber = located.number,
+            passage = located.passage,
         )
     }
 
-    /**
-     * The line containing [charIndex], and its 1-based number.
-     *
-     * Taken from the page's own text rather than by clustering character boxes:
-     * PDFium already breaks the extracted text where the page breaks lines, and
-     * counting newlines is both cheaper and closer to what the page looks like.
-     */
+    /** The line containing [charIndex], with the lines around it. */
     private fun lineAt(
         textPage: PdfTextPage,
         charCount: Int,
         charIndex: Int,
-    ): Pair<String, Int> {
-        val all = textPage.textPageGetText(0, charCount).orEmpty()
-        if (all.isEmpty()) return "" to 1
-        val safeIndex = charIndex.coerceIn(0, all.length - 1)
-
-        var lineStart = 0
-        var lineNumber = 1
-        var i = 0
-        while (i < safeIndex) {
-            if (all[i] == '\n') {
-                lineNumber++
-                lineStart = i + 1
-            }
-            i++
-        }
-        var lineEnd = all.indexOf('\n', startIndex = lineStart)
-        if (lineEnd < 0) lineEnd = all.length
-        return all.substring(lineStart, lineEnd).replace(LINE_BREAKS, " ").trim() to lineNumber
-    }
+    ): LocatedLine = PageLines.locate(textPage.textPageGetText(0, charCount).orEmpty(), charIndex)
 
     override suspend fun findMatches(
         query: String,

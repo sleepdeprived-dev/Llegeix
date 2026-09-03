@@ -122,3 +122,20 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         )
     }
 }
+
+/**
+ * Keeps what a saved word meant in the line it was saved from.
+ *
+ * All three columns are nullable with no default, which is what makes this
+ * safe: a word saved before v3.1 simply has no contextual reading, and the
+ * screen already draws each of these only when it is there. Nothing is
+ * back-filled, because the reading cannot be recomputed without the translator
+ * and the page, and a guessed one would be worse than none.
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN contextTranslation TEXT")
+        db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN senseTranslation TEXT")
+        db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN senseSource TEXT")
+    }
+}

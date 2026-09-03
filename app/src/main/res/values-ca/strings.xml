@@ -229,6 +229,11 @@
     <string name="lookup_unsave_word">Treu de les paraules desades</string>
     <string name="lookup_word_by_word">Paraula per paraula</string>
     <string name="lookup_in_context">En context</string>
+    <string name="lookup_here">Aquí vol dir</string>
+    <string name="lookup_here_phrase">Forma part d\'una expressió</string>
+    <string name="lookup_here_note">Llegit d\'aquesta línia, i per això pot diferir de la paraula tota sola.</string>
+    <string name="lookup_sense_likely">probablement aquí</string>
+    <string name="words_sense_from">Aquí, a %1$s</string>
     <!-- On s\'ha trobat una paraula desada, p. ex. «Pàgina 12 · línia 4». -->
     <string name="lookup_location">Pàgina %1$d · línia %2$d</string>
     <!-- Marca una transcripció amb la vocal tònica deduïda. -->

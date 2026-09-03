@@ -88,6 +88,31 @@ class WordTranslator(
      */
     suspend fun translate(text: String): String = translator.translate(text).await()
 
+    /**
+     * What [word] means in [line], when that can be established.
+     *
+     * Translates the line, then the line without the word, and keeps what the
+     * second one lost — see [ContextualGloss] for why that works and when it
+     * refuses to answer. [lineTranslation] is passed in because the sheet has
+     * usually translated the line already for its own sake; only the ablated
+     * line is an extra call, and it is offline like every other.
+     *
+     * Returns null whenever the reading is not clearly better than the word on
+     * its own, including when it merely agrees with it: the sheet has no room
+     * for a second line saying the same thing twice.
+     */
+    suspend fun translateInContext(
+        word: String,
+        line: String,
+        lineTranslation: String,
+        plainTranslation: String,
+    ): String? {
+        val ablated = ContextualGloss.withoutWord(line, word) ?: return null
+        val withoutIt = translator.translate(ablated).await()
+        val span = ContextualGloss.difference(lineTranslation, withoutIt, targetLanguage) ?: return null
+        return span.takeIf { !it.equals(plainTranslation.trim(), ignoreCase = true) }
+    }
+
     override fun close() {
         translator.close()
     }

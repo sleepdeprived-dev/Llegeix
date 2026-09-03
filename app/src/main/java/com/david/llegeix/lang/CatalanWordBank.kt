@@ -22,10 +22,32 @@ data class WordReference(
     val definitions: List<Definition>,
     val senses: List<SynonymSense>,
     val antonyms: List<String>,
+    /**
+     * True when the surrounding text singled out the sense now listed first.
+     *
+     * Only ever a hint to the reader. Nothing translated depends on it.
+     */
+    val isLeadingSenseLikely: Boolean = false,
+    /** The words in the surrounding text that pointed at that sense. */
+    val contextSupport: List<String> = emptyList(),
 ) {
     val isEmpty: Boolean
         get() = definitions.isEmpty() && senses.isEmpty() && antonyms.isEmpty()
 }
+
+/**
+ * What the words around a word add to it.
+ *
+ * The two halves are trusted very differently. [phrase] is a listed expression
+ * matched by name, so it is safe to translate in place of the word. [reference]
+ * is the same entry the dictionary would have shown, with its senses put in the
+ * order the surroundings suggest — a hint about what to read first, never an
+ * answer.
+ */
+data class ContextReading(
+    val phrase: String? = null,
+    val reference: WordReference? = null,
+)
 
 /**
  * The Catalan reference shelf: what a word means, and what else it could be.
@@ -93,6 +115,133 @@ class CatalanWordBank private constructor(
         found += definitions.keysStartingWith(key, limit)
         found += thesaurus.keysStartingWith(key, limit)
         return found.sortedWith(compareBy({ it.length }, { it })).take(limit)
+    }
+
+    /**
+     * What [line] adds to the word at [index] of its tokens.
+     *
+     * Two questions, asked in the order of how much their answers can be
+     * trusted: whether the word is part of a listed expression, and which of
+     * its senses the surrounding words suggest.
+     *
+     * [passage] is the wider text to weigh senses against — the neighbouring
+     * lines as well as this one, since a single line of a book is often four
+     * words long and a sense needs more than that to show itself.
+     */
+    fun readInContext(tokens: List<String>, index: Int, passage: String): ContextReading {
+        val word = tokens.getOrNull(index) ?: return ContextReading()
+        val allowed = CatalanContext.posAround(
+            tokens.getOrNull(index - 1),
+            tokens.getOrNull(index + 1),
+        )
+        return ContextReading(
+            phrase = phraseIn(tokens, index),
+            reference = lookup(word)?.let { inContext(it, word, passage, allowed) },
+        )
+    }
+
+    /**
+     * Just the listed expression the word at [index] belongs to.
+     *
+     * Separate from [readInContext] because the reader's sheet wants only this,
+     * on every lookup, and the sense ranking behind the full reading is not
+     * free: it expands each synonym through its own definition, which is a good
+     * deal of work to do and throw away when all that was asked was whether
+     * these three words are in the dictionary.
+     */
+    fun phraseIn(tokens: List<String>, index: Int): String? =
+        CatalanContext.phraseAround(tokens, index) { candidate ->
+            definitions.find(candidate) != null || thesaurus.find(candidate) != null
+        }
+
+    /**
+     * The same entry, with the sense the surroundings favour brought to the
+     * front.
+     *
+     * The card only has room for two synonym groups and two meanings, so which
+     * ones those are is the whole question: a reader looking up *baixada* on a
+     * mountain should not have to scroll past the medical sense to reach the
+     * slope.
+     */
+    private fun inContext(
+        reference: WordReference,
+        word: String,
+        passage: String,
+        allowedPos: Set<String>,
+    ): WordReference {
+        // Both spellings are dropped, not just the one the entry is filed
+        // under: a reader who taps *cues* is answered by *cua*, and leaving
+        // *cues* in the passage would let the word vote for its own sense.
+        val context = CatalanContext.contentWords(passage)
+            .filterNot { it == reference.headword || it == word }
+            .toSet()
+        if (context.isEmpty()) return reference
+
+        val ranked = CatalanContext.rankSenses(
+            candidates = reference.senses.map { sense ->
+                val words = sense.words.flatMap { CatalanContext.contentWords(it) }.toSet()
+                CatalanContext.Candidate(
+                    value = sense,
+                    partOfSpeech = CatalanContext.normalisePos(sense.partOfSpeech),
+                    terms = words,
+                    related = describe(words) - words,
+                )
+            },
+            context = context,
+            allowedPos = allowedPos,
+        )
+
+        // Definitions are ranked on their own text: unlike the synonym groups
+        // they carry no words but their own, so there is nothing to expand.
+        val definitions = reference.definitions.map { definition ->
+            val meanings = CatalanContext.rankSenses(
+                candidates = definition.meanings.map { meaning ->
+                    CatalanContext.Candidate(
+                        value = meaning,
+                        partOfSpeech = CatalanContext.normalisePos(definition.partOfSpeech),
+                        terms = CatalanContext.contentWords(meaning).toSet(),
+                    )
+                },
+                context = context,
+                allowedPos = allowedPos,
+            )
+            definition.copy(meanings = meanings.map { it.value })
+        }.sortedByDescending {
+            if (CatalanContext.normalisePos(it.partOfSpeech) in allowedPos) 1 else 0
+        }
+
+        return reference.copy(
+            definitions = definitions,
+            senses = ranked.map { it.value },
+            isLeadingSenseLikely = CatalanContext.isClear(ranked),
+            contextSupport = ranked.firstOrNull()?.support.orEmpty(),
+        )
+    }
+
+    /**
+     * The words the dictionary uses to define each of [synonyms].
+     *
+     * The expansion is what makes the overlap work at all. A synonym list is
+     * four or five words and a line of a book rarely contains any of them, but
+     * *peixada* is defined with *peix* in it, and that the line does contain.
+     *
+     * Kept apart from the synonyms themselves and scored lower, because this is
+     * ordinary prose: a long sense drags in a great deal of it, and treating it
+     * as equal evidence lets surface area decide which meaning wins.
+     */
+    private fun describe(synonyms: Set<String>): Set<String> {
+        val terms = HashSet<String>(64)
+        for (word in synonyms) {
+            definitions.find(word)?.drop(1)?.forEach { field ->
+                val colon = field.indexOf(':')
+                if (colon > 0) {
+                    terms += CatalanContext.contentWords(
+                        field.substring(colon + 1).replace(UNIT_SEPARATOR, ' '),
+                    )
+                }
+            }
+        }
+        return terms
     }
 
     /** The forms to try, in order of how much they can be trusted. */

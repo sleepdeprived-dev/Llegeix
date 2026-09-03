@@ -187,6 +187,18 @@ fun DictionaryCard(
                             .take(MAX_SENSE_GROUPS)
                             .map { it.words.take(MAX_SYNONYMS_SHOWN).joinToString(" · ") },
                         topPadding = if (word.definitions.isEmpty()) Space.xs else Space.lg,
+                        // Marked rather than promoted alone, so a reader who
+                        // can see the guess is wrong knows what to ignore. The
+                        // sources list only senses that have synonyms, and a
+                        // word's plainest meaning usually has none, so the
+                        // group named here can be the best of a set that does
+                        // not contain the right answer at all.
+                        markFirst = word.isLeadingSenseLikely,
+                        // Naming the words that argued for it, so the guess can
+                        // be checked against the page rather than taken on
+                        // trust. Same reasoning as the "approx." on a
+                        // pronunciation that had to be guessed at.
+                        because = word.contextSupport,
                     )
                 }
                 if (word.antonyms.isNotEmpty()) {
@@ -205,20 +217,46 @@ fun DictionaryCard(
 
 /** A labelled block of words inside the dictionary card. */
 @Composable
-private fun DictionarySection(label: String, lines: List<String>, topPadding: Dp) {
+private fun DictionarySection(
+    label: String,
+    lines: List<String>,
+    topPadding: Dp,
+    /** Notes the first line as the one the surrounding text points at. */
+    markFirst: Boolean = false,
+    /** The words on the page that pointed at it, named beside the mark. */
+    because: List<String> = emptyList(),
+) {
     Text(
         text = label,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(top = topPadding),
     )
-    lines.forEach { line ->
+    lines.forEachIndexed { index, line ->
+        val leading = markFirst && index == 0
         Text(
             text = line,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (leading) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
             modifier = Modifier.padding(top = Space.xs),
         )
+        if (leading) {
+            val mark = stringResource(R.string.lookup_sense_likely)
+            val named = because.take(MAX_SUPPORT_SHOWN)
+            Text(
+                text = if (named.isEmpty()) mark else named.joinToString(" · ", "$mark · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                // Padded below rather than above: the mark belongs to the line
+                // it follows, and without the gap it reads as a heading for the
+                // next sense down, which is the one it is arguing against.
+                modifier = Modifier.padding(bottom = Space.sm),
+            )
+        }
     }
 }
 
@@ -295,3 +333,11 @@ private const val MAX_SENSE_GROUPS = 2
 
 /** Words shown per group, which is about one comfortable line and a half. */
 private const val MAX_SYNONYMS_SHOWN = 6
+
+/**
+ * Words named as the reason a sense was marked.
+ *
+ * Two is enough to show the working. A longer list stops being a reason and
+ * becomes a second sentence to read, on a mark that is only a hint anyway.
+ */
+private const val MAX_SUPPORT_SHOWN = 2

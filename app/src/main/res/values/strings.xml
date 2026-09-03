@@ -231,6 +231,11 @@
     <string name="lookup_unsave_word">Remove from saved words</string>
     <string name="lookup_word_by_word">Word by word</string>
     <string name="lookup_in_context">In context</string>
+    <string name="lookup_here">Here it means</string>
+    <string name="lookup_here_phrase">Part of an expression</string>
+    <string name="lookup_here_note">Read from this line, so it can differ from the word on its own.</string>
+    <string name="lookup_sense_likely">likely here</string>
+    <string name="words_sense_from">Here, in %1$s</string>
     <!-- Where a saved word was found, e.g. "Page 12 · line 4". -->
     <string name="lookup_location">Page %1$d · line %2$d</string>
     <!-- Marks a transcription whose stressed vowel had to be guessed. -->

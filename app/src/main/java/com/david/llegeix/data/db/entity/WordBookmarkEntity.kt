@@ -44,6 +44,27 @@ data class WordBookmarkEntity(
     val ipa: String?,
     /** The line it was read in, so the sense is recoverable. */
     val context: String?,
+    /** That line translated, which is what makes quoting it useful later. */
+    val contextTranslation: String? = null,
+    /**
+     * What the word meant *there*, when the line said something the word alone
+     * does not.
+     *
+     * Saved because otherwise the note contradicts the app that made it: a
+     * reader who was just shown that *cap* is a head in this line would come
+     * back to a card reading "cap — no". The row already exists to keep the
+     * sentence the word was doing a job in; this is that job, written down.
+     */
+    val senseTranslation: String? = null,
+    /**
+     * The listed expression the reading came from, or null when it was read off
+     * the line itself.
+     *
+     * Doubles as the record of which kind of reading this was, and so of how
+     * much it can be trusted: an expression is a dictionary headword, a line
+     * reading is a translation of one sentence.
+     */
+    val senseSource: String? = null,
     val documentUri: String?,
     val displayName: String?,
     val pageIndex: Int,

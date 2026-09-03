@@ -42,6 +42,15 @@ data class PdfSelection(
     val lineText: String,
     /** 1-based, counted from the page's text layer. */
     val lineNumber: Int,
+    /**
+     * The line with its neighbours, for weighing which sense of a word is in
+     * play.
+     *
+     * A line of a printed book is often three or four words long, which is not
+     * enough for the surrounding words to say anything about a meaning. This is
+     * never shown; it only feeds the reference lookup.
+     */
+    val passage: String = "",
 )
 
 /**

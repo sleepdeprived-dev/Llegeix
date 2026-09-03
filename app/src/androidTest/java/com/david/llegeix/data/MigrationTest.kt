@@ -9,6 +9,7 @@ import com.david.llegeix.data.db.MIGRATION_1_2
 import com.david.llegeix.data.db.MIGRATION_2_3
 import com.david.llegeix.data.db.MIGRATION_3_4
 import com.david.llegeix.data.db.MIGRATION_4_5
+import com.david.llegeix.data.db.MIGRATION_5_6
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -274,6 +275,57 @@ class MigrationTest {
         db.query("SELECT name FROM tags").use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals("Historia", cursor.getString(0))
+        }
+    }
+
+    @Test
+    fun migrate5To6_keepsSavedWordsAndAcceptsTheContextualReading() {
+        helper.createDatabase(TEST_DB, 5).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO word_bookmarks
+                    (word, translation, ipa, context, documentUri, displayName,
+                     pageIndex, lineNumber, createdAt)
+                VALUES ('cap', 'no', 'kap', 'Va lligar el cap de la corda', NULL,
+                        'prova.pdf', 0, 5, 500)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 6, true, MIGRATION_5_6)
+
+        // A word saved before v3.1 keeps everything it had and simply has no
+        // contextual reading, which is what the screen already draws around.
+        db.query(
+            "SELECT word, translation, contextTranslation, senseTranslation, senseSource " +
+                "FROM word_bookmarks",
+        ).use { cursor ->
+            assertTrue("saved word survived", cursor.moveToFirst())
+            assertEquals("cap", cursor.getString(0))
+            assertEquals("no", cursor.getString(1))
+            assertTrue("no line translation for an old row", cursor.isNull(2))
+            assertTrue("no contextual reading for an old row", cursor.isNull(3))
+            assertTrue("no expression for an old row", cursor.isNull(4))
+        }
+
+        // And a word saved after it can carry both kinds of reading.
+        db.execSQL(
+            """
+            INSERT INTO word_bookmarks
+                (word, translation, ipa, context, contextTranslation,
+                 senseTranslation, senseSource, documentUri, displayName,
+                 pageIndex, lineNumber, createdAt)
+            VALUES ('planta', 'plant', 'plantə', 'La planta baixa era buida',
+                    'The ground floor was empty', 'floor', 'planta baixa',
+                    NULL, 'prova.pdf', 0, 3, 600)
+            """.trimIndent(),
+        )
+        db.query(
+            "SELECT senseTranslation, senseSource FROM word_bookmarks WHERE word = 'planta'",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("floor", cursor.getString(0))
+            assertEquals("planta baixa", cursor.getString(1))
         }
     }
 }

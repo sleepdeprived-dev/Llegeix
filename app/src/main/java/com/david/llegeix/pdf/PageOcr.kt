@@ -69,12 +69,14 @@ class OcrPage(val words: List<OcrWord>, val lines: List<OcrLine>) {
         if (from < 0 || to < 0) return null
         val range = if (from <= to) words.subList(from, to + 1) else words.subList(to, from + 1)
 
-        val line = lines.getOrNull(range.first().lineIndex)
+        val lineIndex = range.first().lineIndex
+        val line = lines.getOrNull(lineIndex)
         return PdfSelection(
             text = range.joinToString(" ") { it.text },
             boundsPx = range.map { RectF(it.box) },
             lineText = line?.text.orEmpty(),
             lineNumber = line?.number ?: 1,
+            passage = PageLines.passageAround(lines.map { it.text }, lineIndex),
         )
     }
 

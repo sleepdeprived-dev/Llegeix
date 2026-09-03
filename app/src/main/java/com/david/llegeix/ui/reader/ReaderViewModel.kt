@@ -17,6 +17,7 @@ import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
 import android.graphics.RectF
+import com.david.llegeix.lang.CatalanContext
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.CatalanWordBank
 import com.david.llegeix.pdf.PdfMatch
@@ -61,6 +62,28 @@ data class SelectionPreview(
     val boundsPx: List<RectF>,
 )
 
+/**
+ * What the line a word sits in says it means there.
+ *
+ * Two things can produce one, and they are worth different amounts. A listed
+ * expression is a match against the dictionary's own headwords, so *banc de
+ * dades* is simply what the reader is looking at. A reading recovered from the
+ * translated line is a translation, with a translation's fallibility, but it is
+ * the only thing in the app that knows *cap* is a head here and a *no* on its
+ * own — see [com.david.llegeix.translate.ContextualGloss].
+ *
+ * Either way this sits beside the plain answer rather than replacing it. The
+ * reader is learning the language; being shown two readings and which is which
+ * is more use than being shown one confident one.
+ */
+data class ContextualMeaning(
+    /** The Catalan this is a reading of: the expression, or the word itself. */
+    val source: String,
+    val translation: String,
+    /** True when [source] is a listed expression rather than the bare word. */
+    val isPhrase: Boolean,
+)
+
 /** One word of a selected phrase, glossed on its own. */
 data class WordGloss(
     val word: String,
@@ -83,6 +106,11 @@ data class WordLookup(
     val boundsPx: List<RectF>,
     /** The line it came from, which is what makes the sense recoverable. */
     val context: String = "",
+    /**
+     * The line and its neighbours, weighed against the dictionary to work out
+     * which sense is in play. Never shown; a line alone is too little text.
+     */
+    val passage: String = "",
     val lineNumber: Int = 1,
     val ipa: String = "",
     /** True when the stressed vowel's aperture had to be guessed. */
@@ -93,6 +121,8 @@ data class WordLookup(
     val words: List<WordGloss> = emptyList(),
     /** The line translated, so the phrase can be read in place. */
     val contextTranslation: String? = null,
+    /** What the surrounding line makes of the word, when it makes anything. */
+    val here: ContextualMeaning? = null,
     val isSaved: Boolean = false,
     val error: UiText? = null,
     /** True once a Wi-Fi-only download has failed, so retrying is worth offering. */
@@ -216,6 +246,7 @@ class ReaderViewModel(
                                 status = LookupStatus.LOOKING_UP,
                                 translation = null,
                                 contextTranslation = null,
+                                here = null,
                                 error = null,
                                 words = it.words.map { gloss -> gloss.copy(translation = null) },
                             )
@@ -508,6 +539,7 @@ class ReaderViewModel(
                         pageIndex = pageIndex,
                         boundsPx = selection.boundsPx,
                         context = selection.lineText,
+                        passage = selection.passage,
                         lineNumber = selection.lineNumber,
                         ipa = pronunciation.ipa,
                         isIpaApproximate = pronunciation.isApproximate,
@@ -604,6 +636,12 @@ class ReaderViewModel(
      * A phrase is looked up word by word, keeping only the words the dictionary
      * actually knows, so a selected sentence does not produce a wall of lists
      * with empty gaps in it.
+     *
+     * Each entry is ordered against the surrounding lines, so the sense the
+     * page is actually using comes first. Only the order changes — the card
+     * still shows the other senses, which is the point: the ranking is a guess
+     * good enough to save a reader some scrolling and nowhere near good enough
+     * to be the only thing they are shown.
      */
     fun onShowDictionary() {
         val lookup = _uiState.value.lookup ?: return
@@ -617,9 +655,17 @@ class ReaderViewModel(
             }
             val found = withContext(Dispatchers.IO) {
                 val dictionary = CatalanWordBank.get(application)
+                val tokens = CatalanContext.tokenise(lookup.context)
                 words.filter { CatalanWordBank.isWorthLookingUp(it) }
                     .take(MAX_THESAURUS_WORDS)
-                    .mapNotNull { dictionary.lookup(it) }
+                    .mapNotNull { word ->
+                        val at = tokens.indexOf(CatalanWordBank.normalise(word))
+                        if (at >= 0) {
+                            dictionary.readInContext(tokens, at, lookup.passage).reference
+                        } else {
+                            dictionary.lookup(word)
+                        }
+                    }
                     .filterNot { it.isEmpty }
             }
             updateLookup {
@@ -643,6 +689,9 @@ class ReaderViewModel(
                 translation = lookup.translation,
                 ipa = lookup.ipa,
                 context = lookup.context,
+                contextTranslation = lookup.contextTranslation,
+                senseTranslation = lookup.here?.translation,
+                senseSource = lookup.here?.takeIf { it.isPhrase }?.source,
                 documentUri = uriString,
                 displayName = _uiState.value.title,
                 pageIndex = lookup.pageIndex,
@@ -730,10 +779,68 @@ class ReaderViewModel(
             updateLookup { it.copy(words = glossed) }
         }
         val context = lookup.context
-        if (context.isNotBlank() && context != lookup.text) {
-            val translated = runCatchingCancellable { translator.translate(context) }.getOrNull()
-            updateLookup { it.copy(contextTranslation = translated) }
+        if (context.isBlank() || context == lookup.text) return
+        val translated = runCatchingCancellable { translator.translate(context) }.getOrNull()
+        updateLookup { it.copy(contextTranslation = translated) }
+
+        readInContext(lookup, translated)
+    }
+
+    /**
+     * Work out what the line makes of the word, and say so if it makes
+     * anything.
+     *
+     * Runs after the answer is already on screen, like the rest of the
+     * breakdown, because both halves of it are slow in their own way: the
+     * expression check has to open the reference files, and the reading from
+     * the line costs a second translation. Neither is allowed to hold up the
+     * one line the sheet was opened for.
+     *
+     * Only for a single word. A dragged phrase is already its own context, and
+     * asking what a sentence means inside itself has no answer.
+     */
+    private suspend fun readInContext(lookup: WordLookup, lineTranslation: String?) {
+        if (lookup.isPhrase) return
+
+        // A listed expression first: it is a match against the dictionary's own
+        // headwords rather than a guess, so when there is one it is the better
+        // reading and there is no reason to also go looking for a weaker one.
+        val phrase = findPhrase(lookup)
+        if (phrase != null) {
+            val translated = runCatchingCancellable { translator.translate(phrase) }.getOrNull()
+            if (translated != null && !translated.equals(lookup.translation?.trim(), true)) {
+                updateLookup {
+                    it.copy(here = ContextualMeaning(phrase, translated, isPhrase = true))
+                }
+                return
+            }
         }
+
+        val plain = lookup.translation ?: return
+        if (lineTranslation == null) return
+        val reading = runCatchingCancellable {
+            translator.translateInContext(lookup.text, lookup.context, lineTranslation, plain)
+        }.getOrNull() ?: return
+        updateLookup {
+            it.copy(here = ContextualMeaning(lookup.text, reading, isPhrase = false))
+        }
+    }
+
+    /**
+     * The listed expression the selected word belongs to, if it belongs to one.
+     *
+     * Reading the reference files is what makes this worth doing off the main
+     * thread; it also warms them, so the dictionary button below opens without
+     * a wait afterwards.
+     */
+    private suspend fun findPhrase(lookup: WordLookup): String? = withContext(Dispatchers.IO) {
+        val tokens = CatalanContext.tokenise(lookup.context)
+        val target = CatalanWordBank.normalise(lookup.text)
+        val index = tokens.indexOf(target)
+        if (index < 0) return@withContext null
+        runCatchingCancellable {
+            CatalanWordBank.get(application).phraseIn(tokens, index)
+        }.getOrNull()
     }
 
     /** Apply an edit to the current lookup, if one is still open. */
