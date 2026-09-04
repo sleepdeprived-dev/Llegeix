@@ -2,7 +2,9 @@ package com.david.llegeix.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,12 +15,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,10 +48,12 @@ import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.data.db.dao.DocumentTag
+import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.formatSize
+import kotlin.math.roundToInt
 
 /**
  * One PDF in the library list.
@@ -50,13 +61,22 @@ import com.david.llegeix.util.formatSize
  * No divider underneath: at this row height the title, its detail line and the
  * gap to the next row carry the separation on their own, and a rule between
  * every pair of rows turns a list of ten books into a list of twenty lines.
+ *
+ * The two things most often done to a document are done by swiping it. They
+ * were both four taps away behind the overflow menu — which is still there, and
+ * still holds everything — but starring a book you have just spotted should not
+ * be a menu transaction, and a menu button on every row is a piece of furniture
+ * on every row.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentRow(
     document: PdfDocument,
     isBookmarked: Boolean,
     isReadLater: Boolean,
     tags: List<DocumentTag>,
+    /** How far through this one the reader got, or null if never opened. */
+    progress: ReadingProgress?,
     /** The user's folder this PDF is filed in, or null if it is unfiled. */
     folderName: String?,
     /**
@@ -72,14 +92,43 @@ fun DocumentRow(
     onToggleReadLater: () -> Unit,
     onToggleBookmarked: () -> Unit,
     onEditTags: () -> Unit,
+    onSearchInside: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
 
+    // Neither direction ever dismisses anything: the row is a document that
+    // exists on the phone, and no swipe on this screen should be able to make
+    // it stop existing. Refusing the value change is what makes the row do the
+    // thing and then spring back, which is also the acknowledgement — the row
+    // moving is how the reader knows the swipe was heard.
+    val swipeState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> onToggleBookmarked()
+                SwipeToDismissBoxValue.EndToStart -> onToggleReadLater()
+                SwipeToDismissBoxValue.Settled -> Unit
+            }
+            false
+        },
+    )
+
+    SwipeToDismissBox(
+        state = swipeState,
+        modifier = modifier,
+        backgroundContent = {
+            SwipeBackground(
+                direction = swipeState.dismissDirection,
+                isBookmarked = isBookmarked,
+                isReadLater = isReadLater,
+            )
+        },
+    ) {
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick)
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
@@ -87,6 +136,7 @@ fun DocumentRow(
         PdfCover(
             uriString = document.uriString,
             width = ListCoverWidth,
+            progress = progress?.fraction,
             modifier = Modifier
                 .width(ListCoverWidth)
                 .aspectRatio(CoverAspectRatio),
@@ -117,6 +167,21 @@ fun DocumentRow(
             }
             val readLater = stringResource(R.string.document_read_later)
             val details = listOfNotNull(
+                // First in the line, ahead of everything about the file: how
+                // far in you are is the one thing on a row about a book you
+                // have already started that you actually want.
+                progress?.let { read ->
+                    if (read.isFinished) {
+                        stringResource(R.string.library_read_finished)
+                    } else {
+                        read.fraction?.let { fraction ->
+                            stringResource(
+                                R.string.library_read_progress,
+                                (fraction * 100).roundToInt(),
+                            )
+                        }
+                    }
+                },
                 readLater.takeIf { isReadLater },
                 // Ahead of the folder on disk, and phrased so the two cannot be
                 // mistaken for each other: this one is a decision the reader
@@ -163,8 +228,89 @@ fun DocumentRow(
                 onToggleReadLater = onToggleReadLater,
                 onMoveToFolder = onMoveToFolder,
                 onEditTags = onEditTags,
+                onSearchInside = onSearchInside,
             )
         }
+    }
+    }
+}
+
+/**
+ * What is behind a row being swiped.
+ *
+ * It says which way the toggle is going, because the two actions are not
+ * symmetrical and a bare star would be a lie half the time: swiping a book that
+ * is already starred takes the star off.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeBackground(
+    direction: SwipeToDismissBoxValue,
+    isBookmarked: Boolean,
+    isReadLater: Boolean,
+) {
+    if (direction == SwipeToDismissBoxValue.Settled) return
+    val starring = direction == SwipeToDismissBoxValue.StartToEnd
+    val on = if (starring) !isBookmarked else !isReadLater
+    val label = stringResource(
+        when {
+            starring && on -> R.string.swipe_star
+            starring -> R.string.swipe_unstar
+            on -> R.string.swipe_read_later
+            else -> R.string.swipe_not_read_later
+        },
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (starring) Arrangement.Start else Arrangement.End,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                if (on) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                },
+            )
+            .padding(horizontal = Space.xl),
+    ) {
+        if (starring) {
+            SwipeMark(starring = true, on = on, label = label)
+        } else {
+            SwipeMark(starring = false, on = on, label = label)
+        }
+    }
+}
+
+@Composable
+private fun SwipeMark(starring: Boolean, on: Boolean, label: String) {
+    val tint = if (on) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (starring) {
+            Icon(
+                imageVector = if (on) Icons.Filled.Star else Icons.Outlined.Star,
+                contentDescription = null,
+                tint = tint,
+            )
+        } else {
+            Icon(
+                painter = painterResource(R.drawable.ic_bookmark),
+                contentDescription = null,
+                tint = tint,
+            )
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = tint,
+            maxLines = 1,
+            modifier = Modifier.padding(start = Space.md),
+        )
     }
 }
 
@@ -179,8 +325,24 @@ private fun DocumentMenu(
     onToggleReadLater: () -> Unit,
     onMoveToFolder: () -> Unit,
     onEditTags: () -> Unit,
+    onSearchInside: () -> Unit,
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        // The library's own search box only ever matched filenames, which is
+        // not what a search box on a shelf of books looks like it should do.
+        // This is the honest half of the difference: the library finds the
+        // book, and this looks inside it — carrying whatever was typed
+        // upstairs, so a word searched for in the library is already in the
+        // find bar when the document opens.
+        DropdownMenuItem(
+            leadingIcon = { MenuIcon(Icons.Default.Search) },
+            text = { Text(stringResource(R.string.document_search_inside)) },
+            onClick = {
+                onSearchInside()
+                onDismiss()
+            },
+        )
+        HorizontalDivider()
         DropdownMenuItem(
             leadingIcon = { MenuIcon(Icons.Default.Star) },
             text = {
@@ -249,11 +411,14 @@ fun DocumentCell(
     isBookmarked: Boolean,
     isReadLater: Boolean,
     tags: List<DocumentTag>,
+    /** How far through this one the reader got, or null if never opened. */
+    progress: ReadingProgress?,
     onClick: () -> Unit,
     onMoveToFolder: () -> Unit,
     onToggleReadLater: () -> Unit,
     onToggleBookmarked: () -> Unit,
     onEditTags: () -> Unit,
+    onSearchInside: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -268,6 +433,7 @@ fun DocumentCell(
             PdfCover(
                 uriString = document.uriString,
                 width = GridCoverWidth,
+                progress = progress?.fraction,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(CoverAspectRatio),
@@ -300,9 +466,14 @@ fun DocumentCell(
                 modifier = Modifier.weight(1f),
             )
             Box {
+                // A full-sized target with a small glyph in it, rather than a
+                // small target. It was 28dp square, which is under the 48dp
+                // minimum and, in a grid of covers, sat a few pixels from the
+                // cover that opens the book — so missing the menu opened the
+                // document instead.
                 IconButton(
                     onClick = { menuOpen = true },
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(GridMenuTarget),
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
@@ -323,6 +494,7 @@ fun DocumentCell(
                     onToggleReadLater = onToggleReadLater,
                     onMoveToFolder = onMoveToFolder,
                     onEditTags = onEditTags,
+                    onSearchInside = onSearchInside,
                 )
             }
         }
@@ -336,6 +508,15 @@ fun DocumentCell(
         )
     }
 }
+
+/**
+ * The grid cell's overflow target.
+ *
+ * The platform minimum. The glyph inside stays small — a cell is mostly cover,
+ * and a full-weight icon on it would compete with the artwork — but what the
+ * thumb has to hit is the whole 48dp.
+ */
+private val GridMenuTarget = 48.dp
 
 /** Cover sizes, named so the list and the grid stay in proportion. */
 val ListCoverWidth = 46.dp

@@ -24,6 +24,36 @@ enum class LibraryView(@param:StringRes val labelRes: Int) {
     READ_LATER(R.string.library_filter_read_later),
 }
 
+/**
+ * One place the library's documents come from, as the strip draws it.
+ *
+ * Counted twice on purpose. "48 PDFs" is what a source holds; "31 of 48" is
+ * what it is currently contributing, and the gap between the two is the only
+ * on-screen answer to "why is that book not in my library" — a question that
+ * otherwise ends with the reader concluding the app cannot see the file at all.
+ */
+data class LibrarySource(
+    /** Top-level display path, which doubles as the identity of the source. */
+    val label: String,
+    val kind: Kind,
+    val visibleCount: Int,
+    val totalCount: Int,
+) {
+    enum class Kind {
+        /** A folder the reader granted through the system picker. */
+        GRANTED,
+
+        /** The whole-device sweep, which is a permission rather than a place. */
+        DEVICE,
+    }
+
+    /** Nothing from here is reaching the library, though it holds something. */
+    val isSilenced: Boolean get() = totalCount > 0 && visibleCount == 0
+
+    /** Some of it is in and some is out, which is worth saying without opening. */
+    val isPartial: Boolean get() = visibleCount in 1 until totalCount
+}
+
 data class LibraryUiState(
     val isScanning: Boolean = false,
     /** Already filtered by [query] and [view], and ordered by [sort]. */
@@ -35,6 +65,8 @@ data class LibraryUiState(
     /** Total found before filtering, so the UI can say "3 of 41". */
     val totalFound: Int = 0,
     val grantedFolders: List<GrantedFolder> = emptyList(),
+    /** Where the documents come from, for the strip at the top of the library. */
+    val sources: List<LibrarySource> = emptyList(),
     val deviceScanEnabled: Boolean = false,
     val query: String = "",
     val sort: LibrarySort = LibrarySort.RECENT,
@@ -68,6 +100,18 @@ data class LibraryUiState(
     /** Documents exist but the search or the view excluded all of them. */
     val isFilteredToNothing: Boolean
         get() = totalFound > 0 && documents.isEmpty() && folders.isEmpty()
+
+    /**
+     * Whether the strip of sources is worth drawing at all.
+     *
+     * It is a permanent fixture of the library's root and nowhere else, so it
+     * has to earn its height: with nothing set up the welcome state is already
+     * saying more than a row of tiles could, and inside a folder the question
+     * on screen is what is in this folder rather than where any of it came
+     * from.
+     */
+    val showsSources: Boolean
+        get() = sources.isNotEmpty() && path == null && query.isBlank()
 
     fun isReadLater(document: PdfDocument): Boolean = document.uriString in readLaterUris
 

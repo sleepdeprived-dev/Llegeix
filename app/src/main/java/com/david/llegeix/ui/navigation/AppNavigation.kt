@@ -33,10 +33,10 @@ import com.david.llegeix.ui.dictionary.DictionaryScreen
 import com.david.llegeix.ui.folders.FolderDetailScreen
 import com.david.llegeix.ui.folders.FoldersScreen
 import com.david.llegeix.ui.library.LibraryScreen
+import com.david.llegeix.ui.practice.PracticeScreen
 import com.david.llegeix.ui.reader.ReaderScreen
 import com.david.llegeix.ui.recent.RecentScreen
 import com.david.llegeix.ui.settings.SettingsScreen
-import com.david.llegeix.ui.sources.SourcesScreen
 
 private object Routes {
     const val LIBRARY = "library"
@@ -45,7 +45,7 @@ private object Routes {
     const val BOOKMARKS = "bookmarks"
     const val FOLDERS = "folders"
     const val SETTINGS = "settings"
-    const val SOURCES = "sources"
+    const val PRACTICE = "practice"
 
     /** The derived "Bookmarked" collection, which is not a real folder row. */
     const val BOOKMARKED_COLLECTION = "collection/bookmarked"
@@ -55,15 +55,20 @@ private object Routes {
      * slashes and colons, and the navigation matcher decodes path segments in a
      * way that breaks on them. Query arguments survive [Uri.encode] intact.
      */
-    const val READER = "reader?uri={uri}&title={title}&page={page}"
-    const val FOLDER_DETAIL = "folder/{folderId}?name={name}"
+    const val READER = "reader?uri={uri}&title={title}&page={page}&find={find}"
+    const val FOLDER_DETAIL = "folder/{folderId}?name={name}&adding={adding}"
 
-    fun reader(uriString: String, title: String, page: Int? = null): String =
+    fun reader(
+        uriString: String,
+        title: String,
+        page: Int? = null,
+        find: String = "",
+    ): String =
         "reader?uri=${Uri.encode(uriString)}&title=${Uri.encode(title)}" +
-            "&page=${page ?: -1}"
+            "&page=${page ?: -1}&find=${Uri.encode(find)}"
 
-    fun folderDetail(folderId: Long, name: String): String =
-        "folder/$folderId?name=${Uri.encode(name)}"
+    fun folderDetail(folderId: Long, name: String, adding: Boolean = false): String =
+        "folder/$folderId?name=${Uri.encode(name)}&adding=$adding"
 }
 
 private data class TopLevelDestination(
@@ -77,15 +82,20 @@ private data class TopLevelDestination(
  *
  * The dictionary sits second, next to the library rather than out at the end,
  * because it is the other reason to open this app at all: the library is the
- * books, and the dictionary is the language. Everything after it — recent,
- * bookmarks, folders — is a way back to something you have already seen.
+ * books, and the dictionary is the language.
+ *
+ * There were five. Three of them — Recent, Bookmarks, Folders — were three
+ * re-cuts of the same documents, so the bar spent most of its width offering
+ * ways to list things the library was already listing. Recent has become the
+ * shelf of part-read books at the top of the library, which is where somebody
+ * wanting to carry on reading was going to look anyway, and its full history is
+ * one press of that shelf's own button away.
  */
 private val topLevelDestinations = listOf(
     TopLevelDestination(Routes.LIBRARY, R.string.nav_library, R.drawable.ic_library),
     TopLevelDestination(Routes.DICTIONARY, R.string.nav_dictionary, R.drawable.ic_dictionary),
-    TopLevelDestination(Routes.RECENT, R.string.nav_recent, R.drawable.ic_recent),
-    TopLevelDestination(Routes.BOOKMARKS, R.string.nav_bookmarks, R.drawable.ic_bookmark),
-    TopLevelDestination(Routes.FOLDERS, R.string.nav_folders, R.drawable.ic_folder),
+    TopLevelDestination(Routes.FOLDERS, R.string.nav_collections, R.drawable.ic_collection),
+    TopLevelDestination(Routes.BOOKMARKS, R.string.nav_saved, R.drawable.ic_bookmark),
 )
 
 @Composable
@@ -153,21 +163,29 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     onOpenDocument = { document ->
                         navController.navigate(Routes.reader(document.uriString, document.displayName))
                     },
+                    onOpenReading = { uriString, title ->
+                        navController.navigate(Routes.reader(uriString, title))
+                    },
+                    onFindInDocument = { uriString, title, query ->
+                        navController.navigate(
+                            Routes.reader(uriString, title, find = query.ifBlank { " " }),
+                        )
+                    },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                    onOpenSources = { navController.navigate(Routes.SOURCES) },
+                    onOpenHistory = { navController.navigate(Routes.RECENT) },
                 )
-            }
-
-            composable(Routes.SOURCES) {
-                SourcesScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Routes.DICTIONARY) {
                 DictionaryScreen()
             }
 
+            // Pushed rather than a tab: the shelf at the top of the library
+            // answers "carry on with what I was reading", and this answers the
+            // rarer "what was that thing I opened last week".
             composable(Routes.RECENT) {
                 RecentScreen(
+                    onBack = { navController.popBackStack() },
                     onOpenDocument = { uriString, title ->
                         navController.navigate(Routes.reader(uriString, title))
                     },
@@ -179,6 +197,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     onOpenDocument = { uriString, title, page ->
                         navController.navigate(Routes.reader(uriString, title, page))
                     },
+                    onPractise = { navController.navigate(Routes.PRACTICE) },
                 )
             }
 
@@ -187,10 +206,19 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     onOpenFolder = { folderId, name ->
                         navController.navigate(Routes.folderDetail(folderId, name))
                     },
+                    onFillNewCollection = { folderId, name ->
+                        navController.navigate(
+                            Routes.folderDetail(folderId, name, adding = true),
+                        )
+                    },
                     onOpenBookmarked = {
                         navController.navigate(Routes.BOOKMARKED_COLLECTION)
                     },
                 )
+            }
+
+            composable(Routes.PRACTICE) {
+                PracticeScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Routes.SETTINGS) {
@@ -211,11 +239,13 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                 arguments = listOf(
                     navArgument("folderId") { type = NavType.LongType },
                     navArgument("name") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("adding") { type = NavType.BoolType; defaultValue = false },
                 ),
             ) { entry ->
                 FolderDetailScreen(
                     folderId = entry.arguments?.getLong("folderId") ?: 0L,
                     folderName = entry.arguments?.getString("name").orEmpty(),
+                    startAdding = entry.arguments?.getBoolean("adding") == true,
                     onBack = { navController.popBackStack() },
                     onOpenDocument = { uriString, title ->
                         navController.navigate(Routes.reader(uriString, title))
@@ -231,12 +261,17 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     // -1 stands for "no target page", since NavType.IntType
                     // cannot express null.
                     navArgument("page") { type = NavType.IntType; defaultValue = -1 },
+                    // A single space stands for "open find with nothing in it",
+                    // since an empty string cannot be told apart from the
+                    // argument simply not being there.
+                    navArgument("find") { type = NavType.StringType; defaultValue = "" },
                 ),
             ) { entry ->
                 ReaderScreen(
                     uriString = entry.arguments?.getString("uri").orEmpty(),
                     title = entry.arguments?.getString("title").orEmpty(),
                     targetPage = entry.arguments?.getInt("page")?.takeIf { it >= 0 },
+                    findQuery = entry.arguments?.getString("find")?.takeIf { it.isNotEmpty() },
                     onBack = { navController.popBackStack() },
                 )
             }

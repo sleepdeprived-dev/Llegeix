@@ -26,7 +26,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,6 +70,8 @@ fun FoldersScreen(
     onOpenFolder: (folderId: Long, name: String) -> Unit,
     onOpenBookmarked: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Opens the collection with its picker already up, straight after making it. */
+    onFillNewCollection: (folderId: Long, name: String) -> Unit = onOpenFolder,
     viewModel: FoldersViewModel = viewModel(factory = FoldersViewModel.Factory),
 ) {
     val folders by viewModel.folders.collectAsStateWithLifecycle()
@@ -80,6 +82,14 @@ fun FoldersScreen(
     var pendingDelete by remember { mutableStateOf<Long?>(null) }
     var colorPickerFor by remember { mutableStateOf<FolderWithCount?>(null) }
     var renameTarget by remember { mutableStateOf<FolderWithCount?>(null) }
+    var addingTo by remember { mutableStateOf<FolderWithCount?>(null) }
+
+    val created by viewModel.created.collectAsStateWithLifecycle()
+    LaunchedEffect(created) {
+        val collection = created ?: return@LaunchedEffect
+        viewModel.onCreatedHandled()
+        onFillNewCollection(collection.id, collection.name)
+    }
 
     val messageText = message?.resolved()
     LaunchedEffect(messageText) {
@@ -101,16 +111,15 @@ fun FoldersScreen(
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
-                title = { Text(stringResource(R.string.folders_title)) },
+                title = { Text(stringResource(R.string.collections_title)) },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = stringResource(R.string.folders_new),
-                )
-            }
+            ExtendedFloatingActionButton(
+                onClick = { showCreateDialog = true },
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text(stringResource(R.string.collections_new)) },
+            )
         },
     ) { innerPadding ->
         LazyColumn(
@@ -138,12 +147,12 @@ fun FoldersScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            text = stringResource(R.string.folders_empty_title),
+                            text = stringResource(R.string.collections_empty_title),
                             style = MaterialTheme.typography.titleLarge,
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            text = stringResource(R.string.folders_empty_body),
+                            text = stringResource(R.string.collections_empty_body),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -156,6 +165,7 @@ fun FoldersScreen(
                     FolderRow(
                         folder = folder,
                         onClick = { onOpenFolder(folder.id, folder.name) },
+                        onAddDocuments = { addingTo = folder },
                         onTogglePinned = { viewModel.setPinned(folder.id, !folder.isPinned) },
                         onToggleBookmarked = {
                             viewModel.setBookmarked(folder.id, !folder.isBookmarked)
@@ -167,6 +177,14 @@ fun FoldersScreen(
                 }
             }
         }
+    }
+
+    addingTo?.let { folder ->
+        AddToCollectionSheet(
+            collectionId = folder.id,
+            collectionName = folder.name,
+            onDismiss = { addingTo = null },
+        )
     }
 
     if (showCreateDialog) {
@@ -279,6 +297,7 @@ private fun BookmarkedCollectionRow(
 private fun FolderRow(
     folder: FolderWithCount,
     onClick: () -> Unit,
+    onAddDocuments: () -> Unit,
     onTogglePinned: () -> Unit,
     onToggleBookmarked: () -> Unit,
     onPickColor: () -> Unit,
@@ -309,7 +328,7 @@ private fun FolderRow(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_folder),
+                painter = painterResource(R.drawable.ic_collection),
                 contentDescription = null,
                 tint = tint,
                 modifier = Modifier.size(22.dp),
@@ -365,6 +384,12 @@ private fun FolderRow(
                 )
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(Icons.Default.Add) },
+                    text = { Text(stringResource(R.string.collections_add_action)) },
+                    onClick = { onAddDocuments(); menuOpen = false },
+                )
+                HorizontalDivider()
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
                     text = {
@@ -474,7 +499,7 @@ fun FolderNameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
     initialName: String = "",
-    title: String = stringResource(R.string.folders_new),
+    title: String = stringResource(R.string.collections_new),
     confirmLabel: String = stringResource(R.string.action_create),
 ) {
     var name by remember { mutableStateOf(initialName) }

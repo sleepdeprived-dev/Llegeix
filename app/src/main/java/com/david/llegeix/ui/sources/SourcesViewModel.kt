@@ -111,6 +111,17 @@ class SourcesViewModel(
         }
     }
 
+    /**
+     * Open a source, without closing anything the reader already opened.
+     *
+     * Used when the sheet is raised by pressing one particular source tile: the
+     * question being asked is about that source, so it should already be open
+     * when the sheet arrives.
+     */
+    fun onExpand(path: String) {
+        _uiState.update { it.copy(expanded = it.expanded + path) }
+    }
+
     /** Show or hide a folder's own subfolders. */
     fun onToggleExpanded(path: String) {
         _uiState.update { state ->

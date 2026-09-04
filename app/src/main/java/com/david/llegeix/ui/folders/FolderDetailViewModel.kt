@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
+import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.source.LibraryDataRepository
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,6 +22,10 @@ class FolderDetailViewModel(
     val documents: StateFlow<List<DocumentEntity>> =
         libraryData.observeDocumentsInFolder(folderId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** So a collection's rows carry the same progress bars as the library's. */
+    val progress: StateFlow<Map<String, ReadingProgress>> = libraryData.observeProgress()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Unfile a document; it stays on disk and in the library. */
     fun removeFromFolder(uriString: String) = viewModelScope.launch {

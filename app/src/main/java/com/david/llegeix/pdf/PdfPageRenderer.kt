@@ -4,6 +4,18 @@ import android.graphics.Bitmap
 import android.graphics.RectF
 
 /**
+ * One line of a document's own table of contents.
+ *
+ * [depth] is how deeply nested the entry was, counted from zero, which is all
+ * the list needs in order to indent it.
+ */
+data class PdfOutlineEntry(
+    val title: String,
+    val pageIndex: Int,
+    val depth: Int,
+)
+
+/**
  * A word found in a page's text layer.
  *
  * [boundsPx] is in rendered-bitmap pixel space with the origin at the top left,
@@ -78,8 +90,24 @@ interface PdfPageRenderer : AutoCloseable {
     /**
      * Rasterise one page to [targetWidthPx], preserving the page's aspect ratio.
      * Implementations must be safe to call from any thread.
+     *
+     * With [crop] set the blank margins are trimmed off and the remaining
+     * content is rendered at [targetWidthPx] instead, so the type comes out
+     * bigger rather than the same size in a smaller frame. That is the whole
+     * point of the option: on a phone the margins of an A4 page are a fifth of
+     * the screen's width spent on nothing.
      */
-    suspend fun renderPage(index: Int, targetWidthPx: Int): Bitmap
+    suspend fun renderPage(index: Int, targetWidthPx: Int, crop: Boolean = false): Bitmap
+
+    /**
+     * The document's own table of contents, flattened, or empty when it has
+     * none.
+     *
+     * Most books built from a word processor or LaTeX carry one, and most
+     * scans do not. Flattened rather than nested because the only thing the
+     * list does with the structure is indent it.
+     */
+    suspend fun outline(): List<PdfOutlineEntry>
 
     /**
      * Whether [pageIndex] carries a text layer at all.
@@ -135,6 +163,22 @@ interface PdfPageRenderer : AutoCloseable {
         limit: Int = MATCH_LIMIT,
         onBatch: suspend (List<PdfMatch>) -> Unit,
     )
+
+    /**
+     * Where the words in [words] appear on this page, in rendered-bitmap
+     * pixels.
+     *
+     * What it is for: marking the words the reader has already saved, so the
+     * book itself shows what has been worked on. [words] is expected lowercase;
+     * matching is on whole words, so a saved phrase never marks one of the
+     * words inside it.
+     */
+    suspend fun savedWordBounds(
+        pageIndex: Int,
+        words: Set<String>,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): List<RectF>
 
     /**
      * Where [match] sits on its page, in rendered-bitmap pixels.

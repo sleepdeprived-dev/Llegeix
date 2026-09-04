@@ -43,7 +43,139 @@ class PdfiumPageRenderer private constructor(
 
     override val pageCount: Int = document.getPageCount()
 
-    override suspend fun renderPage(index: Int, targetWidthPx: Int): Bitmap =
+    /**
+     * Where the ink is on each page, once it has been looked for.
+     *
+     * Found by rendering the page small and looking at the pixels, which is not
+     * free, so the answer is kept: a page is scrolled past, back to, and
+     * re-rendered on every rotation, and the margins of a printed page do not
+     * move.
+     */
+    private val contentBoxes = HashMap<Int, ContentBox>()
+
+    override suspend fun renderPage(
+        index: Int,
+        targetWidthPx: Int,
+        crop: Boolean,
+    ): Bitmap = withContext(Dispatchers.IO) {
+        val box = if (crop) marginsOf(index) else ContentBox.Whole
+        if (!crop || !box.isWorthCropping) {
+            renderWhole(index, targetWidthPx)
+        } else {
+            renderCropped(index, targetWidthPx, box)
+        }
+    }
+
+    /**
+     * Draws only the part of the page that has ink on it, at the width asked
+     * for.
+     *
+     * The obvious implementation — render the whole page oversized, then take a
+     * sub-bitmap — is what this replaced, and it was a memory trap: to get a
+     * 1080px-wide crop out of a page whose text column is half the sheet, the
+     * whole sheet has to be rendered at 2160px, which is a 26 MB bitmap held
+     * alongside the 7 MB one being cut out of it, for every page turn.
+     *
+     * PDFium can be told where to put the page instead. The destination bitmap
+     * is exactly the size of the crop, and the page is drawn into it at the
+     * oversized dimensions with its origin pushed up and to the left, so
+     * everything outside the content box falls off the edges and is never
+     * rasterised at all.
+     */
+    private suspend fun renderCropped(
+        index: Int,
+        targetWidthPx: Int,
+        box: ContentBox,
+    ): Bitmap = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val page = document.openPage(index)
+                ?: throw IOException("Page $index of this PDF could not be opened")
+            page.use { page ->
+                val widthPt = page.getPageWidthPoint()
+                val heightPt = page.getPageHeightPoint()
+                // How large the whole sheet would have to be for the content box
+                // to come out at the requested width.
+                val sheetWidth = (targetWidthPx / box.width)
+                    .toInt()
+                    .coerceIn(targetWidthPx.coerceAtLeast(1), MAX_CROP_RENDER_PX)
+                val sheetHeight = if (widthPt > 0) {
+                    (sheetWidth.toFloat() * heightPt / widthPt).roundToInt().coerceAtLeast(1)
+                } else {
+                    sheetWidth
+                }
+
+                val left = (box.left * sheetWidth).roundToInt()
+                val top = (box.top * sheetHeight).roundToInt()
+                val width = (box.width * sheetWidth).roundToInt()
+                    .coerceIn(1, sheetWidth)
+                val height = (box.height * sheetHeight).roundToInt()
+                    .coerceIn(1, sheetHeight)
+
+                val bitmap = createBitmap(width, height)
+                // PDFium composites only the page's own marks, so anything it
+                // does not paint would stay transparent and read as black.
+                Canvas(bitmap).drawColor(Color.WHITE)
+                page.renderPageBitmap(
+                    bitmap,
+                    -left,
+                    -top,
+                    sheetWidth,
+                    sheetHeight,
+                    renderAnnot = true,
+                )
+                bitmap
+            }
+        }
+    }
+
+    /**
+     * The page's margins, measured once on a cheap render of it.
+     *
+     * The probe is deliberately tiny. Margins are a coarse fact — where the
+     * block of type starts, to within a millimetre or two — and a 220px render
+     * answers it as well as a full-size one for a fraction of the work.
+     */
+    private suspend fun marginsOf(index: Int): ContentBox {
+        mutex.withLock { contentBoxes[index] }?.let { return it }
+        val probe = runCatching { renderWhole(index, CROP_PROBE_PX) }.getOrNull()
+            ?: return ContentBox.Whole
+        val box = contentBoxOf(probe)
+        probe.recycle()
+        mutex.withLock { contentBoxes[index] = box }
+        return box
+    }
+
+    override suspend fun outline(): List<PdfOutlineEntry> = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            runCatching { document.getTableOfContents() }
+                .getOrDefault(emptyList())
+                .let { entries -> flattenOutline(entries, depth = 0) }
+        }
+    }
+
+    private fun flattenOutline(
+        entries: List<io.legere.pdfiumandroid.api.Bookmark>,
+        depth: Int,
+    ): List<PdfOutlineEntry> = entries.flatMap { entry ->
+        val title = entry.title?.trim().orEmpty()
+        val here = if (title.isEmpty()) {
+            emptyList()
+        } else {
+            listOf(
+                PdfOutlineEntry(
+                    title = title,
+                    pageIndex = entry.pageIdx.toInt().coerceIn(0, (pageCount - 1).coerceAtLeast(0)),
+                    depth = depth,
+                ),
+            )
+        }
+        // Depth is not advanced past an entry with no title of its own, so a
+        // structural node nobody named does not indent everything under it for
+        // no visible reason.
+        here + flattenOutline(entry.children, if (here.isEmpty()) depth else depth + 1)
+    }
+
+    private suspend fun renderWhole(index: Int, targetWidthPx: Int): Bitmap =
         withContext(Dispatchers.IO) {
             mutex.withLock {
                 // PDFium returns null for a page it cannot parse.
@@ -369,6 +501,61 @@ class PdfiumPageRenderer private constructor(
         }
     }
 
+    override suspend fun savedWordBounds(
+        pageIndex: Int,
+        words: Set<String>,
+        renderedWidthPx: Int,
+        renderedHeightPx: Int,
+    ): List<RectF> = withContext(Dispatchers.IO) {
+        if (words.isEmpty() || renderedWidthPx <= 0 || renderedHeightPx <= 0) {
+            return@withContext emptyList()
+        }
+        mutex.withLock {
+            document.openPage(pageIndex)?.use { page ->
+                val widthPt = page.getPageWidthPoint().toDouble()
+                val heightPt = page.getPageHeightPoint().toDouble()
+                if (widthPt <= 0.0 || heightPt <= 0.0) return@use emptyList()
+                page.openTextPage().use { textPage ->
+                    // The page's text is pulled once and walked here rather
+                    // than asking PDFium to find each saved word in turn. A
+                    // reader with two hundred saved words would otherwise cost
+                    // two hundred searches per page, every page.
+                    val text = textPage
+                        .textPageGetText(0, textPage.textPageCountChars())
+                        .orEmpty()
+                    buildList {
+                        var start = 0
+                        while (start < text.length) {
+                            if (!isWordChar(text[start])) {
+                                start++
+                                continue
+                            }
+                            var end = start
+                            while (end < text.length && isWordChar(text[end])) end++
+                            if (text.substring(start, end).lowercase() in words) {
+                                val rects = textPage.textPageCountRects(start, end - start)
+                                for (index in 0 until rects) {
+                                    textPage.textPageGetRect(index)?.let { box ->
+                                        add(
+                                            toBitmapRect(
+                                                box,
+                                                widthPt,
+                                                heightPt,
+                                                renderedWidthPx,
+                                                renderedHeightPx,
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
+                            start = end
+                        }
+                    }
+                }
+            }.orEmpty()
+        }
+    }
+
     override suspend fun matchBoundsPx(
         match: PdfMatch,
         renderedWidthPx: Int,
@@ -423,6 +610,25 @@ class PdfiumPageRenderer private constructor(
          * zero tolerance makes the feature feel broken.
          */
         private const val TOUCH_TOLERANCE_FRACTION = 0.012
+
+        /**
+         * Width of the throwaway render the margins are measured on.
+         *
+         * Margins are a coarse fact and this is answered once per page, so the
+         * probe is sized for speed rather than for precision.
+         */
+        private const val CROP_PROBE_PX = 220
+
+        /**
+         * A ceiling on the sheet size a crop renders the page at.
+         *
+         * A page whose content is one narrow column would otherwise ask for a
+         * sheet several times the width of the screen. Nothing outside the crop
+         * is rasterised any more, so this is no longer about memory — it is
+         * about the time PDFium spends scaling vector art it is then told to
+         * draw off the edge of the bitmap.
+         */
+        private const val MAX_CROP_RENDER_PX = 4_000
 
         /**
          * Probes taken back along a drag when its end landed on no character.

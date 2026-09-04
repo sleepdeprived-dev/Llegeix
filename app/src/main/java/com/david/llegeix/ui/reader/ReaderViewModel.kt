@@ -13,6 +13,8 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
+import com.david.llegeix.data.settings.PageTint
+import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
@@ -24,6 +26,7 @@ import com.david.llegeix.pdf.MATCH_LIMIT
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.PageOcr
+import com.david.llegeix.pdf.PdfOutlineEntry
 import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.pdf.PdfSelection
 import com.david.llegeix.translate.WordTranslator
@@ -212,8 +215,26 @@ data class ReaderUiState(
     /** Shown briefly when a long press lands on a page with no text layer. */
     val lookupHint: UiText? = null,
     val search: SearchState = SearchState(),
-    /** Renders the page light-on-dark. Persisted, so it survives reopening. */
-    val invertPages: Boolean = false,
+    /** What the page itself is tinted to. Persisted, so it survives reopening. */
+    val pageTint: PageTint = PageTint.NONE,
+    /** Trims the blank margins off before drawing. Persisted. */
+    val cropMargins: Boolean = false,
+    /** Turned pages or one continuous strip. Persisted. */
+    val readingMode: ReadingMode = ReadingMode.PAGED,
+    /**
+     * Whether the bar and the page counter are on screen.
+     *
+     * A tap on the page hides them. There is nothing else a single tap on a
+     * page could reasonably mean — double tap zooms, holding selects — and the
+     * bar is the last thing standing between a page and the whole screen.
+     */
+    val isChromeVisible: Boolean = true,
+    /** The document's own table of contents, empty when it has none. */
+    val outline: List<PdfOutlineEntry> = emptyList(),
+    /** Underline saved words where they appear on the page. Persisted. */
+    val markSavedWords: Boolean = true,
+    /** Every saved word, lowercased, for that marking. */
+    val savedWords: Set<String> = emptySet(),
     /** Page magnification, driven by pinch, double tap, or the zoom button. */
     val zoom: Float = 1f,
     /** Named in the sheet's "Catalan → …" line. */
@@ -226,6 +247,12 @@ data class ReaderUiState(
         get() = currentPage in bookmarkedPages
 
     val isZoomed: Boolean get() = zoom > 1.01f
+
+    /** True while the page is drawn light-on-dark, which the gutter follows. */
+    val isInverted: Boolean get() = pageTint == PageTint.INVERT
+
+    /** Worth offering a way into: a document that actually has a contents. */
+    val hasOutline: Boolean get() = outline.isNotEmpty()
 }
 
 class ReaderViewModel(
@@ -287,8 +314,17 @@ class ReaderViewModel(
      * Keeps a few rendered pages around so swiping back to the previous page is
      * instant. Bitmaps are never recycled here — the pager may still be drawing
      * one as it is evicted, so eviction is left to the garbage collector.
+     *
+     * Measured in kilobytes rather than in pages, which it used to be. A page is
+     * not a fixed size: trimming the margins off a tall narrow column of type
+     * produces a bitmap two or three times the area of the same page drawn
+     * whole, so a cache of "six pages" quietly became a cache of ninety
+     * megabytes the moment that setting was switched on.
      */
-    private val pageCache = LruCache<String, Bitmap>(CACHE_SIZE)
+    private val pageCache = object : LruCache<String, Bitmap>(pageCacheBudgetKb()) {
+        override fun sizeOf(key: String, value: Bitmap): Int =
+            (value.allocationByteCount / 1024).coerceAtLeast(1)
+    }
 
     init {
         openDocument()
@@ -298,7 +334,10 @@ class ReaderViewModel(
             settings.settings.collect { current ->
                 _uiState.update {
                     it.copy(
-                        invertPages = current.invertPages,
+                        pageTint = current.pageTint,
+                        cropMargins = current.cropMargins,
+                        readingMode = current.readingMode,
+                        markSavedWords = current.markSavedWords,
                         translationTarget = current.translationTarget,
                     )
                 }
@@ -328,27 +367,64 @@ class ReaderViewModel(
 
     // ---- Reading controls -------------------------------------------------
 
-    fun onToggleInvertPages() {
-        settings.setInvertPages(!_uiState.value.invertPages)
+    fun onPageTintChosen(tint: PageTint) {
+        settings.setPageTint(tint)
     }
 
     /**
-     * Step through the zoom levels.
+     * Turn margin cropping on or off.
      *
-     * A button as well as pinch: pinching accurately is fiddly, and the whole
-     * point of this screen is that it should not be fiddly.
+     * The rendered pages are thrown away with it: every one of them is now the
+     * wrong shape, and a cache holding cropped bitmaps for an uncropped reader
+     * would show the old ones until each page happened to be re-rendered.
      */
-    fun onCycleZoom() {
-        val next = ZOOM_STEPS.firstOrNull { it > _uiState.value.zoom + 0.01f } ?: ZOOM_STEPS.first()
-        _uiState.update { it.copy(zoom = next) }
+    fun onToggleCropMargins() {
+        pageCache.evictAll()
+        settings.setCropMargins(!_uiState.value.cropMargins)
+    }
+
+    fun onToggleMarkSavedWords() {
+        settings.setMarkSavedWords(!_uiState.value.markSavedWords)
+    }
+
+    fun onReadingModeChosen(mode: ReadingMode) {
+        // Zoom does not survive the change: the two modes magnify differently,
+        // and arriving in the other one already at 3x is disorienting.
+        _uiState.update { it.copy(zoom = 1f) }
+        settings.setReadingMode(mode)
+    }
+
+    /** Show or hide the bar and the page counter. */
+    fun onToggleChrome() {
+        _uiState.update { it.copy(isChromeVisible = !it.isChromeVisible) }
+    }
+
+    /** Put the chrome back, for anything that needs the bar visible again. */
+    fun onShowChrome() {
+        if (!_uiState.value.isChromeVisible) {
+            _uiState.update { it.copy(isChromeVisible = true) }
+        }
+    }
+
+    /**
+     * Go to a page, from the scrubber or the contents.
+     *
+     * Routed through the same channel search results use, so there is one way
+     * the pager is ever driven from here and it cannot disagree with itself.
+     */
+    fun onGoToPage(index: Int) {
+        val target = index.coerceIn(0, (_uiState.value.pageCount - 1).coerceAtLeast(0))
+        // Deliberately *not* setting the current page here. The pages themselves
+        // report where they end up, and that report is what writes the reading
+        // position. Setting it here as well looked harmless and was not: the
+        // report then arrived saying the page had not changed, [onPageChanged]
+        // returned early, and a document scrubbed to page 180 was remembered as
+        // being on page 1 — so it never appeared in Continue reading at all.
+        viewModelScope.launch { _pageJumps.emit(target) }
     }
 
     fun onZoomChanged(zoom: Float) {
         _uiState.update { it.copy(zoom = zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)) }
-    }
-
-    fun onResetZoom() {
-        _uiState.update { it.copy(zoom = 1f) }
     }
 
     // ---- Find in document -------------------------------------------------
@@ -496,6 +572,24 @@ class ReaderViewModel(
                     )
                 }
                 libraryData.recordView(uriString, _uiState.value.title, safeResume)
+                // Now that the document is open, its length is known. This is
+                // the only moment the app ever learns it, and it is what lets
+                // the library draw a bar rather than print a page number.
+                libraryData.recordPageCount(
+                    uriString,
+                    _uiState.value.title,
+                    opened.pageCount,
+                )
+                // Read after the pages are showing rather than before: a
+                // contents is a thing the reader goes looking for, and a
+                // document with a large one should not delay the first page.
+                launch {
+                    val contents = runCatchingCancellable { opened.outline() }
+                        .getOrDefault(emptyList())
+                    if (contents.isNotEmpty()) {
+                        _uiState.update { it.copy(outline = contents) }
+                    }
+                }
             }
             .onFailure { error ->
                 _uiState.update {
@@ -516,6 +610,14 @@ class ReaderViewModel(
                 _uiState.update { it.copy(bookmarkedPages = bookmarks.map { b -> b.pageIndex }.toSet()) }
             }
         }
+        // The set the page marks against. Live, so starring a word underlines
+        // every other place it appears in the book without the page being left
+        // and come back to.
+        viewModelScope.launch {
+            libraryData.observeSavedWords().collect { words ->
+                _uiState.update { it.copy(savedWords = words) }
+            }
+        }
         viewModelScope.launch {
             libraryData.observeDocument(uriString).collect { document ->
                 _uiState.update {
@@ -528,12 +630,36 @@ class ReaderViewModel(
     /** Null when the page could not be rendered; the UI shows a placeholder. */
     suspend fun renderPage(index: Int, widthPx: Int): Bitmap? {
         val active = renderer ?: return null
-        val key = "$index@$widthPx"
+        val crop = _uiState.value.cropMargins
+        // The crop is part of the key as well as being flushed on the toggle:
+        // a page rendered during the change would otherwise be filed under the
+        // key of the other setting.
+        val key = "$index@$widthPx@$crop"
         pageCache.get(key)?.let { return it }
 
-        return runCatchingCancellable { active.renderPage(index, widthPx) }
+        return runCatchingCancellable { active.renderPage(index, widthPx, crop) }
             .onSuccess { pageCache.put(key, it) }
             .getOrNull()
+    }
+
+    /**
+     * Where the reader's saved words appear on a page.
+     *
+     * Answered per page and per rendered size, and only while the marking is
+     * switched on. Empty is the common answer and costs nothing: the set is
+     * checked before the page is ever opened.
+     */
+    suspend fun savedWordHighlights(
+        pageIndex: Int,
+        widthPx: Int,
+        heightPx: Int,
+    ): List<RectF> {
+        val state = _uiState.value
+        if (!state.markSavedWords || state.savedWords.isEmpty()) return emptyList()
+        val active = renderer ?: return emptyList()
+        return runCatchingCancellable {
+            active.savedWordBounds(pageIndex, state.savedWords, widthPx, heightPx)
+        }.getOrDefault(emptyList())
     }
 
     fun onPageChanged(index: Int) {
@@ -1039,7 +1165,26 @@ class ReaderViewModel(
          */
         private const val OCR_TOUCH_TOLERANCE_FRACTION = 0.02f
 
-        private const val CACHE_SIZE = 6
+        /**
+         * A budget for rendered pages, as a share of the heap this app may use.
+         *
+         * An eighth is enough for several pages at any sensible screen width
+         * while leaving the translator's models, the covers and the document
+         * itself the room they need. The floor is there for the small heaps
+         * older devices hand out, where a fraction of very little is not enough
+         * to hold even the page being looked at.
+         */
+        private fun pageCacheBudgetKb(): Int {
+            val heapKb = Runtime.getRuntime().maxMemory() / 1024
+            return (heapKb / CACHE_HEAP_SHARE)
+                .coerceIn(MIN_CACHE_KB.toLong(), Int.MAX_VALUE.toLong())
+                .toInt()
+        }
+
+        private const val CACHE_HEAP_SHARE = 8
+
+        /** Enough for a couple of pages at any width a phone actually has. */
+        private const val MIN_CACHE_KB = 24 * 1024
 
         /** Words of a selected phrase looked up in the thesaurus. */
         private const val MAX_THESAURUS_WORDS = 4
@@ -1058,7 +1203,6 @@ class ReaderViewModel(
          * feel like it did not take.
          */
         private const val SHEET_SETTLE_MS = 180L
-        private val ZOOM_STEPS = listOf(1f, 1.5f, 2f, 3f)
         const val MIN_ZOOM = 1f
         const val MAX_ZOOM = 4f
 

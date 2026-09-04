@@ -55,9 +55,24 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(translationTarget = target)
     }
 
-    fun setInvertPages(invert: Boolean) {
-        prefs.edit { putBoolean(KEY_INVERT_PAGES, invert) }
-        _settings.value = current.copy(invertPages = invert)
+    fun setPageTint(tint: PageTint) {
+        prefs.edit { putString(KEY_PAGE_TINT, tint.key) }
+        _settings.value = current.copy(pageTint = tint)
+    }
+
+    fun setCropMargins(crop: Boolean) {
+        prefs.edit { putBoolean(KEY_CROP_MARGINS, crop) }
+        _settings.value = current.copy(cropMargins = crop)
+    }
+
+    fun setMarkSavedWords(mark: Boolean) {
+        prefs.edit { putBoolean(KEY_MARK_SAVED, mark) }
+        _settings.value = current.copy(markSavedWords = mark)
+    }
+
+    fun setReadingMode(mode: ReadingMode) {
+        prefs.edit { putString(KEY_READING_MODE, mode.key) }
+        _settings.value = current.copy(readingMode = mode)
     }
 
     /** Whether the whole-device sweep is switched off in Fonts. */
@@ -85,6 +100,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_LAYOUT = "library_layout"
         private const val KEY_TRANSLATION = "translation_target"
         private const val KEY_INVERT_PAGES = "invert_pages"
+        private const val KEY_PAGE_TINT = "page_tint"
+        private const val KEY_CROP_MARGINS = "crop_margins"
+        private const val KEY_READING_MODE = "reading_mode"
+        private const val KEY_MARK_SAVED = "mark_saved_words"
         private const val KEY_DEVICE_SCAN_OPT_OUT = "device_scan_opt_out"
         private const val KEY_CUSTOM_ACCENT = "custom_accent"
 
@@ -98,7 +117,16 @@ class SettingsRepository(context: Context) {
             libraryLayout = LibraryLayout.fromKey(prefs.getString(KEY_LAYOUT, null)),
             translationTarget = TranslationTarget.fromCode(prefs.getString(KEY_TRANSLATION, null)),
             deviceScanOptOut = prefs.getBoolean(KEY_DEVICE_SCAN_OPT_OUT, false),
-            invertPages = prefs.getBoolean(KEY_INVERT_PAGES, false),
+            // The old boolean is still read, so a reader who had inverted
+            // pages before this became a three-way choice finds them inverted
+            // afterwards rather than back to white.
+            pageTint = PageTint.fromKey(
+                prefs.getString(KEY_PAGE_TINT, null)
+                    ?: PageTint.INVERT.key.takeIf { prefs.getBoolean(KEY_INVERT_PAGES, false) },
+            ),
+            cropMargins = prefs.getBoolean(KEY_CROP_MARGINS, false),
+            readingMode = ReadingMode.fromKey(prefs.getString(KEY_READING_MODE, null)),
+            markSavedWords = prefs.getBoolean(KEY_MARK_SAVED, true),
             customAccent = prefs.getInt(KEY_CUSTOM_ACCENT, DEFAULT_CUSTOM_ACCENT),
         )
 

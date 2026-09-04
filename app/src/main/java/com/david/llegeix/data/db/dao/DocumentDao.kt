@@ -39,6 +39,16 @@ interface DocumentDao {
     suspend fun setHighlightColor(uriString: String, color: Int?)
 
     /**
+     * Record how many pages a document turned out to have.
+     *
+     * Written once, when the reader opens it and PDFium reports the count. It
+     * is what lets every other screen say "page 34 of 210" and draw a bar
+     * rather than a bare page number nobody can weigh.
+     */
+    @Query("UPDATE documents SET pageCount = :pageCount WHERE uriString = :uriString")
+    suspend fun setPageCount(uriString: String, pageCount: Int)
+
+    /**
      * Documents bookmarked as a whole. This is the query behind the automatic
      * "Bookmarked" collection, which is derived rather than stored: a document
      * belongs to at most one real folder, so filing bookmarked PDFs into a

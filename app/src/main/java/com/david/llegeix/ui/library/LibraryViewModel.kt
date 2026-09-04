@@ -17,6 +17,8 @@ import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.FolderWithCount
+import com.david.llegeix.data.db.dao.ReadingProgress
+import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.FolderRules
@@ -80,6 +82,28 @@ class LibraryViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.current.libraryLayout)
 
     fun onToggleLayout() = settings.setLibraryLayout(layout.value.toggled())
+
+    /**
+     * How far through each opened document the reader got.
+     *
+     * Fed straight to the covers, so a shelf says which books are started and
+     * how far without a single number being read.
+     */
+    val progress: StateFlow<Map<String, ReadingProgress>> = libraryData.observeProgress()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * Books started and not finished, most recently read first.
+     *
+     * The reason the reader opened the app, in the place they open it. Recent
+     * used to be a tab of its own, which meant the answer to "carry on with
+     * what I was reading" was one tap away from the screen that appears on
+     * launch, and looked like a fourth way of listing the same documents.
+     */
+    val continueReading: StateFlow<List<RecentDocument>> =
+        libraryData.observeRecent(CONTINUE_LIMIT)
+            .map { recents -> recents.filter { it.progress.isInProgress } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Every tag that exists, for the picker. */
     val tags: StateFlow<List<TagEntity>> = libraryData.observeTags()
@@ -275,6 +299,29 @@ class LibraryViewModel(
         refresh()
     }
 
+    /** Forget one document's place in the reading history. */
+    fun onForgetRecent(uriString: String) = viewModelScope.launch {
+        libraryData.removeFromRecent(uriString)
+    }
+
+    /**
+     * Put a forgotten entry back, timestamp and page and all.
+     *
+     * The undo behind the snackbar. Holding a card on the Continue shelf takes
+     * it off, which is the right gesture for a shelf that is otherwise all
+     * tapping — but only because it can be taken back. Restored with its own
+     * `viewedAt`, so undoing does not silently promote the book to the front of
+     * the shelf it was just removed from.
+     */
+    fun onRestoreRecent(recent: RecentDocument) = viewModelScope.launch {
+        libraryData.restoreRecent(
+            uriString = recent.uriString,
+            displayName = recent.displayName,
+            pageIndex = recent.lastPageIndex,
+            viewedAt = recent.viewedAt,
+        )
+    }
+
     fun onFolderRemoved(treeUri: Uri) {
         repository.removeFolder(treeUri)
         syncSources()
@@ -391,6 +438,7 @@ class LibraryViewModel(
 
         return copy(
             path = here,
+            sources = sourcesOf(allDocuments, allowed),
             documents = visible.sortedWith(
                 sort.comparator { document ->
                     // Already alphabetical from the DAO, so the first is the
@@ -410,7 +458,65 @@ class LibraryViewModel(
         )
     }
 
+    /**
+     * The sources, counted from the documents rather than scanned for again.
+     *
+     * Every document already carries the path it was found at, so which source
+     * it belongs to is a prefix test — and the library has just done the work of
+     * deciding which of them the folder rules let through. Asking storage a
+     * second question here would double the cost of every rescan to learn
+     * something already in hand.
+     */
+    private fun LibraryUiState.sourcesOf(
+        everything: List<PdfDocument>,
+        allowed: List<PdfDocument>,
+    ): List<LibrarySource> {
+        if (everything.isEmpty() && grantedFolders.isEmpty()) return emptyList()
+        val labels = grantedFolders.map { it.label }
+
+        fun under(root: String, documents: List<PdfDocument>) = documents.count { document ->
+            val path = document.parentLabel ?: return@count false
+            path == root || path.startsWith("$root/")
+        }
+
+        val granted = grantedFolders.map { folder ->
+            LibrarySource(
+                label = folder.label,
+                kind = LibrarySource.Kind.GRANTED,
+                visibleCount = under(folder.label, allowed),
+                totalCount = under(folder.label, everything),
+            )
+        }
+        if (!deviceScanEnabled) return granted
+
+        // Whatever the sweep found that no granted folder already covers. One
+        // tile, not one per top-level folder: the sweep is a single permission,
+        // and splitting it into eight tiles would bury the folders the reader
+        // deliberately granted among the ones Android happened to have.
+        fun loose(documents: List<PdfDocument>) = documents.count { document ->
+            val path = document.parentLabel
+            path == null || labels.none { path == it || path.startsWith("$it/") }
+        }
+        val device = LibrarySource(
+            // No label: the sweep is not a folder, so the tile names it from
+            // resources and there is nothing for the sheet to open to.
+            label = "",
+            kind = LibrarySource.Kind.DEVICE,
+            visibleCount = loose(allowed),
+            totalCount = loose(everything),
+        )
+        return granted + device
+    }
+
     companion object {
+        /**
+         * How many started books the strip offers.
+         *
+         * Enough that the one you want is nearly always there, few enough that
+         * the strip stays a shelf you glance along rather than a list.
+         */
+        private const val CONTINUE_LIMIT = 12
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as LlegeixApp

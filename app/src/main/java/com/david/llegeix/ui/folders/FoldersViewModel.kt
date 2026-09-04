@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/** A collection that has just been made, and is about to be filled. */
+data class NewCollection(val id: Long, val name: String)
+
 class FoldersViewModel(
     private val libraryData: LibraryDataRepository,
 ) : ViewModel() {
@@ -27,13 +30,31 @@ class FoldersViewModel(
     private val _message = MutableStateFlow<UiText?>(null)
     val message: StateFlow<UiText?> = _message.asStateFlow()
 
+    /**
+     * The collection just made, so the screen can walk straight into it.
+     *
+     * Making a collection and putting things in it is one job, and it used to
+     * end with a new empty row in a list and no hint that filling it was the
+     * next step — let alone where the step was. Now the app goes there and
+     * opens the picker.
+     */
+    private val _created = MutableStateFlow<NewCollection?>(null)
+    val created: StateFlow<NewCollection?> = _created.asStateFlow()
+
     fun createFolder(name: String) = viewModelScope.launch {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return@launch
         // Folder names are uniquely indexed; a null result means it was taken.
-        if (libraryData.createFolder(trimmed) == null) {
+        val id = libraryData.createFolder(trimmed)
+        if (id == null) {
             _message.value = UiText.of(R.string.folders_exists, trimmed)
+        } else {
+            _created.value = NewCollection(id, trimmed)
         }
+    }
+
+    fun onCreatedHandled() {
+        _created.value = null
     }
 
     fun renameFolder(folderId: Long, name: String) = viewModelScope.launch {

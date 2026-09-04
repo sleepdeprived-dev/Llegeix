@@ -7,22 +7,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -33,13 +30,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,27 +71,42 @@ private const val PDF_MIME_TYPE = "application/pdf"
 /**
  * Where the library's documents come from, and which parts of it count.
  *
- * This replaced a bottom sheet. A sheet was the right size for "add a folder"
- * and much too small for the question this screen actually answers: granting
- * one folder can bring in a hundred others, and deciding which of those belong
- * in a reading library needs room to look at them.
+ * A sheet over the library rather than a screen of its own behind a menu. It
+ * used to be an item in the overflow, which is the worst place for it: the
+ * question "why is that book not here" is asked *of the library*, while looking
+ * at the library, and the answer lived two taps away behind a word — Fonts —
+ * that only means anything once you already know what it does. The strip of
+ * source tiles at the top of the library is the way in now, and this is what
+ * opens when one is pressed.
  *
  * Each source is one card that says what it holds — "48 PDFs · 12 folders" —
  * and opens to show the folders inside it, each with a tick. Unticking a folder
  * hides it and everything below it; ticking one inside an unticked folder
- * brings just that one back. Nothing is deleted from the phone by anything on
- * this screen, which the wording is careful to keep saying.
+ * brings just that one back. Nothing is deleted from the phone by anything in
+ * here, which the wording is careful to keep saying.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SourcesScreen(
-    onBack: () -> Unit,
+fun SourcesSheet(
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * The source to open expanded, if the reader arrived by pressing one.
+     *
+     * Pressing a particular tile and being shown a list of every source folded
+     * shut is the sheet answering a different question from the one asked.
+     */
+    focusSource: String? = null,
     viewModel: SourcesViewModel = viewModel(factory = SourcesViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsState()
     var removing by remember { mutableStateOf<GrantedFolder?>(null) }
     val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    LaunchedEffect(focusSource) {
+        if (focusSource != null) viewModel.onExpand(focusSource)
+    }
 
     // The result code is meaningless here; the rescan on return is what picks
     // up a grant that was just given.
@@ -115,114 +128,85 @@ fun SourcesScreen(
         ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris -> if (uris.isNotEmpty()) viewModel.onFilesPicked(uris) }
 
-    Scaffold(
-        // The app shell has already inset this screen; counting the status and
-        // navigation bars twice is what used to leave a dead band above the
-        // bottom bar and a top bar taller than it asks to be.
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                expandedHeight = Space.topBar,
-                title = { Text(stringResource(R.string.library_sources)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.reader_back),
-                        )
-                    }
-                },
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = modifier,
+    ) {
+        // A scrolling column rather than a lazy list: inside a sheet a lazy
+        // list takes the whole height it is offered, so one source would arrive
+        // as one card marooned at the top of a full-screen panel.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(horizontal = Space.screen)
+                .padding(bottom = Space.xxl),
+            verticalArrangement = Arrangement.spacedBy(Space.md),
+        ) {
+            Text(
+                text = stringResource(R.string.library_sources),
+                style = MaterialTheme.typography.titleLarge,
             )
-        },
-    ) { innerPadding ->
-        // The progress bar floats over the list rather than sitting above it:
-        // as a row of its own it pushed every card down four pixels the moment
-        // a rescan started, which is a whole screen twitching for no reason.
-        Box(modifier = Modifier.padding(innerPadding)) {
-            LazyColumn(
-                contentPadding = PaddingValues(
-                    start = Space.screen,
-                    end = Space.screen,
-                    top = Space.lg,
-                    bottom = Space.xxl,
-                ),
-                verticalArrangement = Arrangement.spacedBy(Space.md),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                item {
-                    Text(
-                        text = stringResource(R.string.sources_explainer),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = Space.sm),
-                    )
-                }
+            Text(
+                text = stringResource(R.string.sources_explainer),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Space.sm),
+            )
 
-                items(state.groups, key = { it.folder.treeUri.toString() }) { group ->
+            if (state.isScanning) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
+            state.groups.forEach { group ->
+                SourceCard(
+                    group = group,
+                    expanded = state.expanded,
+                    onToggleExpanded = viewModel::onToggleExpanded,
+                    onSetVisible = viewModel::onSetVisible,
+                    onSetSourceVisible = viewModel::onSetSourceVisible,
+                    onRemove = { removing = group.folder },
+                )
+            }
+
+            DeviceScanCard(
+                permitted = state.deviceScanPermitted,
+                enabled = state.deviceScanEnabled,
+                count = state.deviceScanCount,
+                onOpenSettings = ::openDeviceScanSettings,
+                onSetEnabled = viewModel::onSetDeviceScan,
+                modifier = Modifier.padding(top = Space.sm),
+            )
+
+            if (state.deviceScanEnabled && state.deviceGroups.isNotEmpty()) {
+                // Without this the sweep's folders look like more granted
+                // sources: the same card, in the same column, meaning something
+                // quite different. One quiet line says whose they are.
+                SectionLabel(stringResource(R.string.sources_found_by_scan))
+            }
+
+            if (state.deviceScanEnabled) {
+                state.deviceGroups.forEach { group ->
                     SourceCard(
                         group = group,
                         expanded = state.expanded,
                         onToggleExpanded = viewModel::onToggleExpanded,
                         onSetVisible = viewModel::onSetVisible,
                         onSetSourceVisible = viewModel::onSetSourceVisible,
-                        onRemove = { removing = group.folder },
-                    )
-                }
-
-                item {
-                    DeviceScanCard(
-                        permitted = state.deviceScanPermitted,
-                        enabled = state.deviceScanEnabled,
-                        count = state.deviceScanCount,
-                        onOpenSettings = ::openDeviceScanSettings,
-                        onSetEnabled = viewModel::onSetDeviceScan,
-                        modifier = Modifier.padding(top = Space.sm),
-                    )
-                }
-
-                if (state.deviceScanEnabled && state.deviceGroups.isNotEmpty()) {
-                    item {
-                        // Without this the sweep's folders look like more
-                        // granted sources: the same card, in the same column,
-                        // meaning something quite different. One quiet line
-                        // says whose they are.
-                        SectionLabel(stringResource(R.string.sources_found_by_scan))
-                    }
-                }
-
-                if (state.deviceScanEnabled) {
-                    items(state.deviceGroups, key = { "device:" + it.folder.label }) { group ->
-                        SourceCard(
-                            group = group,
-                            expanded = state.expanded,
-                            onToggleExpanded = viewModel::onToggleExpanded,
-                            onSetVisible = viewModel::onSetVisible,
-                            onSetSourceVisible = viewModel::onSetSourceVisible,
-                            // Nothing to hand back: the sweep is a permission,
-                            // not a folder the app was given.
-                            onRemove = null,
-                        )
-                    }
-                }
-
-                item {
-                    AddSourceCard(
-                        onAddFolder = { folderPicker.launch(null) },
-                        onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
-                        modifier = Modifier.padding(top = Space.xl),
+                        // Nothing to hand back: the sweep is a permission, not
+                        // a folder the app was given.
+                        onRemove = null,
                     )
                 }
             }
 
-            if (state.isScanning) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter),
-                )
-            }
+            AddSourceCard(
+                onAddFolder = { folderPicker.launch(null) },
+                onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
+                modifier = Modifier.padding(top = Space.xl),
+            )
         }
     }
 
@@ -445,7 +429,7 @@ private fun FolderRow(
             ),
     ) {
         if (hasChildren) {
-            IconButton(onClick = onToggleExpanded, modifier = Modifier.size(28.dp)) {
+            IconButton(onClick = onToggleExpanded, modifier = Modifier.size(40.dp)) {
                 Icon(
                     imageVector = if (isOpen) {
                         Icons.Default.KeyboardArrowDown
@@ -461,7 +445,7 @@ private fun FolderRow(
                 )
             }
         } else {
-            Spacer(modifier = Modifier.width(28.dp))
+            Spacer(modifier = Modifier.width(40.dp))
         }
         Checkbox(checked = folder.visible, onCheckedChange = null)
         Text(

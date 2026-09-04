@@ -71,4 +71,25 @@ data class WordBookmarkEntity(
     /** 1-based line within the page, counted from the text layer. */
     val lineNumber: Int,
     val createdAt: Long = System.currentTimeMillis(),
+    /**
+     * Which Leitner box the word is in, counted from zero.
+     *
+     * A saved word that is never met again is a word that was not learned, and
+     * a list you scroll past is not meeting it. The boxes are the smallest
+     * honest scheduler: get it right and the word moves up a box and comes back
+     * later, get it wrong and it drops to the bottom and comes back tomorrow.
+     * Everything about the schedule is derived from this one number, so nothing
+     * has to be migrated when the intervals are tuned.
+     */
+    val box: Int = 0,
+    /**
+     * When the word is next worth being asked about, in epoch millis.
+     *
+     * Zero means "as soon as possible", which is what a word just saved should
+     * be: the reader met it a minute ago and the first repetition is the one
+     * that does the most work.
+     */
+    val dueAt: Long = 0,
+    /** How many times it has been answered, right or wrong. */
+    val reviewCount: Int = 0,
 )

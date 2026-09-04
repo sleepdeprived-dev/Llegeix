@@ -1,8 +1,10 @@
 package com.david.llegeix.data.source
 
 import com.david.llegeix.data.db.LlegeixDatabase
+import com.david.llegeix.data.practice.Leitner
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.PageBookmark
+import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.data.db.entity.BookmarkEntity
 import com.david.llegeix.data.db.entity.DocumentEntity
@@ -182,6 +184,29 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     fun observeRecent(limit: Int = DEFAULT_RECENT_LIMIT): Flow<List<RecentDocument>> =
         recents.observeRecent(limit)
 
+    /**
+     * How far through each opened document the reader has got, keyed by URI.
+     *
+     * A map rather than a list because every caller asks the same question of
+     * it — "what about this one" — while drawing a row it already has in hand.
+     */
+    fun observeProgress(): Flow<Map<String, ReadingProgress>> =
+        recents.observeProgress().map { rows -> rows.associateBy { it.uriString } }
+
+    /**
+     * Remember how many pages a document has, once opening it has answered.
+     *
+     * Called on every open and not only the first: a file can be replaced on
+     * disk under the same name, and a count that is quietly wrong is worse than
+     * one that is missing, because the bar drawn from it looks just as
+     * confident either way.
+     */
+    suspend fun recordPageCount(uriString: String, displayName: String, pageCount: Int) {
+        if (pageCount <= 0) return
+        ensureDocument(uriString, displayName)
+        documents.setPageCount(uriString, pageCount)
+    }
+
     /** Record a visit, and remember how far into the document it got. */
     suspend fun recordView(uriString: String, displayName: String, pageIndex: Int) {
         ensureDocument(uriString, displayName)
@@ -196,10 +221,36 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
 
     suspend fun removeFromRecent(uriString: String) = recents.remove(uriString)
 
+    /** Write a history entry back exactly as it was, for an undo. */
+    suspend fun restoreRecent(
+        uriString: String,
+        displayName: String,
+        pageIndex: Int,
+        viewedAt: Long,
+    ) {
+        ensureDocument(uriString, displayName)
+        recents.record(
+            RecentlyViewedEntity(
+                documentUri = uriString,
+                viewedAt = viewedAt,
+                lastPageIndex = pageIndex,
+            ),
+        )
+    }
+
     suspend fun clearRecent() = recents.clear()
 
     private companion object {
         const val DEFAULT_RECENT_LIMIT = 20
+
+        /**
+         * How many words one practice session holds.
+         *
+         * Short on purpose. The deck is meant to be finishable in the few
+         * minutes somebody actually has, and a session that ends with "done"
+         * is one they come back to.
+         */
+        const val DEFAULT_SESSION_LIMIT = 20
     }
 
     // ---- Saved words ------------------------------------------------------
@@ -231,6 +282,31 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     }
 
     suspend fun removeWordBookmark(id: Long) = words.deleteById(id)
+
+    // ---- Practice ---------------------------------------------------------
+
+    /**
+     * The words due to be practised right now.
+     *
+     * The clock is read once, when the flow is built, rather than on every
+     * emission. A deck that quietly grew mid-session — because a word answered
+     * wrongly ten minutes ago has come round again — would change its own
+     * length under the reader, and "3 of 12" would stop meaning anything.
+     */
+    fun observeDueWords(now: Long, limit: Int = DEFAULT_SESSION_LIMIT):
+        Flow<List<WordBookmarkEntity>> = words.observeDue(now, limit)
+
+    fun observeDueCount(now: Long): Flow<Int> = words.observeDueCount(now)
+
+    /** Every saved word, lowercased, for marking them on the page. */
+    fun observeSavedWords(): Flow<Set<String>> =
+        words.observeWords().map { list -> list.map { it.lowercase() }.toSet() }
+
+    /** Record an answer and move the word to where the schedule puts it. */
+    suspend fun recordReview(id: Long, box: Int, correct: Boolean, now: Long) {
+        val next = Leitner.answer(box, correct, now)
+        words.recordReview(id, next.box, next.dueAt)
+    }
 
     // ---- Tags -------------------------------------------------------------
 

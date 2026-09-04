@@ -10,6 +10,8 @@ import com.david.llegeix.data.db.MIGRATION_2_3
 import com.david.llegeix.data.db.MIGRATION_3_4
 import com.david.llegeix.data.db.MIGRATION_4_5
 import com.david.llegeix.data.db.MIGRATION_5_6
+import com.david.llegeix.data.db.MIGRATION_6_7
+import com.david.llegeix.data.db.MIGRATION_7_8
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -326,6 +328,110 @@ class MigrationTest {
             assertTrue(cursor.moveToFirst())
             assertEquals("floor", cursor.getString(0))
             assertEquals("planta baixa", cursor.getString(1))
+        }
+    }
+
+    /**
+     * Page counts, added so the library can draw a bar rather than print a page
+     * number.
+     *
+     * The column is deliberately nullable and deliberately not back-filled: a
+     * document that has never been opened has no page count, and the test
+     * checks exactly that rather than a zero standing in for it.
+     */
+    @Test
+    fun migrate6To7_addsPageCountAndLeavesItUnknown() {
+        helper.createDatabase(TEST_DB, 6).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO documents
+                    (uriString, displayName, folderId, highlightColor, addedAt,
+                     isBookmarked, isReadLater)
+                VALUES ('content://test/1', 'princep.pdf', NULL, NULL, 200, 0, 0)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO recently_viewed (documentUri, viewedAt, lastPageIndex)
+                VALUES ('content://test/1', 400, 12)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 7, true, MIGRATION_6_7)
+
+        db.query("SELECT displayName, pageCount FROM documents").use { cursor ->
+            assertTrue("document row survived", cursor.moveToFirst())
+            assertEquals("princep.pdf", cursor.getString(0))
+            assertTrue("a never-opened document has no page count", cursor.isNull(1))
+        }
+        db.query("SELECT lastPageIndex FROM recently_viewed").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("reading position untouched", 12, cursor.getInt(0))
+        }
+
+        db.execSQL("UPDATE documents SET pageCount = 210 WHERE uriString = 'content://test/1'")
+        db.query("SELECT pageCount FROM documents").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(210, cursor.getInt(0))
+        }
+    }
+
+    /**
+     * A vocabulary list that predates the practice deck arrives as a deck.
+     *
+     * The three columns have defaults rather than being nullable precisely so
+     * this is true: every word already saved comes through in box zero and due
+     * immediately, which is what a word nobody has ever been asked about is.
+     */
+    @Test
+    fun migrate7To8_putsExistingWordsInTheDeck() {
+        helper.createDatabase(TEST_DB, 7).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO word_bookmarks
+                    (word, translation, ipa, context, documentUri, displayName,
+                     pageIndex, lineNumber, createdAt)
+                VALUES ('enrenou', 'commotion', 'ənrəˈnɔw', 'quin enrenou', NULL,
+                        NULL, 3, 7, 500)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 8, true, MIGRATION_7_8)
+
+        db.query("SELECT word, box, dueAt, reviewCount FROM word_bookmarks").use { cursor ->
+            assertTrue("saved word survived", cursor.moveToFirst())
+            assertEquals("enrenou", cursor.getString(0))
+            assertEquals("starts in the first box", 0, cursor.getInt(1))
+            assertEquals("due straight away", 0L, cursor.getLong(2))
+            assertEquals("never reviewed", 0, cursor.getInt(3))
+        }
+    }
+
+    /** Every step in order, which is what an old install actually runs. */
+    @Test
+    fun migrate1To8_runsEveryStepInSequence() {
+        helper.createDatabase(TEST_DB, 1).use { db ->
+            db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            TEST_DB,
+            8,
+            true,
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6,
+            MIGRATION_6_7,
+            MIGRATION_7_8,
+        )
+
+        db.query("SELECT name FROM folders").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Vell", cursor.getString(0))
         }
     }
 }

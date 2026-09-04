@@ -70,6 +70,33 @@ class BookmarksViewModel(
 
     fun removeWord(id: Long) = viewModelScope.launch { libraryData.removeWordBookmark(id) }
 
+    /**
+     * How many saved words are waiting to be practised.
+     *
+     * The clock is read once, when the screen is built. A count that ticked up
+     * while the reader was looking at it would be a number changing for reasons
+     * nobody can see.
+     */
+    val dueCount: StateFlow<Int> =
+        libraryData.observeDueCount(System.currentTimeMillis())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /**
+     * Words saved on each of the last fortnight's days, oldest first.
+     *
+     * A row of bars rather than a number. What it is actually for is showing
+     * that anything is happening at all: a vocabulary list is a slow thing, and
+     * fourteen small marks say "you have been at this" in a way that "137
+     * saved" never does.
+     */
+    val savedPerDay: StateFlow<List<Int>> = savedWords
+        .map { words -> countPerDay(words, System.currentTimeMillis()) }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            List(ACTIVITY_DAYS) { 0 },
+        )
+
     private val _wordQuery = MutableStateFlow("")
     val wordQuery: StateFlow<String> = _wordQuery.asStateFlow()
 
@@ -151,3 +178,26 @@ class BookmarksViewModel(
 
 /** Long enough that a pause means the reader stopped to read the result. */
 private const val SEARCH_SETTLE_MS = 1_200L
+
+/** How many days the activity strip covers. */
+const val ACTIVITY_DAYS = 14
+
+/**
+ * How many words were saved on each of the last [ACTIVITY_DAYS] days.
+ *
+ * Days are counted back from [now] in whole 24-hour blocks rather than from
+ * midnight. It is a texture rather than a diary — the point is whether the
+ * marks are there at all — and counting in blocks means the strip does not
+ * silently redraw itself as the clock passes midnight.
+ */
+internal fun countPerDay(words: List<WordBookmarkEntity>, now: Long): List<Int> {
+    val day = 24L * 60L * 60L * 1000L
+    val counts = IntArray(ACTIVITY_DAYS)
+    for (word in words) {
+        val age = now - word.createdAt
+        if (age < 0) continue
+        val daysAgo = (age / day).toInt()
+        if (daysAgo < ACTIVITY_DAYS) counts[ACTIVITY_DAYS - 1 - daysAgo]++
+    }
+    return counts.toList()
+}

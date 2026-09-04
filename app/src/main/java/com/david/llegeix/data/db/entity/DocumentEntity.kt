@@ -42,5 +42,15 @@ data class DocumentEntity(
     val isReadLater: Boolean = false,
     /** Default highlight colour for this PDF. Null means the app default. */
     val highlightColor: Int? = null,
+    /**
+     * How many pages the PDF has, learned the first time it is opened.
+     *
+     * Nullable because it cannot be known before then: discovery reads the
+     * file's name and size from storage and never opens it, and opening every
+     * PDF on the device to count its pages would make the library scan cost
+     * seconds instead of milliseconds. Null therefore means "never opened",
+     * which is exactly the case where there is no progress to show either.
+     */
+    val pageCount: Int? = null,
     val addedAt: Long = System.currentTimeMillis(),
 )

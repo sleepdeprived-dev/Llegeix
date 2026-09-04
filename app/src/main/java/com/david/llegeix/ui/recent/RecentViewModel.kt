@@ -41,6 +41,23 @@ class RecentViewModel(
         libraryData.removeFromRecent(uriString)
     }
 
+    /**
+     * Put back an entry that was just removed, with the page it was on.
+     *
+     * The undo behind the snackbar. It writes the row again rather than
+     * pretending the delete never happened, which is why the timestamp is
+     * carried back too: an entry restored to the top of the list would be a
+     * different lie from the one the reader was trying to undo.
+     */
+    fun restore(recent: RecentDocument) = viewModelScope.launch {
+        libraryData.restoreRecent(
+            uriString = recent.uriString,
+            displayName = recent.displayName,
+            pageIndex = recent.lastPageIndex,
+            viewedAt = recent.viewedAt,
+        )
+    }
+
     fun clearAll() = viewModelScope.launch { libraryData.clearRecent() }
 
     companion object {

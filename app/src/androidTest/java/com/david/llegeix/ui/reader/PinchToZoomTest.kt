@@ -160,6 +160,50 @@ class PinchToZoomTest {
 
     // ---- Double tap -------------------------------------------------------
 
+    /**
+     * A single tap hides the chrome; a double tap zooms and does not.
+     *
+     * Both live in one detector for exactly this reason. As two detectors on the
+     * same page, each waits out the double-tap timeout and each fires, so a
+     * double tap to magnify also toggled the bar on its way — twice.
+     *
+     * The single tap is waited for rather than asserted straight away, and that
+     * wait is the behaviour rather than a flake: a detector that also watches
+     * for a double tap cannot report a single one until the window for a second
+     * has closed. On the page that is a few hundred milliseconds between
+     * lifting a finger and the bar sliding away, which is the price of the two
+     * gestures living on the same surface.
+     */
+    @Test
+    fun aSingleTapIsReportedAndADoubleTapIsNot() {
+        var zoom = 1f
+        var taps = 0
+        rule.setContent {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .testTag("page")
+                    .doubleTapToZoom(
+                        key = Unit,
+                        currentZoom = { zoom },
+                        minZoom = minZoom,
+                        magnified = 2f,
+                        onZoomChanged = { zoom = it },
+                        onTap = { taps++ },
+                    ),
+            )
+        }
+
+        rule.onNodeWithTag("page").performTouchInput { click() }
+        rule.waitUntil(timeoutMillis = 2_000) { taps == 1 }
+        assertEquals("and does not magnify", 1f, zoom, 0.001f)
+
+        rule.onNodeWithTag("page").performTouchInput { doubleClick() }
+        rule.waitUntil(timeoutMillis = 2_000) { zoom > 1f }
+        assertEquals("a double tap is not also a tap", 1, taps)
+        assertEquals(2f, zoom, 0.001f)
+    }
+
     @Test
     fun aDoubleTapMagnifiesAnUnmagnifiedPage() {
         var zoom = 1f
@@ -174,6 +218,7 @@ class PinchToZoomTest {
                         minZoom = minZoom,
                         magnified = 2f,
                         onZoomChanged = { zoom = it },
+                        onTap = {},
                     ),
             )
         }
@@ -213,6 +258,7 @@ class PinchToZoomTest {
                         minZoom = minZoom,
                         magnified = 2f,
                         onZoomChanged = { zoom = it },
+                        onTap = {},
                     ),
             )
         }
@@ -238,6 +284,7 @@ class PinchToZoomTest {
                         minZoom = minZoom,
                         magnified = 2f,
                         onZoomChanged = { zoom = it },
+                        onTap = {},
                     ),
             )
         }

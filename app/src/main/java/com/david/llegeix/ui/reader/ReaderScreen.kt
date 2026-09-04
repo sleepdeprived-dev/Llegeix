@@ -4,6 +4,10 @@ import android.graphics.Bitmap
 import android.graphics.RectF
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -27,7 +31,14 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -70,6 +81,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,6 +117,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
+import com.david.llegeix.data.settings.PageTint
+import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.pdf.DEFAULT_PAGE_ASPECT_RATIO
 import com.david.llegeix.pdf.PdfMatch
@@ -121,6 +135,8 @@ import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import kotlin.math.roundToInt
 import kotlin.math.abs
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -142,17 +158,63 @@ private val InvertFilter = ColorFilter.colorMatrix(
     ),
 )
 
+/**
+ * Warms a page and takes the glare off its white.
+ *
+ * Inverting is the right answer for reading in the dark and the wrong one for
+ * reading in a lit room, where what actually tires the eye is a screen at full
+ * white behind black type. This drops the blue channel hardest and the red
+ * least, which is the same thing a paperback does by being made of paper.
+ */
+private val SepiaFilter = ColorFilter.colorMatrix(
+    ColorMatrix(
+        floatArrayOf(
+            0.96f, 0f, 0f, 0f, 12f,
+            0f, 0.90f, 0f, 0f, 4f,
+            0f, 0f, 0.78f, 0f, -6f,
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    ),
+)
+
+/** The filter a tint asks for, or none at all. */
+private fun filterFor(tint: PageTint): ColorFilter? = when (tint) {
+    PageTint.NONE -> null
+    PageTint.SEPIA -> SepiaFilter
+    PageTint.INVERT -> InvertFilter
+}
+
 /** The gutter colour around an inverted page. */
 private val InvertedSurround = Color(0xFF0E0E0E)
 
 /** Enough lift to give the page an edge, not enough to become a card. */
 private val PageElevation = 3.dp
 
+/** Enough to read the page counter as sitting over the page, not on it. */
+private val PillElevation = 2.dp
+
 /** The hairline that gives an inverted page an edge the shadow cannot. */
 private val InvertedPageEdge = Color(0x1FFFFFFF)
 
+/**
+ * How long a page already on screen waits before re-rendering at a new width.
+ *
+ * Long enough to swallow a pinch, short enough that letting go and reading is
+ * not a wait.
+ */
+private const val RENDER_SETTLE_MS = 110L
+
 /** Corner on a highlight: enough to soften a block, too little to be a shape. */
 private val HighlightCorner = 3.dp
+
+/**
+ * Thickness of the line under a word already saved.
+ *
+ * A hairline. It has to be findable when looked for and invisible when not,
+ * because it appears on words the reader is reading past, not on words they
+ * are looking for.
+ */
+private val SavedWordUnderline = 1.5.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,6 +224,14 @@ fun ReaderScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     targetPage: Int? = null,
+    /**
+     * A search to open the document on, from the library's "search inside".
+     *
+     * A single space means "open find, empty": the library's own field may have
+     * been blank, and an empty string cannot be told apart from the argument
+     * being absent.
+     */
+    findQuery: String? = null,
 ) {
     // Keyed by document so navigating to a different PDF gets a fresh renderer
     // rather than reusing the previous one's open file descriptor.
@@ -174,17 +244,49 @@ fun ReaderScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { state.pageCount })
+    val scrollState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val scrolling = state.readingMode == ReadingMode.SCROLL
+    // Read on each event rather than captured: the collector below outlives
+    // every change of mode, and a captured flag would keep driving whichever
+    // container was in charge when the reader opened the document.
+    val scrollingNow by rememberUpdatedState(scrolling)
 
     LaunchedEffect(pagerState.currentPage) {
-        viewModel.onPageChanged(pagerState.currentPage)
+        if (!scrolling) viewModel.onPageChanged(pagerState.currentPage)
     }
 
-    // Search results drive the pager rather than the other way round.
+    // The topmost page still on screen, which is what "the page I am on" means
+    // when there is no page turning going on. Read through a snapshot flow
+    // rather than as a key: the index changes on every frame of a fling, and as
+    // a key it would recompose the whole reader that often.
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            // Read through the holder, not the captured value: this collector
+            // outlives every change of reading mode.
+            .collect { index -> if (scrollingNow) viewModel.onPageChanged(index) }
+    }
+
+    // Search results, the scrubber and the contents drive the pages rather than
+    // the other way round.
     LaunchedEffect(Unit) {
         viewModel.pageJumps.collect { page ->
-            if (page in 0 until pagerState.pageCount) pagerState.scrollToPage(page)
+            if (page !in 0 until state.pageCount) return@collect
+            if (scrollingNow) {
+                scrollState.scrollToItem(page)
+            } else if (page < pagerState.pageCount) {
+                pagerState.scrollToPage(page)
+            }
         }
+    }
+
+    // Changing mode should land on the page being read, not at the beginning of
+    // whichever container had never been scrolled.
+    LaunchedEffect(state.readingMode) {
+        if (state.pageCount == 0) return@LaunchedEffect
+        val here = state.currentPage.coerceIn(0, state.pageCount - 1)
+        if (scrolling) scrollState.scrollToItem(here) else pagerState.scrollToPage(here)
     }
 
     // Jump to the remembered page once, after the document reports its length.
@@ -195,7 +297,11 @@ fun ReaderScreen(
         if (state.pageCount > 0 && !hasRestoredPosition) {
             hasRestoredPosition = true
             if (state.initialPage in 0 until state.pageCount) {
-                pagerState.scrollToPage(state.initialPage)
+                if (scrolling) {
+                    scrollState.scrollToItem(state.initialPage)
+                } else {
+                    pagerState.scrollToPage(state.initialPage)
+                }
             }
         }
     }
@@ -235,6 +341,25 @@ fun ReaderScreen(
         lastSelectedWords = selectedWords
     }
 
+    var showDisplay by remember { mutableStateOf(false) }
+    var showOutline by remember { mutableStateOf(false) }
+
+    // Opening find with the chrome hidden would put a text field on screen with
+    // no visible way back out of it.
+    LaunchedEffect(state.search.isOpen) {
+        if (state.search.isOpen) viewModel.onShowChrome()
+    }
+
+    // Arrived from the library's "search inside", carrying whatever was typed
+    // there. Once only: it is how the reader was opened, not a thing to be
+    // reapplied every time the state changes.
+    LaunchedEffect(findQuery) {
+        val query = findQuery ?: return@LaunchedEffect
+        viewModel.onOpenSearch()
+        val trimmed = query.trim()
+        if (trimmed.isNotEmpty()) viewModel.onSearchQueryChange(trimmed)
+    }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val lookupHint = state.lookupHint?.resolved()
     LaunchedEffect(lookupHint) {
@@ -264,24 +389,34 @@ fun ReaderScreen(
                     onToggleResults = viewModel::onToggleResults,
                 )
             } else {
-                Column {
-                ReaderBar(
-                    title = state.displayTitle,
-                    isBookmarked = state.isCurrentPageBookmarked,
-                    highlightColor = state.highlightColor,
-                    invertPages = state.invertPages,
-                    canUseTools = state.pageCount > 0,
-                    onBack = onBack,
-                    onFind = viewModel::onOpenSearch,
-                    onZoom = viewModel::onCycleZoom,
-                    onInvert = viewModel::onToggleInvertPages,
-                    onToggleBookmark = viewModel::onToggleBookmark,
-                    onColorChosen = viewModel::onHighlightColorChosen,
-                )
-                    ReadingProgress(
-                        page = state.currentPage,
-                        pageCount = state.pageCount,
-                    )
+                // Slid out of the way rather than switched off, so hiding the
+                // chrome is visibly the same object leaving rather than the
+                // page jumping upward by the height of a bar.
+                AnimatedVisibility(
+                    visible = state.isChromeVisible,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                ) {
+                    Column {
+                        ReaderBar(
+                            title = state.displayTitle,
+                            isBookmarked = state.isCurrentPageBookmarked,
+                            highlightColor = state.highlightColor,
+                            hasOutline = state.hasOutline,
+                            canUseTools = state.pageCount > 0,
+                            onBack = onBack,
+                            onFind = viewModel::onOpenSearch,
+                            onOutline = { showOutline = true },
+                            onDisplay = { showDisplay = true },
+                            onToggleBookmark = viewModel::onToggleBookmark,
+                            onColorChosen = viewModel::onHighlightColorChosen,
+                        )
+                        PageScrubber(
+                            page = state.currentPage,
+                            pageCount = state.pageCount,
+                            onGoToPage = viewModel::onGoToPage,
+                        )
+                    }
                 }
             }
         },
@@ -294,7 +429,7 @@ fun ReaderScreen(
                     // A near-black surround while pages are inverted, whatever
                     // the app theme is. A pale gutter around a black page is a
                     // bright band right next to what you are reading.
-                    if (state.invertPages) {
+                    if (state.isInverted) {
                         InvertedSurround
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -317,20 +452,28 @@ fun ReaderScreen(
                 )
 
                 else -> {
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        // One page either side, so a swipe lands on a rendered
-                        // page instead of a placeholder.
-                        beyondViewportPageCount = 1,
-                        // A drag while zoomed in has to pan the page, not turn
-                        // it; otherwise the magnified view is unusable.
-                        userScrollEnabled = !state.isZoomed,
-                    ) { index ->
+                    // One description of a page, drawn by whichever container
+                    // is in charge. Written once because the two reading modes
+                    // differ in how pages are arranged and in nothing else —
+                    // selection, search highlights, zoom and the tap that hides
+                    // the bar all have to behave identically, and two copies of
+                    // this is two places for them to stop doing so.
+                    val drawPage: @Composable (Int) -> Unit = { index ->
                         PdfPage(
                             index = index,
                             zoom = state.zoom,
-                            invert = state.invertPages,
+                            cropMargins = state.cropMargins,
+                            // In scroll mode the magnification is the width of
+                            // the column rather than a transform on the page,
+                            // so the page is drawn unscaled and simply rendered
+                            // wider. Scaling inside a lazy list would paint each
+                            // page outside the slot the list had measured for
+                            // it. The zoom itself is still passed in full: the
+                            // gestures have to know what it currently is, or a
+                            // double tap in scroll mode magnifies for ever and
+                            // never puts the page back.
+                            applyScale = !scrolling,
+                            tint = state.pageTint,
                             render = viewModel::renderPage,
                             // Passed in rather than read inside, so stepping to
                             // the next match re-runs the effect that fetches the
@@ -341,7 +484,16 @@ fun ReaderScreen(
                             highlights = { widthPx, heightPx ->
                                 viewModel.matchHighlights(index, widthPx, heightPx)
                             },
+                            savedWords = { widthPx, heightPx ->
+                                viewModel.savedWordHighlights(index, widthPx, heightPx)
+                            },
+                            savedWordsKey = if (state.markSavedWords) {
+                                state.savedWords
+                            } else {
+                                emptySet<String>()
+                            },
                             onZoomChanged = viewModel::onZoomChanged,
+                            onTap = viewModel::onToggleChrome,
                             onSelectPreview = { x1, y1, x2, y2, w, h ->
                                 viewModel.onSelectionPreview(index, x1, y1, x2, y2, w, h)
                             },
@@ -350,7 +502,7 @@ fun ReaderScreen(
                                 // sheet that animates up as the page slides
                                 // under it fights the fling, and both look
                                 // broken.
-                                if (pagerState.isScrollInProgress) {
+                                if (!scrolling && pagerState.isScrollInProgress) {
                                     viewModel.onSelectionCancelled()
                                 } else {
                                     viewModel.onSelectionCommitted(index, x1, y1, x2, y2, w, h)
@@ -375,19 +527,53 @@ fun ReaderScreen(
                                     ?.boundsPx
                                     .orEmpty(),
                             highlightColor = state.highlightColor,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = if (scrolling) {
+                                Modifier.fillMaxWidth()
+                            } else {
+                                Modifier.fillMaxSize()
+                            },
                         )
                     }
 
-                    PagePill(
-                        page = state.currentPage + 1,
-                        pageCount = state.pageCount,
-                        zoom = state.zoom,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding()
-                            .padding(bottom = Space.lg),
-                    )
+                    if (scrolling) {
+                        ScrollingPages(
+                            pageCount = state.pageCount,
+                            zoom = state.zoom,
+                            listState = scrollState,
+                            drawPage = drawPage,
+                        )
+                    } else {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize(),
+                            // One page either side, so a swipe lands on a
+                            // rendered page instead of a placeholder.
+                            beyondViewportPageCount = 1,
+                            // A drag while zoomed in has to pan the page, not
+                            // turn it; otherwise the magnified view is unusable.
+                            userScrollEnabled = !state.isZoomed,
+                        ) { index -> drawPage(index) }
+                    }
+
+                    // Goes with the bar. It is the same piece of furniture —
+                    // the app telling you where you are — and leaving it behind
+                    // when the bar slides away would mean a tap on the page
+                    // cleared everything except one floating pill.
+                    AnimatedVisibility(
+                        visible = state.isChromeVisible,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    ) {
+                        PagePill(
+                            page = state.currentPage + 1,
+                            pageCount = state.pageCount,
+                            zoom = state.zoom,
+                            modifier = Modifier
+                                .navigationBarsPadding()
+                                .padding(bottom = Space.lg),
+                        )
+                    }
                 }
             }
 
@@ -435,6 +621,31 @@ fun ReaderScreen(
         }
     }
 
+    if (showDisplay) {
+        DisplaySheet(
+            tint = state.pageTint,
+            cropMargins = state.cropMargins,
+            readingMode = state.readingMode,
+            zoom = state.zoom,
+            onTintChosen = viewModel::onPageTintChosen,
+            onToggleCrop = viewModel::onToggleCropMargins,
+            onReadingModeChosen = viewModel::onReadingModeChosen,
+            markSavedWords = state.markSavedWords,
+            onToggleMarkSavedWords = viewModel::onToggleMarkSavedWords,
+            onZoomChosen = viewModel::onZoomChanged,
+            onDismiss = { showDisplay = false },
+        )
+    }
+
+    if (showOutline && state.hasOutline) {
+        OutlineSheet(
+            outline = state.outline,
+            currentPage = state.currentPage,
+            onGoToPage = viewModel::onGoToPage,
+            onDismiss = { showOutline = false },
+        )
+    }
+
     state.lookup?.let { lookup ->
         WordLookupSheet(
             lookup = lookup,
@@ -449,12 +660,20 @@ fun ReaderScreen(
 }
 
 /**
- * The reader's only chrome: back, the title, and the four things you actually
+ * The reader's only chrome: back, the title, and the three things you actually
  * do while reading.
  *
+ * It used to carry four buttons — find, zoom, invert, bookmark — which left a
+ * book's title about half the width of the screen and still had nowhere to put
+ * the settings that matter most on a phone. Zoom and invert were never actions:
+ * they are how the page is drawn, they are changed rarely, and they belong
+ * together in a sheet with margin cropping and the scroll mode. What is left on
+ * the bar is find, the contents, and the bookmark, plus the way into that
+ * sheet.
+ *
  * The highlight colour lives on a long press of the bookmark button. It is a
- * once-a-document choice, and giving it a fifth permanent slot would have cost
- * the title what little room it has.
+ * once-a-document choice, and giving it a permanent slot would cost the title
+ * the room this rearrangement just won back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -462,12 +681,13 @@ private fun ReaderBar(
     title: String,
     isBookmarked: Boolean,
     highlightColor: Int,
-    invertPages: Boolean,
+    /** Whether the document has a contents worth offering a button for. */
+    hasOutline: Boolean,
     canUseTools: Boolean,
     onBack: () -> Unit,
     onFind: () -> Unit,
-    onZoom: () -> Unit,
-    onInvert: () -> Unit,
+    onOutline: () -> Unit,
+    onDisplay: () -> Unit,
     onToggleBookmark: () -> Unit,
     onColorChosen: (Int) -> Unit,
 ) {
@@ -500,23 +720,20 @@ private fun ReaderBar(
                     contentDescription = stringResource(R.string.reader_find),
                 )
             }
-            IconButton(onClick = onZoom, enabled = canUseTools) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_zoom_in),
-                    contentDescription = stringResource(R.string.reader_zoom),
-                )
+            // Only for a document that has one. A permanently greyed button is
+            // a promise the app cannot keep for most scans.
+            if (hasOutline) {
+                IconButton(onClick = onOutline, enabled = canUseTools) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_toc),
+                        contentDescription = stringResource(R.string.reader_contents),
+                    )
+                }
             }
-            IconButton(onClick = onInvert, enabled = canUseTools) {
+            IconButton(onClick = onDisplay, enabled = canUseTools) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_invert_colors),
-                    contentDescription = stringResource(
-                        if (invertPages) R.string.reader_invert_on else R.string.reader_invert_off,
-                    ),
-                    tint = if (invertPages) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    painter = painterResource(R.drawable.ic_display),
+                    contentDescription = stringResource(R.string.reader_display),
                 )
             }
             Box {
@@ -713,37 +930,6 @@ private fun SearchBar(
     }
 }
 
-/**
- * How far through the document you are, as a hairline under the bar.
- *
- * "4 / 31" is a fact you have to do arithmetic on. A line you have to do
- * nothing to is the difference between knowing you are near the end and working
- * it out, and it costs the page two pixels to say so.
- */
-@Composable
-private fun ReadingProgress(page: Int, pageCount: Int) {
-    if (pageCount <= 1) return
-    val fraction by animateFloatAsState(
-        targetValue = ((page + 1).toFloat() / pageCount).coerceIn(0f, 1f),
-        label = "readingProgress",
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(ProgressLineHeight)
-            .background(MaterialTheme.colorScheme.surface),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(fraction)
-                .height(ProgressLineHeight)
-                // Quiet on purpose: it is there to be glanced at, never read.
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
-        )
-    }
-}
-
-private val ProgressLineHeight = 2.dp
 
 /**
  * The floating page counter, in place of a whole bar.
@@ -770,8 +956,14 @@ private fun PagePill(
     val label = if (zoom > 1.01f) "$position  ·  $zoomLabel" else position
     Box(
         modifier = modifier
+            // Opaque, and lifted off the page. It used to be nine-tenths of the
+            // surface colour, which was fine while there was always a gutter
+            // under it — but a page with its margins trimmed reaches the bottom
+            // of the screen, so the last line of type showed through the pill
+            // reporting which page it was on.
+            .shadow(elevation = PillElevation, shape = RoundedCornerShape(50))
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = Space.lg, vertical = Space.sm),
     ) {
         Text(
@@ -779,6 +971,51 @@ private fun PagePill(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
+    }
+}
+
+/**
+ * Every page in one strip, for readers who would rather scroll than turn.
+ *
+ * Magnification here is the width of the column rather than a transform on each
+ * page: a lazy list measures a slot for an item and then draws it, so a page
+ * scaled up inside its slot paints over its neighbours and scrolls at the wrong
+ * speed. Widening the column instead makes each page render larger for real —
+ * sharper, not just bigger — and the sideways scroll is what reaches the part
+ * of it that no longer fits.
+ */
+@Composable
+private fun ScrollingPages(
+    pageCount: Int,
+    zoom: Float,
+    listState: LazyListState,
+    drawPage: @Composable (Int) -> Unit,
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val columnWidth = maxWidth * zoom
+        val horizontal = rememberScrollState()
+        // Re-centred when the magnification goes back to nothing, so leaving a
+        // zoomed page does not leave the column parked off to one side with a
+        // band of gutter down the edge of the screen.
+        LaunchedEffect(zoom) {
+            if (zoom <= 1.01f) horizontal.scrollTo(0)
+        }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .horizontalScroll(horizontal, enabled = zoom > 1.01f),
+            // A real gap between pages, because in a strip the only thing
+            // saying where one page ends and the next begins is the space.
+            verticalArrangement = Arrangement.spacedBy(Space.md),
+            contentPadding = PaddingValues(vertical = Space.md),
+        ) {
+            items(pageCount, key = { it }) { index ->
+                Box(modifier = Modifier.width(columnWidth)) {
+                    drawPage(index)
+                }
+            }
+        }
     }
 }
 
@@ -791,11 +1028,41 @@ private fun PagePill(
 private fun PdfPage(
     index: Int,
     zoom: Float,
-    invert: Boolean,
+    /**
+     * Whether the zoom is drawn as a transform on this page.
+     *
+     * False in scroll mode, where the column is widened instead. The page still
+     * has to be told the zoom either way, because the gestures read it.
+     */
+    applyScale: Boolean,
+    /**
+     * Whether margins are being trimmed.
+     *
+     * Passed in only so that this page is re-rendered when it changes. The
+     * renderer reads the setting itself; without it named here as well, the
+     * effect that fetches the bitmap keys on the page index and the measured
+     * width alone — neither of which moves when the switch is flicked — and the
+     * reader is left looking at the uncropped page it already had.
+     */
+    cropMargins: Boolean,
+    tint: PageTint,
     render: suspend (index: Int, widthPx: Int) -> Bitmap?,
     searchMatch: PdfMatch?,
     highlights: suspend (widthPx: Int, heightPx: Int) -> List<RectF>,
+    /** Where words the reader has already saved sit on this page. */
+    savedWords: suspend (widthPx: Int, heightPx: Int) -> List<RectF>,
+    /**
+     * The saved words themselves, used only as the key that re-runs the
+     * lookup.
+     *
+     * The set rather than its size: saving one word and unsaving another leaves
+     * the count where it was, and a page that then keeps its old underlines is
+     * marking a word the reader has just removed.
+     */
+    savedWordsKey: Any,
     onZoomChanged: (Float) -> Unit,
+    /** A single tap on the page, which hides the chrome and puts it back. */
+    onTap: () -> Unit,
     onSelectPreview: (
         startXPx: Float, startYPx: Float,
         endXPx: Float, endYPx: Float,
@@ -814,6 +1081,9 @@ private fun PdfPage(
     modifier: Modifier = Modifier,
 ) {
     val haptics = LocalHapticFeedback.current
+    // Read here rather than inside the draw scope, which is not a composable
+    // and cannot reach the theme.
+    val savedMark = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
     BoxWithConstraints(
         // Without this a magnified page paints straight over the pages either
         // side of it in the pager, so page 1 at 2x shows a slice of page 2.
@@ -821,22 +1091,35 @@ private fun PdfPage(
         contentAlignment = Alignment.Center,
     ) {
         val widthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
-        var bitmap by remember(index, widthPx) { mutableStateOf<Bitmap?>(null) }
+        // Kept across a change of width rather than cleared, so a page being
+        // re-rendered at a new size goes on showing the size it had instead of
+        // blinking to a spinner and back.
+        var bitmap by remember(index) { mutableStateOf<Bitmap?>(null) }
         var offset by remember(index) { mutableStateOf(Offset.Zero) }
         // The gesture handlers outlive the composition that started them, so
         // they have to read the zoom through a holder rather than capture it —
         // a captured value goes stale the moment the first pinch changes it.
         val currentZoom by rememberUpdatedState(zoom)
-        val isZoomed = zoom > 1.01f
+        val isZoomed = applyScale && zoom > 1.01f
+        // What this page is actually drawn at, which is 1 in scroll mode however
+        // magnified the column is.
+        val drawnZoom = if (applyScale) zoom else 1f
 
-        LaunchedEffect(index, widthPx) {
-            bitmap = render(index, widthPx)
+        LaunchedEffect(index, widthPx, cropMargins) {
+            // A page already on screen waits a moment before being redrawn at a
+            // new width. In scroll mode the magnification *is* the width of the
+            // column, so a pinch walks it through every value in between — and
+            // without this pause each one of those was a full re-render of every
+            // page on screen. The first render of a page never waits, because
+            // there is nothing to look at until it lands.
+            if (bitmap != null) delay(RENDER_SETTLE_MS)
+            bitmap = render(index, widthPx) ?: bitmap
         }
 
         // Panning only makes sense while magnified; snapping back on the way out
         // avoids leaving the page parked off-centre.
-        LaunchedEffect(zoom) {
-            if (zoom <= 1.01f) offset = Offset.Zero
+        LaunchedEffect(drawnZoom) {
+            if (drawnZoom <= 1.01f) offset = Offset.Zero
         }
 
         val rendered = bitmap
@@ -849,6 +1132,7 @@ private fun PdfPage(
                 // letterboxing to compensate for.
                 var drawnSize by remember { mutableStateOf(IntSize.Zero) }
                 var searchRects by remember(index, rendered) { mutableStateOf(emptyList<RectF>()) }
+                var savedRects by remember(index, rendered) { mutableStateOf(emptyList<RectF>()) }
 
                 LaunchedEffect(index, rendered, drawnSize, searchMatch) {
                     searchRects = if (searchMatch != null && drawnSize.width > 0) {
@@ -858,6 +1142,13 @@ private fun PdfPage(
                     }
                 }
 
+                // Off the main thread and after the page is already on screen:
+                // walking a page's text is not free, and nothing about the page
+                // waits for the answer.
+                LaunchedEffect(index, rendered, savedWordsKey) {
+                    savedRects = savedWords(rendered.width, rendered.height)
+                }
+
                 Image(
                     bitmap = rendered.asImageBitmap(),
                     contentDescription = stringResource(
@@ -865,14 +1156,14 @@ private fun PdfPage(
                         index + 1,
                     ),
                     contentScale = ContentScale.Fit,
-                    colorFilter = if (invert) InvertFilter else null,
+                    colorFilter = filterFor(tint),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = Space.sm, vertical = Space.sm)
                         .aspectRatio(rendered.width.toFloat() / rendered.height.toFloat())
                         .graphicsLayer {
-                            scaleX = zoom
-                            scaleY = zoom
+                            scaleX = drawnZoom
+                            scaleY = drawnZoom
                             // Anchored at the top, not the centre. A page's text
                             // starts at the top, so centre-anchored zoom throws you
                             // into the middle of the margin and looks broken.
@@ -894,7 +1185,7 @@ private fun PdfPage(
                         // paper on a black desk has no edge at all, and a page
                         // pushed around while magnified has nothing to push.
                         .then(
-                            if (invert) {
+                            if (tint == PageTint.INVERT) {
                                 Modifier.border(1.dp, InvertedPageEdge)
                             } else {
                                 Modifier
@@ -973,6 +1264,7 @@ private fun PdfPage(
                             minZoom = ReaderViewModel.MIN_ZOOM,
                             magnified = DOUBLE_TAP_ZOOM,
                             onZoomChanged = onZoomChanged,
+                            onTap = onTap,
                         )
                         // Press and hold picks a word; keep dragging and the
                         // selection grows to a phrase. One gesture, so there is
@@ -1035,6 +1327,23 @@ private fun PdfPage(
                                 cornerRadius = corner,
                             )
 
+                            // Underlined rather than blocked in. These are
+                            // words already worked on, so they are a note in
+                            // the margin of the page, not something being
+                            // pointed at — a run of filled highlights across a
+                            // page you are trying to read is the page shouting.
+                            savedRects.forEach { box ->
+                                val underline = SavedWordUnderline.toPx()
+                                drawRoundRect(
+                                    color = savedMark,
+                                    topLeft = Offset(
+                                        box.left * scaleX,
+                                        box.bottom * scaleY - underline,
+                                    ),
+                                    size = Size(box.width() * scaleX, underline),
+                                    cornerRadius = CornerRadius(underline / 2f),
+                                )
+                            }
                             lookupHighlights.forEach { box ->
                                 mark(box, HighlightColors.compose(highlightColor).copy(alpha = 0.4f))
                             }
@@ -1118,7 +1427,13 @@ private fun WordLookupSheet(
     onToggleTarget: () -> Unit,
     onShowDictionary: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // Deliberately *not* skipping the partial height, unlike every other sheet
+    // in the app. This one is an answer about a word on the page behind it, and
+    // at full height it covered the sentence the word came from — which is most
+    // of what makes a translation mean anything. It opens showing the word, its
+    // pronunciation, the translation and the star, and everything after that is
+    // there for anyone who drags it up.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
@@ -1428,8 +1743,11 @@ private fun ColorSwatch(
     onClick: () -> Unit,
 ) {
     Box(
+        // 40dp rather than 28. Nine colours in a dropdown at 28dp each was a
+        // row of targets smaller than a fingertip, spaced closer than one, and
+        // picking the wrong one silently recolours every bookmark made after.
         modifier = Modifier
-            .size(28.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(HighlightColors.compose(color))
             .clickable(onClick = onClick),
@@ -1443,7 +1761,7 @@ private fun ColorSwatch(
                     stringResource(HighlightColors.nameOf(color)),
                 ),
                 tint = Color.Black.copy(alpha = 0.7f),
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
     }

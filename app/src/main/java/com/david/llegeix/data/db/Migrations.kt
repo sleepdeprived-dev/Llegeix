@@ -139,3 +139,36 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN senseSource TEXT")
     }
 }
+
+/**
+ * Records how long a document is, so the app can say how far through it you are.
+ *
+ * Nullable with no default rather than a zero: "not opened yet" and "a document
+ * of no pages" are different facts, and only the first is true of every row
+ * that exists when this runs. Nothing is back-filled — the count comes from
+ * opening the file, and opening every PDF the library has ever seen in a
+ * migration would block the first launch after an update for as long as the
+ * reader's library is large.
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE documents ADD COLUMN pageCount INTEGER")
+    }
+}
+
+/**
+ * Gives every saved word a place in the practice deck.
+ *
+ * The three columns have defaults rather than being nullable, because unlike
+ * the columns added in 5→6 there is a right answer for a word saved before this
+ * existed: box zero, due now, never reviewed. A vocabulary list that has been
+ * building for months should arrive in the new deck as a deck, not as a hundred
+ * rows the scheduler has to be taught to ignore.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN box INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN dueAt INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN reviewCount INTEGER NOT NULL DEFAULT 0")
+    }
+}

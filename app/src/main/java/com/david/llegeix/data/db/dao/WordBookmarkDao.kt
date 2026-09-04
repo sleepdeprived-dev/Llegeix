@@ -38,6 +38,39 @@ interface WordBookmarkDao {
     @Query("SELECT COUNT(*) FROM word_bookmarks")
     fun observeCount(): Flow<Int>
 
+    /**
+     * The words due to be practised, oldest debt first.
+     *
+     * Ordered by when they fell due rather than at random so a session that is
+     * cut short has still dealt with the words that have been waiting longest.
+     */
+    @Query(
+        """
+        SELECT * FROM word_bookmarks
+        WHERE dueAt <= :now
+        ORDER BY dueAt ASC, createdAt ASC
+        LIMIT :limit
+        """,
+    )
+    fun observeDue(now: Long, limit: Int): Flow<List<WordBookmarkEntity>>
+
+    @Query("SELECT COUNT(*) FROM word_bookmarks WHERE dueAt <= :now")
+    fun observeDueCount(now: Long): Flow<Int>
+
+    /** Record an answer: which box the word is in now, and when to come back. */
+    @Query(
+        """
+        UPDATE word_bookmarks
+        SET box = :box, dueAt = :dueAt, reviewCount = reviewCount + 1
+        WHERE id = :id
+        """,
+    )
+    suspend fun recordReview(id: Long, box: Int, dueAt: Long)
+
+    /** Just the words, for marking the ones already saved on a page. */
+    @Query("SELECT word FROM word_bookmarks")
+    fun observeWords(): Flow<List<String>>
+
     /** Empties the table, for the "erase everything" action in Configuració. */
     @Query("DELETE FROM word_bookmarks")
     suspend fun clear()

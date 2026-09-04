@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +65,7 @@ import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.RecentSearches
+import com.david.llegeix.data.practice.Leitner
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import kotlinx.coroutines.launch
@@ -75,6 +81,7 @@ private enum class BookmarkTab(@param:StringRes val labelRes: Int) {
 @Composable
 fun BookmarksScreen(
     onOpenDocument: (uriString: String, title: String, page: Int?) -> Unit,
+    onPractise: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: BookmarksViewModel = viewModel(factory = BookmarksViewModel.Factory),
 ) {
@@ -85,6 +92,8 @@ fun BookmarksScreen(
     val wordQuery by viewModel.wordQuery.collectAsStateWithLifecycle()
     val wordsAlphabetical by viewModel.wordsAlphabetical.collectAsStateWithLifecycle()
     val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
+    val dueCount by viewModel.dueCount.collectAsStateWithLifecycle()
+    val savedPerDay by viewModel.savedPerDay.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     // The pager owns the position; the tab row follows it, so a swipe and a tap
     // cannot disagree about which tab is showing.
@@ -227,6 +236,12 @@ fun BookmarksScreen(
                     )
                 } else {
                     Column {
+                        PracticeHeader(
+                            savedCount = savedWords.size,
+                            dueCount = dueCount,
+                            savedPerDay = savedPerDay,
+                            onPractise = onPractise,
+                        )
                         WordControls(
                             query = wordQuery,
                             alphabetical = wordsAlphabetical,
@@ -277,6 +292,136 @@ fun BookmarksScreen(
         }
     }
 }
+
+/**
+ * What the saved words add up to, and the way into practising them.
+ *
+ * The list underneath is a record; this is the part that asks something of the
+ * reader. Saving a word and never meeting it again is the one reliable way not
+ * to learn it, and until this existed that was the only thing the app offered
+ * to do with a vocabulary list.
+ *
+ * The strip of bars is fourteen days of saving, drawn small. It is not
+ * analytics — there is nothing to drill into and no number written on it — it
+ * is there so a list that grows slowly still visibly grows.
+ */
+@Composable
+private fun PracticeHeader(
+    savedCount: Int,
+    dueCount: Int,
+    savedPerDay: List<Int>,
+    onPractise: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .padding(top = Space.lg)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(Space.lg),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (dueCount > 0) {
+                        pluralStringResource(R.plurals.practice_due, dueCount, dueCount)
+                    } else {
+                        stringResource(R.string.practice_nothing_due)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.practice_saved_total,
+                        savedCount,
+                        savedCount,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            Button(onClick = onPractise, enabled = savedCount > 0) {
+                Text(stringResource(R.string.practice_start))
+            }
+        }
+        if (savedPerDay.any { it > 0 }) {
+            ActivityStrip(
+                counts = savedPerDay,
+                modifier = Modifier.padding(top = Space.lg),
+            )
+        }
+    }
+}
+
+/**
+ * Fourteen days of saving, as fourteen bars.
+ *
+ * Scaled against the busiest day rather than against a fixed ceiling, so a
+ * quiet fortnight is still legible instead of being fourteen invisible stubs.
+ * Every day gets at least a mark, because a bar of no height reads as missing
+ * data rather than as a day with nothing in it.
+ */
+@Composable
+private fun ActivityStrip(counts: List<Int>, modifier: Modifier = Modifier) {
+    val peak = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.Bottom,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(ActivityStripHeight),
+    ) {
+        counts.forEach { count ->
+            val share = count.toFloat() / peak
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(if (count == 0) 0.12f else (0.25f + share * 0.75f))
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(
+                        if (count == 0) {
+                            MaterialTheme.colorScheme.surfaceContainerHighest
+                        } else {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                        },
+                    ),
+            )
+        }
+    }
+}
+
+private val ActivityStripHeight = 28.dp
+
+/**
+ * How well a saved word is known, as a short bar.
+ *
+ * Drawn only once the word has actually been answered about. Before that every
+ * word would wear an identical empty bar, which says nothing and puts a mark
+ * against every row in the list for the privilege.
+ */
+@Composable
+private fun BoxScore(box: Int, reviewed: Boolean, modifier: Modifier = Modifier) {
+    if (!reviewed) return
+    val filled = Leitner.progressOf(box)
+    Box(
+        modifier = modifier
+            .width(BoxScoreWidth)
+            .height(3.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(filled.coerceAtLeast(0.08f))
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+        )
+    }
+}
+
+private val BoxScoreWidth = 32.dp
 
 /**
  * Search and ordering for the saved words.
@@ -385,20 +530,35 @@ private fun SavedWordRow(
     ) {
         Row(verticalAlignment = Alignment.Top) {
             word.documentUri?.let { uri ->
+                // The gap is the row's rather than the cover's: applied inside
+                // the chain the padding came off the width the aspect ratio was
+                // then taken of, and the cover came out a third too narrow.
                 PdfCover(
                     uriString = uri,
                     width = ListCoverWidth,
                     modifier = Modifier
                         .width(ListCoverWidth)
-                        .aspectRatio(CoverAspectRatio)
-                        .padding(end = Space.lg),
+                        .aspectRatio(CoverAspectRatio),
                 )
+                Spacer(modifier = Modifier.width(Space.lg))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = word.word,
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = word.word,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    // How settled the word is, as five small marks. It is the
+                    // one thing the list could say that the reader cannot work
+                    // out by looking: which of these they actually know, as
+                    // against which they merely saved.
+                    BoxScore(
+                        box = word.box,
+                        reviewed = word.reviewCount > 0,
+                        modifier = Modifier.padding(start = Space.sm),
+                    )
+                }
                 if (!word.ipa.isNullOrBlank()) {
                     Text(
                         text = "[${word.ipa}]",

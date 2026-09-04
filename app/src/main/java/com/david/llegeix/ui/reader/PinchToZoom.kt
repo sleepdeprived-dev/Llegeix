@@ -72,8 +72,18 @@ fun Modifier.doubleTapToZoom(
     minZoom: Float,
     magnified: Float,
     onZoomChanged: (Float) -> Unit,
+    /**
+     * What a single tap does — hide the chrome, and put it back.
+     *
+     * It belongs in this detector rather than in one of its own. Two tap
+     * handlers on the same page both wait out the double-tap timeout and both
+     * fire, so a double tap to zoom would also have toggled the bar twice on
+     * its way there.
+     */
+    onTap: () -> Unit,
 ): Modifier = pointerInput(key) {
     detectTapGestures(
+        onTap = { onTap() },
         onDoubleTap = {
             val zoomed = currentZoom() > minZoom + ZOOM_EPSILON
             onZoomChanged(if (zoomed) minZoom else magnified)

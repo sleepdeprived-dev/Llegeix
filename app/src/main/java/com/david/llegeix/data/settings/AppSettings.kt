@@ -139,6 +139,48 @@ enum class LibraryLayout(val key: String) {
     }
 }
 
+/**
+ * What the page itself is tinted to, which is not the same question as the
+ * app's theme.
+ *
+ * A dark interface around a page that still looks like paper is a perfectly
+ * reasonable thing to want, and so is the opposite. [SEPIA] is here because
+ * [INVERT] is a blunt instrument: a full negative is right for reading a white
+ * page in the dark and wrong for reading one in a lit room, where the thing
+ * that actually helps is taking the glare off the white rather than replacing
+ * it with black.
+ */
+enum class PageTint(val key: String, @param:StringRes val labelRes: Int) {
+    NONE("none", R.string.reader_tint_none),
+    SEPIA("sepia", R.string.reader_tint_sepia),
+    INVERT("invert", R.string.reader_tint_invert),
+    ;
+
+    companion object {
+        fun fromKey(key: String?): PageTint =
+            entries.firstOrNull { it.key == key } ?: NONE
+    }
+}
+
+/**
+ * Whether pages are turned or scrolled.
+ *
+ * Both are right for different documents. A book is a sequence of pages and
+ * turning them is what it is for; a scanned handout, a paper with figures
+ * running across a page break, or anything read in short bursts is easier as
+ * one continuous strip.
+ */
+enum class ReadingMode(val key: String, @param:StringRes val labelRes: Int) {
+    PAGED("paged", R.string.reader_mode_paged),
+    SCROLL("scroll", R.string.reader_mode_scroll),
+    ;
+
+    companion object {
+        fun fromKey(key: String?): ReadingMode =
+            entries.firstOrNull { it.key == key } ?: PAGED
+    }
+}
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accent: AccentColor = AccentColor.SYSTEM,
@@ -162,7 +204,27 @@ data class AppSettings(
      * being emptied is not an erased library.
      */
     val deviceScanOptOut: Boolean = false,
-    val invertPages: Boolean = false,
+    val pageTint: PageTint = PageTint.NONE,
+    /**
+     * Trims the blank margins off a page before it is drawn.
+     *
+     * The single biggest legibility win available on a phone. An A4 page fitted
+     * to a phone's width is small, and a fifth of that width is usually paper
+     * with nothing on it; dropping the margins makes the type meaningfully
+     * bigger without magnifying anything, which is the difference between
+     * reading a page and panning around one.
+     */
+    val cropMargins: Boolean = false,
+    val readingMode: ReadingMode = ReadingMode.PAGED,
+    /**
+     * Underlines words already in the saved list, on the page itself.
+     *
+     * The saved words were a list somewhere else in the app; this puts them
+     * back where they were met. Reading a page and seeing four words you have
+     * already worked on marked in it is the most direct answer there is to "am
+     * I getting anywhere with this".
+     */
+    val markSavedWords: Boolean = true,
     /** ARGB for [AccentColor.CUSTOM]. Ignored by every other accent. */
     val customAccent: Int = DEFAULT_CUSTOM_ACCENT,
 )

@@ -11,9 +11,8 @@
     <!-- Navegació -->
     <string name="nav_library">Biblioteca</string>
     <string name="nav_dictionary">Diccionari</string>
-    <string name="nav_recent">Recents</string>
-    <string name="nav_bookmarks">Marcadors</string>
-    <string name="nav_folders">Carpetes</string>
+    <string name="nav_collections">Col·leccions</string>
+    <string name="nav_saved">Desat</string>
 
     <!-- Accions compartides -->
     <string name="action_cancel">Cancel·la</string>
@@ -30,7 +29,6 @@
     <string name="library_welcome_title">Comença la biblioteca</string>
     <string name="library_welcome_body">Deixa que Llegeix trobi els PDF que ja tens al dispositiu, o indica-li una sola carpeta.</string>
     <string name="library_sources">Fonts</string>
-    <string name="library_sources_open">Fonts…</string>
     <string name="sources_explainer">Tot el que mostra la biblioteca ve d\'aquí. Si desmarques una carpeta, l\'aplicació deixa de mostrar-la; no s\'esborra mai res del telèfon.</string>
     <string name="sources_scan_paused">Desactivat. Els teus PDF es queden on són.</string>
     <string name="sources_count_partial">Es mostren %1$d PDF de %2$d</string>
@@ -79,10 +77,10 @@
     <string name="library_read_later_empty_body">Marca un PDF com a \"Per llegir més tard\" des del seu menú i s\'anirà acumulant aquí.</string>
     <string name="library_no_matches_title">Cap coincidència</string>
     <string name="library_no_matches_body">Cap dels %1$d PDF no coincideix amb \"%2$s\".</string>
-    <string name="library_move_to_folder">Mou a una carpeta</string>
-    <string name="library_no_folders_yet">Encara no tens cap carpeta.</string>
-    <string name="library_new_folder_ellipsis">Carpeta nova…</string>
-    <string name="library_no_folder">Cap carpeta</string>
+    <string name="library_move_to_folder">Mou a una col·lecció</string>
+    <string name="library_no_folders_yet">Encara no tens cap col·lecció.</string>
+    <string name="library_new_folder_ellipsis">Col·lecció nova…</string>
+    <string name="library_no_folder">Cap col·lecció</string>
     <!-- La carpeta on està desat un PDF, a la línia de detall de la biblioteca. -->
     <string name="library_filed_in">A %1$s</string>
 
@@ -93,7 +91,7 @@
     <string name="document_remove_bookmark">Treu el marcador</string>
     <string name="document_add_bookmark">Afegeix un marcador a aquest PDF</string>
     <string name="document_remove_read_later">Treu de \"Per llegir més tard\"</string>
-    <string name="document_move_to_folder">Mou a una carpeta…</string>
+    <string name="document_move_to_folder">Mou a una col·lecció…</string>
     <string name="source_stop_watching">Deixa de vigilar %1$s</string>
 
     <!-- Etiquetes -->
@@ -117,30 +115,26 @@
     <string name="recent_subtitle">%1$s · %2$s</string>
 
     <!-- Marcadors -->
-    <string name="bookmarks_title">Marcadors</string>
+    <string name="bookmarks_title">Desat</string>
     <string name="bookmarks_tab_pdfs">PDF</string>
     <string name="bookmarks_tab_pages">Pàgines</string>
     <string name="bookmarks_tab_with_count">%1$s (%2$d)</string>
     <string name="bookmarks_pdfs_empty_title">Cap PDF amb marcador</string>
-    <string name="bookmarks_pdfs_empty_body">Afegeix un marcador a un PDF sencer des del seu menú a la biblioteca. Els PDF amb marcador també apareixen com a col·lecció \"Amb marcador\" dins de Carpetes.</string>
+    <string name="bookmarks_pdfs_empty_body">Marca un PDF sencer des del seu menú a la biblioteca, o llisca\'n la fila. Els PDF marcats també surten com a col·lecció «Amb estrella» a Col·leccions.</string>
     <string name="bookmarks_pages_empty_title">Cap pàgina amb marcador</string>
     <string name="bookmarks_pages_empty_body">Toca l\'estrella mentre llegeixes per marcar la pàgina on ets. Es desen aquí, a part dels PDF sencers.</string>
     <string name="bookmarks_page_detail">%1$s · %2$s</string>
-    <string name="bookmarked_collection_back">Torna a les carpetes</string>
-    <string name="bookmarked_collection_title">Amb marcador</string>
+    <string name="bookmarked_collection_back">Torna a les col·leccions</string>
+    <string name="bookmarked_collection_title">Amb estrella</string>
     <string name="bookmarked_collection_empty_title">Cap marcador</string>
     <string name="bookmarked_collection_empty_body">Afegeix un marcador a un PDF des del seu menú a la biblioteca i apareixerà aquí automàticament.</string>
 
     <!-- Carpetes -->
-    <string name="folders_title">Carpetes</string>
-    <string name="folders_new">Carpeta nova</string>
-    <string name="folders_empty_title">Cap carpeta pròpia</string>
-    <string name="folders_empty_body">Toca + per crear-ne una i després hi podràs moure PDF des de la biblioteca.</string>
-    <string name="folders_rename_title">Reanomena la carpeta</string>
-    <string name="folders_delete_title">Vols suprimir la carpeta?</string>
-    <string name="folders_delete_body">Els PDF que hi ha dins es queden al dispositiu: només deixen d\'estar en aquesta carpeta.</string>
-    <string name="folders_exists">Ja hi ha una carpeta anomenada \"%1$s\"</string>
-    <string name="folders_name_label">Nom de la carpeta</string>
+    <string name="folders_rename_title">Canvia el nom de la col·lecció</string>
+    <string name="folders_delete_title">Vols esborrar la col·lecció?</string>
+    <string name="folders_delete_body">Els PDF que hi ha es queden al dispositiu: només deixen d\'estar-hi arxivats.</string>
+    <string name="folders_exists">Ja hi ha una col·lecció que es diu «%1$s»</string>
+    <string name="folders_name_label">Nom de la col·lecció</string>
     <string name="folders_bookmarked_auto">S\'actualitza automàticament</string>
     <string name="folders_pinned">Fixada</string>
     <string name="folders_unpin">Deixa de fixar</string>
@@ -148,7 +142,7 @@
     <string name="folders_bookmark">Afegeix un marcador</string>
     <string name="folders_colour">Color…</string>
     <string name="folders_rename">Reanomena…</string>
-    <string name="folders_colour_title">Color de la carpeta</string>
+    <string name="folders_colour_title">Color de la col·lecció</string>
     <string name="folders_no_colour">Sense color</string>
     <string name="folders_empty_count">Buida</string>
     <!--
@@ -160,10 +154,10 @@
         <item quantity="many">%1$d PDF</item>
         <item quantity="other">%1$d PDF</item>
     </plurals>
-    <string name="folder_detail_back">Torna a les carpetes</string>
-    <string name="folder_detail_empty_title">Aquí no hi ha cap PDF</string>
-    <string name="folder_detail_empty_body">Fes servir \"Mou a una carpeta\" en un PDF de la biblioteca per afegir-l\'hi.</string>
-    <string name="folder_detail_remove">Treu de la carpeta</string>
+    <string name="folder_detail_back">Torna a les col·leccions</string>
+    <string name="folder_detail_empty_title">Aquesta col·lecció és buida</string>
+    <string name="folder_detail_empty_body">Afegeix-hi PDF i sortiran aquí, amb el punt on ets a cadascun.</string>
+    <string name="folder_detail_remove">Treu de la col·lecció</string>
 
     <!-- Lector -->
     <string name="reader_back">Torna a la biblioteca</string>
@@ -204,8 +198,6 @@
     <string name="reader_find_limit">Només es llisten les %1$d primeres coincidències. Cerca alguna cosa més llarga per acotar-ho.</string>
     <string name="reader_zoom">Amplia</string>
     <string name="reader_zoom_level">%1$s×</string>
-    <string name="reader_invert_on">Colors de la pàgina invertits</string>
-    <string name="reader_invert_off">Inverteix els colors de la pàgina</string>
     <!-- El comptador de pàgines flotant, p. ex. «12 / 340». -->
     <string name="reader_page_position">Pàgina %1$d de %2$d</string>
     <string name="library_view_grid">Vista de graella</string>
@@ -282,13 +274,10 @@
     <string name="settings_privacy_open">Política de privadesa</string>
     <string name="settings_privacy_summary">El Llegeix no recull res.</string>
     <string name="privacy_title">Política de privadesa</string>
-    <string name="privacy_body">El Llegeix no recull cap dada teva. Cap ni una.\n\nNo hi ha analítica, ni informes d\'error, ni publicitat, ni comptes. Res del que fas a l\'aplicació s\'envia enlloc, i no hi ha cap servidor seu on enviar-ho.\n\nTot el que l\'aplicació recorda — les carpetes, les etiquetes, els marcadors, les paraules desades, per on vas llegint i la configuració — es desa només en aquest dispositiu, a l\'emmagatzematge privat de l\'aplicació. Si la desinstal·les, tot això s\'esborra, i no se\'n fa mai cap còpia de seguretat al núvol. Si canvies de telèfon amb la transferència directa d\'Android, s\'ho endú amb tu: del telèfon vell al nou, sense passar pel servidor de ningú.\n\nEls teus PDF es llegeixen d\'allà on ja són al dispositiu. No es copien mai, ni es pugen enlloc, ni els obre res més que aquesta aplicació.\n\nL\'aplicació fa servir internet per a dues coses, i cap de les dues no va sobre tu.\n\nLa primera és baixar els models de traducció d\'ML Kit de Google, un cop per idioma, perquè tocar una paraula la pugui traduir. Aquesta petició va a Google i està subjecta a la política de privadesa de Google; l\'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot fora de línia.\n\nLa segona és comprovar si hi ha una versió nova de l\'aplicació, i només passa quan prems el botó de Configuració. L\'aplicació no ho comprova mai pel seu compte, ni en obrir-se ni en segon pla. Pregunta a GitHub quina és la versió més nova i, si tries instal·lar-la, la baixa d\'allà. La petició no porta cap compte, cap identificador ni res dels teus documents — és la mateixa petició anònima que pot fer qualsevol d\'una pàgina pública — tot i que GitHub, com qualsevol lloc web, pot veure des de quina adreça et connectes.\n\nL\'aplicació demana permís per llegir fitxers per poder trobar els teus PDF, accés a la xarxa per a aquestes dues coses, i permís per passar una actualització a l\'instal·lador d\'Android, que és qui la instal·la de debò i abans t\'ho pregunta.</string>
+    <string name="privacy_body">El Llegeix no recull cap dada teva. Cap ni una.\n\nNo hi ha analítica, ni informes d\'error, ni publicitat, ni comptes. Res del que fas a l\'aplicació s\'envia enlloc, i no hi ha cap servidor seu on enviar-ho.\n\nTot el que l\'aplicació recorda — les col·leccions, les etiquetes, els marcadors, les paraules desades, per on vas llegint i la configuració — es desa només en aquest dispositiu, a l\'emmagatzematge privat de l\'aplicació. Si la desinstal·les, tot això s\'esborra, i no se\'n fa mai cap còpia de seguretat al núvol. Si canvies de telèfon amb la transferència directa d\'Android, s\'ho endú amb tu: del telèfon vell al nou, sense passar pel servidor de ningú.\n\nEls teus PDF es llegeixen d\'allà on ja són al dispositiu. No es copien mai, ni es pugen enlloc, ni els obre res més que aquesta aplicació.\n\nL\'aplicació fa servir internet per a dues coses, i cap de les dues no va sobre tu.\n\nLa primera és baixar els models de traducció d\'ML Kit de Google, un cop per idioma, perquè tocar una paraula la pugui traduir. Aquesta petició va a Google i està subjecta a la política de privadesa de Google; l\'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot fora de línia.\n\nLa segona és comprovar si hi ha una versió nova de l\'aplicació, i només passa quan prems el botó de Configuració. L\'aplicació no ho comprova mai pel seu compte, ni en obrir-se ni en segon pla. Pregunta a GitHub quina és la versió més nova i, si tries instal·lar-la, la baixa d\'allà. La petició no porta cap compte, cap identificador ni res dels teus documents — és la mateixa petició anònima que pot fer qualsevol d\'una pàgina pública — tot i que GitHub, com qualsevol lloc web, pot veure des de quina adreça et connectes.\n\nL\'aplicació demana permís per llegir fitxers per poder trobar els teus PDF, accés a la xarxa per a aquestes dues coses, i permís per passar una actualització a l\'instal·lador d\'Android, que és qui la instal·la de debò i abans t\'ho pregunta.</string>
     <string name="privacy_updated">Darrera actualització: 4 de setembre de 2026</string>
 
     <!-- Vistos recentment -->
-    <string name="recent_remove">Treu de recents</string>
-    <string name="recent_remove_title">Vols treure %1$s?</string>
-    <string name="recent_remove_body">Desapareixerà de Vistos recentment. El PDF es queda al dispositiu.</string>
 
     <!-- Paraules desades -->
     <!-- Diccionari -->
@@ -336,7 +325,7 @@
     <string name="settings_erase">Esborra-ho tot</string>
     <string name="settings_erase_summary">Deixa l\'aplicació tal com estava el dia que la vas instal·lar.</string>
     <string name="erase_title">Vols esborrar-ho tot?</string>
-    <string name="erase_body">Això buida la biblioteca, les carpetes, els marcadors, les paraules desades i les etiquetes, retorna totes les carpetes a què has donat accés a l\'aplicació, esborra els models de traducció baixats i torna totes les opcions al seu valor inicial. També desactiva l\'escaneig de tot el dispositiu, perquè la biblioteca no es torni a omplir tota sola; el pots tornar a activar a Fonts.\n\nEls teus PDF no es toquen. Es queden exactament on són al telèfon.\n\nAixò no es pot desfer.</string>
+    <string name="erase_body">Això buida la biblioteca, les col·leccions, els marcadors, les paraules desades i les etiquetes, retorna totes les carpetes a què has donat accés a l\'aplicació, esborra els models de traducció baixats i torna totes les opcions al seu valor inicial. També desactiva l\'escaneig de tot el dispositiu, perquè la biblioteca no es torni a omplir tota sola; el pots tornar a activar des de les fonts que hi ha a dalt de la biblioteca.\n\nEls teus PDF no es toquen. Es queden exactament on són al telèfon.\n\nAixò no es pot desfer.</string>
     <string name="erase_confirm">Esborra-ho tot</string>
     <string name="erase_running">S\'està esborrant\u2026</string>
     <string name="settings_about">Quant a</string>
@@ -366,5 +355,111 @@
     <string name="settings_update_manual">L\'aplicació només ho comprova quan prems el botó, i no instal·la res pel seu compte.</string>
 
     <string name="settings_version">Versió %1$s</string>
+
+    <!--
+        La tira de fonts a dalt de la biblioteca.
+
+        Ha substituït un element del menú de tres punts. Qui no troba un llibre
+        ho pregunta a la biblioteca, i per tant la resposta hi ha de ser.
+    -->
+    <string name="library_source_device">Tot el dispositiu</string>
+    <string name="library_source_add">Afegeix</string>
+    <string name="library_source_manage">Gestiona les fonts</string>
+
+    <!-- El prestatge de llibres començats, a dalt de la biblioteca. -->
+    <string name="library_continue_title">Continua llegint</string>
+    <string name="library_continue_history">Historial</string>
+    <!-- "Pàgina 34 de 210 · 16%". El %% doble és un signe de percentatge. -->
+    <string name="library_continue_position">Pàgina %1$d de %2$d · %3$d%%</string>
+    <string name="library_read_progress">%1$d%% llegit</string>
+    <string name="library_read_finished">Llegit</string>
+
+    <!--
+        Col·leccions: els prestatges que fa el lector, per oposició a les
+        carpetes que el telèfon ja té. Compartien paraula i icona, i això feia
+        impossible distingir a cop d\'ull dues coses ben diferents.
+    -->
+    <string name="collections_title">Col·leccions</string>
+    <string name="collections_new">Col·lecció nova</string>
+    <string name="collections_empty_title">Encara no hi ha col·leccions</string>
+    <string name="collections_empty_body">Una col·lecció és un prestatge que fas tu: una assignatura, un autor, allò que estàs treballant. Fes-ne una i posa-hi PDFs.</string>
+    <string name="collections_add_action">Afegeix PDFs</string>
+    <string name="collections_add_title">Afegeix a %1$s</string>
+    <string name="collections_add_search">Cerca als teus PDFs</string>
+    <string name="collections_add_none_yet">Encara no hi ha res: marca el que vulguis.</string>
+    <string name="collections_add_no_matches">Res del dispositiu no hi coincideix.</string>
+    <string name="collections_add_in_other">A «%1$s»</string>
+    <plurals name="collections_add_chosen">
+        <item quantity="one">%1$d en aquesta col·lecció</item>
+        <item quantity="many">%1$d en aquesta col·lecció</item>
+        <item quantity="other">%1$d en aquesta col·lecció</item>
+    </plurals>
+
+    <!--
+        El full de visualització del lector. El zoom i la inversió eren botons a
+        la barra; són opcions, no accions, i ara viuen aquí amb les dues que més
+        importen en un telèfon: retallar els marges i llegir desplaçant.
+    -->
+    <string name="reader_display">Visualització</string>
+    <string name="reader_contents">Índex</string>
+    <string name="reader_tint">Pàgina</string>
+    <string name="reader_tint_none">Paper</string>
+    <string name="reader_tint_sepia">Càlid</string>
+    <string name="reader_tint_invert">Fosc</string>
+    <string name="reader_mode">Pàgines</string>
+    <string name="reader_mode_paged">Passa</string>
+    <string name="reader_mode_scroll">Desplaça</string>
+    <string name="reader_crop">Retalla els marges</string>
+    <string name="reader_crop_summary">Elimina les vores en blanc perquè la lletra surti més gran, sense fer zoom.</string>
+
+    <!--
+        El joc de repàs. Una llista de vocabulari que només es fulleja no ensenya
+        res a ningú, i per això les paraules desades també són un joc de cartes.
+    -->
+    <string name="practice_title">Repàs</string>
+    <string name="practice_start">Repassa</string>
+    <string name="practice_position">%1$d / %2$d</string>
+    <string name="practice_tap_to_reveal">Toca per veure la resposta</string>
+    <string name="practice_again_soon">Encara no</string>
+    <string name="practice_knew_it">Ho sabia</string>
+    <string name="practice_here">Aquí: %1$s</string>
+    <string name="practice_nothing_due">Ara mateix no toca res</string>
+    <string name="practice_finished_title">Sessió acabada</string>
+    <string name="practice_finished_body">N\'has encertat %1$d de %2$d. Les que has fallat tornaran d\'aquí a uns minuts; la resta, més endavant.</string>
+    <string name="practice_again">Una altra</string>
+    <string name="practice_done">Acaba</string>
+    <string name="practice_all_done_title">No toca res</string>
+    <string name="practice_all_done_body">Totes les paraules desades s\'han repassat fa poc. Tornaran quan toqui: com millor te\'n saps una, més triga a tornar.</string>
+    <string name="practice_none_saved_title">Encara no hi ha paraules desades</string>
+    <string name="practice_none_saved_body">Mantén premuda una paraula mentre llegeixes, o cerca-la al diccionari, i marca-la amb l\'estrella. Les paraules marcades apareixen aquí com a cartes.</string>
+    <plurals name="practice_due">
+        <item quantity="one">%1$d paraula per repassar</item>
+        <item quantity="many">%1$d paraules per repassar</item>
+        <item quantity="other">%1$d paraules per repassar</item>
+    </plurals>
+    <plurals name="practice_saved_total">
+        <item quantity="one">%1$d paraula desada</item>
+        <item quantity="many">%1$d paraules desades</item>
+        <item quantity="other">%1$d paraules desades</item>
+    </plurals>
+
+    <string name="reader_mark_saved">Marca les paraules desades</string>
+    <string name="reader_mark_saved_summary">Subratlla les paraules que ja tens a la llista allà on surten a la pàgina.</string>
+
+    <string name="action_undo">Desfés</string>
+    <string name="recent_removed">Tret de l\'historial</string>
+
+    <string name="document_search_inside">Cerca a dins…</string>
+
+    <!--
+        Les etiquetes de la fila que llisques. Tenen text propi i no el del menú:
+        un element de menú té una línia sencera i pot dir "Afegeix un marcador a
+        aquest PDF"; una etiqueta de lliscament comparteix fila amb allò que
+        llisques i es talla tan bon punt passa de la meitat.
+    -->
+    <string name="swipe_star">Estrella</string>
+    <string name="swipe_unstar">Treu-la</string>
+    <string name="swipe_read_later">Per llegir</string>
+    <string name="swipe_not_read_later">Ja no</string>
 
 </resources>

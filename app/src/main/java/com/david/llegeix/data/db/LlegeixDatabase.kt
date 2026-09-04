@@ -31,7 +31,7 @@ import com.david.llegeix.data.db.entity.WordBookmarkEntity
         DocumentTagEntity::class,
         FolderRuleEntity::class,
     ],
-    version = 6,
+    version = 8,
     exportSchema = true,
 )
 abstract class LlegeixDatabase : RoomDatabase() {
@@ -52,6 +52,7 @@ abstract class LlegeixDatabase : RoomDatabase() {
                 "llegeix.db",
             ).addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                MIGRATION_6_7, MIGRATION_7_8,
             )
                 .build()
     }
