@@ -55,6 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -110,7 +111,7 @@ import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.SearchField
-import com.david.llegeix.ui.common.SearchHistoryRow
+import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.DetailCard
 import com.david.llegeix.ui.common.DictionaryCard
 import com.david.llegeix.ui.common.DictionaryStatus
@@ -256,12 +257,10 @@ fun ReaderScreen(
             if (state.search.isOpen) {
                 SearchBar(
                     search = state.search,
-                    recentSearches = recentSearches,
                     onQueryChange = viewModel::onSearchQueryChange,
                     onNext = viewModel::onNextMatch,
                     onPrevious = viewModel::onPreviousMatch,
                     onClose = viewModel::onCloseSearch,
-                    onForgetSearches = viewModel::onForgetSearches,
                     onToggleResults = viewModel::onToggleResults,
                 )
             } else {
@@ -397,6 +396,30 @@ fun ReaderScreen(
             // empties itself on the second is a flicker where an answer should
             // be. Padded for the keyboard, since the field above it is still
             // focused and half the list would otherwise be underneath it.
+            // Opening find and typing the same word again is most of what find
+            // gets used for in a book being worked through, so the last few
+            // words are what the panel holds until there is a query to answer.
+            // The same surface as the results, because it is the same question
+            // at an earlier stage — not a strip wedged into the bar above.
+            if (state.search.isOpen &&
+                state.search.query.isBlank() &&
+                recentSearches.isNotEmpty()
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .imePadding(),
+                ) {
+                    RecentSearches(
+                        history = recentSearches,
+                        onPick = viewModel::onSearchQueryChange,
+                        onClear = viewModel::onForgetSearches,
+                        modifier = Modifier.padding(top = Space.md),
+                    )
+                }
+            }
+
             if (state.search.isOpen &&
                 state.search.showResults &&
                 (state.search.matches.isNotEmpty() || state.search.isEmptyResult)
@@ -599,12 +622,10 @@ private fun BookmarkButton(
 @Composable
 private fun SearchBar(
     search: SearchState,
-    recentSearches: List<String>,
     onQueryChange: (String) -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onClose: () -> Unit,
-    onForgetSearches: () -> Unit,
     onToggleResults: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -687,17 +708,6 @@ private fun SearchBar(
                 pageCount = pagesWithMatches,
                 isOpen = search.showResults,
                 onToggle = onToggleResults,
-            )
-        }
-        // An empty find bar is the moment the last few words are worth having
-        // back: opening find and typing the same word again is most of what
-        // find gets used for in a book you are working through.
-        if (search.query.isBlank()) {
-            SearchHistoryRow(
-                history = recentSearches,
-                onPick = onQueryChange,
-                onClear = onForgetSearches,
-                modifier = Modifier.padding(bottom = Space.sm),
             )
         }
     }

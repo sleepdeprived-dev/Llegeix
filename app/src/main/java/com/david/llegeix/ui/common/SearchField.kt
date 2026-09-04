@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -65,6 +66,14 @@ fun SearchField(
      * keyboard's search key.
      */
     onSubmit: (() -> Unit)? = null,
+    /**
+     * Called as the field takes and loses focus.
+     *
+     * What the recent searches hang off: they belong to the act of searching
+     * rather than to the screen, and a screen whose field is empty most of the
+     * time would otherwise wear them permanently.
+     */
+    onFocusChanged: ((Boolean) -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = query,
@@ -111,6 +120,13 @@ fun SearchField(
         modifier = modifier
             .heightIn(min = 42.dp)
             .then(
+                if (onFocusChanged != null) {
+                    Modifier.onFocusChanged { onFocusChanged(it.isFocused) }
+                } else {
+                    Modifier
+                },
+            )
+            .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
                 } else {
@@ -118,67 +134,4 @@ fun SearchField(
                 },
             ),
     )
-}
-
-/**
- * What was searched for last, offered back.
- *
- * Shown only under an empty field, so it is a way to start and never something
- * in the way of a search already under way. The list is short by design and
- * only ever holds searches that found something, which is why there is one
- * "clear" for the row and no way to pick items off one at a time: there is
- * nothing in it to be embarrassed by or to correct.
- *
- * A row of chips rather than a list of rows. Under the library's field a list
- * would push the documents off the screen to offer three words.
- */
-@Composable
-fun SearchHistoryRow(
-    history: List<String>,
-    onPick: (String) -> Unit,
-    onClear: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    if (history.isEmpty()) return
-
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.sm),
-        contentPadding = PaddingValues(horizontal = Space.screen),
-    ) {
-        item {
-            Text(
-                text = stringResource(R.string.search_recent),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = Space.xs),
-            )
-        }
-        items(history, key = { it }) { past ->
-            SuggestionChip(
-                onClick = { onPick(past) },
-                label = {
-                    Text(
-                        text = past,
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                shape = RoundedCornerShape(50),
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    labelColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
-        }
-        item {
-            TextButton(onClick = onClear) {
-                Text(
-                    text = stringResource(R.string.search_recent_clear),
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
-        }
-    }
 }

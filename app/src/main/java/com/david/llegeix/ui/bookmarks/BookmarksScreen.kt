@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,7 +59,7 @@ import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.SearchField
-import com.david.llegeix.ui.common.SearchHistoryRow
+import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import kotlinx.coroutines.launch
@@ -297,6 +298,10 @@ private fun WordControls(
     onToggleSort: () -> Unit,
     onForgetSearches: () -> Unit,
 ) {
+    // Whether somebody is searching, as opposed to the field merely being
+    // empty — which it is whenever the screen is just being read.
+    var isSearchFocused by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -307,6 +312,7 @@ private fun WordControls(
                 query = query,
                 placeholder = stringResource(R.string.words_search),
                 onQueryChange = onQueryChange,
+                onFocusChanged = { isSearchFocused = it },
                 modifier = Modifier.fillMaxWidth(),
             )
             TextButton(
@@ -335,10 +341,8 @@ private fun WordControls(
             }
         }
 
-        // Full width rather than inside the margin, so a long history scrolls
-        // off the edge of the screen instead of stopping short of it.
-        if (query.isBlank()) {
-            SearchHistoryRow(
+        if (query.isBlank() && isSearchFocused) {
+            RecentSearches(
                 history = recentSearches,
                 onPick = onQueryChange,
                 onClear = onForgetSearches,

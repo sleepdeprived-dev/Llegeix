@@ -85,7 +85,7 @@ import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.SearchField
-import com.david.llegeix.ui.common.SearchHistoryRow
+import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.ui.common.TagPickerDialog
@@ -105,6 +105,10 @@ fun LibraryScreen(
     onOpenSettings: () -> Unit = {},
     onOpenSources: () -> Unit = {},
 ) {
+    // Whether somebody is searching, as opposed to the field merely being
+    // empty — which, on the library, is nearly all of the time.
+    var isSearchFocused by remember { mutableStateOf(false) }
+
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -218,6 +222,7 @@ fun LibraryScreen(
                     query = state.query,
                     placeholder = stringResource(R.string.library_search),
                     onQueryChange = viewModel::onQueryChange,
+                    onFocusChanged = { isSearchFocused = it },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = Space.screen)
@@ -228,10 +233,13 @@ fun LibraryScreen(
                         .padding(top = Space.xxl, bottom = Space.lg),
                 )
 
-                // Only under an empty field: once there is a query on screen,
-                // the last one is history in the unhelpful sense.
-                if (state.query.isBlank()) {
-                    SearchHistoryRow(
+                // Only while somebody is actually searching: an empty field
+                // is the library's resting state, and the last few words are an
+                // offer made during a search rather than a fixture of the
+                // screen. Once there is a query on screen the last one is
+                // history in the unhelpful sense, so it goes then too.
+                if (state.query.isBlank() && isSearchFocused) {
+                    RecentSearches(
                         history = recentSearches,
                         onPick = viewModel::onQueryChange,
                         onClear = viewModel::onForgetSearches,

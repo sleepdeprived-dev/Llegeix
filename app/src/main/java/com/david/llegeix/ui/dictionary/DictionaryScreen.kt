@@ -51,7 +51,7 @@ import com.david.llegeix.ui.common.DictionaryCard
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.IpaLine
 import com.david.llegeix.ui.common.SearchField
-import com.david.llegeix.ui.common.SearchHistoryRow
+import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.TranslationTargetFlags
 import com.david.llegeix.ui.common.resolved
@@ -126,9 +126,9 @@ fun DictionaryScreen(
                 )
 
                 state.query.isBlank() -> Column {
-                    SearchHistoryRow(
+                    RecentSearches(
                         history = recentSearches,
-                        onPick = { past ->
+                        onPick = { past: String ->
                             keyboard?.hide()
                             viewModel.onPickSuggestion(past)
                         },
