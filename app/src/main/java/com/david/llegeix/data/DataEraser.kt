@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Puts the app back to the state it was in before it was ever opened.
@@ -97,13 +98,24 @@ class DataEraser(
     }
 }
 
-/** Bridges a Play Services [com.google.android.gms.tasks.Task] to a coroutine. */
+/**
+ * Bridges a Play Services [com.google.android.gms.tasks.Task] to a coroutine.
+ *
+ * A failed task resumes with its exception. It used to *cancel* the
+ * continuation instead, which is a different thing wearing similar words: a
+ * failure is something a caller can catch and carry on from, and a cancellation
+ * is the coroutine being told to stop. The two callers of this in the app both
+ * sit inside `runCatching`, so the difference never showed — but the wipe that
+ * follows is the part that matters, and it should not depend on a `runCatching`
+ * happening to swallow the right kind of throwable. The app's other two bridges,
+ * in the translator and the page reader, already do it this way.
+ */
 private suspend fun <T> com.google.android.gms.tasks.Task<T>.await(): T =
     suspendCancellableCoroutine { continuation ->
         addOnCompleteListener { task ->
             val error = task.exception
             if (error != null) {
-                continuation.cancel(error)
+                continuation.resumeWithException(error)
             } else {
                 @Suppress("UNCHECKED_CAST")
                 continuation.resume(task.result as T)

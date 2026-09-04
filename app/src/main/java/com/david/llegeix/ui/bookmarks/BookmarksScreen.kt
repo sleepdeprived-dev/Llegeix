@@ -307,20 +307,35 @@ private fun WordControls(
             .fillMaxWidth()
             .padding(top = Space.lg, bottom = Space.md),
     ) {
-        Column(modifier = Modifier.padding(horizontal = Space.screen)) {
-            SearchField(
-                query = query,
-                placeholder = stringResource(R.string.words_search),
-                onQueryChange = onQueryChange,
-                onFocusChanged = { isSearchFocused = it },
-                modifier = Modifier.fillMaxWidth(),
+        SearchField(
+            query = query,
+            placeholder = stringResource(R.string.words_search),
+            onQueryChange = onQueryChange,
+            onFocusChanged = { isSearchFocused = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Space.screen),
+        )
+
+        // Directly under the field it belongs to, and above the sort control
+        // rather than below it. A list of suggestions separated from its field
+        // by an unrelated button is a list that has to be worked out rather
+        // than read.
+        if (query.isBlank() && isSearchFocused) {
+            RecentSearches(
+                history = recentSearches,
+                onPick = onQueryChange,
+                onClear = onForgetSearches,
+                modifier = Modifier.padding(top = Space.sm),
             )
-            TextButton(
+        }
+
+        TextButton(
             onClick = onToggleSort,
             contentPadding = PaddingValues(horizontal = Space.sm, vertical = 0.dp),
             modifier = Modifier
                 .align(Alignment.End)
-                .padding(top = Space.sm),
+                .padding(top = Space.sm, end = Space.screen),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_sort),
@@ -337,16 +352,6 @@ private fun WordControls(
                 ),
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(start = Space.sm),
-            )
-            }
-        }
-
-        if (query.isBlank() && isSearchFocused) {
-            RecentSearches(
-                history = recentSearches,
-                onPick = onQueryChange,
-                onClear = onForgetSearches,
-                modifier = Modifier.padding(top = Space.sm),
             )
         }
     }
