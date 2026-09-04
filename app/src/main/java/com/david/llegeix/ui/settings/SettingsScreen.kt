@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,6 +33,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -68,6 +73,10 @@ import com.david.llegeix.data.settings.AppLanguage
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.settings.ThemeMode
 import com.david.llegeix.ui.common.Space
+import kotlin.math.roundToInt
+import java.io.File
+import com.david.llegeix.util.formatSize
+import com.david.llegeix.update.AvailableUpdate
 import com.david.llegeix.ui.theme.hslColor
 import com.david.llegeix.ui.theme.isDark
 import com.david.llegeix.ui.theme.swatchOrNull
@@ -89,10 +98,13 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     var showColorPicker by remember { mutableStateOf(false) }
     var showPrivacy by remember { mutableStateOf(false) }
     var showErase by remember { mutableStateOf(false) }
+    var askForInstallPermission by remember { mutableStateOf(false) }
     val isErasing by viewModel.isErasing.collectAsState()
+    val context = LocalContext.current
 
     Scaffold(
         // The app shell's Scaffold has already inset this screen for the
@@ -233,6 +245,28 @@ fun SettingsScreen(
                 }
             }
 
+            SectionHeader(stringResource(R.string.settings_updates))
+
+            SettingsCard {
+                UpdateRows(
+                    state = updateState,
+                    installedVersion = viewModel.installedVersion,
+                    onCheck = viewModel::onCheckForUpdates,
+                    onDownload = viewModel::onDownloadUpdate,
+                    onInstall = { file ->
+                        if (viewModel.canInstallUpdates()) {
+                            context.startActivity(viewModel.installIntent(file))
+                        } else {
+                            askForInstallPermission = true
+                        }
+                    },
+                    onOpenPage = { update ->
+                        context.startActivity(viewModel.releasePageIntent(update))
+                    },
+                    onDismiss = viewModel::onDismissUpdate,
+                )
+            }
+
             SectionHeader(stringResource(R.string.settings_about))
 
             SettingsCard {
@@ -243,6 +277,16 @@ fun SettingsScreen(
 
     if (showPrivacy) {
         PrivacyDialog(onDismiss = { showPrivacy = false })
+    }
+
+    if (askForInstallPermission) {
+        InstallPermissionDialog(
+            onOpenSettings = {
+                askForInstallPermission = false
+                context.startActivity(viewModel.installPermissionIntent())
+            },
+            onDismiss = { askForInstallPermission = false },
+        )
     }
 
     if (showErase) {
@@ -681,6 +725,239 @@ private fun AccentSwatch(
 private fun onColorOf(color: Color): Color {
     val luminance = 0.2126f * color.red + 0.7152f * color.green + 0.0722f * color.blue
     return if (luminance > 0.55f) Color.Black else Color.White
+}
+
+/**
+ * The update card: what is running, and the one button that goes and asks.
+ *
+ * Deliberately a card that does nothing until it is pressed. Llegeix is
+ * sideloaded, so it has to be able to tell the reader that a new version
+ * exists — but "has to be able to" is not "should keep going and looking", and
+ * an app that phones home on every launch to see whether it is out of date is
+ * an app doing something on the reader's connection that the reader did not ask
+ * for. One button, one request, and the last line of the card says so.
+ *
+ * The states below are drawn one at a time and read top to bottom in the order
+ * the job actually happens — ask, find, fetch, install — so the card never
+ * shows two things to decide between.
+ */
+@Composable
+private fun UpdateRows(
+    state: UpdateUiState,
+    installedVersion: String,
+    onCheck: () -> Unit,
+    onDownload: (AvailableUpdate) -> Unit,
+    onInstall: (File) -> Unit,
+    onOpenPage: (AvailableUpdate) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+
+    Text(
+        text = stringResource(R.string.settings_version, installedVersion),
+        style = MaterialTheme.typography.titleMedium,
+    )
+
+    when (state) {
+        is UpdateUiState.Idle -> {
+            Text(
+                text = stringResource(R.string.settings_update_manual),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Space.xs),
+            )
+            Button(
+                onClick = onCheck,
+                modifier = Modifier.padding(top = Space.md),
+            ) {
+                Text(stringResource(R.string.settings_update_check))
+            }
+        }
+
+        is UpdateUiState.Checking -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = Space.md),
+        ) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = stringResource(R.string.settings_update_checking),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = Space.md),
+            )
+        }
+
+        is UpdateUiState.UpToDate -> {
+            UpdateNote(stringResource(R.string.settings_update_current))
+            Button(
+                onClick = onCheck,
+                modifier = Modifier.padding(top = Space.md),
+            ) {
+                Text(stringResource(R.string.settings_update_check))
+            }
+        }
+
+        is UpdateUiState.Available -> {
+            UpdateHeadline(state.update)
+            ReleaseNotesBox(state.update.notes)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Space.sm),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = Space.md),
+            ) {
+                Button(onClick = { onDownload(state.update) }) {
+                    Text(stringResource(R.string.settings_update_download))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.settings_update_dismiss))
+                }
+            }
+            TextButton(
+                onClick = { onOpenPage(state.update) },
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text(stringResource(R.string.settings_update_open_page))
+            }
+        }
+
+        is UpdateUiState.Downloading -> {
+            UpdateHeadline(state.update)
+            // A determinate bar, because the size is known before the first
+            // byte arrives: a 70 MB fetch behind a spinner is a spinner nobody
+            // can tell from a hang.
+            LinearProgressIndicator(
+                progress = { state.fraction },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Space.md),
+            )
+            Text(
+                text = stringResource(
+                    R.string.settings_update_downloading,
+                    (state.fraction * 100).roundToInt(),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Space.sm),
+            )
+        }
+
+        is UpdateUiState.Ready -> {
+            UpdateHeadline(state.update)
+            UpdateNote(stringResource(R.string.settings_update_ready))
+            Button(
+                onClick = { onInstall(state.file) },
+                modifier = Modifier.padding(top = Space.md),
+            ) {
+                Text(stringResource(R.string.settings_update_install))
+            }
+        }
+
+        is UpdateUiState.Trouble -> {
+            Text(
+                text = state.message.resolve(context),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = Space.sm),
+            )
+            Button(
+                onClick = onCheck,
+                modifier = Modifier.padding(top = Space.md),
+            ) {
+                Text(stringResource(R.string.settings_update_check))
+            }
+        }
+    }
+}
+
+/** The version that is out, and what fetching it will cost. */
+@Composable
+private fun UpdateHeadline(update: AvailableUpdate) {
+    val context = LocalContext.current
+    Text(
+        text = stringResource(R.string.settings_update_found, update.version),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = Space.sm),
+    )
+    Text(
+        text = stringResource(
+            R.string.settings_update_size,
+            formatSize(context, update.downloadBytes),
+            update.abi,
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = Space.xs),
+    )
+}
+
+@Composable
+private fun UpdateNote(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = Space.sm),
+    )
+}
+
+/**
+ * What changed, in a box of its own with a ceiling on it.
+ *
+ * Release notes for this app run to several paragraphs, and a settings screen
+ * that grows by a page and a half the moment a version is found has lost the
+ * button the reader came for. Bounded and scrolling, the card keeps its shape
+ * whatever the notes say.
+ */
+@Composable
+private fun ReleaseNotesBox(notes: String) {
+    if (notes.isBlank()) return
+    Text(
+        text = notes,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(top = Space.md)
+            .fillMaxWidth()
+            .heightIn(max = NotesHeight)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Space.md, vertical = Space.sm),
+    )
+}
+
+/** As much of the notes as fits before they stop being a summary. */
+private val NotesHeight = 220.dp
+
+/**
+ * Asks for the one permission this needs, and says what it is for.
+ *
+ * Shown only when the installer would refuse, and only after the update has
+ * already been downloaded — asking for the right to install before there is
+ * anything to install is asking a question with no context around it.
+ */
+@Composable
+private fun InstallPermissionDialog(onOpenSettings: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_update_permission_title)) },
+        text = { Text(stringResource(R.string.settings_update_permission_body)) },
+        confirmButton = {
+            TextButton(onClick = onOpenSettings) {
+                Text(stringResource(R.string.settings_update_permission_open))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
 }
 
 @Composable

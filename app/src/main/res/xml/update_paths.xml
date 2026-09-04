@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The one folder the update installer is allowed to read out of.
+
+    A downloaded APK lives in the app's own cache and nowhere else, and the
+    grant is scoped to that folder rather than to the cache as a whole: the
+    package installer has no business being able to read a page thumbnail.
+-->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>

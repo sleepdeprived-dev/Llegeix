@@ -10,6 +10,7 @@ import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
 import com.david.llegeix.data.DataEraser
 import com.david.llegeix.pdf.PdfThumbnails
+import com.david.llegeix.update.UpdateRepository
 
 /**
  * Holds the app's singletons.
@@ -56,4 +57,7 @@ class LlegeixApp : Application() {
     val searchHistoryRepository: SearchHistoryRepository by lazy {
         SearchHistoryRepository(this)
     }
+
+    /** The app's only way of learning that a newer version of itself exists. */
+    val updateRepository: UpdateRepository by lazy { UpdateRepository(this) }
 }

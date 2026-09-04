@@ -349,6 +349,30 @@
     <string name="erase_running">Erasing\u2026</string>
     <string name="settings_about">About</string>
     <string name="settings_credits_thesaurus">Definitions from the Viccionari, the Catalan Wiktionary, under CC BY-SA. Synonyms from the Diccionari de sinònims de català by Jaume Ortolà and Softcatalà, under CC BY 4.0.</string>
+    <!-- Updates -->
+    <string name="settings_updates">Updates</string>
+    <string name="settings_update_check">Check for updates</string>
+    <string name="settings_update_checking">Asking…</string>
+    <string name="settings_update_current">You are on the newest version.</string>
+    <string name="settings_update_found">Llegeix %1$s is out</string>
+    <!-- e.g. "67 MB · arm64-v8a" -->
+    <string name="settings_update_size">%1$s · %2$s</string>
+    <string name="settings_update_download">Download and install</string>
+    <string name="settings_update_downloading">Downloading… %1$d%%</string>
+    <string name="settings_update_install">Install</string>
+    <string name="settings_update_ready">Downloaded. Android will ask you to confirm.</string>
+    <string name="settings_update_open_page">Open the release page</string>
+    <string name="settings_update_dismiss">Not now</string>
+    <string name="settings_update_offline">Could not reach the releases. Check your connection and try again.</string>
+    <string name="settings_update_rate_limited">Too many checks from this network in the last hour. Try again later.</string>
+    <string name="settings_update_no_build">This release has no build for this phone. Open the release page to pick one by hand.</string>
+    <string name="settings_update_unreadable">The releases did not answer as expected.</string>
+    <string name="settings_update_download_failed">The download did not finish. Nothing was installed.</string>
+    <string name="settings_update_permission_title">Allow installing</string>
+    <string name="settings_update_permission_body">Android needs your permission for Llegeix to hand an update to the installer. It only ever asks — the system installer is what installs, and it will confirm with you first.</string>
+    <string name="settings_update_permission_open">Open Settings</string>
+    <string name="settings_update_manual">The app checks only when you press the button, and installs nothing on its own.</string>
+
     <string name="settings_version">Version %1$s</string>
 
 </resources>

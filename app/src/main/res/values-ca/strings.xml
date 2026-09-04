@@ -341,6 +341,28 @@
     <string name="erase_running">S\'està esborrant\u2026</string>
     <string name="settings_about">Quant a</string>
     <string name="settings_credits_thesaurus">Les definicions provenen del Viccionari, el diccionari lliure en català, sota llicència CC BY-SA. Els sinònims provenen del Diccionari de sinònims de català de Jaume Ortolà i Softcatalà, sota llicència CC BY 4.0.</string>
+    <string name="settings_updates">Actualitzacions</string>
+    <string name="settings_update_check">Comprova si hi ha actualitzacions</string>
+    <string name="settings_update_checking">S\'està preguntant…</string>
+    <string name="settings_update_current">Tens la versió més nova.</string>
+    <string name="settings_update_found">Ja hi ha Llegeix %1$s</string>
+    <string name="settings_update_size">%1$s · %2$s</string>
+    <string name="settings_update_download">Baixa i instal·la</string>
+    <string name="settings_update_downloading">S\'està baixant… %1$d%%</string>
+    <string name="settings_update_install">Instal·la</string>
+    <string name="settings_update_ready">Baixada. Android et demanarà que ho confirmis.</string>
+    <string name="settings_update_open_page">Obre la pàgina de la versió</string>
+    <string name="settings_update_dismiss">Ara no</string>
+    <string name="settings_update_offline">No s\'ha pogut arribar a les versions. Comprova la connexió i torna-ho a provar.</string>
+    <string name="settings_update_rate_limited">Hi ha hagut massa comprovacions des d\'aquesta xarxa l\'última hora. Torna-ho a provar més tard.</string>
+    <string name="settings_update_no_build">Aquesta versió no té cap compilació per a aquest telèfon. Obre la pàgina de la versió per triar-ne una a mà.</string>
+    <string name="settings_update_unreadable">Les versions no han respost com s\'esperava.</string>
+    <string name="settings_update_download_failed">La baixada no s\'ha acabat. No s\'ha instal·lat res.</string>
+    <string name="settings_update_permission_title">Permet instal·lar</string>
+    <string name="settings_update_permission_body">Android necessita el teu permís perquè Llegeix pugui passar una actualització a l\'instal·lador. Només ho demana: qui instal·la és l\'instal·lador del sistema, i abans t\'ho confirmarà.</string>
+    <string name="settings_update_permission_open">Obre la configuració</string>
+    <string name="settings_update_manual">L\'aplicació només ho comprova quan prems el botó, i no instal·la res pel seu compte.</string>
+
     <string name="settings_version">Versió %1$s</string>
 
 </resources>

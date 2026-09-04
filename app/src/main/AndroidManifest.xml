@@ -20,6 +20,17 @@
     -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+        Configuració's "check for updates" button. The app is sideloaded rather
+        than installed from a store, so nothing else would ever update it.
+
+        This is the right to *ask*: the APK is handed to Android's own package
+        installer, which shows its own dialog and is the only thing that can
+        actually install anything. The reader must also grant this app as a
+        source in system Settings before the dialog will appear at all.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:name=".LlegeixApp"
         android:allowBackup="true"
@@ -41,6 +52,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Hands a downloaded update to the package installer.
+
+            A content URI rather than a file one, because a file:// URI to
+            another app has been an offence since Android 7. Not exported: the
+            only thing that ever reads through it is the installer, and only for
+            the one intent that grants it read permission on the way.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
     </application>
 
 </manifest>

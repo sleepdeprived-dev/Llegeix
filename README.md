@@ -3,6 +3,16 @@
 An Android PDF reader built for reading Catalan documents while learning the
 language. Written in Kotlin with Jetpack Compose.
 
+## Releasing
+
+The source is private and the builds have to be public, because the app's update
+check asks GitHub for them with no credentials and a token shipped inside a
+sideloaded APK is a token everybody holding the APK has. So the signed APKs and
+the release notes go to
+[Llegeix-releases](https://github.com/sleepdeprived-dev/Llegeix-releases), which
+carries nothing else, while the tag stays here. `tools/release.sh <notes-file>`
+does both after bumping the version in `app/build.gradle.kts`.
+
 ## Features
 
 - **Library** — discovers PDFs on the device through MediaStore, the Storage
@@ -65,6 +75,16 @@ language. Written in Kotlin with Jetpack Compose.
   synonyms and the antonyms — because a word checked here and the same word
   pressed while reading should not look like two different words. The star keeps
   it with everything else you have saved.
+- **Updates** — Llegeix is sideloaded rather than installed from a store, so
+  nothing would ever update it. Configuració has a button that asks, once, when
+  it is pressed: it reads the newest release from a small public repository that
+  carries the builds and nothing else, says what changed, fetches the APK for
+  this phone's architecture rather than the universal one, and hands it to
+  Android's own installer. No background poll, no check on launch, no
+  notification, and nothing installed without the system's own dialog. The
+  request carries no identifier — it is the same unauthenticated call anybody
+  can make of a public repository.
+
 - **Scanned pages** — a scan is a photograph of writing: there is no text in
   the file, so press-and-hold used to do nothing at all and there was no way to
   tell that from a missed press. Now a page with no text of its own is read with
