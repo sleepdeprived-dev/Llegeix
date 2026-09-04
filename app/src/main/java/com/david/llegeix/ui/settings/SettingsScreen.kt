@@ -1,5 +1,7 @@
 package com.david.llegeix.ui.settings
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -255,13 +257,17 @@ fun SettingsScreen(
                     onDownload = viewModel::onDownloadUpdate,
                     onInstall = { file ->
                         if (viewModel.canInstallUpdates()) {
-                            context.startActivity(viewModel.installIntent(file))
+                            context.startOrReport(viewModel::onCouldNotOpen) {
+                                viewModel.installIntent(file)
+                            }
                         } else {
                             askForInstallPermission = true
                         }
                     },
                     onOpenPage = { update ->
-                        context.startActivity(viewModel.releasePageIntent(update))
+                        context.startOrReport(viewModel::onCouldNotOpen) {
+                            viewModel.releasePageIntent(update)
+                        }
                     },
                     onDismiss = viewModel::onDismissUpdate,
                 )
@@ -283,7 +289,9 @@ fun SettingsScreen(
         InstallPermissionDialog(
             onOpenSettings = {
                 askForInstallPermission = false
-                context.startActivity(viewModel.installPermissionIntent())
+                context.startOrReport(viewModel::onCouldNotOpen) {
+                    viewModel.installPermissionIntent()
+                }
             },
             onDismiss = { askForInstallPermission = false },
         )
@@ -725,6 +733,22 @@ private fun AccentSwatch(
 private fun onColorOf(color: Color): Color {
     val luminance = 0.2126f * color.red + 0.7152f * color.green + 0.0722f * color.blue
     return if (luminance > 0.55f) Color.Black else Color.White
+}
+
+/**
+ * Start what [intent] builds, and say so rather than fall over if nothing can.
+ *
+ * [ActivityNotFoundException] is the obvious one, but building the intent can
+ * throw too: a FileProvider asked for a URI to a file outside the folder it was
+ * configured with throws [IllegalArgumentException]. Both happen inside a click
+ * handler, where an exception is not a failed update but a closed app.
+ */
+private inline fun Context.startOrReport(onTrouble: () -> Unit, intent: () -> Intent) {
+    try {
+        startActivity(intent())
+    } catch (error: RuntimeException) {
+        onTrouble()
+    }
 }
 
 /**

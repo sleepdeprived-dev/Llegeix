@@ -2,6 +2,7 @@ package com.david.llegeix.update
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.URI
 
 /** One built APK attached to a release. */
 data class ReleaseAsset(
@@ -63,12 +64,62 @@ object ReleaseFeed {
         // A draft is not published and a prerelease is not for readers.
         if (json.optBoolean("draft") || json.optBoolean("prerelease")) return null
 
+        // Everything below this line came off the network, and the version in
+        // particular ends up in a file name. See [isVersion].
+        val version = tag.removePrefix("v").removePrefix("V")
+        if (!isVersion(version)) return null
+
         return PublishedRelease(
-            version = tag.removePrefix("v").removePrefix("V"),
+            version = version,
             notes = ReleaseNotes.plain(json.optString("body")),
-            pageUrl = json.optString("html_url"),
+            // Dropped rather than kept when it is not a GitHub address: this
+            // one is handed to ACTION_VIEW, and the app has a page of its own
+            // to fall back to.
+            pageUrl = json.optString("html_url").takeIf { isTrustedUrl(it) }.orEmpty(),
             assets = assetsIn(json.optJSONArray("assets")),
         )
+    }
+
+    /**
+     * Whether a tag names a version this app is willing to act on.
+     *
+     * Digits and dots, and nothing else. Two reasons, and the second one is the
+     * reason it is checked here rather than left to the comparison:
+     *
+     *  - Only a dotted number can be compared to the installed version at all.
+     *    Anything else would be read for the digits inside it and silently
+     *    mean something the tag did not say.
+     *  - **The version becomes part of a file name.** A tag is a string from
+     *    the network, and `File(folder, "Llegeix-$version-$abi.apk")` resolves
+     *    "../" like any other path: a tag of "../../../../databases/llegeix"
+     *    put the download in the app's database folder instead of its cache.
+     *    That needs control of the releases repository to reach, and it stays
+     *    inside this app's own sandbox — but a downloader that can be talked
+     *    into writing outside the folder it chose is a bug whatever the blast
+     *    radius, and this is the one line that closes it.
+     */
+    private fun isVersion(version: String) = VERSION.matches(version)
+
+    /**
+     * Whether a URL out of the feed is one this app will open or fetch.
+     *
+     * The feed is trusted to say *which* release is newest; it is not trusted
+     * to send the app anywhere it likes. Both URLs in it are acted on — one is
+     * downloaded and handed to the package installer, the other is opened with
+     * ACTION_VIEW, which will start whatever app claims the scheme — so both
+     * are held to https on a GitHub host.
+     *
+     * The platform already blocks cleartext for this app, and HttpURLConnection
+     * will not follow a redirect that downgrades the protocol. This is the
+     * check that does not depend on either of those staying true.
+     */
+    internal fun isTrustedUrl(url: String): Boolean {
+        val uri = runCatching { URI(url) }.getOrNull() ?: return false
+        if (!uri.scheme.equals("https", ignoreCase = true)) return false
+        val host = uri.host?.lowercase() ?: return false
+        return host == "github.com" ||
+            host.endsWith(".github.com") ||
+            host.endsWith(".githubusercontent.com")
     }
 
     private fun assetsIn(array: JSONArray?): List<ReleaseAsset> {
@@ -77,7 +128,10 @@ object ReleaseFeed {
             val asset = array.optJSONObject(index) ?: return@mapNotNull null
             val name = asset.optString("name")
             val url = asset.optString("browser_download_url")
-            if (name.isEmpty() || url.isEmpty()) return@mapNotNull null
+            // An asset the app would refuse to fetch is an asset it should not
+            // offer: dropping it here means the release simply has no build for
+            // this phone rather than a build that fails at the last moment.
+            if (name.isEmpty() || !isTrustedUrl(url)) return@mapNotNull null
             ReleaseAsset(name, url, asset.optLong("size"))
         }
     }
@@ -147,4 +201,7 @@ object ReleaseFeed {
     private const val APK = ".apk"
 
     private val DIGITS = Regex("\\d+")
+
+    /** A dotted number and nothing else: "3", "3.4", "3.4.1". */
+    private val VERSION = Regex("\\d+(\\.\\d+)*")
 }

@@ -14,9 +14,13 @@
         tools:ignore="ScopedStorage" />
 
     <!--
-        ML Kit downloads its Catalan and English translation models on first use.
-        Translation itself runs entirely on-device afterwards; this is only for
-        fetching the models.
+        Two things, and no more.
+
+        ML Kit downloads its Catalan and English translation models on first
+        use; translation itself runs entirely on-device afterwards. And
+        Configuració's update button asks GitHub what the newest release is,
+        when it is pressed and never otherwise. Neither request carries anything
+        about the reader or their documents.
     -->
     <uses-permission android:name="android.permission.INTERNET" />
 

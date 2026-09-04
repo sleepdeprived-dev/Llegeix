@@ -2,20 +2,26 @@ package com.david.llegeix.update
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.SigningInfo
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.david.llegeix.util.runCatchingCancellable
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 /** What a check for updates came back with. */
 sealed interface UpdateCheck {
@@ -72,6 +78,9 @@ sealed interface UpdateCheck {
  */
 class UpdateRepository(private val context: Context) {
 
+    /** Serialises downloads; see the note in [download]. */
+    private val downloadLock = Mutex()
+
     /** The version running now, read from the package rather than from a build flag. */
     val installedVersion: String
         get() = runCatching {
@@ -119,61 +128,174 @@ class UpdateRepository(private val context: Context) {
         update: AvailableUpdate,
         onProgress: (Float) -> Unit,
     ): File? = withContext(Dispatchers.IO) {
-        val folder = File(context.cacheDir, UPDATE_FOLDER)
-        folder.deleteRecursively()
-        if (!folder.mkdirs()) return@withContext null
-        val target = File(folder, "Llegeix-${update.version}-${update.abi}.apk")
+        // One at a time. The screen cancels the previous download before
+        // starting another, but cancellation is cooperative and only noticed
+        // between reads: without this, the job on its way out can clear the
+        // folder — and delete the file — of the job that replaced it, which
+        // ends in an install of a file that is no longer there.
+        downloadLock.withLock {
+            val folder = File(context.cacheDir, UPDATE_FOLDER)
+            folder.deleteRecursively()
+            if (!folder.mkdirs()) return@withLock null
+            val target = File(folder, "Llegeix-${update.version}-${update.abi}.apk")
+            // The version is a dotted number by the time it gets here, checked
+            // where it was parsed, and this is the line that says so out loud.
+            // A path built out of anything off the network is worth asserting
+            // about in the place it is built, not only in the place it is
+            // validated: the two are a file apart and only one of them is
+            // obviously security-relevant to read.
+            if (target.canonicalFile.parentFile != folder.canonicalFile) return@withLock null
 
-        val done = runCatchingCancellable {
-            val connection = open(update.downloadUrl)
-            try {
-                if (connection.responseCode !in 200..299) return@runCatchingCancellable false
-                // What the server says, falling back to what the release said,
-                // so the bar still moves when the redirect drops the length.
-                val total = connection.contentLengthLong.takeIf { it > 0 }
-                    ?: update.downloadBytes
-                var written = 0L
-                var reported = -1
+            val done = try {
+                runCatchingCancellable { fetchTo(update, target, onProgress) }.getOrDefault(false)
+            } catch (cancelled: CancellationException) {
+                // Deleted on the way out as well as on failure. Cancelling
+                // leaves whatever had arrived so far on disk, and half an APK
+                // in the cache is a file with no purpose and a misleading name.
+                target.delete()
+                throw cancelled
+            }
 
-                connection.inputStream.use { source ->
-                    target.outputStream().use { sink ->
-                        val buffer = ByteArray(DOWNLOAD_BUFFER)
-                        while (true) {
-                            // A reader who left the screen is a download that
-                            // should stop, not one that finishes into a file
-                            // nobody will be offered.
-                            currentCoroutineContext().ensureActive()
-                            val read = source.read(buffer)
-                            if (read < 0) break
-                            sink.write(buffer, 0, read)
-                            written += read
-                            if (total > 0) {
-                                // Reported by whole percent. A callback per 32 kB
-                                // is a state update per 32 kB, and a progress bar
-                                // cannot show more than a percent anyway.
-                                val percent = (written * 100 / total).toInt()
-                                if (percent != reported) {
-                                    reported = percent
-                                    onProgress(percent / 100f)
-                                }
+            if (done) {
+                target
+            } else {
+                target.delete()
+                null
+            }
+        }
+    }
+
+    private suspend fun fetchTo(
+        update: AvailableUpdate,
+        target: File,
+        onProgress: (Float) -> Unit,
+    ): Boolean {
+        // Checked again here rather than trusted from the check that offered
+        // it: this is the call that actually reaches out, and it is one line.
+        if (!ReleaseFeed.isTrustedUrl(update.downloadUrl)) return false
+        val connection = open(update.downloadUrl)
+        try {
+            if (connection.responseCode !in 200..299) return false
+            // Where the redirects actually landed. HttpURLConnection will not
+            // follow a downgrade to cleartext, so this should be impossible;
+            // it is asserted because "should be impossible" is doing a lot of
+            // work in a sentence about installing an APK.
+            if (!connection.url.protocol.equals("https", ignoreCase = true)) return false
+
+            // What the server says, falling back to what the release said,
+            // so the bar still moves when the redirect drops the length.
+            val total = connection.contentLengthLong.takeIf { it > 0 }
+                ?: update.downloadBytes
+            // A length nobody could mean. The universal build is the largest
+            // this app produces at about 160 MB; anything past the cap is a
+            // mistake or a cache being filled on purpose, and either way it is
+            // not an update.
+            if (total > MAX_DOWNLOAD_BYTES) return false
+            var written = 0L
+            var reported = -1
+
+            connection.inputStream.use { source ->
+                target.outputStream().use { sink ->
+                    val buffer = ByteArray(DOWNLOAD_BUFFER)
+                    while (true) {
+                        // A reader who left the screen is a download that
+                        // should stop, not one that finishes into a file
+                        // nobody will be offered.
+                        currentCoroutineContext().ensureActive()
+                        val read = source.read(buffer)
+                        if (read < 0) break
+                        sink.write(buffer, 0, read)
+                        written += read
+                        // The cap again, against the bytes rather than the
+                        // header: a server is free to understate what it is
+                        // about to send.
+                        if (written > MAX_DOWNLOAD_BYTES) return false
+                        if (total > 0) {
+                            // Reported by whole percent. A callback per 32 kB
+                            // is a state update per 32 kB, and a progress bar
+                            // cannot show more than a percent anyway.
+                            val percent = (written * 100 / total).toInt()
+                            if (percent != reported) {
+                                reported = percent
+                                onProgress(percent / 100f)
                             }
                         }
                     }
                 }
-                // A truncated APK installs as a corrupt one, so a download that
-                // does not account for itself is thrown away rather than offered.
-                total <= 0 || written == total
-            } finally {
-                connection.disconnect()
             }
-        }.getOrDefault(false)
-
-        if (done) {
-            target
-        } else {
-            target.delete()
-            null
+            // A truncated APK installs as a corrupt one, so a download that
+            // does not account for itself is thrown away rather than offered.
+            return total <= 0 || written == total
+        } finally {
+            connection.disconnect()
         }
+    }
+
+    /**
+     * Whether [file] really is a newer Llegeix, signed with the key this copy
+     * was signed with.
+     *
+     * Android checks this too, and its check is the one that counts: an APK
+     * signed with a different key cannot replace an installed app, whatever
+     * this method says. But the installer's refusal comes *after* a dialog has
+     * been put in front of the reader, and there is one case where it does not
+     * refuse at all — an APK with a *different package name* is not an update
+     * being rejected, it is a new app being offered, and the reader is the only
+     * thing standing between a compromised release and an installed stranger.
+     *
+     * So the file is opened and read before any of that. It has to be this
+     * package, and it has to be signed by the same certificate. Nothing that
+     * fails both tests is worth showing a dialog for, and a reader should not
+     * be the check.
+     */
+    fun isOurBuild(file: File): Boolean = runCatching {
+        val manager = context.packageManager
+        val downloaded = archiveInfo(file) ?: return false
+        if (downloaded.packageName != context.packageName) return false
+
+        val installed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            manager.getPackageInfo(
+                context.packageName,
+                PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            manager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        }
+
+        val theirs = downloaded.signingInfo?.certificates() ?: return false
+        val ours = installed.signingInfo?.certificates() ?: return false
+        theirs.isNotEmpty() && theirs == ours
+    }.getOrDefault(false)
+
+    /** The signatures an APK on disk actually carries, or null if it carries none. */
+    private fun archiveInfo(file: File) =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageArchiveInfo(
+                file.path,
+                PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageArchiveInfo(
+                file.path,
+                PackageManager.GET_SIGNING_CERTIFICATES,
+            )
+        }
+
+    /**
+     * The certificates behind a signature, as digests.
+     *
+     * Digested rather than compared as byte arrays because a certificate is a
+     * byte array and byte arrays do not compare by value — a set of them would
+     * compare by identity and agree with nothing, including itself.
+     */
+    private fun SigningInfo.certificates(): Set<String> {
+        val signers = if (hasMultipleSigners()) apkContentsSigners else signingCertificateHistory
+        return signers.orEmpty().map { signature ->
+            MessageDigest.getInstance("SHA-256").digest(signature.toByteArray())
+                .joinToString("") { byte -> "%02x".format(byte) }
+        }.toSet()
     }
 
     /** Whether Android will let the app ask to install something. */
@@ -220,7 +342,25 @@ class UpdateRepository(private val context: Context) {
         return try {
             when (val code = connection.responseCode) {
                 in 200..299 -> Response.Body(
-                    connection.inputStream.bufferedReader().use { it.readText() },
+                    // Capped. A release document is a few kilobytes; anything
+                    // claiming to be more than this is not one, and reading a
+                    // stream of unknown length straight into a String is how a
+                    // network reply becomes an out-of-memory crash.
+                    //
+                    // Read in a loop, because a Reader returns what it has
+                    // rather than what was asked for: a single read() of a
+                    // large buffer comes back with the first chunk and nothing
+                    // more, which for a JSON document means half a document.
+                    connection.inputStream.bufferedReader().use { reader ->
+                        val text = StringBuilder()
+                        val chunk = CharArray(FEED_CHUNK_CHARS)
+                        while (text.length < MAX_FEED_CHARS) {
+                            val read = reader.read(chunk)
+                            if (read < 0) break
+                            text.append(chunk, 0, minOf(read, MAX_FEED_CHARS - text.length))
+                        }
+                        text.toString()
+                    },
                 )
                 // GitHub answers a spent allowance with 403 and a header saying
                 // so. Told apart from a plain refusal because it is the one
@@ -286,5 +426,19 @@ class UpdateRepository(private val context: Context) {
         const val APK_MIME = "application/vnd.android.package-archive"
 
         const val DOWNLOAD_BUFFER = 32 * 1024
+
+        /** A release document is a few kilobytes; this is room to spare. */
+        const val MAX_FEED_CHARS = 512 * 1024
+
+        const val FEED_CHUNK_CHARS = 8 * 1024
+
+        /**
+         * The largest build this app will accept.
+         *
+         * The universal APK, the biggest thing a release carries, is about
+         * 160 MB. Twice that is room for the app to grow and still a refusal
+         * for anything that could only be an attempt to fill the cache.
+         */
+        const val MAX_DOWNLOAD_BYTES = 320L * 1024 * 1024
     }
 }

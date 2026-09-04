@@ -2,6 +2,7 @@ package com.david.llegeix.update
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -82,6 +83,85 @@ class ReleaseFeedTest {
     fun `a release with no builds parses but offers nothing`() {
         val release = ReleaseFeed.parse(feed.replace(Regex("\"assets\": \\[[^]]*]"), "\"assets\": []"))!!
         assertNull(ReleaseFeed.buildFor(release, listOf("arm64-v8a")))
+    }
+
+    @Test
+    fun `refuses a tag that is not a plain version number`() {
+        // The version ends up inside a file name, and File() resolves "../"
+        // like any other path: this tag put the download in the app's database
+        // folder rather than its cache.
+        val escape = feed.replace(
+            "\"tag_name\": \"v3.4\"",
+            "\"tag_name\": \"v../../../../databases/llegeix\"",
+        )
+        assertNull(ReleaseFeed.parse(escape))
+
+        // And the rest of what a tag is not allowed to be, for the same reason
+        // and because none of it can be compared to a version anyway.
+        for (tag in listOf("latest", "3.4-beta", "v3.4/../x", "3 4", "")) {
+            assertNull(tag, ReleaseFeed.parse(feed.replace("v3.4", tag)))
+        }
+    }
+
+    @Test
+    fun `accepts the versions a release actually uses`() {
+        for (tag in listOf("v3.4", "3.4", "v4", "v3.4.1")) {
+            val release = ReleaseFeed.parse(feed.replace("\"tag_name\": \"v3.4\"", "\"tag_name\": \"$tag\""))
+            assertNotNull(tag, release)
+        }
+    }
+
+    @Test
+    fun `will not be sent anywhere but GitHub over https`() {
+        // The download URL is fetched and handed to the package installer and
+        // the page URL is given to ACTION_VIEW, which starts whatever app
+        // claims the scheme. Neither is the feed's to choose freely.
+        for (bad in listOf(
+            "http://github.com/x/y.apk",
+            "https://github.evil.com/x/y.apk",
+            "https://notgithub.com/x/y.apk",
+            "file:///data/data/com.david.llegeix/x.apk",
+            "javascript:alert(1)",
+            "intent://evil#Intent;scheme=x;end",
+            "",
+        )) {
+            assertFalse(bad, ReleaseFeed.isTrustedUrl(bad))
+        }
+
+        for (good in listOf(
+            "https://github.com/x/releases/download/v3.4/a.apk",
+            "https://objects.githubusercontent.com/x",
+            "https://api.github.com/x",
+        )) {
+            assertTrue(good, ReleaseFeed.isTrustedUrl(good))
+        }
+    }
+
+    @Test
+    fun `drops a build it would refuse to fetch`() {
+        val tampered = feed.replace(
+            "https://github.com/x/releases/download/v3.4/Llegeix-3.4-arm64-v8a.apk",
+            "https://cdn.example.com/Llegeix-3.4-arm64-v8a.apk",
+        )
+        val release = ReleaseFeed.parse(tampered)!!
+
+        // The phone asks for arm64 and the release no longer has a build for
+        // it, so it falls back to universal rather than fetching from a host
+        // this app does not trust.
+        assertEquals(2, release.assets.size)
+        assertEquals(
+            "Llegeix-3.4-universal.apk",
+            ReleaseFeed.buildFor(release, listOf("arm64-v8a"))!!.asset.name,
+        )
+    }
+
+    @Test
+    fun `blanks a release page it would not open`() {
+        val tampered = feed.replace(
+            "https://github.com/sleepdeprived-dev/Llegeix-releases/releases/tag/v3.4",
+            "https://phishing.example.com/llegeix",
+        )
+        assertEquals("", ReleaseFeed.parse(tampered)!!.pageUrl)
     }
 
     @Test

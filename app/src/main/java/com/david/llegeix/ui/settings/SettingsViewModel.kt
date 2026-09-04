@@ -149,10 +149,14 @@ class SettingsViewModel(
                     }
                 }
             }
-            _updateState.value = if (file != null) {
-                UpdateUiState.Ready(update, file)
-            } else {
-                UpdateUiState.Trouble(UiText.of(R.string.settings_update_download_failed))
+            _updateState.value = when {
+                file == null ->
+                    UpdateUiState.Trouble(UiText.of(R.string.settings_update_download_failed))
+                // Checked before the reader is shown a dialog about it, not
+                // after. See UpdateRepository.isOurBuild.
+                !updates.isOurBuild(file) ->
+                    UpdateUiState.Trouble(UiText.of(R.string.settings_update_not_ours))
+                else -> UpdateUiState.Ready(update, file)
             }
         }
     }
@@ -184,6 +188,20 @@ class SettingsViewModel(
     fun installPermissionIntent() = updates.installPermissionIntent()
 
     fun releasePageIntent(update: AvailableUpdate) = updates.releasePageIntent(update)
+
+    /**
+     * Say so when an intent would not start.
+     *
+     * Three of these are fired from the card — the installer, the browser, the
+     * permission screen — and every one of them is a `startActivity` that can
+     * throw on a device with nothing registered for it. Uncaught, in a click
+     * handler, that is not a failed update: it is the app closing. A device
+     * with no package installer at all is close to hypothetical, which is
+     * exactly why it would never be found any other way.
+     */
+    fun onCouldNotOpen() {
+        _updateState.value = UpdateUiState.Trouble(UiText.of(R.string.settings_update_cannot_open))
+    }
 
     private fun troubleText(reason: UpdateCheck.Reason): UiText = UiText.of(
         when (reason) {
