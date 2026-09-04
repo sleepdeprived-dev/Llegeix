@@ -75,6 +75,11 @@ does both after bumping the version in `app/build.gradle.kts`.
   synonyms and the antonyms — because a word checked here and the same word
   pressed while reading should not look like two different words. The star keeps
   it with everything else you have saved.
+- **Privacy** — nothing is collected, and the manifest is made to say so as
+  well as the policy: the app's data is excluded from Google's cloud backup, so
+  a vocabulary list and the sentences behind it never leave the phone, while
+  Android's direct device-to-device transfer still carries it to a new one.
+
 - **Updates** — Llegeix is sideloaded rather than installed from a store, so
   nothing would ever update it. Configuració has a button that asks, once, when
   it is pressed: it reads the newest release from a small public repository that

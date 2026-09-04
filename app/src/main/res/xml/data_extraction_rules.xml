@@ -1,19 +1,39 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What may leave this device, and by which route. Applies from API 31, which
+    is this app's minimum, so this file is the whole of the answer.
+
+    The two operations are deliberately answered differently, because they are
+    different things wearing the same name:
+
+      - **Cloud backup** copies the app's data to Google's servers, keyed to the
+        reader's account, and restores it after an uninstall. Everything is
+        excluded. The privacy policy says that what the app remembers is stored
+        only on this device and that uninstalling deletes it, and until this
+        file said so too, that was not true: Android's default is to back up
+        everything, so a reader's saved words — with the sentences they came
+        from — their bookmarks, their reading positions and every search they
+        had made were going to a server the app never mentions.
+
+      - **Device transfer** moves the data straight to a new phone during a
+        migration the reader is standing in front of. Nothing is excluded and no
+        section is written for it, which leaves Android's default of carrying
+        everything: a vocabulary built up over months should survive changing
+        phones, and it never touches anybody's server on the way.
+
+    The cache is not listed because Android never backs it up, which is also why
+    a downloaded update cannot end up in either.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+        <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
     </cloud-backup>
-    <!--
-    <device-transfer>
-        <include .../>
-        <exclude .../>
-    </device-transfer>
-    -->
 </data-extraction-rules>
