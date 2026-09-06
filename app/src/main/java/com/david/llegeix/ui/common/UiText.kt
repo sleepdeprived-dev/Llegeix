@@ -1,6 +1,7 @@
 package com.david.llegeix.ui.common
 
 import android.content.Context
+import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
@@ -21,6 +22,20 @@ sealed interface UiText {
 
     data class Res(@param:StringRes val id: Int, val args: List<Any> = emptyList()) : UiText
 
+    /**
+     * A message whose wording depends on a count.
+     *
+     * Separate from [Res] because a plural cannot be resolved by naming a
+     * string: which wording applies is a question about the number *and* the
+     * language, and only the resources know the answer. Catalan and English
+     * disagree about it, which is exactly why the app cannot pick one itself.
+     */
+    data class Plural(
+        @param:PluralsRes val id: Int,
+        val count: Int,
+        val args: List<Any> = listOf(count),
+    ) : UiText
+
     data class Raw(val value: String) : UiText
 
     fun resolve(context: Context): String = when (this) {
@@ -30,10 +45,14 @@ sealed interface UiText {
         } else {
             context.getString(id, *args.toTypedArray())
         }
+
+        is Plural -> context.resources.getQuantityString(id, count, *args.toTypedArray())
     }
 
     companion object {
         fun of(@StringRes id: Int, vararg args: Any): UiText = Res(id, args.toList())
+
+        fun ofPlural(@PluralsRes id: Int, count: Int): UiText = Plural(id, count)
 
         /** Prefers a platform message when there is one, falling back to [id]. */
         fun ofMessageOr(message: String?, @StringRes id: Int): UiText =

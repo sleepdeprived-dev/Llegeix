@@ -14,6 +14,7 @@ import com.david.llegeix.data.db.entity.ExamAttemptEntity
 import com.david.llegeix.data.db.entity.ExamAudioEntity
 import com.david.llegeix.data.db.entity.ExamEntity
 import com.david.llegeix.data.db.entity.ExamMarkEntity
+import com.david.llegeix.data.db.entity.ExamPartEntity
 import com.david.llegeix.data.db.entity.MarkKind
 import com.david.llegeix.data.exam.ExamExporter
 import com.david.llegeix.data.exam.ExamRepository
@@ -41,14 +42,70 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+/**
+ * Where one global page number falls: which document, and which page of it.
+ *
+ * The reader sees a paper of forty pages; the app sees three PDFs of twelve,
+ * eighteen and ten. This is the whole of the translation between those two, and
+ * it is a value rather than a calculation scattered about, because getting it
+ * wrong puts answers on the wrong page of the wrong document.
+ */
+data class PageAddress(val part: ExamPartEntity, val pageInPart: Int)
+
+/**
+ * The documents of a paper, laid end to end.
+ *
+ * Built once per change to the parts list rather than walked on every page
+ * turn: the offsets are a running sum, and a pager asks for them several times
+ * a frame while it is settling.
+ */
+class Pagination(val parts: List<ExamPartEntity>) {
+
+    private val starts: List<Int> = buildList {
+        var running = 0
+        parts.forEach { add(running); running += it.pageCount }
+    }
+
+    val pageCount: Int = parts.sumOf { it.pageCount }
+
+    /** Where a global page number lands, or null when it is off the end. */
+    fun addressOf(page: Int): PageAddress? {
+        if (page < 0) return null
+        for (index in parts.indices.reversed()) {
+            if (page >= starts[index]) {
+                val within = page - starts[index]
+                return if (within < parts[index].pageCount) {
+                    PageAddress(parts[index], within)
+                } else {
+                    null
+                }
+            }
+        }
+        return null
+    }
+
+    /** The global page number a document starts at, for jumping to one. */
+    fun startOf(partId: Long): Int {
+        val index = parts.indexOfFirst { it.id == partId }
+        return if (index < 0) 0 else starts[index]
+    }
+
+    companion object {
+        val Empty = Pagination(emptyList())
+    }
+}
 
 /** Everything the workspace needs that is not a page image or a mark. */
 data class WorkspaceState(
     val exam: ExamEntity? = null,
     val attempt: ExamAttemptEntity? = null,
+    /** The documents this paper is made of, in order. */
+    val pagination: Pagination = Pagination.Empty,
     val isOpening: Boolean = true,
     val error: Boolean = false,
-    val pageCount: Int = 0,
     val currentPage: Int = 0,
     /** Where to open, read once when the sitting is loaded. */
     val initialPage: Int = 0,
@@ -73,9 +130,34 @@ data class WorkspaceState(
 ) {
     val isFinished: Boolean get() = attempt?.finishedAt != null
 
+    /** Pages across every document of the paper. */
+    val pageCount: Int get() = pagination.pageCount
+
     /** What the pager is showing: the paper, or the key. */
     val visiblePageCount: Int
         get() = if (showAnswerKey) answerKeyPageCount else pageCount
+
+    /** Which document the current page falls in, and where in it. */
+    val here: PageAddress? get() = pagination.addressOf(currentPage)
+
+    /**
+     * Which document the page belongs to, when the paper is made of several.
+     *
+     * Null for the ordinary single-file paper, where naming the document would
+     * be repeating the exam's own title under every page.
+     */
+    val partOrdinal: Int?
+        get() = here?.let { address ->
+            if (pagination.parts.size <= 1) {
+                null
+            } else {
+                pagination.parts.indexOfFirst { it.id == address.part.id } + 1
+            }
+        }
+
+    val partTotal: Int get() = pagination.parts.size
+
+    val partName: String? get() = here?.part?.sourceName
 
     /** Writing is only ever onto the paper, never onto the answer sheet. */
     val canWrite: Boolean get() = !showAnswerKey
@@ -105,7 +187,16 @@ class ExamWorkspaceViewModel(
     private val _state = MutableStateFlow(WorkspaceState())
     val state: StateFlow<WorkspaceState> = _state.asStateFlow()
 
-    private var paper: PdfPageRenderer? = null
+    /**
+     * One open renderer per document, opened as its pages are first asked for.
+     *
+     * A paper of four documents is four PDFium handles, and opening all of them
+     * up front would delay the first page for the sake of pages the reader may
+     * never reach. Keyed by the part's id rather than its position, so
+     * reordering or removing a document cannot hand back the wrong file.
+     */
+    private val papers = HashMap<Long, PdfPageRenderer>()
+    private val openLock = Mutex()
     private var answerKey: PdfPageRenderer? = null
 
     /**
@@ -132,15 +223,15 @@ class ExamWorkspaceViewModel(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val marks: StateFlow<List<ExamMarkEntity>> = _state
-        .map { Triple(it.attempt != null, it.showAnswerKey, it.currentPage) }
+        .map { current -> if (current.showAnswerKey) null else current.here }
         .distinctUntilChanged()
-        .flatMapLatest { (loaded, showingKey, page) ->
-            // Nothing is drawn over the answer sheet: it is somebody else's
-            // document and the reader's work does not belong on it.
-            if (!loaded || showingKey) {
+        .flatMapLatest { address ->
+            // Null covers both "not loaded yet" and the answer sheet, which is
+            // somebody else's document and gets nothing drawn on it.
+            if (address == null) {
                 flowOf(emptyList())
             } else {
-                repository.observeMarks(attemptId, page)
+                repository.observeMarks(attemptId, address.part.id, address.pageInPart)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -157,22 +248,20 @@ class ExamWorkspaceViewModel(
             return@launch
         }
 
-        val opened = runCatchingCancellable {
-            PdfiumPageRenderer.open(application, repository.fileFor(exam.fileName).toUri())
-        }.getOrNull()
-        if (opened == null) {
+        val parts = repository.parts(exam.id)
+        if (parts.isEmpty()) {
             _state.update { it.copy(isOpening = false, error = true) }
             return@launch
         }
-        paper = opened
+        val pagination = Pagination(parts)
 
-        val resume = attempt.lastPage.coerceIn(0, (opened.pageCount - 1).coerceAtLeast(0))
+        val resume = attempt.lastPage.coerceIn(0, (pagination.pageCount - 1).coerceAtLeast(0))
         _state.update {
             it.copy(
                 exam = exam,
                 attempt = attempt,
+                pagination = pagination,
                 isOpening = false,
-                pageCount = opened.pageCount,
                 currentPage = resume,
                 initialPage = resume,
                 hasAnswerKey = exam.answerKeyFileName != null,
@@ -180,6 +269,27 @@ class ExamWorkspaceViewModel(
             )
         }
         repository.recordAttemptOpened(attemptId, resume)
+
+        // Watched rather than read once: a document added or removed from the
+        // paper while a sitting is open changes how long it is.
+        launch {
+            repository.observeParts(exam.id).collect { current ->
+                if (current.isEmpty()) return@collect
+                val updated = Pagination(current)
+                _state.update { state ->
+                    // A document removed while the sitting is open makes the
+                    // paper shorter, and the reader may be standing past the new
+                    // end of it. Left alone, every lookup from here answers null
+                    // and the workspace goes quietly inert — a page that will not
+                    // draw and a pen that will not write, with nothing said.
+                    state.copy(
+                        pagination = updated,
+                        currentPage = state.currentPage
+                            .coerceIn(0, (updated.pageCount - 1).coerceAtLeast(0)),
+                    )
+                }
+            }
+        }
 
         launch {
             repository.observeAudio(exam.id).collect { tracks ->
@@ -245,17 +355,50 @@ class ExamWorkspaceViewModel(
 
     /** Null when the page could not be drawn; the canvas shows a placeholder. */
     suspend fun renderPage(index: Int, widthPx: Int): Bitmap? {
-        val showingKey = _state.value.showAnswerKey
-        val renderer = if (showingKey) ensureAnswerKey() else paper
-        if (renderer == null) return null
-        val key = "${if (showingKey) "k" else "p"}$index@$widthPx"
+        val current = _state.value
+        if (current.showAnswerKey) {
+            val renderer = ensureAnswerKey() ?: return null
+            return render(renderer, "k", index, index, widthPx)
+        }
+        val address = current.pagination.addressOf(index) ?: return null
+        val renderer = rendererFor(address.part) ?: return null
+        // Keyed by the part, not by the global page: the same global number
+        // means a different page the moment a document is added ahead of it.
+        return render(renderer, "p${address.part.id}", address.pageInPart, index, widthPx)
+    }
+
+    private suspend fun render(
+        renderer: PdfPageRenderer,
+        prefix: String,
+        pageInDocument: Int,
+        globalPage: Int,
+        widthPx: Int,
+    ): Bitmap? {
+        val key = "$prefix#$pageInDocument@$widthPx"
         pageCache.get(key)?.let { return it }
         // crop = false, always. See the class comment: a cropped bitmap is not
         // the page the marks were positioned against.
-        return runCatchingCancellable { renderer.renderPage(index, widthPx, crop = false) }
+        return runCatchingCancellable { renderer.renderPage(pageInDocument, widthPx, crop = false) }
             .onSuccess { pageCache.put(key, it) }
             .getOrNull()
     }
+
+    /**
+     * The open renderer for one document, opening it if this is its first page.
+     *
+     * Under a lock because the pager asks for two or three pages at once while
+     * it settles, and without one a document straddling a page boundary would
+     * be opened twice and one of the two handles leaked.
+     */
+    private suspend fun rendererFor(part: ExamPartEntity): PdfPageRenderer? =
+        openLock.withLock {
+            papers[part.id]?.let { return it }
+            val opened = runCatchingCancellable {
+                PdfiumPageRenderer.open(application, repository.fileFor(part.fileName).toUri())
+            }.getOrNull()
+            if (opened != null) papers[part.id] = opened
+            opened
+        }
 
     private suspend fun ensureAnswerKey(): PdfPageRenderer? {
         answerKey?.let { return it }
@@ -337,13 +480,15 @@ class ExamWorkspaceViewModel(
      */
     fun onStrokeFinished(points: List<MarkGeometry.Point>) = viewModelScope.launch {
         val current = _state.value
+        val here = current.here ?: return@launch
         if (points.size < 2 || !current.canWrite) return@launch
         val bounds = MarkGeometry.boundsOf(points)
         val isHighlight = current.tool == ExamTool.HIGHLIGHTER
         repository.addMark(
             ExamMarkEntity(
                 attemptId = attemptId,
-                pageIndex = current.currentPage,
+                partId = here.part.id,
+                pageIndex = here.pageInPart,
                 kind = (if (isHighlight) MarkKind.HIGHLIGHT else MarkKind.INK).name,
                 x = bounds.left,
                 y = bounds.top,
@@ -358,12 +503,14 @@ class ExamWorkspaceViewModel(
 
     fun onTextPlaced(x: Float, y: Float, text: String) = viewModelScope.launch {
         val current = _state.value
+        val here = current.here ?: return@launch
         val trimmed = text.trim()
         if (trimmed.isEmpty() || !current.canWrite) return@launch
         repository.addMark(
             ExamMarkEntity(
                 attemptId = attemptId,
-                pageIndex = current.currentPage,
+                partId = here.part.id,
+                pageIndex = here.pageInPart,
                 kind = MarkKind.TEXT.name,
                 x = x,
                 y = y,
@@ -401,6 +548,7 @@ class ExamWorkspaceViewModel(
      */
     fun onTickAt(x: Float, y: Float, existing: ExamMarkEntity?) = viewModelScope.launch {
         val current = _state.value
+        val here = current.here ?: return@launch
         if (!current.canWrite) return@launch
         if (existing != null) {
             repository.deleteMark(existing.id)
@@ -409,7 +557,8 @@ class ExamWorkspaceViewModel(
         repository.addMark(
             ExamMarkEntity(
                 attemptId = attemptId,
-                pageIndex = current.currentPage,
+                partId = here.part.id,
+                pageIndex = here.pageInPart,
                 kind = MarkKind.TICK.name,
                 x = x - TICK_SIZE_FRACTION / 2,
                 y = y - TICK_SIZE_FRACTION / 2,
@@ -431,7 +580,8 @@ class ExamWorkspaceViewModel(
     }
 
     fun onClearPage() = viewModelScope.launch {
-        repository.clearPage(attemptId, _state.value.currentPage)
+        val here = _state.value.here ?: return@launch
+        repository.clearPage(attemptId, here.part.id, here.pageInPart)
     }
 
     fun onToggleFinished() = viewModelScope.launch {
@@ -464,13 +614,20 @@ class ExamWorkspaceViewModel(
      */
     fun onExportTo(target: Uri) = viewModelScope.launch {
         val current = _state.value
-        val exam = current.exam ?: return@launch
+        if (current.exam == null) return@launch
         _state.update { it.copy(isExporting = true) }
-        val marksByPage = repository.marks(attemptId).groupBy { it.pageIndex }
+        // Grouped by document and page, which is how a mark is addressed. The
+        // exporter walks the documents in the same order the reader does, so
+        // the file comes out as one paper however many PDFs went into it.
+        val marks = repository.marks(attemptId).groupBy { it.partId to it.pageIndex }
         val written = exporter.export(
-            paperFile = repository.fileFor(exam.fileName),
-            pageCount = current.pageCount,
-            marksByPage = marksByPage,
+            documents = current.pagination.parts.map { part ->
+                ExamExporter.Document(
+                    file = repository.fileFor(part.fileName),
+                    pageCount = part.pageCount,
+                    marksFor = { page -> marks[part.id to page].orEmpty() },
+                )
+            },
             target = target,
         )
         _state.update { it.copy(isExporting = false) }
@@ -484,8 +641,8 @@ class ExamWorkspaceViewModel(
     }
 
     override fun onCleared() {
-        paper?.close()
-        paper = null
+        papers.values.forEach { it.close() }
+        papers.clear()
         answerKey?.close()
         answerKey = null
         pageCache.evictAll()

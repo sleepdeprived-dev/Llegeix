@@ -13,6 +13,7 @@ import com.david.llegeix.data.db.MIGRATION_5_6
 import com.david.llegeix.data.db.MIGRATION_6_7
 import com.david.llegeix.data.db.MIGRATION_7_8
 import com.david.llegeix.data.db.MIGRATION_8_9
+import com.david.llegeix.data.db.MIGRATION_9_10
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -523,16 +524,141 @@ class MigrationTest {
         }
     }
 
+    /**
+     * An exam becomes a paper of documents, and nobody's answers are lost.
+     *
+     * This is the migration with real teeth in it. Removing three columns from
+     * `exams` means recreating a table whose children cascade on delete, and the
+     * obvious way to do that deletes every attempt and every mark on the way
+     * past — silently, leaving a database that validates perfectly. So the test
+     * is not "does it run": it is that every row is still there afterwards, and
+     * that each mark ended up on the document its own attempt's exam owns.
+     */
+    @Test
+    fun migrate9To10_makesEachExamAPaperOfOneDocumentAndKeepsEveryMark() {
+        helper.createDatabase(TEST_DB, 9).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO exams
+                    (id, title, sourceName, fileName, pageCount,
+                     answerKeyFileName, answerKeyPageCount, createdAt)
+                VALUES (1, 'C1 mostra', 'c1.pdf', 'aaa.pdf', 12, 'key.pdf', 4, 1000),
+                       (2, 'B2 mostra', 'b2.pdf', 'bbb.pdf', 8, NULL, NULL, 2000)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO exam_attempts
+                    (id, examId, label, startedAt, lastOpenedAt, finishedAt, lastPage)
+                VALUES (1, 1, '1', 1100, 1150, NULL, 3),
+                       (2, 1, '2', 1200, 1250, 1300, 0),
+                       (3, 2, '1', 2100, 2150, NULL, 1)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO exam_audio (id, examId, displayName, fileName, durationMs, position)
+                VALUES (1, 1, 'listen.mp3', 'ccc.mp3', 180000, 0)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO exam_marks
+                    (id, attemptId, pageIndex, kind, x, y, width, height,
+                     colorArgb, size, text, points, checked, sequence, createdAt)
+                VALUES (1, 1, 0, 'INK', 0.1, 0.2, 0.3, 0.05, -16777216, 0.004,
+                        NULL, '0.1,0.2 0.4,0.25', 0, 1, 1200),
+                       (2, 1, 3, 'TICK', 0.5, 0.5, 0.03, 0.03, -16777216, 0.03,
+                        NULL, NULL, 1, 2, 1300),
+                       (3, 3, 1, 'TEXT', 0.2, 0.4, 0.3, 0.03, -16777216, 0.022,
+                        'resposta', NULL, 0, 1, 2200)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 10, true, MIGRATION_9_10)
+
+        // Nothing was lost on the way past the table rebuild.
+        for ((table, expected) in listOf(
+            "exams" to 2,
+            "exam_parts" to 2,
+            "exam_attempts" to 3,
+            "exam_audio" to 1,
+            "exam_marks" to 3,
+        )) {
+            db.query("SELECT COUNT(*) FROM $table").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("$table survived the rebuild", expected, cursor.getInt(0))
+            }
+        }
+
+        // The one document each exam had is now its first part.
+        db.query(
+            "SELECT examId, sourceName, fileName, pageCount, position " +
+                "FROM exam_parts ORDER BY examId",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
+            assertEquals("c1.pdf", cursor.getString(1))
+            assertEquals("aaa.pdf", cursor.getString(2))
+            assertEquals(12, cursor.getInt(3))
+            assertEquals("the only document is the first one", 0, cursor.getInt(4))
+        }
+
+        // The answer sheet and the attempts came through untouched.
+        db.query("SELECT answerKeyFileName, answerKeyPageCount FROM exams WHERE id = 1").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("key.pdf", it.getString(0))
+            assertEquals(4, it.getInt(1))
+        }
+        db.query("SELECT label, finishedAt, lastPage FROM exam_attempts WHERE id = 2").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("2", it.getString(0))
+            assertEquals(1300L, it.getLong(1))
+        }
+
+        // And every mark sits on a document belonging to its own attempt's exam,
+        // which is the one thing a wrong join here would get silently wrong.
+        db.query(
+            """
+            SELECT COUNT(*) FROM exam_marks m
+            JOIN exam_attempts a ON a.id = m.attemptId
+            JOIN exam_parts p ON p.id = m.partId
+            WHERE p.examId <> a.examId
+            """.trimIndent(),
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("no mark landed on another exam's document", 0, cursor.getInt(0))
+        }
+        db.query("SELECT text FROM exam_marks WHERE id = 3").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("resposta", cursor.getString(0))
+        }
+
+        // The rebuilt foreign keys still bite: removing a document takes the
+        // marks written on it, and removing the paper takes everything.
+        db.execSQL("PRAGMA foreign_keys=ON")
+        db.execSQL("DELETE FROM exams WHERE id = 1")
+        db.query("SELECT COUNT(*) FROM exam_parts").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM exam_marks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("only exam 2's mark is left", 1, cursor.getInt(0))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To9_runsEveryStepInSequence() {
+    fun migrate1To10_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            9,
+            10,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -542,6 +668,7 @@ class MigrationTest {
             MIGRATION_6_7,
             MIGRATION_7_8,
             MIGRATION_8_9,
+            MIGRATION_9_10,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

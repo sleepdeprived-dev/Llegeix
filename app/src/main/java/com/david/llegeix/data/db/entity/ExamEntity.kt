@@ -31,6 +31,14 @@ import androidx.room.PrimaryKey
  * The cost is disk: an exam is stored twice if the reader also keeps the
  * original. Exam papers are small next to the translation models the app
  * already downloads, and deleting the exam here deletes the copy.
+ *
+ * ### Why there is no file here
+ *
+ * An exam is a *paper*, and a paper is not always one PDF. A Catalan exam
+ * sample routinely arrives as several files — the reading, the listening, the
+ * writing — which are one exam to the person sitting them and were three
+ * unrelated rows in this app until [ExamPartEntity] existed. The documents live
+ * there, in order; this row is only the identity of the paper.
  */
 @Entity(tableName = "exams")
 data class ExamEntity(
@@ -38,20 +46,6 @@ data class ExamEntity(
 
     /** What the reader calls it. Seeded from the file's name, then editable. */
     val title: String,
-
-    /**
-     * The name the file had when it was imported.
-     *
-     * Kept beside [title] rather than instead of it, because a renamed exam is
-     * still recognisable by the file it came from — and because this is the
-     * only trace left of where it came from once the grant is released.
-     */
-    val sourceName: String,
-
-    /** The copy's name inside the app's own exam directory. Never shown. */
-    val fileName: String,
-
-    val pageCount: Int,
 
     /**
      * The official answer sheet, if the reader has one.
@@ -71,6 +65,55 @@ data class ExamEntity(
     val answerKeyPageCount: Int? = null,
 
     val createdAt: Long = System.currentTimeMillis(),
+)
+
+/**
+ * One document of an exam, in the order it is worked through.
+ *
+ * This exists because a paper is not always a file. An exam sample is commonly
+ * handed out as several PDFs — reading, listening, writing — and before this
+ * they were several exams, which is exactly as confusing as it sounds: three
+ * rows in the list with the same name, three separate sets of attempts, and no
+ * way to say they were one thing.
+ *
+ * The parts are shown as one continuous run of pages, so the reader swipes off
+ * the end of the reading paper and onto the front of the listening one without
+ * having to know there was a join. [position] is what defines that order.
+ *
+ * A mark records the part it was made on rather than a page number counted
+ * across the whole exam. The difference only shows up later, and then it shows
+ * up badly: adding a part, removing one, or putting them in a different order
+ * moves every global page number after it, and answers anchored to those
+ * numbers would slide onto the wrong questions. Anchored to the part, they
+ * cannot.
+ */
+@Entity(
+    tableName = "exam_parts",
+    foreignKeys = [
+        ForeignKey(
+            entity = ExamEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["examId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("examId")],
+)
+data class ExamPartEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+
+    val examId: Long,
+
+    /** The name the file had when it was imported. Shown, so it is recognisable. */
+    val sourceName: String,
+
+    /** The copy's name inside the app's own exam directory. Never shown. */
+    val fileName: String,
+
+    val pageCount: Int,
+
+    /** Where this document falls in the paper. Zero-based, dense. */
+    val position: Int = 0,
 )
 
 /**

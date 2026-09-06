@@ -11,7 +11,10 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.ExamAttemptEntity
 import com.david.llegeix.data.db.entity.ExamAudioEntity
 import com.david.llegeix.data.db.entity.ExamEntity
+import com.david.llegeix.data.db.entity.ExamPartEntity
 import com.david.llegeix.data.exam.ExamRepository
+import com.david.llegeix.data.exam.ImportFailure
+import com.david.llegeix.data.exam.ImportResult
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,6 +52,10 @@ class ExamDetailViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val audio: StateFlow<List<ExamAudioEntity>> = repository.observeAudio(examId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The documents this paper is made of, in the order the pages run. */
+    val parts: StateFlow<List<ExamPartEntity>> = repository.observeParts(examId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -104,6 +111,30 @@ class ExamDetailViewModel(
 
     fun onToggleFinished(attemptId: Long, finished: Boolean) = viewModelScope.launch {
         repository.setAttemptFinished(attemptId, finished)
+    }
+
+    /** Add more documents to the end of this paper. */
+    fun onPartsPicked(uris: List<Uri>) = viewModelScope.launch {
+        _busy.value = true
+        val result = repository.addParts(examId, uris)
+        _busy.value = false
+        if (result is ImportResult.Failed) {
+            _message.value = UiText.of(
+                when (result.reason) {
+                    ImportFailure.NOT_A_PDF -> R.string.exams_import_not_a_pdf
+                    ImportFailure.OUT_OF_SPACE -> R.string.exams_import_no_space
+                    ImportFailure.UNREADABLE -> R.string.exams_import_unreadable
+                },
+            )
+        }
+    }
+
+    fun onRemovePart(partId: Long) = viewModelScope.launch {
+        repository.removePart(partId)
+    }
+
+    fun onMovePart(partId: Long, delta: Int) = viewModelScope.launch {
+        repository.movePart(partId, delta)
     }
 
     fun onAudioPicked(uri: Uri) = viewModelScope.launch {

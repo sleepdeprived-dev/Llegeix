@@ -63,16 +63,36 @@ enum class MarkKind {
             childColumns = ["attemptId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = ExamPartEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["partId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
     ],
-    // Every read is "everything on this page of this sitting", so that is the
-    // index. Without it each page turn is a scan of every mark in the attempt.
-    indices = [Index("attemptId", "pageIndex")],
+    // Every read is "everything on this page of this document of this sitting",
+    // so that is the index. Without it each page turn is a scan of every mark
+    // in the attempt.
+    indices = [Index("attemptId", "partId", "pageIndex"), Index("partId")],
 )
 data class ExamMarkEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
 
     val attemptId: Long,
 
+    /**
+     * Which document of the paper this was written on.
+     *
+     * Marks are anchored to the part, not to a page number counted across the
+     * whole exam, because those numbers move: adding a document, removing one
+     * or reordering them shifts every page after the change, and answers
+     * anchored to a shifting number slide onto the wrong questions. Removing a
+     * document takes its marks with it, which is right — the pages they were
+     * written on have gone.
+     */
+    val partId: Long,
+
+    /** The page within [partId], not within the exam as a whole. */
     val pageIndex: Int,
 
     val kind: String,

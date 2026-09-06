@@ -3,11 +3,13 @@ package com.david.llegeix.data.db.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.david.llegeix.data.db.entity.ExamAttemptEntity
 import com.david.llegeix.data.db.entity.ExamAudioEntity
 import com.david.llegeix.data.db.entity.ExamEntity
 import com.david.llegeix.data.db.entity.ExamMarkEntity
+import com.david.llegeix.data.db.entity.ExamPartEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -21,10 +23,20 @@ import kotlinx.coroutines.flow.Flow
 data class ExamWithProgress(
     val id: Long,
     val title: String,
-    val sourceName: String,
-    val fileName: String,
-    val pageCount: Int,
     val createdAt: Long,
+    /** Pages across every document of the paper. */
+    val pageCount: Int,
+    /** How many documents make up the paper; 1 for most of them. */
+    val partCount: Int,
+    /**
+     * The first document's stored file, for the cover.
+     *
+     * The first rather than any: a paper's cover is its front page, and the
+     * front page of a multi-part exam is the front page of its first document.
+     * Null only for the moment between a paper being created and its first
+     * document landing, which the list draws as a lettered tile anyway.
+     */
+    val coverFileName: String?,
     val attemptCount: Int,
     val audioCount: Int,
     /** Null when no answer sheet has been attached. */
@@ -47,10 +59,15 @@ interface ExamDao {
      */
     @Query(
         """
-        SELECT e.id AS id, e.title AS title, e.sourceName AS sourceName,
-               e.fileName AS fileName, e.pageCount AS pageCount,
-               e.createdAt AS createdAt,
+        SELECT e.id AS id, e.title AS title, e.createdAt AS createdAt,
                e.answerKeyFileName AS answerKeyFileName,
+               (SELECT COALESCE(SUM(p.pageCount), 0) FROM exam_parts p WHERE p.examId = e.id)
+                   AS pageCount,
+               (SELECT COUNT(*) FROM exam_parts p WHERE p.examId = e.id)
+                   AS partCount,
+               (SELECT p.fileName FROM exam_parts p WHERE p.examId = e.id
+                    ORDER BY p.position, p.id LIMIT 1)
+                   AS coverFileName,
                (SELECT COUNT(*) FROM exam_attempts a WHERE a.examId = e.id)
                    AS attemptCount,
                (SELECT COUNT(*) FROM exam_audio u WHERE u.examId = e.id)
@@ -85,6 +102,31 @@ interface ExamDao {
 
     @Query("DELETE FROM exams WHERE id = :examId")
     suspend fun delete(examId: Long)
+
+    // --- Parts -------------------------------------------------------------
+
+    @Query("SELECT * FROM exam_parts WHERE examId = :examId ORDER BY position, id")
+    fun observeParts(examId: Long): Flow<List<ExamPartEntity>>
+
+    @Query("SELECT * FROM exam_parts WHERE examId = :examId ORDER BY position, id")
+    suspend fun parts(examId: Long): List<ExamPartEntity>
+
+    @Query("SELECT * FROM exam_parts WHERE id = :partId")
+    suspend fun part(partId: Long): ExamPartEntity?
+
+    @Insert
+    suspend fun insert(part: ExamPartEntity): Long
+
+    @Query("DELETE FROM exam_parts WHERE id = :partId")
+    suspend fun deletePart(partId: Long)
+
+    @Query("UPDATE exam_parts SET position = :position WHERE id = :partId")
+    suspend fun setPartPosition(partId: Long, position: Int)
+
+    @Transaction
+    suspend fun reorderParts(examId: Long, orderedIds: List<Long>) {
+        orderedIds.forEachIndexed { index, id -> setPartPosition(id, index) }
+    }
 
     // --- Attempts ----------------------------------------------------------
 
@@ -144,18 +186,35 @@ interface ExamDao {
     @Query(
         """
         SELECT * FROM exam_marks
-        WHERE attemptId = :attemptId AND pageIndex = :pageIndex
+        WHERE attemptId = :attemptId AND partId = :partId AND pageIndex = :pageIndex
         ORDER BY sequence, id
         """,
     )
-    fun observeMarks(attemptId: Long, pageIndex: Int): Flow<List<ExamMarkEntity>>
+    fun observeMarks(attemptId: Long, partId: Long, pageIndex: Int): Flow<List<ExamMarkEntity>>
 
     /** Every mark in a sitting, for export and for comparing two sittings. */
-    @Query("SELECT * FROM exam_marks WHERE attemptId = :attemptId ORDER BY pageIndex, sequence, id")
+    @Query(
+        """
+        SELECT * FROM exam_marks WHERE attemptId = :attemptId
+        ORDER BY partId, pageIndex, sequence, id
+        """,
+    )
     suspend fun marks(attemptId: Long): List<ExamMarkEntity>
 
-    /** How many pages of this sitting have anything on them at all. */
-    @Query("SELECT COUNT(DISTINCT pageIndex) FROM exam_marks WHERE attemptId = :attemptId")
+    /**
+     * How many pages of this sitting have anything on them at all.
+     *
+     * Counted over the pair, not over the page number alone: page three of the
+     * reading paper and page three of the listening paper are two pages, and
+     * counting distinct page numbers would call them one.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM (
+            SELECT DISTINCT partId, pageIndex FROM exam_marks WHERE attemptId = :attemptId
+        )
+        """,
+    )
     fun observeMarkedPageCount(attemptId: Long): Flow<Int>
 
     /**
@@ -180,22 +239,15 @@ interface ExamDao {
     @Query("SELECT * FROM exam_marks WHERE attemptId = :attemptId ORDER BY sequence DESC, id DESC LIMIT 1")
     suspend fun lastMark(attemptId: Long): ExamMarkEntity?
 
-    @Query("DELETE FROM exam_marks WHERE attemptId = :attemptId AND pageIndex = :pageIndex")
-    suspend fun clearPage(attemptId: Long, pageIndex: Int)
+    @Query(
+        """
+        DELETE FROM exam_marks
+        WHERE attemptId = :attemptId AND partId = :partId AND pageIndex = :pageIndex
+        """,
+    )
+    suspend fun clearPage(attemptId: Long, partId: Long, pageIndex: Int)
 
     // --- Wipe --------------------------------------------------------------
-
-    /**
-     * Every file the app is holding, so the wipe can delete the copies too.
-     *
-     * Read before the rows go, because once the table is empty there is nothing
-     * left to say which files in the exam directory were ever ours.
-     */
-    @Query("SELECT fileName FROM exams")
-    suspend fun allExamFileNames(): List<String>
-
-    @Query("SELECT fileName FROM exam_audio")
-    suspend fun allAudioFileNames(): List<String>
 
     /** Empties the table, for the "erase everything" action in Configuració. */
     @Query("DELETE FROM exams")

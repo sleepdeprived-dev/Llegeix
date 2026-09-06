@@ -20,6 +20,8 @@
     <string name="action_done">Fet</string>
     <string name="action_delete">Suprimeix</string>
     <string name="action_create">Crea</string>
+    <string name="action_add">Afegeix</string>
+    <string name="action_replace">Substitueix</string>
     <string name="action_rename">Reanomena</string>
     <string name="action_back">Enrere</string>
     <string name="action_more_options">Més opcions</string>
@@ -514,11 +516,9 @@
     <string name="exams_rename_attempt_title">Canvia el nom de l\'intent</string>
     <string name="exams_delete_attempt_title">Vols suprimir aquest intent?</string>
     <string name="exams_delete_attempt_body">Se suprimirà tot el que hi has escrit. La prova es conserva i els altres intents no es toquen.</string>
-    <string name="exams_key_attach">Afegeix el full de respostes</string>
     <string name="exams_key_present">Full de respostes</string>
     <string name="exams_key_remove">Treu el full de respostes</string>
     <string name="exams_key_attached">Full de respostes afegit</string>
-    <string name="exams_audio_add">Afegeix àudio</string>
     <string name="exams_audio_remove">Treu %1$s</string>
 
     <!-- L\'espai de treball de l\'examen: les eines, la tinta i la pàgina. -->
@@ -560,4 +560,38 @@
     <string name="exam_pause">Atura</string>
     <string name="exam_audio_track">Pista %1$d de %2$d</string>
     <string name="exam_next_track">Pista següent</string>
+
+    <string name="exams_imported_partly">%1$d afegits, %2$d no s\'han pogut llegir</string>
+    <plurals name="exams_files">
+        <item quantity="one">%1$d fitxer</item>
+        <item quantity="many">%1$d fitxers</item>
+        <item quantity="other">%1$d fitxers</item>
+    </plurals>
+    <plurals name="exams_group_title">
+        <item quantity="one">%1$d fitxer triat</item>
+        <item quantity="many">%1$d fitxers triats</item>
+        <item quantity="other">%1$d fitxers triats</item>
+    </plurals>
+    <string name="exams_group_body">Són un sol examen repartit en diversos fitxers \u2014 una prova de lectura, una d\'audició \u2014 o exàmens diferents?</string>
+    <string name="exams_group_one">Un sol examen</string>
+    <string name="exams_group_separate">Exàmens separats</string>
+
+    <string name="exams_documents_heading">Prova</string>
+    <string name="exams_materials_heading">Materials</string>
+    <string name="exams_add_file">Afegeix un fitxer</string>
+    <string name="exams_remove_file">Treu %1$s</string>
+    <string name="exams_remove_file_title">Vols treure aquest fitxer?</string>
+    <string name="exams_remove_file_body">Les seves pàgines surten de la prova, i tot el que hi hagis escrit en qualsevol intent se\'n va amb elles. Els altres fitxers no es toquen.</string>
+    <string name="exams_key_none">Sense full de respostes</string>
+    <string name="exams_audio_none">Sense àudio</string>
+    <string name="exams_key_summary">Consulta\'l mentre treballes</string>
+    <string name="exams_audio_summary">Sona sobre la pàgina</string>
+    <string name="exam_part_of">%1$d/%2$d \u00b7 %3$s</string>
+    <plurals name="exams_imported_many">
+        <item quantity="one">%1$d examen afegit</item>
+        <item quantity="many">%1$d exàmens afegits</item>
+        <item quantity="other">%1$d exàmens afegits</item>
+    </plurals>
+    <string name="exams_move_up">Mou %1$s cap amunt</string>
+    <string name="exams_move_down">Mou %1$s cap avall</string>
 </resources>

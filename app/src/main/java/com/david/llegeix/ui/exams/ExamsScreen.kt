@@ -52,7 +52,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.ExamWithProgress
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.width
+import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.PdfCover
+import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
@@ -80,19 +85,22 @@ fun ExamsScreen(
     viewModel: ExamsViewModel = viewModel(factory = ExamsViewModel.Factory),
 ) {
     val exams by viewModel.exams.collectAsStateWithLifecycle()
+    val pendingChoice by viewModel.pendingChoice.collectAsStateWithLifecycle()
     val isImporting by viewModel.isImporting.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var renaming by remember { mutableStateOf<ExamWithProgress?>(null) }
     var pendingDelete by remember { mutableStateOf<ExamWithProgress?>(null) }
 
-    // OpenDocument rather than GetContent: the picker filters by type, shows
-    // every provider the phone has including the cloud ones, and hands back a
-    // URI that can be read straight through. Nothing is persisted from it — the
-    // file is copied during the call and the grant is allowed to lapse.
+    // OpenMultipleDocuments rather than OpenDocument: a paper commonly arrives
+    // as several files, and picking them one at a time meant reopening the
+    // picker and finding the folder again for each one. The picker still filters
+    // by type and still shows every provider including the cloud ones, and
+    // nothing is persisted — the files are copied during the call and the grants
+    // are allowed to lapse.
     val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) viewModel.onPicked(uri) }
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris -> viewModel.onPicked(uris) }
 
     val messageText = message?.resolved()
     LaunchedEffect(messageText) {
@@ -150,6 +158,7 @@ fun ExamsScreen(
                     items(exams, key = { it.id }) { exam ->
                         ExamRow(
                             exam = exam,
+                            coverUri = exam.coverFileName?.let(viewModel::coverUriFor),
                             onOpen = { onOpenExam(exam.id) },
                             onRename = { renaming = exam },
                             onDelete = { pendingDelete = exam },
@@ -169,6 +178,32 @@ fun ExamsScreen(
             onConfirm = { name ->
                 viewModel.onRename(exam.id, name)
                 renaming = null
+            },
+        )
+    }
+
+    if (pendingChoice.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = viewModel::onChoiceDismissed,
+            title = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.exams_group_title,
+                        pendingChoice.size,
+                        pendingChoice.size,
+                    ),
+                )
+            },
+            text = { Text(stringResource(R.string.exams_group_body)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onGroupChosen(asOneExam = true) }) {
+                    Text(stringResource(R.string.exams_group_one))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onGroupChosen(asOneExam = false) }) {
+                    Text(stringResource(R.string.exams_group_separate))
+                }
             },
         )
     }
@@ -213,6 +248,7 @@ fun ExamsScreen(
 @Composable
 private fun ExamRow(
     exam: ExamWithProgress,
+    coverUri: String?,
     onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -226,6 +262,20 @@ private fun ExamRow(
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The paper's own front page, exactly as the library draws a book's.
+        // A list of exams without them was a column of filenames, and a column
+        // of filenames from the same course looks like one row repeated.
+        if (coverUri != null) {
+            PdfCover(
+                uriString = coverUri,
+                width = ListCoverWidth,
+                modifier = Modifier
+                    .width(ListCoverWidth)
+                    .aspectRatio(CoverAspectRatio)
+                    .padding(end = Space.lg),
+            )
+        }
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = exam.title,
@@ -282,6 +332,9 @@ private fun detailLine(exam: ExamWithProgress): String {
                 exam.attemptCount,
             ),
         )
+        if (exam.partCount > 1) {
+            add(pluralStringResource(R.plurals.exams_files, exam.partCount, exam.partCount))
+        }
         if (exam.audioCount > 0) {
             add(
                 pluralStringResource(

@@ -25,6 +25,8 @@
     <string name="action_done">Done</string>
     <string name="action_delete">Delete</string>
     <string name="action_create">Create</string>
+    <string name="action_add">Add</string>
+    <string name="action_replace">Replace</string>
     <string name="action_rename">Rename</string>
     <string name="action_back">Back</string>
     <string name="action_more_options">More options</string>
@@ -529,11 +531,9 @@
     <string name="exams_rename_attempt_title">Rename this attempt</string>
     <string name="exams_delete_attempt_title">Delete this attempt?</string>
     <string name="exams_delete_attempt_body">Everything written on it will be deleted. The exam paper itself is kept, and your other attempts are not affected.</string>
-    <string name="exams_key_attach">Add answer sheet</string>
     <string name="exams_key_present">Answer sheet</string>
     <string name="exams_key_remove">Remove the answer sheet</string>
     <string name="exams_key_attached">Answer sheet added</string>
-    <string name="exams_audio_add">Add audio</string>
     <string name="exams_audio_remove">Remove %1$s</string>
 
     <!--
@@ -581,4 +581,38 @@
     <string name="exam_pause">Pause</string>
     <string name="exam_audio_track">Track %1$d of %2$d</string>
     <string name="exam_next_track">Next track</string>
+
+    <!-- Exam mode, v3.8.1: several files can be one paper. -->
+    <string name="exams_imported_partly">%1$d added, %2$d could not be read</string>
+    <plurals name="exams_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <plurals name="exams_group_title">
+        <item quantity="one">%1$d file picked</item>
+        <item quantity="other">%1$d files picked</item>
+    </plurals>
+    <string name="exams_group_body">Are these one exam split across several files \u2014 a reading paper, a listening paper \u2014 or separate exams?</string>
+    <string name="exams_group_one">One exam</string>
+    <string name="exams_group_separate">Separate exams</string>
+
+    <!-- The paper's own documents, on its screen. -->
+    <string name="exams_documents_heading">Paper</string>
+    <string name="exams_materials_heading">Materials</string>
+    <string name="exams_add_file">Add a file</string>
+    <string name="exams_remove_file">Remove %1$s</string>
+    <string name="exams_remove_file_title">Remove this file?</string>
+    <string name="exams_remove_file_body">Its pages leave the paper, and anything written on them in any attempt goes with them. Your other files are not affected.</string>
+    <string name="exams_key_none">No answer sheet</string>
+    <string name="exams_audio_none">No audio</string>
+    <string name="exams_key_summary">Flip to it while you work</string>
+    <string name="exams_audio_summary">Plays above the page</string>
+    <!-- e.g. "Part 2 of 3 \u00b7 comprensio.pdf" over the page. -->
+    <string name="exam_part_of">%1$d/%2$d \u00b7 %3$s</string>
+    <plurals name="exams_imported_many">
+        <item quantity="one">%1$d exam added</item>
+        <item quantity="other">%1$d exams added</item>
+    </plurals>
+    <string name="exams_move_up">Move %1$s earlier</string>
+    <string name="exams_move_down">Move %1$s later</string>
 </resources>

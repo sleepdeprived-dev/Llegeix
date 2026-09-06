@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -49,15 +52,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
-import com.david.llegeix.data.db.entity.ExamAudioEntity
+import com.david.llegeix.data.db.entity.ExamPartEntity
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
@@ -84,6 +90,7 @@ fun ExamDetailScreen(
     val exam by viewModel.exam.collectAsStateWithLifecycle()
     val attempts by viewModel.attempts.collectAsStateWithLifecycle()
     val audio by viewModel.audio.collectAsStateWithLifecycle()
+    val parts by viewModel.parts.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val started by viewModel.started.collectAsStateWithLifecycle()
@@ -92,13 +99,17 @@ fun ExamDetailScreen(
     var renamingExam by remember { mutableStateOf(false) }
     var renamingAttempt by remember { mutableStateOf<AttemptSummary?>(null) }
     var deletingAttempt by remember { mutableStateOf<AttemptSummary?>(null) }
+    var removingPart by remember { mutableStateOf<ExamPartEntity?>(null) }
 
     val keyPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) viewModel.onAnswerKeyPicked(uri) }
     val audioPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) viewModel.onAudioPicked(uri) }
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris -> uris.forEach(viewModel::onAudioPicked) }
+    val partPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris -> if (uris.isNotEmpty()) viewModel.onPartsPicked(uris) }
 
     // A sitting just made is a sitting the reader means to start now.
     LaunchedEffect(started) {
@@ -159,32 +170,104 @@ fun ExamDetailScreen(
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 
             LazyColumn(contentPadding = PaddingValues(bottom = Space.huge)) {
-                item {
-                    PaperSetup(
-                        pageCount = exam?.pageCount ?: 0,
-                        hasAnswerKey = exam?.answerKeyFileName != null,
-                        audio = audio,
-                        onAttachKey = { keyPicker.launch(PDF_TYPES) },
-                        onRemoveKey = viewModel::onRemoveAnswerKey,
-                        onAddAudio = { audioPicker.launch(AUDIO_TYPES) },
-                        onRemoveAudio = viewModel::onRemoveAudio,
+                // The paper itself: the documents it is made of, in order.
+                item { SectionHeading(stringResource(R.string.exams_documents_heading)) }
+                itemsIndexed(parts, key = { _, part -> part.id }) { index, part ->
+                    DocumentRow(
+                        part = part,
+                        index = index,
+                        count = parts.size,
+                        onRemove = { removingPart = part },
+                        onMove = { delta -> viewModel.onMovePart(part.id, delta) },
                     )
+                }
+                item {
+                    TextButton(
+                        onClick = { partPicker.launch(PDF_TYPES) },
+                        modifier = Modifier.padding(
+                            start = Space.md,
+                            top = Space.xs,
+                            bottom = Space.sm,
+                        ),
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.exams_add_file),
+                            modifier = Modifier.padding(start = Space.sm),
+                        )
+                    }
                     HorizontalDivider()
                 }
 
+                // What comes with the paper, if anything does.
+                item { SectionHeading(stringResource(R.string.exams_materials_heading)) }
                 item {
-                    Text(
-                        text = stringResource(R.string.exams_attempts_heading),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(
-                            start = Space.screen,
-                            end = Space.screen,
-                            top = Space.lg,
-                            bottom = Space.sm,
+                    val hasKey = exam?.answerKeyFileName != null
+                    MaterialRow(
+                        painter = painterResource(R.drawable.ic_key),
+                        title = stringResource(
+                            if (hasKey) R.string.exams_key_present else R.string.exams_key_none,
                         ),
+                        summary = stringResource(R.string.exams_key_summary),
+                        actionLabel = stringResource(
+                            if (hasKey) R.string.action_replace else R.string.action_add,
+                        ),
+                        onAction = { keyPicker.launch(PDF_TYPES) },
+                        content = if (!hasKey) {
+                            null
+                        } else {
+                            {
+                                AttachmentRow(
+                                    label = stringResource(R.string.exams_key_present),
+                                    icon = Icons.Default.Check,
+                                    removeDescription = stringResource(R.string.exams_key_remove),
+                                    onRemove = viewModel::onRemoveAnswerKey,
+                                )
+                            }
+                        },
                     )
                 }
+                item {
+                    MaterialRow(
+                        painter = painterResource(R.drawable.ic_speaker),
+                        title = if (audio.isEmpty()) {
+                            stringResource(R.string.exams_audio_none)
+                        } else {
+                            pluralStringResource(
+                                R.plurals.exams_recordings,
+                                audio.size,
+                                audio.size,
+                            )
+                        },
+                        summary = stringResource(R.string.exams_audio_summary),
+                        actionLabel = stringResource(R.string.action_add),
+                        onAction = { audioPicker.launch(AUDIO_TYPES) },
+                        content = if (audio.isEmpty()) {
+                            null
+                        } else {
+                            {
+                                audio.forEach { track ->
+                                    AttachmentRow(
+                                        label = track.displayName,
+                                        painter = painterResource(R.drawable.ic_speaker),
+                                        removeDescription = stringResource(
+                                            R.string.exams_audio_remove,
+                                            track.displayName,
+                                        ),
+                                        onRemove = { viewModel.onRemoveAudio(track) },
+                                    )
+                                }
+                            }
+                        },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(top = Space.md))
+                }
+
+                item { SectionHeading(stringResource(R.string.exams_attempts_heading)) }
 
                 if (attempts.isEmpty()) {
                     item {
@@ -202,7 +285,7 @@ fun ExamDetailScreen(
                     items(attempts, key = { it.attempt.id }) { summary ->
                         AttemptRow(
                             summary = summary,
-                            pageCount = exam?.pageCount ?: 0,
+                            pageCount = parts.sumOf { it.pageCount },
                             onOpen = { onOpenAttempt(summary.attempt.id) },
                             onRename = { renamingAttempt = summary },
                             onDelete = { deletingAttempt = summary },
@@ -245,6 +328,27 @@ fun ExamDetailScreen(
         )
     }
 
+    removingPart?.let { part ->
+        AlertDialog(
+            onDismissRequest = { removingPart = null },
+            title = { Text(stringResource(R.string.exams_remove_file_title)) },
+            text = { Text(stringResource(R.string.exams_remove_file_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.onRemovePart(part.id)
+                        removingPart = null
+                    },
+                ) { Text(stringResource(R.string.action_delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { removingPart = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     deletingAttempt?.let { summary ->
         AlertDialog(
             onDismissRequest = { deletingAttempt = null },
@@ -267,111 +371,176 @@ fun ExamDetailScreen(
     }
 }
 
+/** A heading over one section of the paper's screen. */
+@Composable
+private fun SectionHeading(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(
+            start = Space.screen,
+            end = Space.screen,
+            top = Space.lg,
+            bottom = Space.sm,
+        ),
+    )
+}
+
 /**
- * The paper's own furniture: how long it is, its answer sheet, its recordings.
+ * The documents this paper is made of.
  *
- * Set up once and then rarely touched, so it is a quiet block above the list
- * rather than a screen of its own behind a menu — the reader should be able to
- * see at a glance whether this paper has its answers, without going looking.
+ * Shown even when there is only one, because that is the row that tells a
+ * reader the paper *can* have more than one — and adding the second file is the
+ * thing that was impossible before and is the point of this release. Removing
+ * is offered only when there is something left to remove: a paper with no
+ * documents is not a paper.
  */
 @Composable
-private fun PaperSetup(
-    pageCount: Int,
-    hasAnswerKey: Boolean,
-    audio: List<ExamAudioEntity>,
-    onAttachKey: () -> Unit,
-    onRemoveKey: () -> Unit,
-    onAddAudio: () -> Unit,
-    onRemoveAudio: (ExamAudioEntity) -> Unit,
+private fun DocumentRow(
+    part: ExamPartEntity,
+    index: Int,
+    count: Int,
+    onRemove: () -> Unit,
+    onMove: (delta: Int) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = Space.screen, vertical = Space.md)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen, vertical = Space.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Numbered, because the order is what decides where the pages run, and
+        // a list of filenames alone does not say it has one.
         Text(
-            text = pluralStringResource(R.plurals.exams_pages, pageCount, pageCount),
-            style = MaterialTheme.typography.bodyMedium,
+            text = "${index + 1}",
+            style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .wrapContentHeight(),
+            textAlign = TextAlign.Center,
         )
-
-        // Only the two *adding* actions are chips. A chip that changed from
-        // "Add answer sheet" to "Answer sheet added" and then removed the sheet
-        // when pressed would be a button whose label describes a state rather
-        // than what pressing it does — which is how somebody deletes their
-        // answer key by tapping what they read as a tick. What is attached is
-        // listed underneath instead, each with its own X, exactly like the
-        // recordings.
-        Row(
-            modifier = Modifier.padding(top = Space.md),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.md),
         ) {
-            if (!hasAnswerKey) {
-                AssistChip(
-                    onClick = onAttachKey,
-                    label = { Text(stringResource(R.string.exams_key_attach)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    },
-                )
-            }
-            Box(modifier = Modifier.padding(start = if (hasAnswerKey) 0.dp else Space.sm)) {
-                AssistChip(
-                    onClick = onAddAudio,
-                    label = { Text(stringResource(R.string.exams_audio_add)) },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_speaker),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    },
-                )
-            }
-        }
-
-        if (hasAnswerKey) {
-            AttachmentRow(
-                label = stringResource(R.string.exams_key_present),
-                icon = Icons.Default.Check,
-                removeDescription = stringResource(R.string.exams_key_remove),
-                onRemove = onRemoveKey,
+            Text(
+                text = part.sourceName,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = pluralStringResource(R.plurals.exams_pages, part.pageCount, part.pageCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-
-        audio.forEach { track ->
-            AttachmentRow(
-                label = track.displayName,
-                painter = painterResource(R.drawable.ic_speaker),
-                removeDescription = stringResource(
-                    R.string.exams_audio_remove,
-                    track.displayName,
-                ),
-                onRemove = { onRemoveAudio(track) },
-            )
+        // Only where there is an order to change. The arrows decide how the
+        // pages run, and reordering is safe for the reader's work: a mark
+        // records the document it was made on, so moving a document changes
+        // which page number a page answers to and nothing else.
+        if (count > 1) {
+            IconButton(onClick = { onMove(-1) }, enabled = index > 0) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_up),
+                    contentDescription = stringResource(R.string.exams_move_up, part.sourceName),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            IconButton(onClick = { onMove(1) }, enabled = index < count - 1) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_up),
+                    contentDescription = stringResource(R.string.exams_move_down, part.sourceName),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .rotate(180f),
+                )
+            }
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(
+                        R.string.exams_remove_file,
+                        part.sourceName,
+                    ),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }
 
 /**
- * One thing attached to the paper, with the way to take it off again.
+ * One thing that can be attached to a paper: the answer sheet, or the audio.
  *
- * Shared by the answer sheet and the recordings so that removing either is the
- * same gesture in the same place. They are different kinds of file but the same
- * kind of decision.
+ * A proper two-line row rather than the loose chips this replaced. A chip says
+ * only what pressing it does, so a chip row could not say whether a paper
+ * *had* an answer sheet without a second chip contradicting the first — and the
+ * one thing a reader wants from this screen at a glance is exactly that. The
+ * row states what is there, what it is for, and offers the one action that
+ * applies.
  */
+@Composable
+private fun MaterialRow(
+    painter: Painter,
+    title: String,
+    summary: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: (@Composable () -> Unit)? = null,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen, vertical = Space.xs)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(Space.md),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painter = painter,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = Space.md),
+            ) {
+                Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onAction) { Text(actionLabel) }
+        }
+        content?.invoke()
+    }
+}
+
+/** One attached file, listed under its material row with a way off. */
 @Composable
 private fun AttachmentRow(
     label: String,
     removeDescription: String,
     onRemove: () -> Unit,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    painter: androidx.compose.ui.graphics.painter.Painter? = null,
+    painter: Painter? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = Space.sm),
+            .padding(top = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
@@ -379,14 +548,14 @@ private fun AttachmentRow(
                 painter = painter,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
             )
 
             icon != null -> Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
         Text(
@@ -402,7 +571,7 @@ private fun AttachmentRow(
             Icon(
                 Icons.Default.Close,
                 contentDescription = removeDescription,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
     }

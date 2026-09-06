@@ -213,3 +213,152 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         )
     }
 }
+
+/**
+ * An exam becomes a paper made of documents.
+ *
+ * A Catalan exam sample routinely arrives as several PDFs — the reading, the
+ * listening, the writing — which are one exam to the person sitting them and
+ * were three unrelated rows in this app. [ExamPartEntity] is where the documents
+ * go, in order, and [ExamEntity] keeps only the identity of the paper.
+ *
+ * ### Why this is written the long way round
+ *
+ * Removing three columns from `exams` means recreating the table, and `exams`
+ * is a parent whose children cascade on delete. With foreign keys enabled —
+ * which is how the app runs — `DROP TABLE exams` performs an implicit
+ * `DELETE FROM exams` first, and that fires ON DELETE CASCADE on every attempt,
+ * every recording and, through the attempts, every mark. `PRAGMA
+ * defer_foreign_keys` does not prevent it: deferral changes when a violation is
+ * reported, not whether a cascade runs. The obvious three-line migration would
+ * therefore delete every answer the reader has ever written, silently, on
+ * upgrade, and leave a perfectly valid-looking database behind.
+ *
+ * So the children are copied into staging tables that carry no foreign keys at
+ * all, dropped, and rebuilt afterwards. `exams` is only recreated once nothing
+ * references it, at which point its implicit delete has nothing to cascade to.
+ *
+ * This was verified against a populated v9 database with foreign keys on before
+ * it was written here: every row survives, every mark lands on the part
+ * belonging to its own attempt's exam, and `PRAGMA foreign_key_check` comes back
+ * clean.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // 1. Stage every child's rows somewhere no cascade can reach them. The
+        //    staging tables deliberately declare no foreign keys.
+        db.execSQL(
+            """
+            CREATE TABLE _m_parts (
+                examId INTEGER NOT NULL, sourceName TEXT NOT NULL, fileName TEXT NOT NULL,
+                pageCount INTEGER NOT NULL, position INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        // The one document each exam already had becomes its first part.
+        db.execSQL(
+            """
+            INSERT INTO _m_parts (examId, sourceName, fileName, pageCount, position)
+            SELECT id, sourceName, fileName, pageCount, 0 FROM exams
+            """.trimIndent(),
+        )
+        db.execSQL("CREATE TABLE _m_attempts AS SELECT * FROM exam_attempts")
+        db.execSQL("CREATE TABLE _m_audio AS SELECT * FROM exam_audio")
+        db.execSQL("CREATE TABLE _m_marks AS SELECT * FROM exam_marks")
+
+        // 2. Drop the children. Dropping a child cascades to nothing.
+        db.execSQL("DROP TABLE exam_marks")
+        db.execSQL("DROP TABLE exam_audio")
+        db.execSQL("DROP TABLE exam_attempts")
+
+        // 3. Only now recreate exams, with nothing left pointing at it.
+        db.execSQL(
+            """
+            CREATE TABLE exams_new (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL,
+                `answerKeyFileName` TEXT, `answerKeyPageCount` INTEGER,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO exams_new (id, title, answerKeyFileName, answerKeyPageCount, createdAt)
+            SELECT id, title, answerKeyFileName, answerKeyPageCount, createdAt FROM exams
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE exams")
+        db.execSQL("ALTER TABLE exams_new RENAME TO exams")
+
+        // 4. Rebuild the children in their v10 shape.
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exam_parts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `examId` INTEGER NOT NULL, `sourceName` TEXT NOT NULL, `fileName` TEXT NOT NULL, `pageCount` INTEGER NOT NULL, `position` INTEGER NOT NULL, FOREIGN KEY(`examId`) REFERENCES `exams`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_exam_parts_examId` ON `exam_parts` (`examId`)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exam_attempts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `examId` INTEGER NOT NULL, `label` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, `lastOpenedAt` INTEGER NOT NULL, `finishedAt` INTEGER, `lastPage` INTEGER NOT NULL, FOREIGN KEY(`examId`) REFERENCES `exams`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_exam_attempts_examId` ON `exam_attempts` (`examId`)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exam_audio` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `examId` INTEGER NOT NULL, `displayName` TEXT NOT NULL, `fileName` TEXT NOT NULL, `durationMs` INTEGER, `position` INTEGER NOT NULL, FOREIGN KEY(`examId`) REFERENCES `exams`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_exam_audio_examId` ON `exam_audio` (`examId`)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exam_marks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `attemptId` INTEGER NOT NULL, `partId` INTEGER NOT NULL, `pageIndex` INTEGER NOT NULL, `kind` TEXT NOT NULL, `x` REAL NOT NULL, `y` REAL NOT NULL, `width` REAL NOT NULL, `height` REAL NOT NULL, `colorArgb` INTEGER NOT NULL, `size` REAL NOT NULL, `text` TEXT, `points` TEXT, `checked` INTEGER NOT NULL, `sequence` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, FOREIGN KEY(`attemptId`) REFERENCES `exam_attempts`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`partId`) REFERENCES `exam_parts`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_exam_marks_attemptId_partId_pageIndex` ON `exam_marks` (`attemptId`, `partId`, `pageIndex`)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_exam_marks_partId` ON `exam_marks` (`partId`)",
+        )
+
+        // 5. Refill them, and give every mark the part it was really made on.
+        db.execSQL(
+            """
+            INSERT INTO exam_parts (examId, sourceName, fileName, pageCount, position)
+            SELECT examId, sourceName, fileName, pageCount, position FROM _m_parts
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO exam_attempts
+                (id, examId, label, startedAt, lastOpenedAt, finishedAt, lastPage)
+            SELECT id, examId, label, startedAt, lastOpenedAt, finishedAt, lastPage
+            FROM _m_attempts
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO exam_audio (id, examId, displayName, fileName, durationMs, position)
+            SELECT id, examId, displayName, fileName, durationMs, position FROM _m_audio
+            """.trimIndent(),
+        )
+        // Every exam had exactly one document before this, so every mark
+        // belongs to that exam's part at position zero, and its page number
+        // was already a page number within it.
+        db.execSQL(
+            """
+            INSERT INTO exam_marks
+                (id, attemptId, partId, pageIndex, kind, x, y, width, height,
+                 colorArgb, size, text, points, checked, sequence, createdAt)
+            SELECT m.id, m.attemptId, p.id, m.pageIndex, m.kind, m.x, m.y, m.width, m.height,
+                   m.colorArgb, m.size, m.text, m.points, m.checked, m.sequence, m.createdAt
+            FROM _m_marks m
+            JOIN _m_attempts a ON a.id = m.attemptId
+            JOIN exam_parts p ON p.examId = a.examId AND p.position = 0
+            """.trimIndent(),
+        )
+
+        db.execSQL("DROP TABLE _m_marks")
+        db.execSQL("DROP TABLE _m_audio")
+        db.execSQL("DROP TABLE _m_attempts")
+        db.execSQL("DROP TABLE _m_parts")
+    }
+}

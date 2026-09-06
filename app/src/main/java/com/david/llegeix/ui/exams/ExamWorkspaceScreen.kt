@@ -431,12 +431,36 @@ private fun ExamToolbar(
                     contentDescription = stringResource(R.string.exam_previous_page),
                 )
             }
-            Text(
-                text = stringResource(R.string.exam_page_of, page + 1, pageCount.coerceAtLeast(1)),
-                style = MaterialTheme.typography.labelLarge,
+            // Which document, when the paper is made of several. Swiping off
+            // the end of the reading paper and onto the listening one is
+            // otherwise a silent change of subject.
+            Column(
                 modifier = Modifier.weight(1f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.exam_page_of,
+                        page + 1,
+                        pageCount.coerceAtLeast(1),
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                state.partOrdinal?.let { ordinal ->
+                    Text(
+                        text = stringResource(
+                            R.string.exam_part_of,
+                            ordinal,
+                            state.partTotal,
+                            state.partName.orEmpty(),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             IconButton(onClick = { onStep(1) }, enabled = page < pageCount - 1) {
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,

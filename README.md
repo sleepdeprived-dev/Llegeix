@@ -135,8 +135,14 @@ does both after bumping the version in `app/build.gradle.kts`.
   voice at all the button is simply not drawn rather than sitting there dead.
   Where the voice merely has not been downloaded, the button offers to fetch it.
 - **Exam mode** — a tab for the papers you sit rather than the books you read.
-  Import an exam PDF and it is **copied** into the app, which is the decision
-  the whole feature rests on: your answers are marks positioned on particular
+  A paper is not always one file: an exam sample routinely arrives as a reading
+  PDF, a listening PDF and a writing PDF, which are one exam to whoever sits
+  them, so several files can be imported at once and grouped into a single
+  paper. Its pages then run straight through the join, and the documents can be
+  reordered or removed without disturbing a single answer — a mark records the
+  document it was made on, not a page number counted across the whole paper.
+  Import is **copied** into the app, which is the decision the whole feature
+  rests on: your answers are marks positioned on particular
   pages, and a paper that another app can rename, move or delete would take them
   with it. Each go at a paper is an *attempt* — write on it with a pen, type
   answers, tick boxes, highlight the question — and every stroke is saved as

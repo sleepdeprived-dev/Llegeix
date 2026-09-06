@@ -38,71 +38,92 @@ import java.io.File
 class ExamExporter(private val context: Context) {
 
     /**
-     * Render [pages] of the paper with [marksByPage] over them into [target].
+     * One document of the paper, and what the reader wrote on it.
+     *
+     * The marks arrive as a lookup rather than a map so the exporter never has
+     * to know how a mark is addressed — only which ones belong on the page it
+     * is drawing.
+     */
+    data class Document(
+        val file: File,
+        val pageCount: Int,
+        val marksFor: (pageInDocument: Int) -> List<ExamMarkEntity>,
+    )
+
+    /**
+     * Write [documents] out, in order, as one PDF at [target].
+     *
+     * A paper made of three files comes out as one file, because that is what
+     * it is to whoever sits it. Page numbers in the export run straight through
+     * the join, exactly as they do on screen.
      *
      * @param onProgress called with each page as it is finished, so a long
      *   paper can say how far along it is rather than appearing to hang.
      */
     suspend fun export(
-        paperFile: File,
-        pageCount: Int,
-        marksByPage: Map<Int, List<ExamMarkEntity>>,
+        documents: List<Document>,
         target: Uri,
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
     ): Boolean = withContext(Dispatchers.IO) {
-        val renderer = runCatching {
-            PdfiumPageRenderer.open(context, paperFile.toUri())
-        }.getOrNull() ?: return@withContext false
+        if (documents.isEmpty()) return@withContext false
+        val total = documents.sumOf { it.pageCount }
+        val pdf = PdfDocument()
+        var done = 0
+        var wrote = false
 
-        renderer.use { paper ->
-            val document = PdfDocument()
-            try {
-                for (index in 0 until pageCount) {
-                    // A long paper is a long job; a reader who backs out should
-                    // not have the phone go on rendering pages for a file that
-                    // is about to be thrown away.
-                    currentCoroutineContext().ensureActive()
+        try {
+            for (document in documents) {
+                val renderer = runCatching {
+                    PdfiumPageRenderer.open(context, document.file.toUri())
+                }.getOrNull() ?: continue
 
-                    val bitmap = runCatching {
-                        paper.renderPage(index, RENDER_WIDTH_PX, crop = false)
-                    }.getOrNull() ?: continue
+                renderer.use { paper ->
+                    for (index in 0 until document.pageCount) {
+                        // A long paper is a long job; a reader who backs out
+                        // should not have the phone go on rendering pages for a
+                        // file that is about to be thrown away.
+                        currentCoroutineContext().ensureActive()
 
-                    val info = PdfDocument.PageInfo.Builder(
-                        bitmap.width,
-                        bitmap.height,
-                        index + 1,
-                    ).create()
-                    val page = document.startPage(info)
-                    val canvas = page.canvas
+                        val bitmap = runCatching {
+                            paper.renderPage(index, RENDER_WIDTH_PX, crop = false)
+                        }.getOrNull() ?: continue
 
-                    canvas.drawBitmap(
-                        bitmap,
-                        null,
-                        Rect(0, 0, bitmap.width, bitmap.height),
-                        Paint(Paint.FILTER_BITMAP_FLAG),
-                    )
-                    MarkPainter.draw(
-                        canvas = canvas,
-                        marks = marksByPage[index].orEmpty(),
-                        width = bitmap.width.toFloat(),
-                        height = bitmap.height.toFloat(),
-                    )
-
-                    document.finishPage(page)
-                    bitmap.recycle()
-                    onProgress(index + 1, pageCount)
+                        // Numbered across the whole export rather than per
+                        // document, so the file's own page numbering matches
+                        // what the reader was looking at.
+                        val info = PdfDocument.PageInfo
+                            .Builder(bitmap.width, bitmap.height, done + 1)
+                            .create()
+                        val page = pdf.startPage(info)
+                        page.canvas.drawBitmap(
+                            bitmap,
+                            null,
+                            Rect(0, 0, bitmap.width, bitmap.height),
+                            Paint(Paint.FILTER_BITMAP_FLAG),
+                        )
+                        MarkPainter.draw(
+                            canvas = page.canvas,
+                            marks = document.marksFor(index),
+                            width = bitmap.width.toFloat(),
+                            height = bitmap.height.toFloat(),
+                        )
+                        pdf.finishPage(page)
+                        bitmap.recycle()
+                        wrote = true
+                        onProgress(++done, total)
+                    }
                 }
-
-                val written = runCatching {
-                    context.contentResolver.openOutputStream(target)?.use { out ->
-                        document.writeTo(out)
-                        true
-                    } ?: false
-                }.getOrDefault(false)
-                written
-            } finally {
-                document.close()
             }
+
+            if (!wrote) return@withContext false
+            runCatching {
+                context.contentResolver.openOutputStream(target)?.use { out ->
+                    pdf.writeTo(out)
+                    true
+                } ?: false
+            }.getOrDefault(false)
+        } finally {
+            pdf.close()
         }
     }
 
