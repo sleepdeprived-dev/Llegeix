@@ -18,6 +18,7 @@
     <string name="nav_dictionary">Dictionary</string>
     <string name="nav_collections">Collections</string>
     <string name="nav_saved">Saved</string>
+    <string name="nav_exams">Exams</string>
 
     <!-- Shared actions -->
     <string name="action_cancel">Cancel</string>
@@ -121,12 +122,8 @@
     <string name="recent_subtitle">%1$s · %2$s</string>
 
     <!-- Bookmarks -->
-    <string name="bookmarks_title">Saved</string>
-    <string name="bookmarks_tab_pdfs">PDFs</string>
     <string name="bookmarks_tab_pages">Pages</string>
     <string name="bookmarks_tab_with_count">%1$s (%2$d)</string>
-    <string name="bookmarks_pdfs_empty_title">No bookmarked PDFs</string>
-    <string name="bookmarks_pdfs_empty_body">Star a whole PDF from its menu in the library, or swipe its row. Starred PDFs also appear as a \"Starred\" collection under Collections.</string>
     <string name="bookmarks_pages_empty_title">No bookmarked pages</string>
     <string name="bookmarks_pages_empty_body">Tap the star while reading to bookmark the page you are on. Those land here, separately from whole PDFs.</string>
     <!-- A page bookmark's own label, appended after the page number. -->
@@ -248,6 +245,15 @@
     <string name="lookup_location">Page %1$d · line %2$d</string>
     <!-- Marks a transcription whose stressed vowel had to be guessed. -->
     <string name="lookup_ipa_approximate">approx.</string>
+
+    <!--
+        The speaker beside a word. Three labels rather than one because the
+        button does three different things depending on what the device's
+        speech engine has: say it, stop saying it, or go and fetch the voice.
+    -->
+    <string name="pronounce">Say this word out loud</string>
+    <string name="pronounce_stop">Stop</string>
+    <string name="pronounce_get_voice">Get the Catalan voice</string>
 
     <!-- Saved words -->
     <string name="bookmarks_tab_words">Words</string>
@@ -390,7 +396,6 @@
         phone already has. They used to share a word and an icon, which made two
         quite different things impossible to tell apart on sight.
     -->
-    <string name="collections_title">Collections</string>
     <string name="collections_new">New collection</string>
     <string name="collections_empty_title">No collections yet</string>
     <string name="collections_empty_body">A collection is a shelf you make: a course, an author, the things you are working through. Make one and put PDFs on it.</string>
@@ -470,4 +475,110 @@
     <string name="swipe_read_later">Read later</string>
     <string name="swipe_not_read_later">Not later</string>
 
+
+    <!--
+        Exams: a paper the reader has brought in to sit, and each go at it.
+
+        "Attempt" rather than "try" or "go": it is what the reader would call it
+        about a real exam, and this list is read months apart, when a vaguer
+        word would have stopped meaning anything.
+    -->
+    <string name="exams_import">Import an exam</string>
+    <string name="exams_empty_title">No exams yet</string>
+    <string name="exams_empty_body">Bring in an exam paper as a PDF and work through it here. Your answers are kept separately, so the original file is never changed \u2014 and you can sit the same paper again later and compare.</string>
+    <string name="exams_imported">\u201c%1$s\u201d is ready</string>
+    <string name="exams_import_not_a_pdf">That file could not be opened as a PDF.</string>
+    <string name="exams_import_unreadable">That file could not be read.</string>
+    <string name="exams_import_no_space">There is not enough room on the phone for a copy of that file.</string>
+    <string name="exams_rename_title">Rename this exam</string>
+    <string name="exams_delete_title">Delete this exam?</string>
+    <string name="exams_more">More for %1$s</string>
+    <plurals name="exams_pages">
+        <item quantity="one">%1$d page</item>
+        <item quantity="other">%1$d pages</item>
+    </plurals>
+    <plurals name="exams_attempts">
+        <item quantity="one">%1$d attempt</item>
+        <item quantity="other">%1$d attempts</item>
+    </plurals>
+    <plurals name="exams_recordings">
+        <item quantity="one">%1$d recording</item>
+        <item quantity="other">%1$d recordings</item>
+    </plurals>
+    <!--
+        The no-attempts case is a string of its own rather than a zero item.
+        Neither English nor Catalan selects the `zero` quantity, so an item
+        under it is never shown: a paper with no attempts read "All 0 attempts
+        will be deleted".
+    -->
+    <string name="exams_delete_body_none">The copy this app made will be deleted. The file you imported it from is not touched.</string>
+    <plurals name="exams_delete_body">
+        <item quantity="one">Its %1$d attempt will be deleted along with the copy this app made. The file you imported it from is not touched.</item>
+        <item quantity="other">All %1$d attempts will be deleted along with the copy this app made. The file you imported it from is not touched.</item>
+    </plurals>
+
+    <string name="exams_new_attempt">New attempt</string>
+    <string name="exams_attempts_heading">Attempts</string>
+    <string name="exams_no_attempts">No attempts yet. Start one and work through the paper \u2014 everything you write is saved as you go.</string>
+    <string name="exams_attempt_label">Attempt %1$s</string>
+    <!-- "3 of 12 pages written on". Progress, not a score. -->
+    <string name="exams_attempt_progress">%1$d of %2$d pages</string>
+    <string name="exams_attempt_finished">Finished</string>
+    <string name="exams_mark_finished">Mark as finished</string>
+    <string name="exams_mark_unfinished">Mark as unfinished</string>
+    <string name="exams_rename_attempt_title">Rename this attempt</string>
+    <string name="exams_delete_attempt_title">Delete this attempt?</string>
+    <string name="exams_delete_attempt_body">Everything written on it will be deleted. The exam paper itself is kept, and your other attempts are not affected.</string>
+    <string name="exams_key_attach">Add answer sheet</string>
+    <string name="exams_key_present">Answer sheet</string>
+    <string name="exams_key_remove">Remove the answer sheet</string>
+    <string name="exams_key_attached">Answer sheet added</string>
+    <string name="exams_audio_add">Add audio</string>
+    <string name="exams_audio_remove">Remove %1$s</string>
+
+    <!--
+        The exam workspace: the tools, the ink, and the page underneath.
+
+        "View" leads the tool list and is where the workspace opens, because a
+        finger on a page can mean turn-this or write-here and it cannot mean
+        both. The reader says which before touching the page.
+    -->
+    <string name="exam_tool_view">View</string>
+    <string name="exam_tool_pen">Pen</string>
+    <string name="exam_tool_text">Type</string>
+    <string name="exam_tool_tick">Tick</string>
+    <string name="exam_tool_highlighter">Highlight</string>
+    <string name="exam_tool_eraser">Erase</string>
+    <string name="exam_ink_black">Black</string>
+    <string name="exam_ink_blue">Blue</string>
+    <string name="exam_ink_red">Red</string>
+    <string name="exam_ink_green">Green</string>
+    <string name="exam_stroke_fine">Fine</string>
+    <string name="exam_stroke_medium">Medium</string>
+    <string name="exam_stroke_thick">Thick</string>
+    <string name="exam_undo">Undo the last mark</string>
+    <string name="exam_clear_page">Clear this page</string>
+    <string name="exam_clear_page_title">Clear this page?</string>
+    <string name="exam_clear_page_body">Everything written on this page of this attempt will be deleted. Your other pages are not affected.</string>
+    <string name="exam_show_key">Show the answer sheet</string>
+    <string name="exam_show_work">Back to your work</string>
+    <string name="exam_key_banner">Answer sheet \u2014 read only</string>
+    <string name="exam_page_of">%1$d / %2$d</string>
+    <string name="exam_previous_page">Previous page</string>
+    <string name="exam_next_page">Next page</string>
+    <string name="exam_open_failed_title">This exam could not be opened</string>
+    <string name="exam_open_failed_body">The copy the app made may have been damaged. Delete this exam and import the paper again.</string>
+    <string name="exam_text_hint">Your answer</string>
+    <string name="exam_text_title">Type an answer</string>
+    <string name="exam_text_place">Place</string>
+    <string name="exam_finish">Mark as finished</string>
+    <string name="exam_unfinish">Mark as unfinished</string>
+    <string name="exam_export">Save as a PDF</string>
+    <string name="exam_exporting">Writing your PDF\u2026</string>
+    <string name="exam_export_done">Saved</string>
+    <string name="exam_export_failed">That could not be saved.</string>
+    <string name="exam_play">Play</string>
+    <string name="exam_pause">Pause</string>
+    <string name="exam_audio_track">Track %1$d of %2$d</string>
+    <string name="exam_next_track">Next track</string>
 </resources>

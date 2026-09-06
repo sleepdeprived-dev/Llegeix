@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,18 +25,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,11 +59,26 @@ import androidx.compose.foundation.layout.PaddingValues
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The reader's own collections, as one pane of the Saved tab.
+ *
+ * A pane rather than a screen: it draws its list and its dialogs and nothing
+ * else. The bar above it, the snackbar under it and the button that makes a new
+ * collection all belong to [com.david.llegeix.ui.saved.SavedScreen], because
+ * three panes sharing one set of chrome is the whole point of putting them
+ * together — a tab row with a top bar per tab is two rows of furniture over
+ * every list.
+ *
+ * @param showCreateDialog hoisted, because the button that raises it is up in
+ *   the chrome and the dialog it raises belongs down here with the collections.
+ */
 @Composable
-fun FoldersScreen(
+fun CollectionsPane(
     onOpenFolder: (folderId: Long, name: String) -> Unit,
     onOpenBookmarked: () -> Unit,
+    snackbarHostState: SnackbarHostState,
+    showCreateDialog: Boolean,
+    onCreateDialogDismissed: () -> Unit,
     modifier: Modifier = Modifier,
     /** Opens the collection with its picker already up, straight after making it. */
     onFillNewCollection: (folderId: Long, name: String) -> Unit = onOpenFolder,
@@ -77,8 +87,6 @@ fun FoldersScreen(
     val folders by viewModel.folders.collectAsStateWithLifecycle()
     val bookmarkedCount by viewModel.bookmarkedCount.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-    var showCreateDialog by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Long?>(null) }
     var colorPickerFor by remember { mutableStateOf<FolderWithCount?>(null) }
     var renameTarget by remember { mutableStateOf<FolderWithCount?>(null) }
@@ -99,82 +107,60 @@ fun FoldersScreen(
     }
 
 
-    Scaffold(
-        // The app shell's Scaffold has already inset this screen for the
-        // status bar and the navigation bar; counting them a second time
-        // put a dead band above the bottom bar and made every top bar
-        // 24dp taller than it asks to be.
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    LazyColumn(
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                expandedHeight = Space.topBar,
-                title = { Text(stringResource(R.string.collections_title)) },
+        // Room at the bottom for the button that makes a new collection, so the
+        // last row can always be scrolled clear of it.
+        contentPadding = PaddingValues(bottom = Space.huge),
+    ) {
+        // The automatic collection, always first and not user-editable.
+        item {
+            BookmarkedCollectionRow(
+                count = bookmarkedCount,
+                onClick = onOpenBookmarked,
             )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showCreateDialog = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.collections_new)) },
-            )
-        },
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.padding(innerPadding),
-            contentPadding = PaddingValues(bottom = Space.lg),
-        ) {
-            // The automatic collection, always first and not user-editable.
-            item {
-                BookmarkedCollectionRow(
-                    count = bookmarkedCount,
-                    onClick = onOpenBookmarked,
-                )
-            }
+        }
 
-            if (folders.isEmpty()) {
-                item {
-                    // Not the shared EmptyState: this list already has the
-                    // bookmarked collection above it, so filling the screen and
-                    // centring would push that row off the top.
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Space.xxl)
-                            .padding(top = Space.huge),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.collections_empty_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            textAlign = TextAlign.Center,
-                        )
-                        Text(
-                            text = stringResource(R.string.collections_empty_body),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = Space.md),
-                        )
-                    }
-                }
-            } else {
-                items(folders, key = { it.id }) { folder ->
-                    FolderRow(
-                        folder = folder,
-                        onClick = { onOpenFolder(folder.id, folder.name) },
-                        onAddDocuments = { addingTo = folder },
-                        onTogglePinned = { viewModel.setPinned(folder.id, !folder.isPinned) },
-                        onToggleBookmarked = {
-                            viewModel.setBookmarked(folder.id, !folder.isBookmarked)
-                        },
-                        onPickColor = { colorPickerFor = folder },
-                        onRename = { renameTarget = folder },
-                        onDelete = { pendingDelete = folder.id },
+        if (folders.isEmpty()) {
+            item {
+                // Not the shared EmptyState: this list already has the
+                // bookmarked collection above it, so filling the screen and
+                // centring would push that row off the top.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Space.xxl)
+                        .padding(top = Space.huge),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = stringResource(R.string.collections_empty_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        text = stringResource(R.string.collections_empty_body),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = Space.md),
                     )
                 }
+            }
+        } else {
+            items(folders, key = { it.id }) { folder ->
+                FolderRow(
+                    folder = folder,
+                    onClick = { onOpenFolder(folder.id, folder.name) },
+                    onAddDocuments = { addingTo = folder },
+                    onTogglePinned = { viewModel.setPinned(folder.id, !folder.isPinned) },
+                    onToggleBookmarked = {
+                        viewModel.setBookmarked(folder.id, !folder.isBookmarked)
+                    },
+                    onPickColor = { colorPickerFor = folder },
+                    onRename = { renameTarget = folder },
+                    onDelete = { pendingDelete = folder.id },
+                )
             }
         }
     }
@@ -189,10 +175,10 @@ fun FoldersScreen(
 
     if (showCreateDialog) {
         FolderNameDialog(
-            onDismiss = { showCreateDialog = false },
+            onDismiss = onCreateDialogDismissed,
             onConfirm = { name ->
                 viewModel.createFolder(name)
-                showCreateDialog = false
+                onCreateDialogDismissed()
             },
         )
     }

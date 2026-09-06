@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.david.llegeix.data.db.dao.BookmarkDao
 import com.david.llegeix.data.db.dao.DocumentDao
+import com.david.llegeix.data.db.dao.ExamDao
 import com.david.llegeix.data.db.dao.FolderDao
 import com.david.llegeix.data.db.dao.RecentlyViewedDao
 import com.david.llegeix.data.db.dao.FolderRuleDao
@@ -13,6 +14,10 @@ import com.david.llegeix.data.db.dao.TagDao
 import com.david.llegeix.data.db.dao.WordBookmarkDao
 import com.david.llegeix.data.db.entity.BookmarkEntity
 import com.david.llegeix.data.db.entity.DocumentEntity
+import com.david.llegeix.data.db.entity.ExamAttemptEntity
+import com.david.llegeix.data.db.entity.ExamAudioEntity
+import com.david.llegeix.data.db.entity.ExamEntity
+import com.david.llegeix.data.db.entity.ExamMarkEntity
 import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.db.entity.RecentlyViewedEntity
 import com.david.llegeix.data.db.entity.DocumentTagEntity
@@ -30,8 +35,12 @@ import com.david.llegeix.data.db.entity.WordBookmarkEntity
         TagEntity::class,
         DocumentTagEntity::class,
         FolderRuleEntity::class,
+        ExamEntity::class,
+        ExamAttemptEntity::class,
+        ExamAudioEntity::class,
+        ExamMarkEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class LlegeixDatabase : RoomDatabase() {
@@ -43,6 +52,7 @@ abstract class LlegeixDatabase : RoomDatabase() {
     abstract fun wordBookmarkDao(): WordBookmarkDao
     abstract fun tagDao(): TagDao
     abstract fun folderRuleDao(): FolderRuleDao
+    abstract fun examDao(): ExamDao
 
     companion object {
         fun build(context: Context): LlegeixDatabase =
@@ -52,7 +62,7 @@ abstract class LlegeixDatabase : RoomDatabase() {
                 "llegeix.db",
             ).addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                MIGRATION_6_7, MIGRATION_7_8,
+                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
             )
                 .build()
     }

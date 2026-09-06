@@ -47,6 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
 
 /**
@@ -218,6 +219,11 @@ private fun Card(
                     modifier = Modifier.padding(top = Space.sm),
                 )
             }
+            // Hearing the word is a second way of being asked about it, and the
+            // one that matches how the word will actually turn up. The button
+            // takes its own press, so reaching for it never counts as the tap
+            // that gives the answer away.
+            PronounceButton(text = card.word)
 
             // Kept back until it has been asked for, and then given the weight
             // of an answer. A card that shows both halves at once is a list.

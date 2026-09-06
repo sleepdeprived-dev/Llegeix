@@ -50,6 +50,7 @@ import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.ui.common.DictionaryCard
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.IpaLine
+import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.Space
@@ -264,11 +265,20 @@ private fun WordEntry(
             }
         }
 
-        Text(
-            text = entry.word,
-            style = MaterialTheme.typography.headlineMedium,
+        // Beside the word, exactly as in the reader's sheet: a word checked
+        // here and the same word pressed while reading should not look like two
+        // different words, and that goes for what can be done to it too.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(top = Space.xs),
-        )
+        ) {
+            Text(
+                text = entry.word,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            PronounceButton(text = entry.word)
+        }
         if (entry.ipa.isNotBlank()) {
             IpaLine(
                 ipa = entry.ipa,

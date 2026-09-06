@@ -28,22 +28,26 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.david.llegeix.ui.bookmarks.BookmarkedCollectionScreen
-import com.david.llegeix.ui.bookmarks.BookmarksScreen
 import com.david.llegeix.ui.dictionary.DictionaryScreen
+import com.david.llegeix.ui.exams.ExamDetailScreen
+import com.david.llegeix.ui.exams.ExamWorkspaceScreen
+import com.david.llegeix.ui.exams.ExamsScreen
 import com.david.llegeix.ui.folders.FolderDetailScreen
-import com.david.llegeix.ui.folders.FoldersScreen
 import com.david.llegeix.ui.library.LibraryScreen
 import com.david.llegeix.ui.practice.PracticeScreen
 import com.david.llegeix.ui.reader.ReaderScreen
 import com.david.llegeix.ui.recent.RecentScreen
+import com.david.llegeix.ui.saved.SavedScreen
 import com.david.llegeix.ui.settings.SettingsScreen
 
 private object Routes {
     const val LIBRARY = "library"
     const val DICTIONARY = "dictionary"
     const val RECENT = "recent"
-    const val BOOKMARKS = "bookmarks"
-    const val FOLDERS = "folders"
+    const val SAVED = "saved"
+    const val EXAMS = "exams"
+    const val EXAM_DETAIL = "exam/{examId}"
+    const val EXAM_ATTEMPT = "attempt/{attemptId}"
     const val SETTINGS = "settings"
     const val PRACTICE = "practice"
 
@@ -69,6 +73,10 @@ private object Routes {
 
     fun folderDetail(folderId: Long, name: String, adding: Boolean = false): String =
         "folder/$folderId?name=${Uri.encode(name)}&adding=$adding"
+
+    fun examDetail(examId: Long): String = "exam/$examId"
+
+    fun examAttempt(attemptId: Long): String = "attempt/$attemptId"
 }
 
 private data class TopLevelDestination(
@@ -90,12 +98,17 @@ private data class TopLevelDestination(
  * shelf of part-read books at the top of the library, which is where somebody
  * wanting to carry on reading was going to look anyway, and its full history is
  * one press of that shelf's own button away.
+ *
+ * Collections and Saved have since become one tab for the same reason: they
+ * were two names for setting something aside, and between them they listed the
+ * starred PDFs twice. Joining them is what makes room for Exams without the bar
+ * growing back to five, which is the count that made it a menu.
  */
 private val topLevelDestinations = listOf(
     TopLevelDestination(Routes.LIBRARY, R.string.nav_library, R.drawable.ic_library),
     TopLevelDestination(Routes.DICTIONARY, R.string.nav_dictionary, R.drawable.ic_dictionary),
-    TopLevelDestination(Routes.FOLDERS, R.string.nav_collections, R.drawable.ic_collection),
-    TopLevelDestination(Routes.BOOKMARKS, R.string.nav_saved, R.drawable.ic_bookmark),
+    TopLevelDestination(Routes.SAVED, R.string.nav_saved, R.drawable.ic_bookmark),
+    TopLevelDestination(Routes.EXAMS, R.string.nav_exams, R.drawable.ic_exam),
 )
 
 @Composable
@@ -192,17 +205,11 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                 )
             }
 
-            composable(Routes.BOOKMARKS) {
-                BookmarksScreen(
+            composable(Routes.SAVED) {
+                SavedScreen(
                     onOpenDocument = { uriString, title, page ->
                         navController.navigate(Routes.reader(uriString, title, page))
                     },
-                    onPractise = { navController.navigate(Routes.PRACTICE) },
-                )
-            }
-
-            composable(Routes.FOLDERS) {
-                FoldersScreen(
                     onOpenFolder = { folderId, name ->
                         navController.navigate(Routes.folderDetail(folderId, name))
                     },
@@ -214,6 +221,38 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     onOpenBookmarked = {
                         navController.navigate(Routes.BOOKMARKED_COLLECTION)
                     },
+                    onPractise = { navController.navigate(Routes.PRACTICE) },
+                )
+            }
+
+            composable(Routes.EXAMS) {
+                ExamsScreen(
+                    onOpenExam = { examId ->
+                        navController.navigate(Routes.examDetail(examId))
+                    },
+                )
+            }
+
+            composable(
+                route = Routes.EXAM_DETAIL,
+                arguments = listOf(navArgument("examId") { type = NavType.LongType }),
+            ) { entry ->
+                ExamDetailScreen(
+                    examId = entry.arguments?.getLong("examId") ?: 0L,
+                    onBack = { navController.popBackStack() },
+                    onOpenAttempt = { attemptId ->
+                        navController.navigate(Routes.examAttempt(attemptId))
+                    },
+                )
+            }
+
+            composable(
+                route = Routes.EXAM_ATTEMPT,
+                arguments = listOf(navArgument("attemptId") { type = NavType.LongType }),
+            ) { entry ->
+                ExamWorkspaceScreen(
+                    attemptId = entry.arguments?.getLong("attemptId") ?: 0L,
+                    onBack = { navController.popBackStack() },
                 )
             }
 

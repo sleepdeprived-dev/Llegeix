@@ -35,6 +35,25 @@
     -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!--
+        Which speech engine can say a Catalan word.
+
+        Since Android 11 an app sees only the other apps it declares an
+        interest in, and a text-to-speech engine is another app. Without this
+        the system reports that the device has no voice at all and the speaker
+        button never appears. It is a visibility declaration and nothing more:
+        no permission, and nothing leaves the device — the speech is synthesised
+        by the engine already installed on the phone.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.tts.engine.INSTALL_TTS_DATA" />
+        </intent>
+    </queries>
+
     <application
         android:name=".LlegeixApp"
         android:allowBackup="true"

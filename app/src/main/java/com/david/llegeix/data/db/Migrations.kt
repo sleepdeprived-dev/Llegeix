@@ -172,3 +172,44 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN reviewCount INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * Makes room for exams: the paper, the sittings, and the recordings.
+ *
+ * Three new tables and not one column touched on the existing eight, because an
+ * exam is not a document in the library sense. A document is a `content://` URI
+ * the app was granted a look at; an exam is a file the app has copied and now
+ * owns outright, and the two have different lifetimes, different deletion rules
+ * and different privacy consequences. Filing exams in `documents` would have
+ * meant every query about the reader's library quietly returning exam papers.
+ *
+ * The foreign keys carry ON DELETE CASCADE, so deleting a paper takes its
+ * sittings and its audio rows with it. The *files* those rows name are deleted
+ * by [com.david.llegeix.data.exam.ExamRepository], which reads the names first;
+ * SQLite cannot unlink anything.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exams` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `sourceName` TEXT NOT NULL, `fileName` TEXT NOT NULL, `pageCount` INTEGER NOT NULL, `answerKeyFileName` TEXT, `answerKeyPageCount` INTEGER, `createdAt` INTEGER NOT NULL)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exam_attempts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `examId` INTEGER NOT NULL, `label` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, `lastOpenedAt` INTEGER NOT NULL, `finishedAt` INTEGER, `lastPage` INTEGER NOT NULL, FOREIGN KEY(`examId`) REFERENCES `exams`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_exam_attempts_examId` ON `exam_attempts` (`examId`)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exam_audio` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `examId` INTEGER NOT NULL, `displayName` TEXT NOT NULL, `fileName` TEXT NOT NULL, `durationMs` INTEGER, `position` INTEGER NOT NULL, FOREIGN KEY(`examId`) REFERENCES `exams`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_exam_audio_examId` ON `exam_audio` (`examId`)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `exam_marks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `attemptId` INTEGER NOT NULL, `pageIndex` INTEGER NOT NULL, `kind` TEXT NOT NULL, `x` REAL NOT NULL, `y` REAL NOT NULL, `width` REAL NOT NULL, `height` REAL NOT NULL, `colorArgb` INTEGER NOT NULL, `size` REAL NOT NULL, `text` TEXT, `points` TEXT, `checked` INTEGER NOT NULL, `sequence` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, FOREIGN KEY(`attemptId`) REFERENCES `exam_attempts`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_exam_marks_attemptId_pageIndex` ON `exam_marks` (`attemptId`, `pageIndex`)",
+        )
+    }
+}

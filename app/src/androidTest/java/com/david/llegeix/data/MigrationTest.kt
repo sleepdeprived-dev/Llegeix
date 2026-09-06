@@ -12,6 +12,7 @@ import com.david.llegeix.data.db.MIGRATION_4_5
 import com.david.llegeix.data.db.MIGRATION_5_6
 import com.david.llegeix.data.db.MIGRATION_6_7
 import com.david.llegeix.data.db.MIGRATION_7_8
+import com.david.llegeix.data.db.MIGRATION_8_9
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -409,16 +410,129 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Exams arrive without touching anything the reader already had.
+     *
+     * Three new tables and no altered column, so the check is in two halves:
+     * that the library came through untouched, and that the new tables actually
+     * behave the way the feature needs them to — which for exams means the
+     * cascade, since deleting a paper has to take its sittings with it rather
+     * than leave answers pointing at nothing.
+     */
+    @Test
+    fun migrate8To9_addsExamsAndLeavesTheLibraryAlone() {
+        helper.createDatabase(TEST_DB, 8).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO documents
+                    (uriString, displayName, folderId, highlightColor, addedAt,
+                     isBookmarked, isReadLater)
+                VALUES ('content://test/1', 'princep.pdf', NULL, NULL, 200, 0, 0)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO word_bookmarks
+                    (word, translation, ipa, context, documentUri, displayName,
+                     pageIndex, lineNumber, createdAt, box, dueAt, reviewCount)
+                VALUES ('enrenou', 'commotion', 'ənrəˈnɔw', 'quin enrenou', NULL,
+                        NULL, 3, 7, 500, 1, 900, 2)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 9, true, MIGRATION_8_9)
+
+        // The upgrade is invisible to somebody who never opens the new tab.
+        db.query("SELECT displayName FROM documents").use { cursor ->
+            assertTrue("document row survived", cursor.moveToFirst())
+            assertEquals("princep.pdf", cursor.getString(0))
+        }
+        db.query("SELECT word, box FROM word_bookmarks").use { cursor ->
+            assertTrue("saved word survived", cursor.moveToFirst())
+            assertEquals("enrenou", cursor.getString(0))
+            assertEquals("its place in the deck survived", 1, cursor.getInt(1))
+        }
+        db.query("SELECT COUNT(*) FROM exams").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("no exams until one is imported", 0, cursor.getInt(0))
+        }
+
+        // A paper, a sitting of it, and a recording attached to it.
+        db.execSQL("PRAGMA foreign_keys=ON")
+        db.execSQL(
+            """
+            INSERT INTO exams
+                (id, title, sourceName, fileName, pageCount,
+                 answerKeyFileName, answerKeyPageCount, createdAt)
+            VALUES (1, 'C1 mostra', 'c1-mostra.pdf', 'abc.pdf', 12, NULL, NULL, 1000)
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO exam_attempts
+                (id, examId, label, startedAt, lastOpenedAt, finishedAt, lastPage)
+            VALUES (1, 1, '1', 1100, 1100, NULL, 0)
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO exam_audio (id, examId, displayName, fileName, durationMs, position)
+            VALUES (1, 1, 'comprensio.mp3', 'def.mp3', 180000, 0)
+            """.trimIndent(),
+        )
+
+        db.query("SELECT label, finishedAt FROM exam_attempts WHERE examId = 1").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("1", cursor.getString(0))
+            assertTrue("a fresh sitting is not finished", cursor.isNull(1))
+        }
+
+        // A mark written on that sitting, stored as fractions of the page.
+        db.execSQL(
+            """
+            INSERT INTO exam_marks
+                (id, attemptId, pageIndex, kind, x, y, width, height,
+                 colorArgb, size, text, points, checked, sequence, createdAt)
+            VALUES (1, 1, 0, 'INK', 0.1, 0.2, 0.3, 0.05, -16777216, 0.004,
+                    NULL, '0.1,0.2 0.4,0.25', 0, 1, 1200)
+            """.trimIndent(),
+        )
+        db.query("SELECT kind, points FROM exam_marks WHERE attemptId = 1").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("INK", cursor.getString(0))
+            assertEquals("0.1,0.2 0.4,0.25", cursor.getString(1))
+        }
+
+        // Deleting the paper takes the sitting, its marks and the recording with
+        // it, so nothing is left behind pointing at a page that no longer
+        // exists. The marks go by a second hop of the cascade — through the
+        // attempt, not straight from the exam — which is the part worth testing.
+        db.execSQL("DELETE FROM exams WHERE id = 1")
+        db.query("SELECT COUNT(*) FROM exam_attempts").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM exam_marks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("marks follow their attempt", 0, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM exam_audio").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To8_runsEveryStepInSequence() {
+    fun migrate1To9_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            8,
+            9,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -427,11 +541,16 @@ class MigrationTest {
             MIGRATION_5_6,
             MIGRATION_6_7,
             MIGRATION_7_8,
+            MIGRATION_8_9,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals("Vell", cursor.getString(0))
+        }
+        db.query("SELECT COUNT(*) FROM exams").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
         }
     }
 }

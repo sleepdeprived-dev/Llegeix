@@ -92,7 +92,7 @@ does both after bumping the version in `app/build.gradle.kts`.
   takes in, and the finished highlight is left alone for a beat before the
   sheet rises over it — long enough to see what was picked, short enough that
   nothing feels slow.
-- **Dictionary** — one of four tabs, because a word you want to check is not
+- **Dictionary** — a tab of its own, because a word you want to check is not
   always a word in front of you. Type any Catalan word and the bundled
   Viccionari and thesaurus are searched as you go: the headwords you could mean
   appear under the field, shortest first, and what you actually typed is always
@@ -128,6 +128,26 @@ does both after bumping the version in `app/build.gradle.kts`.
   than looked up, so it works for any word including names and inflections,
   backed by a word list for the one thing spelling cannot record. See the note
   below.
+- **Said out loud** — a speaker beside the word, in the reader's panel, in the
+  dictionary and on a practice card. IPA is a notation somebody has to have
+  learned; this is the same fact for everybody else. It uses the phone's own
+  speech engine, so nothing leaves the device, and where there is no Catalan
+  voice at all the button is simply not drawn rather than sitting there dead.
+  Where the voice merely has not been downloaded, the button offers to fetch it.
+- **Exam mode** — a tab for the papers you sit rather than the books you read.
+  Import an exam PDF and it is **copied** into the app, which is the decision
+  the whole feature rests on: your answers are marks positioned on particular
+  pages, and a paper that another app can rename, move or delete would take them
+  with it. Each go at a paper is an *attempt* — write on it with a pen, type
+  answers, tick boxes, highlight the question — and every stroke is saved as
+  your finger lifts, not on the way out. Come back in March and start a second
+  attempt over the same pages to see how you have moved. Positions are stored as
+  fractions of the page, never pixels, so answers stay on their questions through
+  a rotation, a pinch, or a new phone. Listening tracks attach to the paper and
+  play from a bar above it; an official answer sheet can be attached and flipped
+  to. The original PDF is never written to — an attempt can be exported as its
+  own flat PDF, drawn by the same code that drew it on screen so the file cannot
+  disagree with what you saw.
 - **Saved words** — star a word or phrase and it is kept with its translation,
   its pronunciation, the line it appeared in, and the document, page and line it
   came from. One starred in the Dictionary has no page behind it and says so,
@@ -179,9 +199,16 @@ cover, not a page count to do arithmetic on; how much of a source is reaching
 the library is "31 of 48", not "48".
 
 There were five tabs, three of them re-cuts of the same documents. There are now
-four: the books, the language, the shelves you made, and what you saved. Recent
-became the shelf of part-read books at the top of the library, which is where
-somebody wanting to carry on reading was going to look anyway.
+four: the books, the language, what you set aside, and the papers you sit.
+Recent became the shelf of part-read books at the top of the library, which is
+where somebody wanting to carry on reading was going to look anyway.
+
+Collections and Saved were the next pair to go. They were two names for setting
+something aside, sitting next to each other in the bar, and between them they
+drew the starred PDFs twice — once as an automatic collection and once as a whole
+tab, from the same query on the same object. Joining them is what made room for
+Exams without the bar growing back to five, and it let one of those two lists go,
+which is the better half of the trade.
 
 ## Language
 

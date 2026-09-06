@@ -12,9 +12,12 @@ import io.legere.pdfiumandroid.PdfDocument
 import io.legere.pdfiumandroid.PdfPage
 import io.legere.pdfiumandroid.PdfTextPage
 import io.legere.pdfiumandroid.PdfiumCore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -40,6 +43,32 @@ class PdfiumPageRenderer private constructor(
 
     /** PDFium is not safe for concurrent use on one document. */
     private val mutex = Mutex()
+
+    /**
+     * Whether the native document has been freed, or is about to be.
+     *
+     * Read inside the lock by everything that touches PDFium. The flag exists
+     * because [close] and a render are not started by the same thing: pages are
+     * rendered from the composition, which is torn down when the reader leaves
+     * the screen, and the document is closed by the ViewModel, which is cleared
+     * at roughly the same moment. Cancelling a coroutine does not stop a native
+     * call that is already running, so without this the document could be freed
+     * out from under a page still being drawn — a use-after-free inside PDFium,
+     * which is a process abort rather than an exception anything could catch.
+     */
+    @Volatile
+    private var closed = false
+
+    /**
+     * Where the actual freeing happens.
+     *
+     * [close] is called from [ViewModel.onCleared][androidx.lifecycle.ViewModel]
+     * and cannot suspend, but the free has to wait its turn at [mutex] like
+     * every other native call. So it is handed to a coroutine: the caller
+     * returns immediately, and PDFium is not touched until whatever is inside
+     * it has come out.
+     */
+    private val closing = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val pageCount: Int = document.getPageCount()
 
@@ -88,6 +117,7 @@ class PdfiumPageRenderer private constructor(
         box: ContentBox,
     ): Bitmap = withContext(Dispatchers.IO) {
         mutex.withLock {
+            if (closed) throw IOException("This PDF has been closed")
             val page = document.openPage(index)
                 ?: throw IOException("Page $index of this PDF could not be opened")
             page.use { page ->
@@ -147,6 +177,7 @@ class PdfiumPageRenderer private constructor(
 
     override suspend fun outline(): List<PdfOutlineEntry> = withContext(Dispatchers.IO) {
         mutex.withLock {
+            if (closed) return@withLock emptyList()
             runCatching { document.getTableOfContents() }
                 .getOrDefault(emptyList())
                 .let { entries -> flattenOutline(entries, depth = 0) }
@@ -178,6 +209,7 @@ class PdfiumPageRenderer private constructor(
     private suspend fun renderWhole(index: Int, targetWidthPx: Int): Bitmap =
         withContext(Dispatchers.IO) {
             mutex.withLock {
+                if (closed) throw IOException("This PDF has been closed")
                 // PDFium returns null for a page it cannot parse.
                 val page = document.openPage(index)
                     ?: throw IOException("Page $index of this PDF could not be opened")
@@ -203,6 +235,7 @@ class PdfiumPageRenderer private constructor(
 
     override suspend fun hasTextLayer(pageIndex: Int): Boolean = withContext(Dispatchers.IO) {
         mutex.withLock {
+            if (closed) return@withLock false
             document.openPage(pageIndex)?.use { page ->
                 page.openTextPage().use { it.textPageCountChars() > 0 }
             } ?: false
@@ -218,6 +251,7 @@ class PdfiumPageRenderer private constructor(
     ): PdfWord? = withContext(Dispatchers.IO) {
         if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext null
         mutex.withLock {
+            if (closed) return@withLock null
             // A page that will not open simply has no word at that point.
             document.openPage(pageIndex)?.use { page ->
                 page.openTextPage().use { textPage ->
@@ -328,6 +362,7 @@ class PdfiumPageRenderer private constructor(
     ): PdfSelection? = withContext(Dispatchers.IO) {
         if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext null
         mutex.withLock {
+            if (closed) return@withLock null
             document.openPage(pageIndex)?.use { page ->
                 page.openTextPage().use { textPage ->
                     buildSelection(
@@ -441,6 +476,7 @@ class PdfiumPageRenderer private constructor(
             // document is being searched.
             val matches = withContext(Dispatchers.IO) {
                 mutex.withLock {
+                    if (closed) return@withLock emptyList()
                     document.openPage(pageIndex)?.use { page ->
                         page.openTextPage().use { textPage ->
                             matchesOnPage(textPage, pageIndex, term, limit - found)
@@ -511,6 +547,7 @@ class PdfiumPageRenderer private constructor(
             return@withContext emptyList()
         }
         mutex.withLock {
+            if (closed) return@withLock emptyList()
             document.openPage(pageIndex)?.use { page ->
                 val widthPt = page.getPageWidthPoint().toDouble()
                 val heightPt = page.getPageHeightPoint().toDouble()
@@ -563,6 +600,7 @@ class PdfiumPageRenderer private constructor(
     ): List<RectF> = withContext(Dispatchers.IO) {
         if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext emptyList()
         mutex.withLock {
+            if (closed) return@withLock emptyList()
             document.openPage(match.pageIndex)?.use { page ->
                 val widthPt = page.getPageWidthPoint().toDouble()
                 val heightPt = page.getPageHeightPoint().toDouble()
@@ -598,9 +636,23 @@ class PdfiumPageRenderer private constructor(
         return RectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
     }
 
+    /**
+     * Give the document back, once nothing is inside it.
+     *
+     * Returns straight away. The flag stops any call that has not yet taken the
+     * lock, and the free itself queues behind any that already has, so a page
+     * being rendered as the reader leaves finishes into a bitmap nobody looks
+     * at rather than into freed memory.
+     */
     override fun close() {
-        runCatching { document.close() }
-        runCatching { descriptor.close() }
+        if (closed) return
+        closed = true
+        closing.launch {
+            mutex.withLock {
+                runCatching { document.close() }
+                runCatching { descriptor.close() }
+            }
+        }
     }
 
     companion object {

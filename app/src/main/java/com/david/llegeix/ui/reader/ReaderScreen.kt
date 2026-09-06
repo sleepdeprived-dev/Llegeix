@@ -130,6 +130,7 @@ import com.david.llegeix.ui.common.DetailCard
 import com.david.llegeix.ui.common.DictionaryCard
 import com.david.llegeix.ui.common.DictionaryStatus
 import com.david.llegeix.ui.common.IpaLine
+import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.TranslationTargetFlags
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
@@ -1481,11 +1482,22 @@ private fun WordLookupSheet(
                     )
                 }
             }
-            Text(
-                text = lookup.text,
-                style = MaterialTheme.typography.headlineMedium,
+            // The speaker belongs beside the word rather than up in the row of
+            // controls: the star keeps the word, the flags change the language,
+            // and this one *is* the word. A pronunciation printed in IPA is a
+            // notation somebody has to have learned; this is the same fact for
+            // everybody else.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = Space.xs),
-            )
+            ) {
+                Text(
+                    text = lookup.text,
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                PronounceButton(text = lookup.text)
+            }
             if (lookup.ipa.isNotBlank()) {
                 IpaLine(
                     ipa = lookup.ipa,

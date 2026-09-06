@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,29 +15,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +40,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.annotation.StringRes
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
@@ -68,25 +58,80 @@ import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.data.practice.Leitner
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
-import kotlinx.coroutines.launch
 import com.david.llegeix.util.pdfTitle
 
-private enum class BookmarkTab(@param:StringRes val labelRes: Int) {
-    PDFS(R.string.bookmarks_tab_pdfs),
-    PAGES(R.string.bookmarks_tab_pages),
-    WORDS(R.string.bookmarks_tab_words),
+/**
+ * The reader's page bookmarks, as one pane of the Saved tab.
+ *
+ * The tab this came from had a third pane above these two, listing the starred
+ * PDFs. It was the same query as the automatic "Bookmarked" collection, drawn
+ * twice: [com.david.llegeix.ui.bookmarks.BookmarkedCollectionScreen] and that
+ * pane both read `bookmarkedDocuments` off this very ViewModel, so a reader
+ * could reach one list by two routes and had no way of telling they were the
+ * same list. Merging the two tabs was the moment to keep one of them, and the
+ * collection is the one that survives, because that is where somebody looking
+ * for a shelf of PDFs goes.
+ */
+@Composable
+fun PagesPane(
+    onOpenDocument: (uriString: String, title: String, page: Int?) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: BookmarksViewModel = viewModel(factory = BookmarksViewModel.Factory),
+) {
+    val pages by viewModel.pageBookmarks.collectAsStateWithLifecycle()
+    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
+
+    if (pages.isEmpty()) {
+        EmptyState(
+            title = stringResource(R.string.bookmarks_pages_empty_title),
+            body = stringResource(R.string.bookmarks_pages_empty_body),
+            icon = painterResource(R.drawable.ic_bookmark),
+            modifier = modifier,
+        )
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = Space.lg),
+        ) {
+            items(pages, key = { it.id }) { bookmark ->
+                BookmarkRow(
+                    documentUri = bookmark.documentUri,
+                    tags = tagsByDocument[bookmark.documentUri].orEmpty(),
+                    title = pdfTitle(bookmark.displayName),
+                    subtitle = stringResource(
+                        R.string.bookmarks_page_detail,
+                        bookmark.label?.let { label ->
+                            stringResource(
+                                R.string.bookmarks_page_detail,
+                                stringResource(R.string.recent_page, bookmark.pageIndex + 1),
+                                label,
+                            )
+                        } ?: stringResource(R.string.recent_page, bookmark.pageIndex + 1),
+                        formatModified(bookmark.createdAt),
+                    ),
+                    swatchColor = bookmark.highlightColor,
+                    onClick = {
+                        onOpenDocument(
+                            bookmark.documentUri,
+                            bookmark.displayName,
+                            bookmark.pageIndex,
+                        )
+                    },
+                    onRemove = { viewModel.removePageBookmark(bookmark.id) },
+                )
+            }
+        }
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** The reader's saved vocabulary and the way into practising it. */
 @Composable
-fun BookmarksScreen(
+fun WordsPane(
     onOpenDocument: (uriString: String, title: String, page: Int?) -> Unit,
     onPractise: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: BookmarksViewModel = viewModel(factory = BookmarksViewModel.Factory),
 ) {
-    val documents by viewModel.bookmarkedDocuments.collectAsStateWithLifecycle()
-    val pages by viewModel.pageBookmarks.collectAsStateWithLifecycle()
     val savedWords by viewModel.savedWords.collectAsStateWithLifecycle()
     val visibleWords by viewModel.visibleWords.collectAsStateWithLifecycle()
     val wordQuery by viewModel.wordQuery.collectAsStateWithLifecycle()
@@ -94,200 +139,57 @@ fun BookmarksScreen(
     val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
     val dueCount by viewModel.dueCount.collectAsStateWithLifecycle()
     val savedPerDay by viewModel.savedPerDay.collectAsStateWithLifecycle()
-    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
-    // The pager owns the position; the tab row follows it, so a swipe and a tap
-    // cannot disagree about which tab is showing.
-    val pagerState = rememberPagerState(
-        initialPage = 0,
-        pageCount = { BookmarkTab.entries.size },
-    )
-    val scope = rememberCoroutineScope()
-    val selectedTab = pagerState.currentPage
 
-    Scaffold(
-        // The app shell's Scaffold has already inset this screen for the
-        // status bar and the navigation bar; counting them a second time
-        // put a dead band above the bottom bar and made every top bar
-        // 24dp taller than it asks to be.
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                expandedHeight = Space.topBar,
-                title = { Text(stringResource(R.string.bookmarks_title)) },
+    if (savedWords.isEmpty()) {
+        EmptyState(
+            title = stringResource(R.string.bookmarks_words_empty_title),
+            body = stringResource(R.string.bookmarks_words_empty_body),
+            icon = painterResource(R.drawable.ic_bookmark),
+            modifier = modifier,
+        )
+        return
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        PracticeHeader(
+            savedCount = savedWords.size,
+            dueCount = dueCount,
+            savedPerDay = savedPerDay,
+            onPractise = onPractise,
+        )
+        WordControls(
+            query = wordQuery,
+            alphabetical = wordsAlphabetical,
+            recentSearches = recentSearches,
+            onQueryChange = viewModel::onWordQueryChange,
+            onToggleSort = viewModel::onToggleWordSort,
+            onForgetSearches = viewModel::onForgetSearches,
+        )
+        if (visibleWords.isEmpty()) {
+            EmptyState(
+                title = stringResource(R.string.library_no_matches_title),
+                body = stringResource(R.string.words_none_match, wordQuery),
             )
-        },
-    ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            PrimaryTabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.surface,
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(bottom = Space.lg),
+                // Saved words are dense blocks of their own — word,
+                // pronunciation, translation, the quoted line and the source.
+                // Without a real gap two entries read as one.
+                verticalArrangement = Arrangement.spacedBy(Space.lg),
             ) {
-                BookmarkTab.entries.forEachIndexed { index, tab ->
-                    val count = when (tab) {
-                        BookmarkTab.PDFS -> documents.size
-                        BookmarkTab.PAGES -> pages.size
-                        BookmarkTab.WORDS -> savedWords.size
-                    }
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = {
-                            val name = stringResource(tab.labelRes)
-                            Text(
-                                if (count > 0) {
-                                    stringResource(
-                                        R.string.bookmarks_tab_with_count,
-                                        name,
-                                        count,
-                                    )
-                                } else {
-                                    name
-                                },
-                            )
-                        },
-                    )
-                }
-            }
-
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                // Pages start at the top. The default is CenterVertically,
-                // which quietly pushed the words tab's search field a third of
-                // the way down the screen because its content is shorter than
-                // the page.
-                verticalAlignment = Alignment.Top,
-            ) { page ->
-                when (BookmarkTab.entries[page]) {
-                BookmarkTab.PDFS -> if (documents.isEmpty()) {
-                    EmptyState(
-                        title = stringResource(R.string.bookmarks_pdfs_empty_title),
-                        body = stringResource(R.string.bookmarks_pdfs_empty_body),
-                        icon = painterResource(R.drawable.ic_bookmark),
-                    )
-                } else {
-                    LazyColumn(contentPadding = PaddingValues(bottom = Space.lg)) {
-                        items(documents, key = { it.uriString }) { document ->
-                            BookmarkRow(
-                                title = pdfTitle(document.displayName),
-                                subtitle = null,
-                                documentUri = document.uriString,
-                                tags = tagsByDocument[document.uriString].orEmpty(),
-                                onClick = {
-                                    onOpenDocument(document.uriString, document.displayName, null)
-                                },
-                                onRemove = { viewModel.removeDocumentBookmark(document) },
-                            )
-                        }
-                    }
-                }
-
-                BookmarkTab.PAGES -> if (pages.isEmpty()) {
-                    EmptyState(
-                        title = stringResource(R.string.bookmarks_pages_empty_title),
-                        body = stringResource(R.string.bookmarks_pages_empty_body),
-                        icon = painterResource(R.drawable.ic_bookmark),
-                    )
-                } else {
-                    LazyColumn(contentPadding = PaddingValues(bottom = Space.lg)) {
-                        items(pages, key = { it.id }) { bookmark ->
-                            BookmarkRow(
-                                documentUri = bookmark.documentUri,
-                                tags = tagsByDocument[bookmark.documentUri].orEmpty(),
-                                title = pdfTitle(bookmark.displayName),
-                                subtitle = stringResource(
-                                    R.string.bookmarks_page_detail,
-                                    bookmark.label?.let { label ->
-                                        stringResource(
-                                            R.string.bookmarks_page_detail,
-                                            stringResource(
-                                                R.string.recent_page,
-                                                bookmark.pageIndex + 1,
-                                            ),
-                                            label,
-                                        )
-                                    } ?: stringResource(
-                                        R.string.recent_page,
-                                        bookmark.pageIndex + 1,
-                                    ),
-                                    formatModified(bookmark.createdAt),
-                                ),
-                                swatchColor = bookmark.highlightColor,
-                                onClick = {
-                                    onOpenDocument(
-                                        bookmark.documentUri,
-                                        bookmark.displayName,
-                                        bookmark.pageIndex,
-                                    )
-                                },
-                                onRemove = { viewModel.removePageBookmark(bookmark.id) },
-                            )
-                        }
-                    }
-                }
-
-                BookmarkTab.WORDS -> if (savedWords.isEmpty()) {
-                    EmptyState(
-                        title = stringResource(R.string.bookmarks_words_empty_title),
-                        body = stringResource(R.string.bookmarks_words_empty_body),
-                        icon = painterResource(R.drawable.ic_bookmark),
-                    )
-                } else {
-                    Column {
-                        PracticeHeader(
-                            savedCount = savedWords.size,
-                            dueCount = dueCount,
-                            savedPerDay = savedPerDay,
-                            onPractise = onPractise,
-                        )
-                        WordControls(
-                            query = wordQuery,
-                            alphabetical = wordsAlphabetical,
-                            recentSearches = recentSearches,
-                            onQueryChange = viewModel::onWordQueryChange,
-                            onToggleSort = viewModel::onToggleWordSort,
-                            onForgetSearches = viewModel::onForgetSearches,
-                        )
-                        if (visibleWords.isEmpty()) {
-                            EmptyState(
-                                title = stringResource(R.string.library_no_matches_title),
-                                body = stringResource(
-                                    R.string.words_none_match,
-                                    wordQuery,
-                                ),
-                            )
-                        } else {
-                            LazyColumn(
-                                contentPadding = PaddingValues(bottom = Space.lg),
-                                // Saved words are dense blocks of their own —
-                                // word, pronunciation, translation, the quoted
-                                // line and the source. Without a real gap two
-                                // entries read as one.
-                                verticalArrangement = Arrangement.spacedBy(Space.lg),
-                            ) {
-                                items(visibleWords, key = { it.id }) { word ->
-                                    SavedWordRow(
-                                        word = word,
-                                        onOpen = {
-                                            val uri = word.documentUri
-                                            if (uri != null) {
-                                                onOpenDocument(
-                                                    uri,
-                                                    word.displayName.orEmpty(),
-                                                    word.pageIndex,
-                                                )
-                                            }
-                                        },
-                                        onRemove = { viewModel.removeWord(word.id) },
-                                    )
-                                }
+                items(visibleWords, key = { it.id }) { word ->
+                    SavedWordRow(
+                        word = word,
+                        onOpen = {
+                            val uri = word.documentUri
+                            if (uri != null) {
+                                onOpenDocument(uri, word.displayName.orEmpty(), word.pageIndex)
                             }
-                        }
-                    }
+                        },
+                        onRemove = { viewModel.removeWord(word.id) },
+                    )
                 }
-            }
             }
         }
     }
@@ -660,7 +562,7 @@ private fun SavedWordRow(
 }
 
 @Composable
-private fun BookmarkRow(
+internal fun BookmarkRow(
     title: String,
     subtitle: String?,
     onClick: () -> Unit,

@@ -1,11 +1,9 @@
 package com.david.llegeix.ui.bookmarks
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,19 +22,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.width
-import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
-import com.david.llegeix.ui.common.PdfCover
-import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.pdfTitle
 
@@ -55,6 +47,7 @@ fun BookmarkedCollectionScreen(
     viewModel: BookmarksViewModel = viewModel(factory = BookmarksViewModel.Factory),
 ) {
     val documents by viewModel.bookmarkedDocuments.collectAsStateWithLifecycle()
+    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
 
     Scaffold(
         // The app shell's Scaffold has already inset this screen for the
@@ -106,35 +99,21 @@ fun BookmarkedCollectionScreen(
                 contentPadding = PaddingValues(bottom = Space.lg),
             ) {
                 items(documents, key = { it.uriString }) { document ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                onOpenDocument(document.uriString, document.displayName)
-                            }
-                            .padding(
-                                start = Space.screen,
-                                end = Space.screen,
-                                top = Space.row,
-                                bottom = Space.row,
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        PdfCover(
-                            uriString = document.uriString,
-                            width = ListCoverWidth,
-                            modifier = Modifier
-                                .width(ListCoverWidth)
-                                .aspectRatio(CoverAspectRatio)
-                                .padding(end = Space.lg),
-                        )
-                        Text(
-                            text = pdfTitle(document.displayName),
-                            style = MaterialTheme.typography.bodyLarge,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    // The same row the Saved tab draws, rather than a plainer
+                    // one of this screen's own. This list used to exist twice —
+                    // here and as a tab — and the tab was the one that showed
+                    // the document's tags and let a PDF be unstarred from the
+                    // list. Keeping one list meant keeping the better row.
+                    BookmarkRow(
+                        title = pdfTitle(document.displayName),
+                        subtitle = null,
+                        documentUri = document.uriString,
+                        tags = tagsByDocument[document.uriString].orEmpty(),
+                        onClick = {
+                            onOpenDocument(document.uriString, document.displayName)
+                        },
+                        onRemove = { viewModel.removeDocumentBookmark(document) },
+                    )
                 }
             }
         }
