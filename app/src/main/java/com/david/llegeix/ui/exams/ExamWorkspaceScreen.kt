@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -51,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -102,6 +104,9 @@ fun ExamWorkspaceScreen(
 
     var menuOpen by remember { mutableStateOf(false) }
     var clearingPage by remember { mutableStateOf(false) }
+    // The name the app gives the blank paper it makes, read here so both the
+    // menu and the bar hand the same one down.
+    val notesLabel = stringResource(R.string.exam_notes_name)
     var typingAt by remember { mutableStateOf<Pair<Float, Float>?>(null) }
 
     // CreateDocument, so the reader says where their copy goes. The app never
@@ -159,6 +164,19 @@ fun ExamWorkspaceScreen(
         if (pagerState.currentPage != state.currentPage) {
             pagerState.scrollToPage(state.currentPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0)))
         }
+    }
+
+    // Going to the blank pages and coming back, animated rather than jumped:
+    // the whole point of putting the essay paper inside the booklet is that
+    // getting to it looks like turning pages, not like changing screen. Keyed on
+    // the page count too, because a page just added is a page the pager does not
+    // know about until the parts flow has come back round.
+    val jumpTo by viewModel.jumpTo.collectAsStateWithLifecycle()
+    LaunchedEffect(jumpTo, pageCount) {
+        val target = jumpTo ?: return@LaunchedEffect
+        if (target >= pageCount) return@LaunchedEffect
+        pagerState.animateScrollToPage(target)
+        viewModel.onJumpHandled()
     }
 
     Scaffold(
@@ -260,6 +278,20 @@ fun ExamWorkspaceScreen(
                                     exportPicker.launch(viewModel.suggestedExportName())
                                 },
                             )
+                            // Also in the bar, as a plus beside the button that
+                            // goes to the blank pages. Here too because the menu
+                            // is where somebody looks for a thing they have not
+                            // found yet, and the plus in the bar is only drawn
+                            // once they are already on the blank pages.
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.exam_add_page)) },
+                                leadingIcon = { MenuIcon(Icons.Default.Add) },
+                                enabled = !state.showAnswerKey,
+                                onClick = {
+                                    menuOpen = false
+                                    viewModel.onAddNotesPage(notesLabel)
+                                },
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.exam_clear_page)) },
                                 leadingIcon = { MenuIcon(Icons.Default.Delete) },
@@ -327,6 +359,7 @@ fun ExamWorkspaceScreen(
                     marks = if (page == state.currentPage) marks else emptyList(),
                     tickBoxes = if (page == state.currentPage) tickBoxes else emptyList(),
                     renderKey = state.showAnswerKey,
+                    darkPage = state.darkPage,
                     canWrite = state.canWrite && page == state.currentPage,
                     render = viewModel::renderPage,
                     onStrokeFinished = viewModel::onStrokeFinished,
@@ -347,6 +380,10 @@ fun ExamWorkspaceScreen(
                 onHighlightColorChosen = viewModel::onHighlightColorChosen,
                 onStrokeWidthChosen = viewModel::onStrokeWidthChosen,
                 onUndo = viewModel::onUndo,
+                onRedo = viewModel::onRedo,
+                onToggleDarkPage = viewModel::onToggleDarkPage,
+                onToggleNotes = { viewModel.onToggleNotes(notesLabel) },
+                onAddNotesPage = { viewModel.onAddNotesPage(notesLabel) },
                 onStep = { delta ->
                     scope.launch {
                         pagerState.animateScrollToPage(
@@ -409,6 +446,10 @@ private fun ExamToolbar(
     onHighlightColorChosen: (Int) -> Unit,
     onStrokeWidthChosen: (Float) -> Unit,
     onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onToggleDarkPage: () -> Unit,
+    onToggleNotes: () -> Unit,
+    onAddNotesPage: () -> Unit,
     onStep: (Int) -> Unit,
 ) {
     Column(
@@ -461,6 +502,40 @@ private fun ExamToolbar(
                     )
                 }
             }
+            // The way to the blank pages, and back. One button, because it is
+            // one thought — the other part of this booklet — and the reader is
+            // always on exactly one side of the join, so it is never ambiguous
+            // about which way it goes. On the blank pages a plus appears beside
+            // it, which is the only place another blank page could be wanted.
+            if (!state.showAnswerKey) {
+                if (state.isOnNotes) {
+                    IconButton(onClick = onAddNotesPage) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = stringResource(R.string.exam_add_page),
+                        )
+                    }
+                }
+                IconButton(onClick = onToggleNotes) {
+                    Icon(
+                        painter = painterResource(
+                            if (state.isOnNotes) R.drawable.ic_exam else R.drawable.ic_text_field,
+                        ),
+                        contentDescription = stringResource(
+                            if (state.isOnNotes) {
+                                R.string.exam_back_to_paper
+                            } else {
+                                R.string.exam_go_to_notes
+                            },
+                        ),
+                        tint = if (state.isOnNotes) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
             IconButton(onClick = { onStep(1) }, enabled = page < pageCount - 1) {
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -469,14 +544,19 @@ private fun ExamToolbar(
             }
         }
 
-        if (!state.showAnswerKey) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = Space.sm, vertical = Space.xs),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        // The row below the page counter. The dark-page switch is on it whether
+        // or not the reader is looking at their own work, because a page too
+        // bright to read is too bright to read on the answer sheet as well; the
+        // tools and the two history buttons are only there when there is
+        // something to write on.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = Space.sm, vertical = Space.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (!state.showAnswerKey) {
                 ExamTool.entries.forEach { tool ->
                     val selected = state.tool == tool
                     IconButton(
@@ -502,15 +582,54 @@ private fun ExamToolbar(
                         )
                     }
                 }
-                Box(modifier = Modifier.weight(1f))
+            }
+            Box(modifier = Modifier.weight(1f))
+            IconButton(
+                onClick = onToggleDarkPage,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (state.darkPage) {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        } else {
+                            Color.Transparent
+                        },
+                    ),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_display),
+                    contentDescription = stringResource(
+                        if (state.darkPage) R.string.exam_light_page else R.string.exam_dark_page,
+                    ),
+                    tint = if (state.darkPage) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+            if (!state.showAnswerKey) {
                 IconButton(onClick = onUndo) {
                     Icon(
                         painter = painterResource(R.drawable.ic_undo),
                         contentDescription = stringResource(R.string.exam_undo),
                     )
                 }
+                // Disabled rather than hidden, so the pair never moves under
+                // the thumb: undo and redo are pressed in quick succession, and
+                // a button that appears between two presses is a button pressed
+                // by accident.
+                IconButton(onClick = onRedo, enabled = state.canRedo) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_undo),
+                        contentDescription = stringResource(R.string.exam_redo),
+                        modifier = Modifier.scale(scaleX = -1f, scaleY = 1f),
+                    )
+                }
             }
+        }
 
+        if (!state.showAnswerKey) {
             when (state.tool) {
                 ExamTool.PEN, ExamTool.TEXT, ExamTool.TICK -> InkRow(
                     colors = ExamInk.palette,

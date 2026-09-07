@@ -434,6 +434,9 @@ class ReaderViewModel(
 
     fun onForgetSearches() = searchHistory.forget(SearchScope.WORDS)
 
+    /** Drop one past search, from the cross on its row. */
+    fun onForgetSearch(query: String) = searchHistory.forgetOne(SearchScope.WORDS, query)
+
     fun onOpenSearch() {
         _uiState.update { it.copy(search = it.search.copy(isOpen = true)) }
     }

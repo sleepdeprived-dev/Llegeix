@@ -104,6 +104,31 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     suspend fun setDocumentHighlightColor(uriString: String, color: Int?) =
         documents.setHighlightColor(uriString, color)
 
+    /**
+     * Call this PDF something else, inside the app only.
+     *
+     * A blank name is stored as null rather than as an empty string, so
+     * clearing the field is how a reader gets the file's own name back. The
+     * file itself is never touched: Llegeix holds a read-only grant on it, and
+     * renaming somebody's file in Downloads because they wanted a tidier
+     * library would be a much larger thing than they asked for.
+     */
+    suspend fun setDocumentName(uriString: String, displayName: String, name: String?) {
+        ensureDocument(uriString, displayName)
+        documents.setCustomName(uriString, name?.trim()?.takeIf { it.isNotEmpty() })
+    }
+
+    /**
+     * The names the reader has given PDFs, keyed by URI.
+     *
+     * A map for the same reason the progress is one: every list already holds
+     * the document it is drawing and only ever asks "what about this one".
+     */
+    fun observeCustomNames(): Flow<Map<String, String>> =
+        documents.observeCustomNames().map { rows ->
+            rows.associate { it.uriString to it.customName }
+        }
+
     // --- Whole-document bookmarks and read-later -----------------------------
 
     /**

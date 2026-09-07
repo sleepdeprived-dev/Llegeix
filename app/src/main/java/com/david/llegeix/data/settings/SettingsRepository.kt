@@ -50,6 +50,11 @@ class SettingsRepository(context: Context) {
     }
 
 
+    fun setFlag(flag: AppFlag) {
+        prefs.edit { putString(KEY_FLAG, flag.key) }
+        _settings.value = current.copy(flag = flag)
+    }
+
     fun setTranslationTarget(target: TranslationTarget) {
         prefs.edit { putString(KEY_TRANSLATION, target.code) }
         _settings.value = current.copy(translationTarget = target)
@@ -106,6 +111,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_MARK_SAVED = "mark_saved_words"
         private const val KEY_DEVICE_SCAN_OPT_OUT = "device_scan_opt_out"
         private const val KEY_CUSTOM_ACCENT = "custom_accent"
+        private const val KEY_FLAG = "flag"
 
         private fun preferences(context: Context): SharedPreferences =
             context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -128,6 +134,7 @@ class SettingsRepository(context: Context) {
             readingMode = ReadingMode.fromKey(prefs.getString(KEY_READING_MODE, null)),
             markSavedWords = prefs.getBoolean(KEY_MARK_SAVED, true),
             customAccent = prefs.getInt(KEY_CUSTOM_ACCENT, DEFAULT_CUSTOM_ACCENT),
+            flag = AppFlag.fromKey(prefs.getString(KEY_FLAG, null)),
         )
 
         /**

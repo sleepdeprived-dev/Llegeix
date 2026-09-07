@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -192,6 +193,14 @@ fun TagPickerDialog(
     onRecolour: (TagEntity, Int) -> Unit,
     onDelete: (TagEntity) -> Unit,
     onDismiss: () -> Unit,
+    /**
+     * Rename a tag that already exists.
+     *
+     * Null leaves the pencil off, for a caller with nowhere to put the change.
+     * With it, a tag named in haste stops being a tag that has to be deleted
+     * and remade — which loses it from every document it was on.
+     */
+    onRename: ((TagEntity, String) -> Unit)? = null,
 ) {
     var newName by remember { mutableStateOf("") }
     var colorIndex by remember { mutableIntStateOf(0) }
@@ -233,6 +242,9 @@ fun TagPickerDialog(
                                 onPickColour = { colour ->
                                     onRecolour(tag, colour)
                                     recolouring = null
+                                },
+                                onRename = onRename?.let { rename ->
+                                    { name: String -> rename(tag, name) }
                                 },
                                 onDelete = { onDelete(tag) },
                             )
@@ -329,9 +341,14 @@ private fun TagRow(
     onOpenPalette: () -> Unit,
     onPickColour: (Int) -> Unit,
     onDelete: () -> Unit,
+    onRename: ((String) -> Unit)? = null,
 ) {
     val changeColourLabel = stringResource(R.string.tags_change_colour, tag.name)
-    val pickColourLabel = stringResource(R.string.tags_pick_colour)
+    // Renaming happens in place, on the row, rather than in a dialog over a
+    // dialog: the name is already drawn there, and the smallest honest edit
+    // control for a word already on screen is that word becoming a field.
+    var editing by remember { mutableStateOf(false) }
+    var draft by remember(tag.id, tag.name) { mutableStateOf(tag.name) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -373,22 +390,61 @@ private fun TagRow(
                     }
                 }
             }
-            Text(
-                text = tag.name,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = Space.md),
-            )
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.tags_delete, tag.name),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
+            if (editing && onRename != null) {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = Space.md),
                 )
+                IconButton(
+                    onClick = {
+                        if (draft.isNotBlank()) onRename(draft)
+                        editing = false
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = stringResource(R.string.action_done),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            } else {
+                Text(
+                    text = tag.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = Space.md),
+                )
+                if (onRename != null) {
+                    IconButton(onClick = { draft = tag.name; editing = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = stringResource(
+                                R.string.tags_rename,
+                                tag.name,
+                            ),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.tags_delete, tag.name),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
 

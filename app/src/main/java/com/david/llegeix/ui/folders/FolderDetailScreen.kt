@@ -1,6 +1,8 @@
 package com.david.llegeix.ui.folders
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,14 +19,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,7 +48,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
+import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.ui.common.CoverAspectRatio
+import com.david.llegeix.ui.common.MenuIcon
+import com.david.llegeix.ui.common.TagPickerDialog
+import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.Space
@@ -56,7 +69,7 @@ import com.david.llegeix.util.pdfTitle
  * collection is the screen, and everything you own is one press away with a
  * tick beside it.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FolderDetailScreen(
     folderId: Long,
@@ -73,6 +86,11 @@ fun FolderDetailScreen(
     )
     val documents by viewModel.documents.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+    val allTags by viewModel.tags.collectAsStateWithLifecycle()
+    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
+    var tagsFor by remember { mutableStateOf<DocumentEntity?>(null) }
+    var renaming by remember { mutableStateOf<DocumentEntity?>(null) }
     // A collection made a moment ago is a collection about to be filled, so the
     // picker is already up rather than waiting behind a button on an empty
     // screen.
@@ -138,12 +156,24 @@ fun FolderDetailScreen(
                 contentPadding = PaddingValues(bottom = Space.huge + Space.xl),
             ) {
                 items(documents, key = { it.uriString }) { document ->
+                    var menuOpen by remember { mutableStateOf(false) }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                onOpenDocument(document.uriString, document.displayName)
-                            }
+                            // Held rather than tapped: the same gesture as the
+                            // library's rows, landing on the same three things
+                            // — the tags, the name, and taking it off the
+                            // shelf. A PDF should not answer to different
+                            // gestures depending on which list it is met in.
+                            .combinedClickable(
+                                onClick = {
+                                    onOpenDocument(
+                                        document.uriString,
+                                        customNames[document.uriString] ?: document.displayName,
+                                    )
+                                },
+                                onLongClick = { menuOpen = true },
+                            )
                             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -164,20 +194,57 @@ fun FolderDetailScreen(
                         Spacer(modifier = Modifier.width(Space.lg))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = pdfTitle(document.displayName),
+                                text = customNames[document.uriString]
+                                    ?: pdfTitle(document.displayName),
                                 style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        IconButton(onClick = { viewModel.removeFromFolder(document.uriString) }) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = stringResource(
-                                    R.string.folder_detail_remove,
-                                ),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        TagStrip(
+                            tags = tagsByDocument[document.uriString].orEmpty(),
+                            modifier = Modifier.padding(start = Space.sm),
+                        )
+                        Box {
+                            IconButton(
+                                onClick = { viewModel.removeFromFolder(document.uriString) },
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = stringResource(
+                                        R.string.folder_detail_remove,
+                                    ),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = menuOpen,
+                                onDismissRequest = { menuOpen = false },
+                            ) {
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        MenuIcon(painterResource(R.drawable.ic_tag))
+                                    },
+                                    text = { Text(stringResource(R.string.tags_open)) },
+                                    onClick = { menuOpen = false; tagsFor = document },
+                                )
+                                DropdownMenuItem(
+                                    leadingIcon = { MenuIcon(Icons.Default.Edit) },
+                                    text = { Text(stringResource(R.string.document_rename)) },
+                                    onClick = { menuOpen = false; renaming = document },
+                                )
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    leadingIcon = { MenuIcon(Icons.Default.Close) },
+                                    text = {
+                                        Text(stringResource(R.string.folder_detail_remove))
+                                    },
+                                    onClick = {
+                                        menuOpen = false
+                                        viewModel.removeFromFolder(document.uriString)
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -192,4 +259,81 @@ fun FolderDetailScreen(
             onDismiss = { adding = false },
         )
     }
+
+    tagsFor?.let { document ->
+        TagPickerDialog(
+            documentTitle = customNames[document.uriString] ?: pdfTitle(document.displayName),
+            allTags = allTags,
+            selectedIds = tagsByDocument[document.uriString].orEmpty().map { it.id }.toSet(),
+            onToggle = { viewModel.onToggleTag(document, it) },
+            onCreate = { name, colour -> viewModel.onCreateTag(document, name, colour) },
+            onRecolour = viewModel::onRecolourTag,
+            onRename = viewModel::onRenameTag,
+            onDelete = viewModel::onDeleteTag,
+            onDismiss = { tagsFor = null },
+        )
+    }
+
+    renaming?.let { document ->
+        CollectionDocumentNameDialog(
+            current = customNames[document.uriString] ?: pdfTitle(document.displayName),
+            hasCustomName = document.uriString in customNames,
+            onDismiss = { renaming = null },
+            onConfirm = { name ->
+                viewModel.onRenameDocument(document, name)
+                renaming = null
+            },
+        )
+    }
+}
+
+/**
+ * Rename a PDF from inside a collection, in the app only.
+ *
+ * The note under the field is the reason this is a dialog rather than an inline
+ * edit: "rename" on a phone means renaming the file, and this does not. Llegeix
+ * holds a read-only grant on the reader's PDFs and never writes to them.
+ */
+@Composable
+private fun CollectionDocumentNameDialog(
+    current: String,
+    hasCustomName: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.document_rename_title)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.document_rename_label)) },
+                    singleLine = true,
+                )
+                Text(
+                    text = stringResource(R.string.document_rename_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.md),
+                )
+                if (hasCustomName) {
+                    TextButton(
+                        onClick = { onConfirm("") },
+                        modifier = Modifier.padding(top = Space.sm),
+                    ) { Text(stringResource(R.string.document_rename_reset)) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
+                Text(stringResource(R.string.action_rename))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }

@@ -32,12 +32,18 @@ does both after bumping the version in `app/build.gradle.kts`.
   opened, so every cover in the app carries a bar along its foot and every list
   row says how far in you are. A shelf of two hundred PDFs answers "which of
   these have I started" without a single number being read.
-- **Sources** — where the library's documents come from, as a strip of tiles at
-  the top of the library rather than an item in a menu. Each tile says what it
-  holds and what it is contributing — "31 of 48" when part of it is switched
-  off — because a library quietly missing a folder used to look exactly like a
-  library showing everything. Pressing one opens it into a tree of tick boxes;
-  the last tile adds another. Nothing here deletes anything from the phone.
+- **Sources** — where the library's documents come from, as one line at the top
+  of the library rather than an item in a menu. *See sources* opens every source
+  and every folder inside it as a tree of tick boxes, and a round plus beside it
+  adds another. This was a strip of tiles that scrolled sideways, one per
+  source: honest, and three lines of permanent furniture over a screen that is
+  meant to be a list of books, with half of itself always off the edge. The one
+  thing the tiles said that a button could not is kept — when part of a source
+  is switched off the row reads "31 of 48 PDFs shown", because a library quietly
+  missing a folder otherwise looks exactly like a library showing everything.
+  Holding a folder in the library offers to stop showing it, which is the same
+  decision reached from the folder it is about. Nothing here deletes anything
+  from the phone.
 - **Browsing** — the library is a small file manager over the folders the PDFs
   are already in: folders first with a count of everything below them, then the
   documents that sit in this folder, with a path along the top and the back
@@ -71,6 +77,14 @@ does both after bumping the version in `app/build.gradle.kts`.
   with the arrows never loses your place, and picking a result hands the whole
   screen back to the page. The library's own rows offer "Search inside…", which
   opens the document with the find bar already carrying whatever was typed.
+- **What the app keeps for you** — three collections that fill themselves:
+  *Starred*, *Read later* and *Recently viewed*, in one card above the ones you
+  build. The last two used to live in the library — read-later as a filter chip,
+  the history behind the overflow menu — which put "where did I set that aside"
+  in two tabs at once. None of them is a real folder and none of them can be: a
+  document belongs to at most one folder, so making any of them a folder would
+  pull its PDFs out of the collection they were filed in. They are live views of
+  the bookmark flag, the read-later flag and the reading history.
 - **Collections** — the shelves you make, as against the folders the phone
   already has. They shared a word and an icon until they were impossible to tell
   apart on sight; now a collection has its own glyph and its own name. Making
@@ -78,11 +92,21 @@ does both after bumping the version in `app/build.gradle.kts`.
   one list, with a tick beside each and a note saying which collection a
   document is in already. Filling a collection used to be four taps a book,
   through a menu and a dialog, with the collection never once on screen.
-- **Organisation** — collections, tags with a colour you can change at any time
-  and sort by, reading history, and bookmarks, persisted in a Room database. A
-  collection's colour is a disc behind its icon rather than a tint on the
-  outline, and the library row says where a PDF has been filed. Starring a book
-  and marking it to read later are a swipe of its row in either direction.
+- **Organisation** — collections, tags with a colour and a name you can change
+  at any time and sort by, reading history, and bookmarks, persisted in a Room
+  database. A collection's colour is a disc behind its icon rather than a tint on
+  the outline, and the library row says where a PDF has been filed. Starring a
+  book and marking it to read later are a swipe of its row in either direction.
+  Holding any row — in the library, in a collection, on a saved word — opens the
+  same menu the three dots would, which is the gesture every file list on the
+  phone already answers to.
+- **Names** — a PDF can be called something else. Exam boards and course sites
+  hand out files called `PROVA_C1_2019_comprensio_lectora_v2.pdf`, and that
+  string is then the title on every shelf, row and app bar in the app. Renaming
+  changes what *Llegeix* calls it and nothing else: the file in Downloads keeps
+  its own name, because the app holds a read-only grant on it and has no
+  business writing to it. The dialog says so, and clearing the field gives the
+  file's own name back.
 - **Translation** — press and hold a word to translate it with ML Kit's on-device
   models; keep holding and drag to take a whole phrase, which comes back
   translated, broken down word by word, and set in the line it came from. The
@@ -108,14 +132,23 @@ does both after bumping the version in `app/build.gradle.kts`.
   Android's direct device-to-device transfer still carries it to a new one.
 
 - **Updates** — Llegeix is sideloaded rather than installed from a store, so
-  nothing would ever update it. Configuració has a button that asks, once, when
-  it is pressed: it reads the newest release from a small public repository that
+  nothing would ever update it. Configuració has a button that asks when it is
+  pressed: it reads the newest release from a small public repository that
   carries the builds and nothing else, says what changed, fetches the APK for
   this phone's architecture rather than the universal one, and hands it to
-  Android's own installer. No background poll, no check on launch, no
-  notification, and nothing installed without the system's own dialog. The
-  request carries no identifier — it is the same unauthenticated call anybody
-  can make of a public repository.
+  Android's own installer. Nothing is installed without the system's own dialog,
+  and the request carries no identifier — it is the same unauthenticated call
+  anybody can make of a public repository.
+
+  The app also asks that question of its own accord, at most once a day, when
+  the library comes to the foreground — and the entire result is a red dot on
+  the settings gear. There is no background service, no job scheduler and no
+  notification; it runs only while somebody is already looking at the app, and a
+  phone that is offline simply learns nothing and tries again tomorrow. This is
+  the one thing on the network nobody pressed a button for, and it exists
+  because a sideloaded app that never mentions a new version is a sideloaded app
+  running last March's build. Pressing the button clears the dot as readily as
+  it sets it.
 
 - **Scanned pages** — a scan is a photograph of writing: there is no text in
   the file, so press-and-hold used to do nothing at all and there was no way to
@@ -153,7 +186,21 @@ does both after bumping the version in `app/build.gradle.kts`.
   play from a bar above it; an official answer sheet can be attached and flipped
   to. The original PDF is never written to — an attempt can be exported as its
   own flat PDF, drawn by the same code that drew it on screen so the file cannot
-  disagree with what you saw.
+  disagree with what you saw. Undo has a redo beside it, the page can be
+  darkened without darkening the app, and the documents and recordings of a
+  paper can be renamed — inside the app, as everywhere else in Llegeix.
+- **Somewhere to write the essay** — a writing exam needs blank paper, and the
+  honest form of that is more paper at the back of the same booklet rather than
+  a notes screen with its own navigation. Adding a page appends a real blank PDF
+  to the paper and turns to it, so an essay is written with the same pen, saved
+  by the same row-per-stroke, and carried into the same export as every answer
+  on the printed pages. One button in the bar goes to the blank pages and back
+  again, landing on the question you left rather than at page one — which is the
+  whole reason for it being inside the exam instead of beside it.
+- **Listening** — the bar above the page has a scrubber rather than a progress
+  line: drag it, or tap anywhere along it, and the recording goes there. A
+  listening exam is fifteen seconds played four times, and until this the only
+  way back was to start the track again.
 - **Saved words** — star a word or phrase and it is kept with its translation,
   its pronunciation, the line it appeared in, and the document, page and line it
   came from. One starred in the Dictionary has no page behind it and says so,
@@ -175,12 +222,22 @@ does both after bumping the version in `app/build.gradle.kts`.
   is what keeps half-typed words out of the list; the reader's find, the
   dictionary and the saved words share one pile, because a word chased across a
   page is the one you come back looking for in the dictionary, and then in your
-  own list.
+  own list. Each row carries its own cross as well as the clear-the-lot above
+  them: "all or nothing" is the wrong question to ask about five words when what
+  is wanted is to be rid of one.
 - **Settings** — reached from the gear in the Library app bar: light, dark,
   AMOLED black or follow-the-system, an accent colour (Material You from the
   wallpaper, one of six named colours, or one mixed by hand with a hue slider
   and a hex field), and the app's own language. How the *page* is drawn is not
-  here — that belongs to the reader, and lives in its display sheet.
+  here — that belongs to the reader, and lives in its display sheet. Neither is
+  the translation language: the reader's lookup panel carries that choice as a
+  flag beside the word, where the question is actually asked, and a second
+  control for it in Configuració only meant one of the two was always the wrong
+  place to look.
+- **The flag** — the mark beside the app's name is the Senyera, drawn rather
+  than shipped as an asset so it stays crisp at any size. Pressing it offers the
+  Estelada instead. It is not in Configuració on purpose: the question only
+  makes sense while looking at the flag.
 
 ## Design
 
@@ -197,17 +254,28 @@ with the words for attention.
 
 Two rules that came out of using it. **The answer to a question belongs on the
 screen the question is asked about.** "Why is that book not in my library" is
-asked while looking at the library, so the sources are a strip along the top of
-it rather than an item in the overflow menu called *Fonts* — a word that only
-means anything once you already know what it does. **A fact worth reading at a
-glance should not be a number.** How far through a book you are is a bar on its
-cover, not a page count to do arithmetic on; how much of a source is reaching
-the library is "31 of 48", not "48".
+asked while looking at the library, so the sources are along the top of it
+rather than an item in the overflow menu called *Fonts* — a word that only means
+anything once you already know what it does. **A fact worth reading at a glance
+should not be a number.** How far through a book you are is a bar on its cover,
+not a page count to do arithmetic on; how much of a source is reaching the
+library is "31 of 48", not "48".
+
+A third, learned the expensive way: **a control that has earned its place still
+has to earn its height.** The sources strip was right about *where* and wrong
+about *how much* — three lines of permanent furniture for a fact that matters on
+one visit in fifty. It is now a line with a button on it, and the fact is
+printed on that line only when it is not the obvious one. The same reasoning
+retired the read-later chip, which had been sitting among the two chips that
+decide how the library is arranged while being a shelf rather than an
+arrangement.
 
 There were five tabs, three of them re-cuts of the same documents. There are now
 four: the books, the language, what you set aside, and the papers you sit.
 Recent became the shelf of part-read books at the top of the library, which is
-where somebody wanting to carry on reading was going to look anyway.
+where somebody wanting to carry on reading was going to look anyway, and its
+full history is now one of the three collections the app keeps for itself —
+which is where a reader looking for something they set aside goes.
 
 Collections and Saved were the next pair to go. They were two names for setting
 something aside, sitting next to each other in the bar, and between them they

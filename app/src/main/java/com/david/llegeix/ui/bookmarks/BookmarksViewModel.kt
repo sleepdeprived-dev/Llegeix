@@ -10,6 +10,7 @@ import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.PageBookmark
 import com.david.llegeix.data.db.entity.DocumentEntity
+import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
@@ -48,10 +49,24 @@ class BookmarksViewModel(
 
     fun onForgetSearches() = searchHistory.forget(SearchScope.WORDS)
 
+    /** Drop one past search, from the cross on its row. */
+    fun onForgetSearch(query: String) = searchHistory.forgetOne(SearchScope.WORDS, query)
+
     private var rememberJob: Job? = null
 
     val bookmarkedDocuments: StateFlow<List<DocumentEntity>> =
         libraryData.observeBookmarkedDocuments()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * PDFs set aside to read later, for the collection of that name.
+     *
+     * The same flag the library's leftward swipe sets, read back. It was a
+     * filter chip on the library until this release; it is a shelf the reader
+     * built, so it is a collection.
+     */
+    val readLaterDocuments: StateFlow<List<DocumentEntity>> =
+        libraryData.observeReadLaterDocuments()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val pageBookmarks: StateFlow<List<PageBookmark>> =
@@ -160,9 +175,51 @@ class BookmarksViewModel(
         libraryData.setDocumentBookmarked(document.uriString, document.displayName, false)
     }
 
+    fun removeFromReadLater(document: DocumentEntity) = viewModelScope.launch {
+        libraryData.setDocumentReadLater(document.uriString, document.displayName, false)
+    }
+
     fun removePageBookmark(bookmarkId: Long) = viewModelScope.launch {
         libraryData.deletePageBookmark(bookmarkId)
     }
+
+    /**
+     * Everything the collections' rows need to offer their hold-to-open menu.
+     *
+     * Tags belong to a document rather than to a bookmark, so the picker raised
+     * from a starred PDF is the same picker the library raises, working on the
+     * same rows — which is why a tag made here turns up on the library row for
+     * the same PDF a moment later.
+     */
+    val tags: StateFlow<List<TagEntity>> = libraryData.observeTags()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val customNames: StateFlow<Map<String, String>> = libraryData.observeCustomNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    fun onToggleTag(uriString: String, displayName: String, tag: TagEntity) =
+        viewModelScope.launch { libraryData.toggleTag(uriString, displayName, tag.id) }
+
+    fun onCreateTag(uriString: String, displayName: String, name: String, colorArgb: Int) =
+        viewModelScope.launch {
+            val tag = libraryData.createOrGetTag(name, colorArgb) ?: return@launch
+            libraryData.toggleTag(uriString, displayName, tag.id)
+        }
+
+    fun onRecolourTag(tag: TagEntity, colorArgb: Int) = viewModelScope.launch {
+        libraryData.renameTag(tag.id, tag.name, colorArgb)
+    }
+
+    fun onRenameTag(tag: TagEntity, name: String) = viewModelScope.launch {
+        libraryData.renameTag(tag.id, name, tag.colorArgb)
+    }
+
+    fun onDeleteTag(tag: TagEntity) = viewModelScope.launch {
+        libraryData.deleteTag(tag.id)
+    }
+
+    fun onRenameDocument(uriString: String, displayName: String, name: String) =
+        viewModelScope.launch { libraryData.setDocumentName(uriString, displayName, name) }
 
 
     companion object {

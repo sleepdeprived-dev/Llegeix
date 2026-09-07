@@ -63,12 +63,10 @@
     <string name="library_settings_unavailable">No s\'ha pogut obrir la configuració. Concedeix l\'\"Accés a tots els fitxers\" manualment.</string>
     <string name="library_scan_failed">No s\'han pogut cercar els PDF</string>
     <string name="library_filter_all">Tots</string>
-    <string name="library_filter_read_later">Per llegir més tard</string>
     <string name="library_view_by_folder">Per carpetes</string>
     <!-- El punt de partida de la biblioteca, al camí de carpetes. -->
     <string name="library_path_root">Biblioteca</string>
     <string name="library_folder_up">Puja una carpeta</string>
-    <string name="library_filter_with_count">%1$s (%2$d)</string>
     <string name="library_sort_by">Ordena per</string>
     <string name="library_sort_recent">Modificats recentment</string>
     <string name="library_sort_name">Nom</string>
@@ -76,8 +74,6 @@
     <string name="library_sort_tag">Etiqueta</string>
     <string name="library_empty_title">No s\'ha trobat cap PDF</string>
     <string name="library_empty_body">No ha aparegut res amb l\'extensió .pdf. Els PDF de Baixades no es poden llegir vigilant una carpeta: escaneja tot el dispositiu o afegeix-los un a un des del menú.</string>
-    <string name="library_read_later_empty_title">Res per llegir més tard</string>
-    <string name="library_read_later_empty_body">Marca un PDF com a \"Per llegir més tard\" des del seu menú i s\'anirà acumulant aquí.</string>
     <string name="library_no_matches_title">Cap coincidència</string>
     <string name="library_no_matches_body">Cap dels %1$d PDF no coincideix amb \"%2$s\".</string>
     <string name="library_move_to_folder">Mou a una col·lecció</string>
@@ -280,9 +276,9 @@
     <!-- Privadesa -->
     <string name="settings_privacy">Privadesa</string>
     <string name="settings_privacy_open">Política de privadesa</string>
-    <string name="settings_privacy_summary">El Llegeix no recull res.</string>
+    <string name="settings_privacy_summary">Llegeix no recull res.</string>
     <string name="privacy_title">Política de privadesa</string>
-    <string name="privacy_body">El Llegeix no recull cap dada teva. Cap ni una.\n\nNo hi ha analítica, ni informes d\'error, ni publicitat, ni comptes. Res del que fas a l\'aplicació s\'envia enlloc, i no hi ha cap servidor seu on enviar-ho.\n\nTot el que l\'aplicació recorda — les col·leccions, les etiquetes, els marcadors, les paraules desades, per on vas llegint i la configuració — es desa només en aquest dispositiu, a l\'emmagatzematge privat de l\'aplicació. Si la desinstal·les, tot això s\'esborra, i no se\'n fa mai cap còpia de seguretat al núvol. Si canvies de telèfon amb la transferència directa d\'Android, s\'ho endú amb tu: del telèfon vell al nou, sense passar pel servidor de ningú.\n\nEls teus PDF es llegeixen d\'allà on ja són al dispositiu. No es copien mai, ni es pugen enlloc, ni els obre res més que aquesta aplicació.\n\nL\'aplicació fa servir internet per a dues coses, i cap de les dues no va sobre tu.\n\nLa primera és baixar els models de traducció d\'ML Kit de Google, un cop per idioma, perquè tocar una paraula la pugui traduir. Aquesta petició va a Google i està subjecta a la política de privadesa de Google; l\'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot fora de línia.\n\nLa segona és comprovar si hi ha una versió nova de l\'aplicació, i només passa quan prems el botó de Configuració. L\'aplicació no ho comprova mai pel seu compte, ni en obrir-se ni en segon pla. Pregunta a GitHub quina és la versió més nova i, si tries instal·lar-la, la baixa d\'allà. La petició no porta cap compte, cap identificador ni res dels teus documents — és la mateixa petició anònima que pot fer qualsevol d\'una pàgina pública — tot i que GitHub, com qualsevol lloc web, pot veure des de quina adreça et connectes.\n\nL\'aplicació demana permís per llegir fitxers per poder trobar els teus PDF, accés a la xarxa per a aquestes dues coses, i permís per passar una actualització a l\'instal·lador d\'Android, que és qui la instal·la de debò i abans t\'ho pregunta.</string>
+    <string name="privacy_body">Llegeix no recull cap dada teva. Cap ni una.\n\nNo hi ha analítica, ni informes d\'error, ni publicitat, ni comptes. Res del que fas a l\'aplicació s\'envia enlloc, i no hi ha cap servidor seu on enviar-ho.\n\nTot el que l\'aplicació recorda — les col·leccions, les etiquetes, els marcadors, les paraules desades, per on vas llegint i la configuració — es desa només en aquest dispositiu, a l\'emmagatzematge privat de l\'aplicació. Si la desinstal·les, tot això s\'esborra, i no se\'n fa mai cap còpia de seguretat al núvol. Si canvies de telèfon amb la transferència directa d\'Android, s\'ho endú amb tu: del telèfon vell al nou, sense passar pel servidor de ningú.\n\nEls teus PDF es llegeixen d\'allà on ja són al dispositiu. No es copien mai, ni es pugen enlloc, ni els obre res més que aquesta aplicació.\n\nL\'aplicació fa servir internet per a dues coses, i cap de les dues no va sobre tu.\n\nLa primera és baixar els models de traducció d\'ML Kit de Google, un cop per idioma, perquè tocar una paraula la pugui traduir. Aquesta petició va a Google i està subjecta a la política de privadesa de Google; l\'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot fora de línia.\n\nLa segona és comprovar si hi ha una versió nova de l\'aplicació: un cop al dia com a molt, en obrir la biblioteca, i sempre que prems el botó de Configuració. Serveix per posar un punt vermell a l\'engranatge quan n\'hi ha una de nova; no hi ha cap servei en segon pla ni cap notificació. Pregunta a GitHub quina és la versió més nova i, si tries instal·lar-la, la baixa d\'allà. La petició no porta cap compte, cap identificador ni res dels teus documents — és la mateixa petició anònima que pot fer qualsevol d\'una pàgina pública — tot i que GitHub, com qualsevol lloc web, pot veure des de quina adreça et connectes.\n\nL\'aplicació demana permís per llegir fitxers per poder trobar els teus PDF, accés a la xarxa per a aquestes dues coses, i permís per passar una actualització a l\'instal·lador d\'Android, que és qui la instal·la de debò i abans t\'ho pregunta.</string>
     <string name="privacy_updated">Darrera actualització: 4 de setembre de 2026</string>
 
     <!-- Vistos recentment -->
@@ -336,7 +332,7 @@
     <string name="erase_body">Això buida la biblioteca, les col·leccions, els marcadors, les paraules desades i les etiquetes, retorna totes les carpetes a què has donat accés a l\'aplicació, esborra els models de traducció baixats i torna totes les opcions al seu valor inicial. També desactiva l\'escaneig de tot el dispositiu, perquè la biblioteca no es torni a omplir tota sola; el pots tornar a activar des de les fonts que hi ha a dalt de la biblioteca.\n\nEls teus PDF no es toquen. Es queden exactament on són al telèfon.\n\nAixò no es pot desfer.</string>
     <string name="erase_confirm">Esborra-ho tot</string>
     <string name="erase_running">S\'està esborrant\u2026</string>
-    <string name="settings_about">Quant a</string>
+    <string name="settings_about">Sobre l\'aplicació</string>
     <string name="settings_credits_thesaurus">Les definicions provenen del Viccionari, el diccionari lliure en català, sota llicència CC BY-SA. Els sinònims provenen del Diccionari de sinònims de català de Jaume Ortolà i Softcatalà, sota llicència CC BY 4.0.</string>
     <string name="settings_updates">Actualitzacions</string>
     <string name="settings_update_check">Comprova si hi ha actualitzacions</string>
@@ -371,7 +367,6 @@
         ho pregunta a la biblioteca, i per tant la resposta hi ha de ser.
     -->
     <string name="library_source_device">Tot el dispositiu</string>
-    <string name="library_source_add">Afegeix</string>
     <string name="library_source_manage">Gestiona les fonts</string>
 
     <!-- El prestatge de llibres començats, a dalt de la biblioteca. -->
@@ -594,4 +589,62 @@
     </plurals>
     <string name="exams_move_up">Mou %1$s cap amunt</string>
     <string name="exams_move_down">Mou %1$s cap avall</string>
+
+    <!-- ================= v3.9 ================= -->
+
+    <!-- Una cerca anterior, tancada des de la seva fila. -->
+    <string name="search_recent_forget">Oblida la cerca de %1$s</string>
+
+    <!-- Les fonts de la biblioteca, darrere d\'una paraula. -->
+    <string name="library_see_sources">Mostra les fonts</string>
+    <string name="library_add_source">Afegeix una font</string>
+
+    <!-- Mantenir premuda una carpeta ofereix deixar de mostrar-la. -->
+    <string name="library_folder_hide_title">Vols deixar de mostrar %1$s?</string>
+    <string name="library_folder_hide_body">Aquesta carpeta i tot el que hi ha dins desapareixen de la biblioteca. No s\'esborra res del telèfon, i la pots recuperar des de \"Mostra les fonts\".</string>
+    <string name="library_folder_hide_confirm">Deixa de mostrar-la</string>
+
+    <!-- Reanomenar un PDF dins de l\'aplicació. -->
+    <string name="document_rename">Reanomena…</string>
+    <string name="document_rename_title">Reanomena a Llegeix</string>
+    <string name="document_rename_body">Això és només com ho anomena Llegeix. El fitxer del telèfon manté el seu nom.</string>
+    <string name="document_rename_label">Nom</string>
+    <string name="document_rename_reset">Fes servir el nom del fitxer</string>
+
+    <!-- Les dues col·leccions automàtiques, al costat de Destacats. -->
+    <string name="read_later_collection_title">Per llegir més tard</string>
+    <string name="read_later_collection_empty_title">Res per llegir més tard</string>
+    <string name="read_later_collection_empty_body">Llisca un PDF de la biblioteca cap a l\'esquerra, o fes servir el seu menú, i s\'anirà acumulant aquí.</string>
+    <string name="recent_collection_summary">Tot el que has obert</string>
+
+    <!-- Hi ha una versió nova, com un punt a l\'engranatge. -->
+    <string name="settings_update_waiting">Hi ha una versió nova disponible</string>
+
+    <!-- La bandera del costat del nom, i les dues que pot ser. -->
+    <string name="flag_choose_title">Quina bandera?</string>
+    <string name="flag_senyera">Senyera</string>
+    <string name="flag_estelada">Estelada</string>
+    <string name="estelada_content_description">Estelada, la bandera independentista catalana</string>
+
+    <!-- Exàmens: paper en blanc, reanomenar i els controls de pàgina. -->
+    <string name="exam_notes_name">Notes</string>
+    <string name="exam_add_page">Afegeix una pàgina en blanc</string>
+    <string name="exam_page_added">Pàgina en blanc afegida al final</string>
+    <string name="exam_page_add_failed">No s\'ha pogut afegir la pàgina</string>
+    <string name="exam_go_to_notes">Ves a les pàgines en blanc</string>
+    <string name="exam_back_to_paper">Torna a l\'examen</string>
+    <string name="exam_dark_page">Enfosqueix la pàgina</string>
+    <string name="exam_light_page">Pàgina clara</string>
+    <string name="exam_redo">Refés</string>
+    <string name="exam_seek">Posició de l\'enregistrament</string>
+    <string name="exams_rename_file_title">Reanomena aquest document</string>
+    <string name="exams_rename_audio_title">Reanomena aquest enregistrament</string>
+    <string name="exams_rename_file">Reanomena %1$s</string>
+    <string name="exams_file_actions">Accions per a %1$s</string>
+    <string name="exams_audio_length">Durada: %1$s</string>
+    <string name="exams_audio_length_unknown">Durada desconeguda</string>
+    <string name="exams_notes_pages">Paper en blanc que has afegit</string>
+
+    <string name="tags_rename">Reanomena l\'etiqueta %1$s</string>
+    <string name="words_open_source">Ves on es va desar</string>
 </resources>

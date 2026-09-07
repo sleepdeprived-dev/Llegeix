@@ -11,17 +11,22 @@ import com.david.llegeix.ui.common.UiText
 /**
  * How the library is arranged on screen.
  *
- * [FOLDERS] is the default and the reason the other two are still here. A
- * shelf of every PDF on the phone at once is a list nobody has a place to
- * start in; walking the folders they are already filed in means each screen
- * asks one question — what is in here — and the reader's own arrangement does
- * the sorting. But "show me everything, most recent first" is a real question
- * too, and read-later is a shelf rather than a place, so both keep a chip.
+ * [FOLDERS] is the default and the reason [ALL] is still here. A shelf of every
+ * PDF on the phone at once is a list nobody has a place to start in; walking
+ * the folders they are already filed in means each screen asks one question —
+ * what is in here — and the reader's own arrangement does the sorting. But
+ * "show me everything, most recent first" is a real question too, so it keeps a
+ * chip.
+ *
+ * Read-later was a third chip and is now a collection, next to Starred and
+ * Recently viewed. It was never a way of *arranging* the library — the other
+ * two are — it was a shelf the reader had put things on, which is the exact
+ * definition of a collection in this app, and having it here meant the same
+ * shelf existed in two shapes in two tabs.
  */
 enum class LibraryView(@param:StringRes val labelRes: Int) {
     FOLDERS(R.string.library_view_by_folder),
     ALL(R.string.library_filter_all),
-    READ_LATER(R.string.library_filter_read_later),
 }
 
 /**
@@ -112,6 +117,23 @@ data class LibraryUiState(
      */
     val showsSources: Boolean
         get() = sources.isNotEmpty() && path == null && query.isBlank()
+
+    /**
+     * How much of what the sources hold is actually reaching the library.
+     *
+     * The strip of tiles that used to sit here said this per source, in a row
+     * that took three lines of height on every visit to a screen that is
+     * supposed to be a list of books. The row that replaced it says it once,
+     * and only when the two numbers differ — because "31 of 48" is worth the
+     * space exactly when it is not "48 of 48", and the rest of the time it is a
+     * number nobody reads. It is still the only on-screen answer to "why is
+     * that book not in my library".
+     */
+    val sourcesVisibleCount: Int get() = sources.sumOf { it.visibleCount }
+
+    val sourcesTotalCount: Int get() = sources.sumOf { it.totalCount }
+
+    val isPartlyShown: Boolean get() = sourcesTotalCount > sourcesVisibleCount
 
     fun isReadLater(document: PdfDocument): Boolean = document.uriString in readLaterUris
 

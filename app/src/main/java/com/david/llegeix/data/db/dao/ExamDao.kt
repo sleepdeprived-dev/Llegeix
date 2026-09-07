@@ -123,6 +123,24 @@ interface ExamDao {
     @Query("UPDATE exam_parts SET position = :position WHERE id = :partId")
     suspend fun setPartPosition(partId: Long, position: Int)
 
+    /**
+     * What a document of the paper is called, inside the app.
+     *
+     * The stored copy's filename is untouched: it is a UUID nobody reads, and
+     * the marks written on the document are addressed by the part's id, so
+     * renaming cannot move a single answer.
+     */
+    @Query("UPDATE exam_parts SET sourceName = :name WHERE id = :partId")
+    suspend fun renamePart(partId: Long, name: String)
+
+    /** Used when a page is added to the blank paper at the back of a booklet. */
+    @Query("UPDATE exam_parts SET pageCount = :pageCount WHERE id = :partId")
+    suspend fun setPartPageCount(partId: Long, pageCount: Int)
+
+    /** The blank paper attached to a paper, if the reader has asked for any. */
+    @Query("SELECT * FROM exam_parts WHERE examId = :examId AND isNotes = 1 LIMIT 1")
+    suspend fun notesPart(examId: Long): ExamPartEntity?
+
     @Transaction
     suspend fun reorderParts(examId: Long, orderedIds: List<Long>) {
         orderedIds.forEachIndexed { index, id -> setPartPosition(id, index) }
@@ -173,6 +191,10 @@ interface ExamDao {
 
     @Query("DELETE FROM exam_audio WHERE id = :audioId")
     suspend fun deleteAudio(audioId: Long)
+
+    /** The name shown for a recording. The stored copy keeps its own filename. */
+    @Query("UPDATE exam_audio SET displayName = :name WHERE id = :audioId")
+    suspend fun renameAudio(audioId: Long, name: String)
 
     // --- Marks -------------------------------------------------------------
 

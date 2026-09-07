@@ -12,7 +12,6 @@ import com.david.llegeix.data.settings.AppLanguage
 import com.david.llegeix.data.settings.AppSettings
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.ThemeMode
-import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.R
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.update.AvailableUpdate
@@ -72,10 +71,6 @@ class SettingsViewModel(
 
     fun onLanguageChange(language: AppLanguage) = settingsRepository.setLanguage(language)
 
-    /** Which language a tapped word is translated into. */
-    fun onTranslationTargetChange(target: TranslationTarget) =
-        settingsRepository.setTranslationTarget(target)
-
     /** Applies the mixed colour and selects it in one step. */
     fun onCustomAccentChange(argb: Int) = settingsRepository.setCustomAccent(argb)
 
@@ -114,11 +109,12 @@ class SettingsViewModel(
     private var updateJob: Job? = null
 
     /**
-     * Ask the releases repository what the newest version is.
+     * Ask the releases repository what the newest version is, on the button.
      *
-     * Only ever from the button. The app has no reason to know this at any
-     * other moment, and a reader who has not asked has not agreed to a network
-     * request either.
+     * The library asks the same question once a day of its own accord, to
+     * decide whether to mark the gear. This is the version that reports what it
+     * found in full and offers to fetch it, and it answers straight away rather
+     * than waiting for the quiet check's daily allowance.
      */
     fun onCheckForUpdates() {
         if (_updateState.value is UpdateUiState.Checking) return
@@ -126,8 +122,19 @@ class SettingsViewModel(
         _updateState.value = UpdateUiState.Checking
         updateJob = viewModelScope.launch {
             _updateState.value = when (val answer = updates.check()) {
-                is UpdateCheck.UpToDate -> UpdateUiState.UpToDate
-                is UpdateCheck.Available -> UpdateUiState.Available(answer.update)
+                is UpdateCheck.UpToDate -> {
+                    // The dot on the library's gear comes off here as well as
+                    // going on: pressing the button is the reader asking the
+                    // same question the quiet check asks, and an answer of "you
+                    // are on the newest one" should not leave a mark saying
+                    // otherwise.
+                    updates.rememberWaiting(null)
+                    UpdateUiState.UpToDate
+                }
+                is UpdateCheck.Available -> {
+                    updates.rememberWaiting(answer.update.version)
+                    UpdateUiState.Available(answer.update)
+                }
                 is UpdateCheck.Trouble -> UpdateUiState.Trouble(troubleText(answer.reason))
             }
         }

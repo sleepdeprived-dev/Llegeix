@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -87,6 +89,16 @@ fun ExamPage(
      * page stayed on screen with the answer sheet's page count under it.
      */
     renderKey: Any,
+    /**
+     * Draws the page as light-on-dark.
+     *
+     * Applied to the page image alone, never to the canvas of marks over it.
+     * Inverting the marks too would mean the ink chosen in the toolbar and the
+     * ink on the page were different colours, and the exported PDF — drawn from
+     * the same marks onto white paper — would then not match what was on
+     * screen, which is the one thing the export must never do.
+     */
+    darkPage: Boolean,
     canWrite: Boolean,
     render: suspend (index: Int, widthPx: Int) -> Bitmap?,
     onStrokeFinished: (List<MarkGeometry.Point>) -> Unit,
@@ -140,9 +152,10 @@ fun ExamPage(
                 bitmap = rendered.asImageBitmap(),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
+                colorFilter = if (darkPage) InvertPage else null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.White),
+                    .background(if (darkPage) DarkPaper else Color.White),
             )
 
             Canvas(
@@ -187,6 +200,28 @@ fun ExamPage(
         }
     }
 }
+
+/**
+ * A plain negative of the page: black type on white paper becomes white type on
+ * black.
+ *
+ * The same matrix the reader uses on its own pages, and deliberately the same
+ * blunt one: it keeps a diagram legible as well as a paragraph, which is what
+ * an exam paper is usually half made of.
+ */
+private val InvertPage = ColorFilter.colorMatrix(
+    ColorMatrix(
+        floatArrayOf(
+            -1f, 0f, 0f, 0f, 255f,
+            0f, -1f, 0f, 0f, 255f,
+            0f, 0f, -1f, 0f, 255f,
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    ),
+)
+
+/** What an inverted page sits on while it is still loading. */
+private val DarkPaper = Color(0xFF0E0E0E)
 
 /**
  * Pinch to zoom, and let every other gesture through.

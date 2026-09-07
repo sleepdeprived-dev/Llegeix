@@ -20,6 +20,15 @@ import java.io.File
 import java.io.IOException
 import java.util.UUID
 
+/**
+ * A blank page just added, and the document it was added to.
+ *
+ * The part's id is not decoration: adding a page rewrites that document's file
+ * on disk, and anything holding it open is holding the shorter version. The
+ * caller has to be told which handle to let go of.
+ */
+data class NotesPage(val partId: Long, val page: Int)
+
 /** What went wrong bringing a file in, in terms the screen can say out loud. */
 enum class ImportFailure { UNREADABLE, NOT_A_PDF, OUT_OF_SPACE }
 
@@ -228,6 +237,66 @@ class ExamRepository(
     }
 
     fun observeParts(examId: Long): Flow<List<ExamPartEntity>> = exams.observeParts(examId)
+
+    /**
+     * Add a blank page to write an essay on, and say where it landed.
+     *
+     * There is one pad of blank paper per exam and it grows, rather than a new
+     * one-page document per press. Ten separate documents called "Notes" would
+     * be ten rows on the paper's screen and ten joins to swipe over, when what
+     * the reader asked for was more paper.
+     *
+     * It sits at the end of the paper on purpose: an essay is written after the
+     * questions have been read, and putting the blank pages last means the page
+     * numbers of the printed pages never move.
+     *
+     * @return where the new page landed and which document grew, or null if the
+     *   file could not be written.
+     */
+    suspend fun addNotesPage(examId: Long, name: String): NotesPage? = withContext(Dispatchers.IO) {
+        val existing = exams.notesPart(examId)
+        val ordered = exams.parts(examId)
+        if (existing == null) {
+            val fileName = "${UUID.randomUUID()}.pdf"
+            if (!BlankPaper.write(File(directory, fileName), 1)) return@withContext null
+            val partId = exams.insert(
+                ExamPartEntity(
+                    examId = examId,
+                    sourceName = name,
+                    fileName = fileName,
+                    pageCount = 1,
+                    position = ordered.size,
+                    isNotes = true,
+                ),
+            )
+            // Everything that was already there, then the first blank page.
+            NotesPage(partId = partId, page = ordered.sumOf { it.pageCount })
+        } else {
+            val pages = existing.pageCount + 1
+            if (!BlankPaper.write(File(directory, existing.fileName), pages)) {
+                return@withContext null
+            }
+            exams.setPartPageCount(existing.id, pages)
+            NotesPage(
+                partId = existing.id,
+                // Where the new last page of the pad falls in the whole paper.
+                page = ordered.takeWhile { it.id != existing.id }.sumOf { it.pageCount } +
+                    pages - 1,
+            )
+        }
+    }
+
+    /** Rename one document of a paper, inside the app. The copy keeps its name. */
+    suspend fun renamePart(partId: Long, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotEmpty()) exams.renamePart(partId, trimmed)
+    }
+
+    /** The same for a recording, which is a file the reader picked out by name. */
+    suspend fun renameAudio(audioId: Long, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotEmpty()) exams.renameAudio(audioId, trimmed)
+    }
 
     /**
      * Move one document up or down the paper.

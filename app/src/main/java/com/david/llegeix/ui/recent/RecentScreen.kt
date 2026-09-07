@@ -76,6 +76,7 @@ fun RecentScreen(
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val layout by viewModel.layout.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
+    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -210,7 +211,10 @@ fun RecentScreen(
                             .clip(RoundedCornerShape(14.dp))
                             .combinedClickable(
                                 onClick = {
-                                    onOpenDocument(recent.uriString, recent.displayName)
+                                    onOpenDocument(
+                                        recent.uriString,
+                                        customNames[recent.uriString] ?: recent.displayName,
+                                    )
                                 },
                                 onLongClick = { forget(recent) },
                             )
@@ -225,7 +229,7 @@ fun RecentScreen(
                             cornerRadius = 12.dp,
                         )
                         Text(
-                            text = pdfTitle(recent.displayName),
+                            text = customNames[recent.uriString] ?: pdfTitle(recent.displayName),
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -256,7 +260,10 @@ fun RecentScreen(
                             // whose whole purpose is being tapped quickly.
                             .combinedClickable(
                                 onClick = {
-                                    onOpenDocument(recent.uriString, recent.displayName)
+                                    onOpenDocument(
+                                        recent.uriString,
+                                        customNames[recent.uriString] ?: recent.displayName,
+                                    )
                                 },
                                 onLongClick = { forget(recent) },
                             )
@@ -277,7 +284,8 @@ fun RecentScreen(
                         )
                         Column(modifier = Modifier.padding(start = Space.lg)) {
                             Text(
-                                text = pdfTitle(recent.displayName),
+                                text = customNames[recent.uriString]
+                                    ?: pdfTitle(recent.displayName),
                                 style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,

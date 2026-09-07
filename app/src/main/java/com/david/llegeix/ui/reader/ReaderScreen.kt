@@ -602,6 +602,7 @@ fun ReaderScreen(
                         history = recentSearches,
                         onPick = viewModel::onSearchQueryChange,
                         onClear = viewModel::onForgetSearches,
+                        onRemove = viewModel::onForgetSearch,
                         modifier = Modifier.padding(top = Space.md),
                     )
                 }

@@ -34,6 +34,10 @@ class RecentViewModel(
         libraryData.observeTagsByDocument()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+    /** The names the reader has given PDFs, so the history calls them the same. */
+    val customNames: StateFlow<Map<String, String>> = libraryData.observeCustomNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     val recents: StateFlow<List<RecentDocument>> = libraryData.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

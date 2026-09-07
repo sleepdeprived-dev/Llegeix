@@ -1,7 +1,9 @@
 package com.david.llegeix.ui.bookmarks
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,11 +21,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,8 +50,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DocumentTag
+import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.ui.common.HighlightColors
+import com.david.llegeix.ui.common.MenuIcon
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.aspectRatio
@@ -51,6 +61,7 @@ import androidx.compose.foundation.layout.width
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PdfCover
+import com.david.llegeix.ui.common.TagPickerDialog
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.SearchField
@@ -164,6 +175,7 @@ fun WordsPane(
             onQueryChange = viewModel::onWordQueryChange,
             onToggleSort = viewModel::onToggleWordSort,
             onForgetSearches = viewModel::onForgetSearches,
+            onForgetSearch = viewModel::onForgetSearch,
         )
         if (visibleWords.isEmpty()) {
             EmptyState(
@@ -344,6 +356,7 @@ private fun WordControls(
     onQueryChange: (String) -> Unit,
     onToggleSort: () -> Unit,
     onForgetSearches: () -> Unit,
+    onForgetSearch: (String) -> Unit,
 ) {
     // Whether somebody is searching, as opposed to the field merely being
     // empty — which it is whenever the screen is just being read.
@@ -373,6 +386,7 @@ private fun WordControls(
                 history = recentSearches,
                 onPick = onQueryChange,
                 onClear = onForgetSearches,
+                onRemove = onForgetSearch,
                 modifier = Modifier.padding(top = Space.sm),
             )
         }
@@ -413,16 +427,25 @@ private fun WordControls(
  * last thing, because they answer "where was this?" rather than "what does it
  * mean?".
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SavedWordRow(
     word: WordBookmarkEntity,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = word.documentUri != null, onClick = onOpen)
+            // A saved word is a tall block of text and the cross is at the top
+            // right of it, which is a long way from wherever the eye happens to
+            // be. Holding anywhere on the block reaches the same action.
+            .combinedClickable(
+                onClick = { if (word.documentUri != null) onOpen() },
+                onLongClick = { menuOpen = true },
+            )
             .padding(
                 start = Space.screen,
                 end = Space.sm,
@@ -498,12 +521,32 @@ private fun SavedWordRow(
                     )
                 }
             }
-            IconButton(onClick = onRemove) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.words_remove),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Box {
+                IconButton(onClick = onRemove) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.words_remove),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    // Only where there is a page to go back to. A word starred
+                    // in the Dictionary was never on a page, and an item that
+                    // silently does nothing is worse than one that is absent.
+                    if (word.documentUri != null) {
+                        DropdownMenuItem(
+                            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_library)) },
+                            text = { Text(stringResource(R.string.words_open_source)) },
+                            onClick = { menuOpen = false; onOpen() },
+                        )
+                        HorizontalDivider()
+                    }
+                    DropdownMenuItem(
+                        leadingIcon = { MenuIcon(Icons.Default.Close) },
+                        text = { Text(stringResource(R.string.words_remove)) },
+                        onClick = { menuOpen = false; onRemove() },
+                    )
+                }
             }
         }
 
@@ -561,6 +604,19 @@ private fun SavedWordRow(
     }
 }
 
+/**
+ * One set-aside PDF or page, in any of the collections that list them.
+ *
+ * Holding it opens the menu, where a collection's rows carry one — which is
+ * every list of *documents*, since a document is the thing tags and names
+ * belong to. It is the same gesture and very nearly the same menu as the
+ * library's rows, on purpose: a PDF met in a collection and the same PDF met in
+ * the library should not answer to different things.
+ *
+ * @param onEditTags null on a list where tags make no sense, which is what
+ *   leaves the row with no menu at all rather than an empty one.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun BookmarkRow(
     title: String,
@@ -570,11 +626,25 @@ internal fun BookmarkRow(
     documentUri: String? = null,
     tags: List<DocumentTag> = emptyList(),
     swatchColor: Int? = null,
+    onEditTags: (() -> Unit)? = null,
+    onRename: (() -> Unit)? = null,
+    /** What the menu's "remove" says, since it differs by collection. */
+    removeLabel: String? = null,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val hasMenu = onEditTags != null || onRename != null
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = if (hasMenu) {
+                    { menuOpen = true }
+                } else {
+                    null
+                },
+            )
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -630,12 +700,142 @@ internal fun BookmarkRow(
         // destroys something.
         TagStrip(tags = tags, modifier = Modifier.padding(start = Space.sm))
 
-        IconButton(onClick = onRemove) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(R.string.document_remove_bookmark),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Box {
+            IconButton(onClick = onRemove) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = removeLabel
+                        ?: stringResource(R.string.document_remove_bookmark),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                onEditTags?.let { edit ->
+                    DropdownMenuItem(
+                        leadingIcon = { MenuIcon(painterResource(R.drawable.ic_tag)) },
+                        text = { Text(stringResource(R.string.tags_open)) },
+                        onClick = { menuOpen = false; edit() },
+                    )
+                }
+                onRename?.let { rename ->
+                    DropdownMenuItem(
+                        leadingIcon = { MenuIcon(Icons.Default.Edit) },
+                        text = { Text(stringResource(R.string.document_rename)) },
+                        onClick = { menuOpen = false; rename() },
+                    )
+                }
+                HorizontalDivider()
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(Icons.Default.Close) },
+                    text = {
+                        Text(
+                            removeLabel ?: stringResource(R.string.document_remove_bookmark),
+                        )
+                    },
+                    onClick = { menuOpen = false; onRemove() },
+                )
+            }
         }
     }
+}
+
+/**
+ * The dialogs a collection's hold-to-open menu raises.
+ *
+ * Lifted out of the two screens that need them because they are the same two
+ * dialogs, working on the same rows, through the same ViewModel: a PDF starred
+ * and a PDF set aside to read later are the same document, and tagging one from
+ * either list has to mean the same thing.
+ */
+@Composable
+internal fun SavedDocumentDialogs(
+    tagsFor: DocumentEntity?,
+    renaming: DocumentEntity?,
+    onDismissTags: () -> Unit,
+    onDismissRename: () -> Unit,
+    viewModel: BookmarksViewModel,
+) {
+    val allTags by viewModel.tags.collectAsStateWithLifecycle()
+    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
+    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+
+    tagsFor?.let { document ->
+        TagPickerDialog(
+            documentTitle = customNames[document.uriString] ?: pdfTitle(document.displayName),
+            allTags = allTags,
+            selectedIds = tagsByDocument[document.uriString].orEmpty().map { it.id }.toSet(),
+            onToggle = { viewModel.onToggleTag(document.uriString, document.displayName, it) },
+            onCreate = { name, colour ->
+                viewModel.onCreateTag(document.uriString, document.displayName, name, colour)
+            },
+            onRecolour = viewModel::onRecolourTag,
+            onRename = viewModel::onRenameTag,
+            onDelete = viewModel::onDeleteTag,
+            onDismiss = onDismissTags,
+        )
+    }
+
+    renaming?.let { document ->
+        SavedNameDialog(
+            current = customNames[document.uriString] ?: pdfTitle(document.displayName),
+            hasCustomName = document.uriString in customNames,
+            onDismiss = onDismissRename,
+            onConfirm = { name ->
+                viewModel.onRenameDocument(document.uriString, document.displayName, name)
+                onDismissRename()
+            },
+        )
+    }
+}
+
+/**
+ * Rename a PDF from a collection, in the app only.
+ *
+ * The same dialog the library raises, and it says the same thing under the
+ * field: this is what Llegeix calls the document, not what the file is called.
+ * The reader can reach it from either list and should not have to work out
+ * whether the two do different things.
+ */
+@Composable
+private fun SavedNameDialog(
+    current: String,
+    hasCustomName: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.document_rename_title)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.document_rename_label)) },
+                    singleLine = true,
+                )
+                Text(
+                    text = stringResource(R.string.document_rename_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.md),
+                )
+                if (hasCustomName) {
+                    TextButton(
+                        onClick = { onConfirm("") },
+                        modifier = Modifier.padding(top = Space.sm),
+                    ) { Text(stringResource(R.string.document_rename_reset)) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
+                Text(stringResource(R.string.action_rename))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }

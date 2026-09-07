@@ -1,7 +1,9 @@
 package com.david.llegeix.ui.library
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -67,11 +70,19 @@ import kotlin.math.roundToInt
  * still holds everything — but starring a book you have just spotted should not
  * be a menu transaction, and a menu button on every row is a piece of furniture
  * on every row.
+ *
+ * Holding the row opens that same menu. The three dots at the end are a small
+ * target at the far edge of a wide row, and "press and hold the thing you mean"
+ * is the gesture every file list on the phone already answers to — so the row
+ * answers to it as well, and lands on exactly the menu the dots would have
+ * opened. Two ways in to one menu, not two menus.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DocumentRow(
     document: PdfDocument,
+    /** What to call it: the reader's own name, or the file's. */
+    title: String,
     isBookmarked: Boolean,
     isReadLater: Boolean,
     tags: List<DocumentTag>,
@@ -92,6 +103,7 @@ fun DocumentRow(
     onToggleReadLater: () -> Unit,
     onToggleBookmarked: () -> Unit,
     onEditTags: () -> Unit,
+    onRename: () -> Unit,
     onSearchInside: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -129,7 +141,7 @@ fun DocumentRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -159,7 +171,7 @@ fun DocumentRow(
                     )
                 }
                 Text(
-                    text = document.title,
+                    text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -212,10 +224,7 @@ fun DocumentRow(
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
-                    contentDescription = stringResource(
-                        R.string.document_actions,
-                        document.title,
-                    ),
+                    contentDescription = stringResource(R.string.document_actions, title),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -228,6 +237,7 @@ fun DocumentRow(
                 onToggleReadLater = onToggleReadLater,
                 onMoveToFolder = onMoveToFolder,
                 onEditTags = onEditTags,
+                onRename = onRename,
                 onSearchInside = onSearchInside,
             )
         }
@@ -325,6 +335,7 @@ private fun DocumentMenu(
     onToggleReadLater: () -> Unit,
     onMoveToFolder: () -> Unit,
     onEditTags: () -> Unit,
+    onRename: () -> Unit,
     onSearchInside: () -> Unit,
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
@@ -395,6 +406,20 @@ private fun DocumentMenu(
                 onDismiss()
             },
         )
+        // Last, and after a rule, because it is the only item here that changes
+        // what the document is called rather than where it is filed — and
+        // because it is the one people will look for hardest once they know it
+        // exists. What it renames is spelled out in the dialog it opens: the
+        // file on the phone is not touched.
+        HorizontalDivider()
+        DropdownMenuItem(
+            leadingIcon = { MenuIcon(Icons.Default.Edit) },
+            text = { Text(stringResource(R.string.document_rename)) },
+            onClick = {
+                onRename()
+                onDismiss()
+            },
+        )
     }
 }
 
@@ -405,9 +430,12 @@ private fun DocumentMenu(
  * lines and the detail line is dropped entirely — in a grid it would be noise
  * repeated across every cell.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DocumentCell(
     document: PdfDocument,
+    /** What to call it: the reader's own name, or the file's. */
+    title: String,
     isBookmarked: Boolean,
     isReadLater: Boolean,
     tags: List<DocumentTag>,
@@ -418,6 +446,7 @@ fun DocumentCell(
     onToggleReadLater: () -> Unit,
     onToggleBookmarked: () -> Unit,
     onEditTags: () -> Unit,
+    onRename: () -> Unit,
     onSearchInside: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -426,7 +455,7 @@ fun DocumentCell(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
             .padding(Space.sm),
     ) {
         Box {
@@ -459,7 +488,7 @@ fun DocumentCell(
             verticalAlignment = Alignment.Top,
         ) {
             Text(
-                text = document.title,
+                text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -477,10 +506,7 @@ fun DocumentCell(
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(
-                            R.string.document_actions,
-                            document.title,
-                        ),
+                        contentDescription = stringResource(R.string.document_actions, title),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp),
                     )
@@ -494,6 +520,7 @@ fun DocumentCell(
                     onToggleReadLater = onToggleReadLater,
                     onMoveToFolder = onMoveToFolder,
                     onEditTags = onEditTags,
+                    onRename = onRename,
                     onSearchInside = onSearchInside,
                 )
             }

@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -49,6 +51,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -94,6 +97,7 @@ import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.ui.common.TagPickerDialog
+import com.david.llegeix.ui.common.FlagChoiceDialog
 import com.david.llegeix.ui.common.Senyera
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
@@ -150,6 +154,12 @@ fun LibraryScreen(
     // "" means it was raised without one in mind.
     var sourcesSheetFor by remember { mutableStateOf<String?>(null) }
     var showAddSource by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf<PdfDocument?>(null) }
+    var hidingFolder by remember { mutableStateOf<LibraryFolder?>(null) }
+    var choosingFlag by remember { mutableStateOf(false) }
+    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+    val flag by viewModel.flag.collectAsStateWithLifecycle()
+    val updateWaiting by viewModel.updateWaiting.collectAsStateWithLifecycle()
 
     // Back goes up a folder before it leaves the library. Anything else makes
     // going three folders deep a thing you need a plan to get out of.
@@ -158,9 +168,14 @@ fun LibraryScreen(
     }
 
     // All Files Access is granted in system Settings, so the only reliable
-    // signal that it changed is coming back to the foreground.
+    // signal that it changed is coming back to the foreground. The update
+    // check rides along here for the same reason and no other: this is the
+    // moment the app is certainly being looked at, so it is the one moment a
+    // network request nobody pressed a button for is defensible. The
+    // repository refuses to make it more than once a day.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.syncSources()
+        viewModel.checkForUpdatesQuietly()
     }
 
     val folderPicker = rememberLauncherForActivityResult(
@@ -211,7 +226,7 @@ fun LibraryScreen(
                 expandedHeight = Space.topBar,
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Senyera()
+                        Senyera(flag = flag, onClick = { choosingFlag = true })
                         Text(
                             text = stringResource(R.string.app_name),
                             maxLines = 1,
@@ -225,12 +240,10 @@ fun LibraryScreen(
                     // when you know you have added a file, which is exactly the
                     // kind of thing that belongs behind the menu rather than
                     // permanently beside the app's name.
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_settings),
-                            contentDescription = stringResource(R.string.settings_title),
-                        )
-                    }
+                    SettingsButton(
+                        updateWaiting = updateWaiting,
+                        onClick = onOpenSettings,
+                    )
                     LibraryMenu(
                         currentSort = state.sort,
                         layout = layout,
@@ -238,7 +251,6 @@ fun LibraryScreen(
                         onSortChange = viewModel::onSortChange,
                         onToggleLayout = viewModel::onToggleLayout,
                         onRescan = viewModel::refresh,
-                        onOpenHistory = onOpenHistory,
                     )
                 },
             )
@@ -277,6 +289,7 @@ fun LibraryScreen(
                         history = recentSearches,
                         onPick = viewModel::onQueryChange,
                         onClear = viewModel::onForgetSearches,
+                        onRemove = viewModel::onForgetSearch,
                         modifier = Modifier.padding(bottom = Space.md),
                     )
                 }
@@ -296,15 +309,12 @@ fun LibraryScreen(
                 state = state,
                 layout = layout,
                 tagsByDocument = tagsByDocument,
+                customNames = customNames,
                 folderNameByDocument = folderNameByDocument,
                 progress = progress,
                 continueReading = continueReading,
                 onViewChange = viewModel::onViewChange,
-                onOpenSource = { source ->
-                    sourcesSheetFor = source.label.takeIf {
-                        source.kind == LibrarySource.Kind.GRANTED
-                    }.orEmpty()
-                },
+                onOpenSources = { sourcesSheetFor = "" },
                 onAddSource = { showAddSource = true },
                 onContinue = { recent -> onOpenReading(recent.uriString, recent.displayName) },
                 onForgetRecent = { recent ->
@@ -321,10 +331,22 @@ fun LibraryScreen(
                 },
                 onSeeHistory = onOpenHistory,
                 onOpenFolder = viewModel::onOpenFolder,
+                onHideFolder = { hidingFolder = it },
                 onEditTags = { tagsFor = it },
+                onRename = { renaming = it },
                 onAddFolder = { folderPicker.launch(null) },
                 onScanDevice = ::openAllFilesSettings,
-                onOpenDocument = onOpenDocument,
+                // Opened by handle rather than by document, so the reader's own
+                // name for a PDF is the one on the reader's app bar. Everything
+                // else about the document is already on the screen behind it.
+                onOpenDocument = { document ->
+                    val named = customNames[document.uriString]
+                    if (named == null) {
+                        onOpenDocument(document)
+                    } else {
+                        onOpenReading(document.uriString, named)
+                    }
+                },
                 onFindInDocument = { document ->
                     onFindInDocument(document.uriString, document.displayName, state.query)
                 },
@@ -347,6 +369,7 @@ fun LibraryScreen(
             onRecolour = viewModel::onRecolourTag,
             onDelete = viewModel::onDeleteTag,
             onDismiss = { tagsFor = null },
+            onRename = viewModel::onRenameTag,
         )
     }
 
@@ -392,6 +415,47 @@ fun LibraryScreen(
         )
     }
 
+    renaming?.let { document ->
+        DocumentNameDialog(
+            current = customNames[document.uriString] ?: document.title,
+            hasCustomName = document.uriString in customNames,
+            onDismiss = { renaming = null },
+            onConfirm = { name ->
+                viewModel.onRenameDocument(document, name)
+                renaming = null
+            },
+        )
+    }
+
+    hidingFolder?.let { folder ->
+        AlertDialog(
+            onDismissRequest = { hidingFolder = null },
+            title = { Text(stringResource(R.string.library_folder_hide_title, folder.name)) },
+            text = { Text(stringResource(R.string.library_folder_hide_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.onHideFolder(folder.path)
+                        hidingFolder = null
+                    },
+                ) { Text(stringResource(R.string.library_folder_hide_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { hidingFolder = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    if (choosingFlag) {
+        FlagChoiceDialog(
+            current = flag,
+            onChoose = viewModel::onFlagChosen,
+            onDismiss = { choosingFlag = false },
+        )
+    }
+
     showNewFolderFor?.let { document ->
         FolderNameDialog(
             onDismiss = { showNewFolderFor = null },
@@ -404,16 +468,16 @@ fun LibraryScreen(
 }
 
 /**
- * How the library is arranged: by folder, everything at once, or read-later.
+ * How the library is arranged: by folder, or everything at once.
  *
- * Chips rather than a menu item, because which of the three you are looking at
+ * Chips rather than a menu item, because which of the two you are looking at
  * changes what the whole screen means, and a mode you cannot see is a mode you
- * have to remember.
+ * have to remember. Read-later was a third chip and has become a collection,
+ * which is what it always was.
  */
 @Composable
 private fun LibraryViewRow(
     current: LibraryView,
-    readLaterCount: Int,
     onViewChange: (LibraryView) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -423,19 +487,115 @@ private fun LibraryViewRow(
         contentPadding = PaddingValues(horizontal = Space.screen),
     ) {
         items(LibraryView.entries) { view ->
-            val name = stringResource(view.labelRes)
-            val label = if (view == LibraryView.READ_LATER && readLaterCount > 0) {
-                stringResource(R.string.library_filter_with_count, name, readLaterCount)
-            } else {
-                name
-            }
             FilterChip(
                 selected = view == current,
                 onClick = { onViewChange(view) },
-                label = { Text(label) },
+                label = { Text(stringResource(view.labelRes)) },
             )
         }
     }
+}
+
+/**
+ * The gear, with a dot on it when there is a newer version of the app.
+ *
+ * The dot is the whole of the update feature's presence outside Configuració,
+ * and it is on the gear rather than anywhere else because that is where the
+ * thing to do about it lives: a mark on the door to the room the answer is in.
+ * It is drawn as a disc rather than as a badge with a number, because there is
+ * only ever one newer version and counting it would be counting to one.
+ */
+@Composable
+private fun SettingsButton(updateWaiting: Boolean, onClick: () -> Unit) {
+    val waitingLabel = stringResource(R.string.settings_update_waiting)
+    val settingsLabel = stringResource(R.string.settings_title)
+    Box {
+        IconButton(onClick = onClick) {
+            Icon(
+                painter = painterResource(R.drawable.ic_settings),
+                contentDescription = if (updateWaiting) {
+                    "$settingsLabel · $waitingLabel"
+                } else {
+                    settingsLabel
+                },
+            )
+        }
+        if (updateWaiting) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 10.dp, end = 10.dp)
+                    .size(UpdateDotSize)
+                    // Ringed in the bar's own colour so the dot reads as a dot
+                    // rather than as a corner of the gear, whatever the icon
+                    // happens to be doing underneath it.
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(1.5.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error),
+            )
+        }
+    }
+}
+
+/** Small enough to be a mark, big enough to be seen. */
+private val UpdateDotSize = 11.dp
+
+/**
+ * Rename a PDF, in the app only.
+ *
+ * The sentence under the field is the point of the dialog. "Rename" on a phone
+ * means renaming the file, and this does not — Llegeix holds a read-only grant
+ * on somebody else's file and has no business writing to it — so the dialog
+ * says which of the two it is before the reader finds out by looking in their
+ * file manager.
+ */
+@Composable
+private fun DocumentNameDialog(
+    current: String,
+    hasCustomName: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.document_rename_title)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.document_rename_label)) },
+                    singleLine = true,
+                )
+                Text(
+                    text = stringResource(R.string.document_rename_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.md),
+                )
+                // Only once there is something to undo. On a PDF still called
+                // what the file is called, this would be a button that does
+                // nothing, phrased as though it did.
+                if (hasCustomName) {
+                    TextButton(
+                        onClick = { onConfirm("") },
+                        modifier = Modifier.padding(top = Space.sm),
+                    ) { Text(stringResource(R.string.document_rename_reset)) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
+                Text(stringResource(R.string.action_rename))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 /**
@@ -533,17 +693,27 @@ private fun PathSegment(label: String, isCurrent: Boolean, onClick: () -> Unit) 
  * folder wherever the app draws one. The count is everything below it rather
  * than what is directly inside: a closed folder is being asked whether it is
  * worth opening.
+ *
+ * Holding it offers to stop showing it. That answer used to be reachable only
+ * from the Sources sheet, three steps from the folder it is about — and "I do
+ * not want this folder in my library" is a thought people have while looking at
+ * the folder in their library. It is a hold rather than a button because it is
+ * the rarer of the two things to do with a folder by a wide margin, and it is a
+ * dialog rather than an instant because the wording is doing real work: nothing
+ * here deletes anything from the phone.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LibraryFolderRow(
     folder: LibraryFolder,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(start = Space.screen, end = Space.md)
             .padding(vertical = Space.md),
     ) {
@@ -607,19 +777,23 @@ private fun LibraryBody(
     state: LibraryUiState,
     layout: LibraryLayout,
     tagsByDocument: Map<String, List<DocumentTag>>,
+    /** The names the reader gave PDFs, keyed by URI. Empty for most of them. */
+    customNames: Map<String, String>,
     /** The user's folder each PDF is filed in, for the row's detail line. */
     folderNameByDocument: Map<String, String>,
     /** How far through each opened document the reader is, keyed by URI. */
     progress: Map<String, ReadingProgress>,
     continueReading: List<RecentDocument>,
     onViewChange: (LibraryView) -> Unit,
-    onOpenSource: (LibrarySource) -> Unit,
+    onOpenSources: () -> Unit,
     onAddSource: () -> Unit,
     onContinue: (RecentDocument) -> Unit,
     onForgetRecent: (RecentDocument) -> Unit,
     onSeeHistory: () -> Unit,
     onOpenFolder: (String) -> Unit,
+    onHideFolder: (LibraryFolder) -> Unit,
     onEditTags: (PdfDocument) -> Unit,
+    onRename: (PdfDocument) -> Unit,
     onAddFolder: () -> Unit,
     onScanDevice: () -> Unit,
     onOpenDocument: (PdfDocument) -> Unit,
@@ -673,7 +847,7 @@ private fun LibraryBody(
                 state = state,
                 continueReading = continueReading,
                 onViewChange = onViewChange,
-                onOpenSource = onOpenSource,
+                onOpenSources = onOpenSources,
                 onAddSource = onAddSource,
                 onContinue = onContinue,
                 onForgetRecent = onForgetRecent,
@@ -704,23 +878,19 @@ private fun LibraryBody(
                 state = state,
                 continueReading = continueReading,
                 onViewChange = onViewChange,
-                onOpenSource = onOpenSource,
+                onOpenSources = onOpenSources,
                 onAddSource = onAddSource,
                 onContinue = onContinue,
                 onForgetRecent = onForgetRecent,
                 onSeeHistory = onSeeHistory,
             )
             EmptyState(
-                title = if (state.view == LibraryView.READ_LATER) {
-                    stringResource(R.string.library_read_later_empty_title)
-                } else {
-                    stringResource(R.string.library_no_matches_title)
-                },
-                body = if (state.view == LibraryView.READ_LATER) {
-                    stringResource(R.string.library_read_later_empty_body)
-                } else {
-                    stringResource(R.string.library_no_matches_body, state.totalFound, state.query)
-                },
+                title = stringResource(R.string.library_no_matches_title),
+                body = stringResource(
+                    R.string.library_no_matches_body,
+                    state.totalFound,
+                    state.query,
+                ),
                 modifier = Modifier.weight(1f),
             )
         }
@@ -744,7 +914,7 @@ private fun LibraryBody(
                     state = state,
                     continueReading = continueReading,
                     onViewChange = onViewChange,
-                    onOpenSource = onOpenSource,
+                    onOpenSources = onOpenSources,
                     onAddSource = onAddSource,
                     onContinue = onContinue,
                     onForgetRecent = onForgetRecent,
@@ -759,7 +929,11 @@ private fun LibraryBody(
                 key = { "folder:" + it.path },
                 span = { GridItemSpan(maxLineSpan) },
             ) { folder ->
-                LibraryFolderRow(folder = folder, onClick = { onOpenFolder(folder.path) })
+                LibraryFolderRow(
+                    folder = folder,
+                    onClick = { onOpenFolder(folder.path) },
+                    onLongClick = { onHideFolder(folder) },
+                )
             }
             if (state.folders.isNotEmpty() && state.documents.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -774,11 +948,13 @@ private fun LibraryBody(
             items(state.documents, key = { it.uriString }) { document ->
                 DocumentCell(
                     document = document,
+                    title = customNames[document.uriString] ?: document.title,
                     isBookmarked = state.isBookmarked(document),
                     isReadLater = state.isReadLater(document),
                     tags = tagsByDocument[document.uriString].orEmpty(),
                     progress = progress[document.uriString],
                     onClick = { onOpenDocument(document) },
+                    onRename = { onRename(document) },
                     onMoveToFolder = { onMoveToFolder(document) },
                     onToggleReadLater = { onToggleReadLater(document) },
                     onToggleBookmarked = { onToggleBookmarked(document) },
@@ -797,7 +973,7 @@ private fun LibraryBody(
                     state = state,
                     continueReading = continueReading,
                     onViewChange = onViewChange,
-                    onOpenSource = onOpenSource,
+                    onOpenSources = onOpenSources,
                     onAddSource = onAddSource,
                     onContinue = onContinue,
                     onForgetRecent = onForgetRecent,
@@ -805,7 +981,11 @@ private fun LibraryBody(
                 )
             }
             items(state.folders, key = { "folder:" + it.path }) { folder ->
-                LibraryFolderRow(folder = folder, onClick = { onOpenFolder(folder.path) })
+                LibraryFolderRow(
+                    folder = folder,
+                    onClick = { onOpenFolder(folder.path) },
+                    onLongClick = { onHideFolder(folder) },
+                )
             }
             // The one rule this screen draws, and it earns it: above the line
             // are places to go, below it are things to read.
@@ -822,6 +1002,7 @@ private fun LibraryBody(
             items(state.documents, key = { it.uriString }) { document ->
                 DocumentRow(
                     document = document,
+                    title = customNames[document.uriString] ?: document.title,
                     isBookmarked = state.isBookmarked(document),
                     isReadLater = state.isReadLater(document),
                     tags = tagsByDocument[document.uriString].orEmpty(),
@@ -829,6 +1010,7 @@ private fun LibraryBody(
                     folderName = folderNameByDocument[document.uriString],
                     showLocation = !state.isBrowsing,
                     onClick = { onOpenDocument(document) },
+                    onRename = { onRename(document) },
                     onMoveToFolder = { onMoveToFolder(document) },
                     onToggleReadLater = { onToggleReadLater(document) },
                     onToggleBookmarked = { onToggleBookmarked(document) },
@@ -854,7 +1036,7 @@ private fun LibraryShelves(
     state: LibraryUiState,
     continueReading: List<RecentDocument>,
     onViewChange: (LibraryView) -> Unit,
-    onOpenSource: (LibrarySource) -> Unit,
+    onOpenSources: () -> Unit,
     onAddSource: () -> Unit,
     onContinue: (RecentDocument) -> Unit,
     onForgetRecent: (RecentDocument) -> Unit,
@@ -862,8 +1044,7 @@ private fun LibraryShelves(
 ) {
     val showsContinue = continueReading.isNotEmpty() &&
         state.path == null &&
-        state.query.isBlank() &&
-        state.view != LibraryView.READ_LATER
+        state.query.isBlank()
     val showsChips = state.totalFound > 0
     // Nothing to say, and therefore no height taken. Without this the header is
     // a bare gap above the first document on every screen that has none of the
@@ -881,10 +1062,14 @@ private fun LibraryShelves(
         }
         if (state.showsSources) {
             SourcesStrip(
-                sources = state.sources,
-                onOpenSource = onOpenSource,
+                onOpenSources = onOpenSources,
                 onAddSource = onAddSource,
-                modifier = Modifier.padding(top = if (showsContinue) Space.xl else 0.dp),
+                partial = if (state.isPartlyShown) {
+                    state.sourcesVisibleCount to state.sourcesTotalCount
+                } else {
+                    null
+                },
+                modifier = Modifier.padding(top = if (showsContinue) Space.md else 0.dp),
             )
         }
         // The chips scroll with the library rather than sitting under the
@@ -896,7 +1081,6 @@ private fun LibraryShelves(
         if (showsChips) {
             LibraryViewRow(
                 current = state.view,
-                readLaterCount = state.readLaterUris.size,
                 onViewChange = onViewChange,
                 modifier = Modifier.padding(
                     top = if (showsContinue || state.showsSources) Space.lg else 0.dp,
@@ -1152,7 +1336,6 @@ private fun LibraryMenu(
     onSortChange: (LibrarySort) -> Unit,
     onToggleLayout: () -> Unit,
     onRescan: () -> Unit,
-    onOpenHistory: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -1163,21 +1346,12 @@ private fun LibraryMenu(
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            // A second way in to the reading history, and the only one that is
-            // always there. The shelf at the top of the library carries the
-            // first, but that shelf is only drawn when something is part-read —
-            // so on a library where every book has been finished the history
-            // had no entrance at all, which is a worse state than the tab it
-            // replaced.
-            DropdownMenuItem(
-                leadingIcon = { MenuIcon(painterResource(R.drawable.ic_recent)) },
-                text = { Text(stringResource(R.string.recent_title)) },
-                onClick = {
-                    onOpenHistory()
-                    expanded = false
-                },
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = Space.xs))
+            // The reading history used to have an item here, because the shelf
+            // at the top of the library is only drawn when something is
+            // part-read and a library of finished books had no entrance to it
+            // at all. It now has a permanent one: "Recently viewed" is a
+            // collection, alongside Starred and Read later, which is where a
+            // reader looking for things they have set aside was going to look.
             DropdownMenuItem(
                 leadingIcon = {
                     MenuIcon(

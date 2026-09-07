@@ -114,6 +114,17 @@ data class ExamPartEntity(
 
     /** Where this document falls in the paper. Zero-based, dense. */
     val position: Int = 0,
+
+    /**
+     * Blank paper the app made, rather than a document the reader imported.
+     *
+     * A writing exam needs somewhere to write, and the honest form of that is
+     * more paper at the back of the same booklet — not a separate notes screen
+     * with its own navigation. Because it is an ordinary part, an essay is
+     * written with the same pen, saved by the same code and exported into the
+     * same PDF as every answer on the printed pages.
+     */
+    val isNotes: Boolean = false,
 )
 
 /**

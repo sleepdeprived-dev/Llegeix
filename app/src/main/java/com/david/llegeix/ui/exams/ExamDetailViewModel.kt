@@ -161,6 +161,23 @@ class ExamDetailViewModel(
         repository.removeAnswerKey(examId)
     }
 
+    /**
+     * Rename one document of the paper, or one recording, inside the app.
+     *
+     * The stored copy keeps its own filename, which is a UUID nobody ever sees,
+     * and the marks written on a document are addressed by the part's id — so a
+     * rename cannot move a single answer. The original file the reader imported
+     * from is not touched either: it was copied, and the app never held a
+     * writable handle to it.
+     */
+    fun onRenamePart(partId: Long, name: String) = viewModelScope.launch {
+        repository.renamePart(partId, name)
+    }
+
+    fun onRenameAudio(audioId: Long, name: String) = viewModelScope.launch {
+        repository.renameAudio(audioId, name)
+    }
+
     fun onRenameExam(title: String) = viewModelScope.launch {
         repository.renameExam(examId, title)
     }

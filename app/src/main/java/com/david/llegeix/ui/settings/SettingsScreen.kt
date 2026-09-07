@@ -72,7 +72,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.AppLanguage
-import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.settings.ThemeMode
 import com.david.llegeix.ui.common.Space
 import kotlin.math.roundToInt
@@ -174,17 +173,17 @@ fun SettingsScreen(
 
             SectionHeader(stringResource(R.string.settings_language))
 
+            // The app's own language, and nothing else. "Translate into" used
+            // to sit under it, and it was a setting for something that is not a
+            // setting: the reader's lookup panel carries the same choice as a
+            // flag next to the word, where the question is actually being
+            // asked, and answering it there is a tap rather than a trip to
+            // Configuració. Two controls for one preference means one of them
+            // is always the wrong place to look.
             SettingsCard {
                 LanguagePicker(
                     current = settings.language,
                     onChoose = viewModel::onLanguageChange,
-                )
-
-                Spacer(modifier = Modifier.height(Space.xl))
-                FieldLabel(stringResource(R.string.settings_translation))
-                TranslationPicker(
-                    current = settings.translationTarget,
-                    onChoose = viewModel::onTranslationTargetChange,
                 )
             }
 
@@ -556,27 +555,6 @@ private fun ThemeTile(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-        }
-    }
-}
-
-@Composable
-private fun TranslationPicker(
-    current: TranslationTarget,
-    onChoose: (TranslationTarget) -> Unit,
-) {
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        TranslationTarget.entries.forEachIndexed { index, target ->
-            SegmentedButton(
-                selected = target == current,
-                onClick = { onChoose(target) },
-                shape = SegmentedButtonDefaults.itemShape(
-                    index,
-                    TranslationTarget.entries.size,
-                ),
-            ) {
-                Text(stringResource(target.labelRes))
-            }
         }
     }
 }

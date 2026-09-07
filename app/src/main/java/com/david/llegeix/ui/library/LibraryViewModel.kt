@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
+import com.david.llegeix.data.settings.AppFlag
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
@@ -27,6 +28,7 @@ import com.david.llegeix.data.source.applyFolderRules
 import com.david.llegeix.data.source.documentsIn
 import com.david.llegeix.data.source.foldersIn
 import com.david.llegeix.data.source.nearestLivePath
+import com.david.llegeix.update.UpdateRepository
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -45,13 +47,36 @@ class LibraryViewModel(
     private val libraryData: LibraryDataRepository,
     private val settings: SettingsRepository,
     private val searchHistory: SearchHistoryRepository,
+    private val updates: UpdateRepository,
 ) : ViewModel() {
+
+    /**
+     * Whether a newer version of the app is waiting, for the dot on the gear.
+     *
+     * The library is where this belongs because the gear is here. Configuració
+     * is a screen you go to when you already suspect there is something to do;
+     * a mark on the way in is what tells somebody there is.
+     */
+    val updateWaiting: StateFlow<Boolean> = updates.updateWaiting
+
+    /**
+     * Ask, quietly, whether there is a new version — at most once a day.
+     *
+     * Called when the library comes to the foreground, alongside the check for
+     * a permission granted while the app was away, because that is the one
+     * moment the app is certainly being looked at. The repository holds the
+     * throttle; this is only the trigger.
+     */
+    fun checkForUpdatesQuietly() = viewModelScope.launch { updates.checkQuietly() }
 
     /** Searches that found a document, offered back under an empty field. */
     val recentSearches: StateFlow<List<String>> =
         searchHistory.history(SearchScope.DOCUMENTS)
 
     fun onForgetSearches() = searchHistory.forget(SearchScope.DOCUMENTS)
+
+    /** Drop one past search, from the cross on its row. */
+    fun onForgetSearch(query: String) = searchHistory.forgetOne(SearchScope.DOCUMENTS, query)
 
     private var rememberJob: Job? = null
 
@@ -73,6 +98,54 @@ class LibraryViewModel(
             if (state.query == query && state.documents.isNotEmpty()) {
                 searchHistory.record(SearchScope.DOCUMENTS, query)
             }
+        }
+    }
+
+    /** Which flag sits beside the app's name, from the easter egg on it. */
+    val flag: StateFlow<AppFlag> = settings.settings
+        .map { it.flag }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.current.flag)
+
+    fun onFlagChosen(flag: AppFlag) = settings.setFlag(flag)
+
+    /**
+     * The names the reader has given PDFs, keyed by URI.
+     *
+     * Consulted by every row rather than baked into [PdfDocument], because the
+     * documents come from storage — which knows nothing about any of this — and
+     * a scan that had to join against the database would be a scan that could
+     * not run before the database was ready.
+     */
+    val customNames: StateFlow<Map<String, String>> = libraryData.observeCustomNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Call a PDF something else inside the app. A blank name gives the file's back. */
+    fun onRenameDocument(document: PdfDocument, name: String) = viewModelScope.launch {
+        libraryData.setDocumentName(document.uriString, document.displayName, name)
+    }
+
+    /**
+     * Stop showing one folder of the library.
+     *
+     * Two different things wear the same word here, so the path decides which
+     * one is meant. A folder that *is* a granted source is given back: the
+     * permission is released and the decisions made inside it are forgotten,
+     * because keeping them would silently reapply to a folder added again next
+     * year. A folder inside a source is switched off instead — the grant is
+     * still wanted, this one folder is not — which is the same rule the Sources
+     * sheet writes when its tick box is cleared.
+     *
+     * Neither deletes anything from the phone, which is what the dialog says.
+     */
+    fun onHideFolder(path: String) = viewModelScope.launch {
+        val granted = _uiState.value.grantedFolders.firstOrNull { it.label == path }
+        if (granted != null) {
+            repository.removeFolder(granted.treeUri)
+            libraryData.clearFolderRules(granted.label)
+            syncSources()
+            refresh()
+        } else {
+            libraryData.setFolderRule(path, included = false)
         }
     }
 
@@ -132,6 +205,11 @@ class LibraryViewModel(
     /** Recolour a tag that already exists, keeping its name and its documents. */
     fun onRecolourTag(tag: TagEntity, colorArgb: Int) = viewModelScope.launch {
         libraryData.renameTag(tag.id, tag.name, colorArgb)
+    }
+
+    /** Rename one, keeping its colour and every document it is on. */
+    fun onRenameTag(tag: TagEntity, name: String) = viewModelScope.launch {
+        libraryData.renameTag(tag.id, name, tag.colorArgb)
     }
 
     /**
@@ -431,7 +509,6 @@ class LibraryViewModel(
                     it.parentLabel?.contains(needle, ignoreCase = true) == true
             }
 
-            view == LibraryView.READ_LATER -> allowed.filter { it.uriString in readLaterUris }
             view == LibraryView.ALL -> allowed
             else -> documentsIn(here, allowed)
         }
@@ -525,6 +602,7 @@ class LibraryViewModel(
                     app.libraryDataRepository,
                     app.settingsRepository,
                     app.searchHistoryRepository,
+                    app.updateRepository,
                 )
             }
         }

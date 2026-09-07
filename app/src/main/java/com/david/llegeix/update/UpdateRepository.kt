@@ -14,6 +14,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -80,6 +83,64 @@ class UpdateRepository(private val context: Context) {
 
     /** Serialises downloads; see the note in [download]. */
     private val downloadLock = Mutex()
+
+    private val prefs by lazy {
+        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    /**
+     * Whether a newer version is known to be waiting, for the dot on the gear.
+     *
+     * Seeded from disk so the dot is on the very first frame after a launch
+     * rather than appearing a second later, and cleared the moment a check
+     * finds the newest release is the one already running — including the
+     * check that happens right after the reader installs it.
+     */
+    private val _updateWaiting = MutableStateFlow(waitingVersion() != null)
+    val updateWaiting: StateFlow<Boolean> = _updateWaiting.asStateFlow()
+
+    /**
+     * Look for a new version without being asked, at most once a day.
+     *
+     * This is the one thing the app does on the network that nobody pressed a
+     * button for, and it is deliberately the smallest version of it that can
+     * work. There is no background service, no job scheduler, no notification
+     * and no wake-up: it runs when the library comes to the foreground, which
+     * is to say only while the reader is already looking at the app, and then
+     * not again for a day. Nothing is downloaded and nothing is installed —
+     * the whole result is a red dot on the settings gear, which the reader can
+     * ignore for as long as they like.
+     *
+     * The request is the same anonymous GET the button makes. It carries no
+     * identifier, and a phone that is offline simply learns nothing and tries
+     * again tomorrow.
+     */
+    suspend fun checkQuietly() {
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong(KEY_LAST_CHECK, 0L)
+        if (now - last in 0 until QUIET_CHECK_INTERVAL_MS) return
+        // Written before the call rather than after it, so a phone with no
+        // connection does not retry on every single trip to the foreground.
+        prefs.edit().putLong(KEY_LAST_CHECK, now).apply()
+        when (val answer = check()) {
+            is UpdateCheck.Available -> rememberWaiting(answer.update.version)
+            is UpdateCheck.UpToDate -> rememberWaiting(null)
+            // An answer that never arrived says nothing about what is out
+            // there, so whatever was known before stands.
+            is UpdateCheck.Trouble -> Unit
+        }
+    }
+
+    /** Record what the last check found, so the dot survives the app closing. */
+    fun rememberWaiting(version: String?) {
+        prefs.edit().apply {
+            if (version == null) remove(KEY_WAITING) else putString(KEY_WAITING, version)
+        }.apply()
+        _updateWaiting.value = version != null
+    }
+
+    private fun waitingVersion(): String? = prefs.getString(KEY_WAITING, null)
+        ?.takeIf { ReleaseFeed.isNewer(it, installedVersion) }
 
     /** The version running now, read from the package rather than from a build flag. */
     val installedVersion: String
@@ -440,5 +501,23 @@ class UpdateRepository(private val context: Context) {
          * for anything that could only be an attempt to fill the cache.
          */
         const val MAX_DOWNLOAD_BYTES = 320L * 1024 * 1024
+
+        /** Its own file: this is bookkeeping about the app, not a preference. */
+        const val PREFS_NAME = "llegeix.updates"
+
+        const val KEY_LAST_CHECK = "last_quiet_check"
+
+        /** The version the last check found, so the dot survives a restart. */
+        const val KEY_WAITING = "waiting_version"
+
+        /**
+         * How long a quiet check waits before it is allowed to run again.
+         *
+         * A day. Llegeix is released when there is something to release, not on
+         * a schedule, so asking more often would be one more request a day for
+         * an answer that changes a handful of times a year — and the dot is not
+         * urgent enough to be worth a single extra one.
+         */
+        const val QUIET_CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
     }
 }

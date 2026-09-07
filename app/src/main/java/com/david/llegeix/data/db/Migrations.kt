@@ -362,3 +362,23 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         db.execSQL("DROP TABLE _m_parts")
     }
 }
+
+/**
+ * Names the reader gave things, and the blank pages they write essays on.
+ *
+ * `documents.customName` is what a PDF is called *inside the app*. The file on
+ * the phone keeps the name it has: the app has no write access to it and
+ * renaming somebody's file because they wanted a tidier library would be a far
+ * bigger thing than they asked for. Null means "call it what the file is
+ * called", which is what every existing row means.
+ *
+ * `exam_parts.isNotes` marks a document the app generated rather than one the
+ * reader imported — blank paper, appended to the paper so an essay is written
+ * in the same place as the answers rather than in an app somewhere else.
+ */
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE documents ADD COLUMN customName TEXT")
+        db.execSQL("ALTER TABLE exam_parts ADD COLUMN isNotes INTEGER NOT NULL DEFAULT 0")
+    }
+}

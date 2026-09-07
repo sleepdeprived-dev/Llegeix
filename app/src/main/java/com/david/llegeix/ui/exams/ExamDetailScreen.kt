@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
+import com.david.llegeix.data.db.entity.ExamAudioEntity
 import com.david.llegeix.data.db.entity.ExamPartEntity
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.Space
@@ -100,6 +101,8 @@ fun ExamDetailScreen(
     var renamingAttempt by remember { mutableStateOf<AttemptSummary?>(null) }
     var deletingAttempt by remember { mutableStateOf<AttemptSummary?>(null) }
     var removingPart by remember { mutableStateOf<ExamPartEntity?>(null) }
+    var renamingPart by remember { mutableStateOf<ExamPartEntity?>(null) }
+    var renamingAudio by remember { mutableStateOf<ExamAudioEntity?>(null) }
 
     val keyPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -178,6 +181,7 @@ fun ExamDetailScreen(
                         index = index,
                         count = parts.size,
                         onRemove = { removingPart = part },
+                        onRename = { renamingPart = part },
                         onMove = { delta -> viewModel.onMovePart(part.id, delta) },
                     )
                 }
@@ -250,14 +254,11 @@ fun ExamDetailScreen(
                             null
                         } else {
                             {
-                                audio.forEach { track ->
-                                    AttachmentRow(
-                                        label = track.displayName,
-                                        painter = painterResource(R.drawable.ic_speaker),
-                                        removeDescription = stringResource(
-                                            R.string.exams_audio_remove,
-                                            track.displayName,
-                                        ),
+                                audio.forEachIndexed { position, track ->
+                                    AudioRow(
+                                        track = track,
+                                        position = position,
+                                        onRename = { renamingAudio = track },
                                         onRemove = { viewModel.onRemoveAudio(track) },
                                     )
                                 }
@@ -324,6 +325,32 @@ fun ExamDetailScreen(
             onConfirm = { name ->
                 viewModel.onRenameAttempt(summary.attempt.id, name)
                 renamingAttempt = null
+            },
+        )
+    }
+
+    renamingPart?.let { part ->
+        FolderNameDialog(
+            title = stringResource(R.string.exams_rename_file_title),
+            confirmLabel = stringResource(R.string.action_rename),
+            initialName = part.sourceName,
+            onDismiss = { renamingPart = null },
+            onConfirm = { name ->
+                viewModel.onRenamePart(part.id, name)
+                renamingPart = null
+            },
+        )
+    }
+
+    renamingAudio?.let { track ->
+        FolderNameDialog(
+            title = stringResource(R.string.exams_rename_audio_title),
+            confirmLabel = stringResource(R.string.action_rename),
+            initialName = track.displayName,
+            onDismiss = { renamingAudio = null },
+            onConfirm = { name ->
+                viewModel.onRenameAudio(track.id, name)
+                renamingAudio = null
             },
         )
     }
@@ -402,8 +429,11 @@ private fun DocumentRow(
     index: Int,
     count: Int,
     onRemove: () -> Unit,
+    onRename: () -> Unit,
     onMove: (delta: Int) -> Unit,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -435,7 +465,10 @@ private fun DocumentRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = pluralStringResource(R.plurals.exams_pages, part.pageCount, part.pageCount),
+                text = listOfNotNull(
+                    pluralStringResource(R.plurals.exams_pages, part.pageCount, part.pageCount),
+                    stringResource(R.string.exams_notes_pages).takeIf { part.isNotes },
+                ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -461,18 +494,136 @@ private fun DocumentRow(
                         .rotate(180f),
                 )
             }
-            IconButton(onClick = onRemove) {
+        }
+        // The menu is here even on a one-document paper, because renaming is
+        // worth having on every one of them: an exam sample arrives called
+        // something like "PROVA_C1_2019_comprensio.pdf", and that string is
+        // what the workspace prints under every page of it.
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
                 Icon(
-                    Icons.Default.Close,
+                    painter = painterResource(R.drawable.ic_more),
                     contentDescription = stringResource(
-                        R.string.exams_remove_file,
+                        R.string.exams_file_actions,
                         part.sourceName,
                     ),
                     modifier = Modifier.size(18.dp),
                 )
             }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(Icons.Default.Edit) },
+                    text = { Text(stringResource(R.string.action_rename)) },
+                    onClick = { menuOpen = false; onRename() },
+                )
+                // A paper with no documents is not a paper, so the last one
+                // cannot be taken out.
+                if (count > 1) {
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        leadingIcon = { MenuIcon(Icons.Default.Delete) },
+                        text = { Text(stringResource(R.string.action_delete)) },
+                        onClick = { menuOpen = false; onRemove() },
+                    )
+                }
+            }
         }
     }
+}
+
+/**
+ * One recording attached to the paper.
+ *
+ * This was a bare line of small text with a cross at the end of it — the same
+ * row the answer sheet used, which is a single yes-or-no thing, borrowed for a
+ * list that can run to a dozen tracks. A listening paper's recordings are
+ * objects the reader chose and will pick between while sitting the exam, so
+ * they get a row that says what they are: a numbered disc, the name at full
+ * size, how long the track runs, and a menu.
+ *
+ * The length is the thing worth adding. "Which of these four is the long one"
+ * is the question actually asked of this list, and it was previously only
+ * answerable by playing them.
+ */
+@Composable
+private fun AudioRow(
+    track: ExamAudioEntity,
+    position: Int,
+    onRename: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = Space.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "${position + 1}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.md),
+        ) {
+            Text(
+                text = track.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = track.durationMs?.let { millis ->
+                    stringResource(R.string.exams_audio_length, trackLength(millis))
+                } ?: stringResource(R.string.exams_audio_length_unknown),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_more),
+                    contentDescription = stringResource(
+                        R.string.exams_file_actions,
+                        track.displayName,
+                    ),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(Icons.Default.Edit) },
+                    text = { Text(stringResource(R.string.action_rename)) },
+                    onClick = { menuOpen = false; onRename() },
+                )
+                HorizontalDivider()
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(Icons.Default.Delete) },
+                    text = { Text(stringResource(R.string.action_delete)) },
+                    onClick = { menuOpen = false; onRemove() },
+                )
+            }
+        }
+    }
+}
+
+/** "3:07", the length a listening track is measured in. */
+private fun trackLength(millis: Long): String {
+    val totalSeconds = (millis / 1000).coerceAtLeast(0)
+    return "${totalSeconds / 60}:${(totalSeconds % 60).toString().padStart(2, '0')}"
 }
 
 /**

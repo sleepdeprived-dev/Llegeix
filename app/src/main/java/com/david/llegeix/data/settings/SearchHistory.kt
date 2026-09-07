@@ -49,7 +49,9 @@ fun remembered(
  * Only searches that found something are ever recorded — the caller decides,
  * and every caller waits for a result before asking. That one rule is what
  * keeps the list worth offering: half-typed words and misspellings never reach
- * it, so nothing here needs a way to be deleted one item at a time.
+ * it. Even so, a word can be worth forgetting on its own, so [forgetOne] exists
+ * beside the clear-the-lot: "all or nothing" is the wrong offer to make about a
+ * list of five words, four of which the reader still wants.
  *
  * Its own preferences file rather than a table. This is a convenience, not
  * data: losing it costs nobody anything, and it should never be the reason a
@@ -74,6 +76,17 @@ class SearchHistoryRepository(context: Context) {
 
     /** Forget one scope's history, from the "clear" beside it. */
     fun forget(scope: SearchScope) = write(scope, emptyList())
+
+    /**
+     * Drop a single past search, from the cross on its own row.
+     *
+     * Matched without regard to case, the same way [remembered] de-duplicates,
+     * so what is on screen is what goes.
+     */
+    fun forgetOne(scope: SearchScope, query: String) {
+        val remaining = flow(scope).value.filterNot { it.equals(query, ignoreCase = true) }
+        if (remaining.size != flow(scope).value.size) write(scope, remaining)
+    }
 
     /** Forget the lot, for "erase everything". */
     fun clear() = SearchScope.entries.forEach { forget(it) }

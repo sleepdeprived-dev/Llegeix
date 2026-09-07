@@ -76,6 +76,8 @@ import com.david.llegeix.ui.common.Space
 fun CollectionsPane(
     onOpenFolder: (folderId: Long, name: String) -> Unit,
     onOpenBookmarked: () -> Unit,
+    onOpenReadLater: () -> Unit,
+    onOpenRecent: () -> Unit,
     snackbarHostState: SnackbarHostState,
     showCreateDialog: Boolean,
     onCreateDialogDismissed: () -> Unit,
@@ -86,6 +88,8 @@ fun CollectionsPane(
 ) {
     val folders by viewModel.folders.collectAsStateWithLifecycle()
     val bookmarkedCount by viewModel.bookmarkedCount.collectAsStateWithLifecycle()
+    val readLaterCount by viewModel.readLaterCount.collectAsStateWithLifecycle()
+    val recentCount by viewModel.recentCount.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     var pendingDelete by remember { mutableStateOf<Long?>(null) }
     var colorPickerFor by remember { mutableStateOf<FolderWithCount?>(null) }
@@ -113,11 +117,23 @@ fun CollectionsPane(
         // last row can always be scrolled clear of it.
         contentPadding = PaddingValues(bottom = Space.huge),
     ) {
-        // The automatic collection, always first and not user-editable.
+        // The three automatic collections, always first and not user-editable.
+        //
+        // They are grouped rather than listed one per card, because they are
+        // the same kind of thing three times over: shelves the app keeps for
+        // you, as against the ones you build. Starred and read-later are flags
+        // on a document; "Recently viewed" is the reading history. All three
+        // used to be somewhere else — two of them in the library, as a chip and
+        // a menu item — which meant the answer to "where did I put that" was
+        // spread across two tabs.
         item {
-            BookmarkedCollectionRow(
-                count = bookmarkedCount,
-                onClick = onOpenBookmarked,
+            AutomaticCollections(
+                bookmarkedCount = bookmarkedCount,
+                readLaterCount = readLaterCount,
+                recentCount = recentCount,
+                onOpenBookmarked = onOpenBookmarked,
+                onOpenReadLater = onOpenReadLater,
+                onOpenRecent = onOpenRecent,
             )
         }
 
@@ -230,50 +246,107 @@ fun CollectionsPane(
 }
 
 /**
- * The automatic "Bookmarked" collection.
+ * The shelves the app keeps for you, as one card of three rows.
  *
- * Rendered here so bookmarked PDFs are reachable from Folders as expected, but
- * it is a live view of the bookmark flag rather than a folder row — so it can
- * never drift out of sync, and filing a PDF here cannot displace it from a real
- * folder.
+ * None of them is a real folder, and none of them can be: a document belongs to
+ * at most one folder, so making any of these a folder row would quietly pull
+ * every PDF in it out of the collection the reader had filed it in. They are
+ * live views — of the bookmark flag, of the read-later flag, of the reading
+ * history — so they cannot drift out of sync with what they are views of.
+ *
+ * One card rather than three separate ones, and above the reader's own
+ * collections rather than mixed in with them, so the two kinds are told apart
+ * by looking rather than by remembering which names are special.
  */
 @Composable
-private fun BookmarkedCollectionRow(
-    count: Int,
-    onClick: () -> Unit,
+private fun AutomaticCollections(
+    bookmarkedCount: Int,
+    readLaterCount: Int,
+    recentCount: Int,
+    onOpenBookmarked: () -> Unit,
+    onOpenReadLater: () -> Unit,
+    onOpenRecent: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Space.screen)
             .padding(top = Space.sm, bottom = Space.lg)
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        AutomaticCollectionRow(
+            icon = { tint ->
+                Icon(Icons.Filled.Star, contentDescription = null, tint = tint)
+            },
+            title = stringResource(R.string.bookmarked_collection_title),
+            count = bookmarkedCount,
+            onClick = onOpenBookmarked,
+        )
+        AutomaticCollectionRow(
+            icon = { tint ->
+                Icon(painterResource(R.drawable.ic_bookmark), contentDescription = null, tint = tint)
+            },
+            title = stringResource(R.string.read_later_collection_title),
+            count = readLaterCount,
+            onClick = onOpenReadLater,
+        )
+        AutomaticCollectionRow(
+            icon = { tint ->
+                Icon(painterResource(R.drawable.ic_recent), contentDescription = null, tint = tint)
+            },
+            title = stringResource(R.string.recent_title),
+            count = recentCount,
+            // The history is a list of visits rather than a shelf of PDFs, so
+            // it says what it holds instead of counting PDFs: "3 PDFs" on a
+            // reading history would be counting the wrong noun.
+            summary = stringResource(R.string.recent_collection_summary),
+            onClick = onOpenRecent,
+        )
+    }
+}
+
+@Composable
+private fun AutomaticCollectionRow(
+    icon: @Composable (Color) -> Unit,
+    title: String,
+    count: Int,
+    onClick: () -> Unit,
+    summary: String? = null,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = Space.lg, vertical = Space.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = Icons.Filled.Star,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Column(modifier = Modifier
-            .weight(1f)
-            .padding(start = Space.lg)) {
+        icon(MaterialTheme.colorScheme.primary)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.lg),
+        ) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = stringResource(R.string.bookmarked_collection_title),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Text(
-                text = if (count == 0) {
-                    stringResource(R.string.folders_bookmarked_auto)
-                } else {
-                    pluralStringResource(R.plurals.folders_pdf_count, count, count)
+                text = when {
+                    summary != null && count > 0 -> summary
+                    count == 0 -> stringResource(R.string.folders_bookmarked_auto)
+                    else -> pluralStringResource(R.plurals.folders_pdf_count, count, count)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        // The count only where the second line is not already carrying it: the
+        // history says what it holds rather than counting PDFs, so it is the
+        // one row with room for a number at the end.
+        if (summary != null && count > 0) {
+            Text(
+                text = "$count",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

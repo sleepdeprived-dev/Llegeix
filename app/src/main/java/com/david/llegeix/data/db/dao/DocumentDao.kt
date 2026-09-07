@@ -7,6 +7,9 @@ import androidx.room.Query
 import com.david.llegeix.data.db.entity.DocumentEntity
 import kotlinx.coroutines.flow.Flow
 
+/** A PDF's URI and the name the reader gave it, for the rename lookup. */
+data class DocumentName(val uriString: String, val customName: String)
+
 @Dao
 interface DocumentDao {
 
@@ -37,6 +40,20 @@ interface DocumentDao {
 
     @Query("UPDATE documents SET highlightColor = :color WHERE uriString = :uriString")
     suspend fun setHighlightColor(uriString: String, color: Int?)
+
+    /**
+     * What the reader wants this PDF called, or null to fall back to the file.
+     *
+     * Only ever this column. The file on the device is opened through a
+     * read-only grant and is never written to, so a rename here changes what
+     * Llegeix shows and nothing whatsoever about the phone's own copy.
+     */
+    @Query("UPDATE documents SET customName = :name WHERE uriString = :uriString")
+    suspend fun setCustomName(uriString: String, name: String?)
+
+    /** Every PDF the reader has renamed, keyed by URI, for the lists to consult. */
+    @Query("SELECT uriString, customName FROM documents WHERE customName IS NOT NULL")
+    fun observeCustomNames(): Flow<List<DocumentName>>
 
     /**
      * Record how many pages a document turned out to have.

@@ -125,6 +125,25 @@ enum class TranslationTarget(
     }
 }
 
+/**
+ * Which Catalan flag sits beside the app's name.
+ *
+ * Not a setting in Configuració, and deliberately not: it is found by pressing
+ * the flag itself, which is the only place the question could possibly be
+ * asked. The Senyera is the default because it is the flag of the language this
+ * app is for; the Estelada is there because a great many of the people reading
+ * Catalan on a phone would rather see that one, and the app is theirs too.
+ */
+enum class AppFlag(val key: String, @param:StringRes val labelRes: Int) {
+    SENYERA("senyera", R.string.flag_senyera),
+    ESTELADA("estelada", R.string.flag_estelada),
+    ;
+
+    companion object {
+        fun fromKey(key: String?): AppFlag = entries.firstOrNull { it.key == key } ?: SENYERA
+    }
+}
+
 /** Whether documents are listed as rows or as a grid of covers. */
 enum class LibraryLayout(val key: String) {
     LIST("list"),
@@ -227,6 +246,8 @@ data class AppSettings(
     val markSavedWords: Boolean = true,
     /** ARGB for [AccentColor.CUSTOM]. Ignored by every other accent. */
     val customAccent: Int = DEFAULT_CUSTOM_ACCENT,
+    /** Which flag is drawn beside the app's name. See [AppFlag]. */
+    val flag: AppFlag = AppFlag.SENYERA,
 )
 
 /** The colour the custom picker opens on before anything is chosen. */

@@ -99,6 +99,9 @@ class DictionaryViewModel(
 
     fun onForgetSearches() = searchHistory.forget(SearchScope.WORDS)
 
+    /** Drop one past search, from the cross on its row. */
+    fun onForgetSearch(query: String) = searchHistory.forgetOne(SearchScope.WORDS, query)
+
     /**
      * Rebuilt when the target language changes: an ML Kit translator is bound to
      * its language pair at construction, so switching target means a new one.

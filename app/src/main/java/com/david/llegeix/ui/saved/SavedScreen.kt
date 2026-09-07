@@ -74,6 +74,8 @@ fun SavedScreen(
     onOpenFolder: (folderId: Long, name: String) -> Unit,
     onFillNewCollection: (folderId: Long, name: String) -> Unit,
     onOpenBookmarked: () -> Unit,
+    onOpenReadLater: () -> Unit,
+    onOpenRecent: () -> Unit,
     onPractise: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -171,6 +173,8 @@ fun SavedScreen(
                     SavedTab.COLLECTIONS -> CollectionsPane(
                         onOpenFolder = onOpenFolder,
                         onOpenBookmarked = onOpenBookmarked,
+                        onOpenReadLater = onOpenReadLater,
+                        onOpenRecent = onOpenRecent,
                         onFillNewCollection = onFillNewCollection,
                         snackbarHostState = snackbarHostState,
                         showCreateDialog = showCreateDialog,

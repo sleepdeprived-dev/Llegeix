@@ -32,6 +32,16 @@ import androidx.room.PrimaryKey
 data class DocumentEntity(
     @PrimaryKey val uriString: String,
     val displayName: String,
+    /**
+     * What the reader decided to call this PDF, or null to use [displayName].
+     *
+     * A name the app keeps, not a rename on the phone. Llegeix reads other
+     * apps' files through a read-only grant and has no business writing to
+     * them, so "rename" here means "show me this name instead" — the file in
+     * Downloads keeps whatever the website called it, and nothing else on the
+     * device sees any change.
+     */
+    val customName: String? = null,
     val folderId: Long? = null,
     /**
      * The whole PDF is bookmarked, as distinct from bookmarking a page inside

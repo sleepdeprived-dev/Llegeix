@@ -134,6 +134,7 @@ fun DictionaryScreen(
                             viewModel.onPickSuggestion(past)
                         },
                         onClear = viewModel::onForgetSearches,
+                        onRemove = viewModel::onForgetSearch,
                         modifier = Modifier.padding(bottom = Space.sm),
                     )
                     EmptyState(

@@ -2,7 +2,6 @@ package com.david.llegeix.ui.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,8 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,162 +44,93 @@ import com.david.llegeix.util.pdfTitle
 import kotlin.math.roundToInt
 
 /**
- * Where the library's documents come from, along the top of the library.
+ * Where the library's documents come from, as one line at the top of it.
  *
- * This replaced an item in the overflow menu called "Fonts". A reader looking
- * at a library that is missing a book does not think "I should open the
- * three-dot menu"; they think "where has it gone", and the honest answer —
- * *these are the places I am looking, and this is how much of each one counts*
- * — belongs in front of them, on the screen the question is asked about.
+ * This was a heading reading *Sources* over a strip of tiles that scrolled
+ * sideways, one per source, each with its own count. That strip replaced an
+ * item in an overflow menu and it was right to: a reader looking at a library
+ * missing a book thinks "where has it gone", not "I should open the three-dot
+ * menu". But a permanent horizontal scroller is a heavy way to say it. Half of
+ * it is always off the edge of the screen, it takes three lines of height on
+ * every visit to the library, and the counts on it are only ever read on the
+ * one visit in fifty where something is actually missing.
  *
- * Each tile says its own name and what it is contributing. A source that is
- * only partly reaching the library says "31 of 48" rather than "48", which is
- * the whole point: a library quietly missing a folder used to look exactly like
- * a library showing everything. Pressing a tile opens that source; pressing the
- * last one adds another.
+ * So the whole thing is one press now. *See sources* opens the sheet that has
+ * always held the real answer — every source, every folder inside it, and a
+ * tick box against each — and the plus beside it adds one. The plus carries no
+ * word because it does not need one: a plus at the end of a row about sources
+ * adds a source, and the word was the widest thing in the row.
  */
 @Composable
 fun SourcesStrip(
-    sources: List<LibrarySource>,
-    onOpenSource: (LibrarySource) -> Unit,
+    onOpenSources: () -> Unit,
     onAddSource: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Only drawn when the two numbers differ. See [LibraryUiState.isPartlyShown]. */
+    partial: Pair<Int, Int>? = null,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.library_sources),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = Space.screen, bottom = Space.sm),
-        )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(Space.sm),
-            contentPadding = PaddingValues(horizontal = Space.screen),
-        ) {
-            items(sources, key = { it.kind.name + ":" + it.label }) { source ->
-                SourceTile(source = source, onClick = { onOpenSource(source) })
-            }
-            item {
-                AddSourceTile(onClick = onAddSource)
-            }
-        }
-    }
-}
-
-/** One source, as a tile: what it is called, and what it is contributing. */
-@Composable
-private fun SourceTile(source: LibrarySource, onClick: () -> Unit) {
-    val label = if (source.kind == LibrarySource.Kind.DEVICE) {
-        stringResource(R.string.library_source_device)
-    } else {
-        source.label.substringAfterLast('/')
-    }
-    // Quieter when nothing is coming through, so a switched-off source reads as
-    // switched off from across the strip rather than only once it is opened.
-    val tint = if (source.isSilenced) {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
-
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .width(SourceTileWidth)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = Space.md, vertical = Space.md),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = Space.md, end = Space.screen),
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(tint.copy(alpha = 0.14f)),
-            contentAlignment = Alignment.Center,
-        ) {
+        TextButton(onClick = onOpenSources) {
             Icon(
-                painter = painterResource(
-                    if (source.kind == LibrarySource.Kind.DEVICE) {
-                        R.drawable.ic_device
-                    } else {
-                        R.drawable.ic_folder
-                    },
-                ),
+                painter = painterResource(R.drawable.ic_folder),
                 contentDescription = null,
-                tint = tint,
                 modifier = Modifier.size(18.dp),
             )
-        }
-        Column(modifier = Modifier.padding(start = Space.md)) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                text = stringResource(R.string.library_see_sources),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(start = Space.sm),
             )
+        }
+        // The one thing the strip of tiles said that this row would otherwise
+        // lose: a library quietly missing a folder looks exactly like a library
+        // showing everything, and this is the sentence that tells them apart.
+        partial?.let { (visible, total) ->
             Text(
-                text = when {
-                    source.isSilenced -> stringResource(R.string.sources_none_shown)
-                    source.isPartial -> stringResource(
-                        R.string.sources_count_partial,
-                        source.visibleCount,
-                        source.totalCount,
-                    )
-                    else -> pluralStringResource(
-                        R.plurals.folders_pdf_count,
-                        source.totalCount,
-                        source.totalCount,
-                    )
-                },
+                text = stringResource(R.string.sources_count_partial, visible, total),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 1.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = Space.sm),
             )
-        }
+        } ?: Box(modifier = Modifier.weight(1f))
+        AddSourceButton(onClick = onAddSource)
     }
 }
 
 /**
- * The tile that adds a source.
+ * The plus that brings in another source.
  *
- * Outlined rather than filled, so it reads as an empty slot waiting to be
- * filled rather than as another place documents are already coming from.
+ * A filled disc rather than an outlined tile with the word "Add" in it. It sits
+ * at the end of a row that has just said the word *sources*, so what it adds is
+ * not in doubt, and a round target under the thumb is easier to hit than a
+ * pill it has to be aimed inside.
  */
 @Composable
-private fun AddSourceTile(onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+private fun AddSourceButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.library_add_source)
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .width(AddTileWidth)
-            .clip(RoundedCornerShape(16.dp))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(16.dp),
-            )
+            .size(AddButtonSize)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.secondaryContainer)
             .clickable(onClick = onClick)
-            .padding(horizontal = Space.md, vertical = Space.md),
+            .semantics { contentDescription = label },
     ) {
-        Box(
-            modifier = Modifier.size(32.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        Text(
-            text = stringResource(R.string.library_source_add),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            modifier = Modifier.padding(start = Space.sm),
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -338,5 +269,6 @@ private fun ContinueCard(
  */
 private val ContinueCardWidth = 250.dp
 private val ContinueCoverWidth = 44.dp
-private val SourceTileWidth = 200.dp
-private val AddTileWidth = 132.dp
+
+/** The platform's smallest comfortable round target. */
+private val AddButtonSize = 40.dp

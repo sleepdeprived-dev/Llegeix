@@ -2,11 +2,16 @@ package com.david.llegeix.ui.common
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +41,16 @@ import com.david.llegeix.R
  * actually searching. It is what every search field on the phone already does,
  * which is the other half of the argument: this is not the place to be
  * inventive.
+ *
+ * Each row carries its own cross as well. Clearing the lot was for a while the
+ * only offer, on the grounds that the list is short and holds nothing
+ * embarrassing — but "all or nothing" is the wrong question to ask about five
+ * words when the reader wants to be rid of one. The cross is drawn in the muted
+ * ink at the far end of the row, well clear of the word itself, so the row
+ * still reads as one thing to tap.
+ *
+ * @param onRemove drops a single past search. Null leaves the crosses off,
+ *   for a caller that has nothing to remove them from.
  */
 @Composable
 fun RecentSearches(
@@ -43,6 +58,7 @@ fun RecentSearches(
     onPick: (String) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    onRemove: ((String) -> Unit)? = null,
 ) {
     val shown = history.take(MAX_SHOWN)
     if (shown.isEmpty()) return
@@ -60,10 +76,9 @@ fun RecentSearches(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
-            // One "clear" for the whole list and no way to pick items off one
-            // at a time. The list is short and only ever holds searches that
-            // found something: there is nothing in it to be embarrassed by, and
-            // a delete button on every line would be eight more things to read.
+            // Still here beside the per-row crosses: emptying a list of five
+            // is one press rather than five, and the two answer different
+            // wants.
             TextButton(onClick = onClear) {
                 Text(
                     text = stringResource(R.string.search_recent_clear),
@@ -80,7 +95,7 @@ fun RecentSearches(
                     .fillMaxWidth()
                     .clickable { onPick(past) }
                     .heightIn(min = 48.dp)
-                    .padding(horizontal = Space.screen, vertical = Space.sm),
+                    .padding(start = Space.screen, end = Space.sm, top = Space.sm, bottom = Space.sm),
             ) {
                 MenuIcon(painterResource(R.drawable.ic_recent))
                 Text(
@@ -91,6 +106,17 @@ fun RecentSearches(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
+                if (onRemove != null) {
+                    val removeLabel = stringResource(R.string.search_recent_forget, past)
+                    IconButton(onClick = { onRemove(past) }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = removeLabel,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
             }
         }
     }

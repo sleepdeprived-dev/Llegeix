@@ -67,13 +67,10 @@
     <string name="library_settings_unavailable">Could not open Settings. Grant \"All files access\" manually.</string>
     <string name="library_scan_failed">Could not scan for PDFs</string>
     <string name="library_filter_all">All</string>
-    <string name="library_filter_read_later">Read later</string>
     <string name="library_view_by_folder">By folder</string>
     <!-- The top of the library, as the first step of the path bar. -->
     <string name="library_path_root">Library</string>
     <string name="library_folder_up">Up one folder</string>
-    <!-- A filter chip with a count, e.g. "Read later (3)". -->
-    <string name="library_filter_with_count">%1$s (%2$d)</string>
     <string name="library_sort_by">Sort by</string>
     <string name="library_sort_recent">Recently modified</string>
     <string name="library_sort_name">Name</string>
@@ -81,8 +78,6 @@
     <string name="library_sort_tag">Tag</string>
     <string name="library_empty_title">No PDFs found</string>
     <string name="library_empty_body">Nothing with a .pdf extension turned up. PDFs in Downloads cannot be reached by watching a folder — scan the whole device instead, or add them individually from the menu.</string>
-    <string name="library_read_later_empty_title">Nothing to read later</string>
-    <string name="library_read_later_empty_body">Mark a PDF \"Read later\" from its menu and it will collect here.</string>
     <string name="library_no_matches_title">No matches</string>
     <string name="library_no_matches_body">None of the %1$d PDFs match \"%2$s\".</string>
     <string name="library_move_to_folder">Move to collection</string>
@@ -286,7 +281,7 @@
     <string name="settings_privacy_open">Privacy policy</string>
     <string name="settings_privacy_summary">Llegeix collects nothing.</string>
     <string name="privacy_title">Privacy policy</string>
-    <string name="privacy_body">Llegeix collects no data about you. None at all.\n\nThere is no analytics, no crash reporting, no advertising and no account. Nothing you do in this app is sent anywhere, and there is no server belonging to it to send anything to.\n\nEverything the app remembers — your collections, tags, bookmarks, saved words, reading positions and settings — is stored only on this device, in the app\'s own private storage. Uninstalling the app deletes all of it, and none of it is ever copied to a cloud backup. If you move to a new phone using Android\'s direct transfer, it comes with you: from the old phone to the new one, without passing through anybody\'s server.\n\nYour PDFs are read from wherever they already are on your device. They are never copied, uploaded or opened by anything but this app.\n\nThe app uses the internet for two things, and neither of them is about you.\n\nThe first is downloading Google\'s ML Kit translation models, once per language, so that tapping a word can translate it. That request goes to Google and is subject to Google\'s own privacy policy; the app sends no information about you with it, and no text from your documents ever leaves the device. After the models are downloaded, translation and pronunciation work entirely offline.\n\nThe second is checking for a new version of the app, which happens only when you press the button in Configuració. The app never checks on its own, on launch or in the background. It asks GitHub what the newest release is and, if you choose to install it, downloads it from there. The request carries no account, no identifier and nothing about your documents — it is the same anonymous request anybody can make of a public page — though GitHub, like any website, can see the address you connect from.\n\nThe app asks for permission to read files so it can find your PDFs, for network access for those two things, and for permission to hand an update to Android\'s installer, which is what actually installs it and asks you first.</string>
+    <string name="privacy_body">Llegeix collects no data about you. None at all.\n\nThere is no analytics, no crash reporting, no advertising and no account. Nothing you do in this app is sent anywhere, and there is no server belonging to it to send anything to.\n\nEverything the app remembers — your collections, tags, bookmarks, saved words, reading positions and settings — is stored only on this device, in the app\'s own private storage. Uninstalling the app deletes all of it, and none of it is ever copied to a cloud backup. If you move to a new phone using Android\'s direct transfer, it comes with you: from the old phone to the new one, without passing through anybody\'s server.\n\nYour PDFs are read from wherever they already are on your device. They are never copied, uploaded or opened by anything but this app.\n\nThe app uses the internet for two things, and neither of them is about you.\n\nThe first is downloading Google\'s ML Kit translation models, once per language, so that tapping a word can translate it. That request goes to Google and is subject to Google\'s own privacy policy; the app sends no information about you with it, and no text from your documents ever leaves the device. After the models are downloaded, translation and pronunciation work entirely offline.\n\nThe second is checking for a new version of the app: at most once a day, when you open the library, and whenever you press the button in Configuració. It is what puts a red dot on the settings gear when there is a new one; there is no background service and no notification. It asks GitHub what the newest release is and, if you choose to install it, downloads it from there. The request carries no account, no identifier and nothing about your documents — it is the same anonymous request anybody can make of a public page — though GitHub, like any website, can see the address you connect from.\n\nThe app asks for permission to read files so it can find your PDFs, for network access for those two things, and for permission to hand an update to Android\'s installer, which is what actually installs it and asks you first.</string>
     <string name="privacy_updated">Last updated: 4 September 2026</string>
 
     <!-- Recently viewed -->
@@ -382,7 +377,6 @@
         library.
     -->
     <string name="library_source_device">Whole device</string>
-    <string name="library_source_add">Add</string>
     <string name="library_source_manage">Manage sources</string>
 
     <!-- The shelf of part-read books at the top of the library. -->
@@ -615,4 +609,62 @@
     </plurals>
     <string name="exams_move_up">Move %1$s earlier</string>
     <string name="exams_move_down">Move %1$s later</string>
+
+    <!-- ================= v3.9 ================= -->
+
+    <!-- A single past search, dropped from its own row. -->
+    <string name="search_recent_forget">Forget the search for %1$s</string>
+
+    <!-- The library's sources, behind one word rather than a strip of tiles. -->
+    <string name="library_see_sources">See sources</string>
+    <string name="library_add_source">Add a source</string>
+
+    <!-- Holding a folder in the library offers to stop showing it. -->
+    <string name="library_folder_hide_title">Stop showing %1$s?</string>
+    <string name="library_folder_hide_body">This folder and everything in it disappears from the library. Nothing is deleted from your phone, and you can bring it back from See sources.</string>
+    <string name="library_folder_hide_confirm">Stop showing it</string>
+
+    <!-- Renaming a PDF inside the app. -->
+    <string name="document_rename">Rename…</string>
+    <string name="document_rename_title">Rename in Llegeix</string>
+    <string name="document_rename_body">This is only what Llegeix calls it. The file on your phone keeps its own name.</string>
+    <string name="document_rename_label">Name</string>
+    <string name="document_rename_reset">Use the file\'s name</string>
+
+    <!-- The two automatic collections, beside Starred. -->
+    <string name="read_later_collection_title">Read later</string>
+    <string name="read_later_collection_empty_title">Nothing to read later</string>
+    <string name="read_later_collection_empty_body">Swipe a PDF in the library from right to left, or use its menu, and it will collect here.</string>
+    <string name="recent_collection_summary">Everything you have opened</string>
+
+    <!-- A new version is waiting, as a dot on the gear. -->
+    <string name="settings_update_waiting">A new version is available</string>
+
+    <!-- The flag beside the app\'s name, and the two it can be. -->
+    <string name="flag_choose_title">Which flag?</string>
+    <string name="flag_senyera">Senyera</string>
+    <string name="flag_estelada">Estelada</string>
+    <string name="estelada_content_description">Estelada, the Catalan independence flag</string>
+
+    <!-- Exams: blank paper, renaming, and the page controls. -->
+    <string name="exam_notes_name">Notes</string>
+    <string name="exam_add_page">Add a blank page</string>
+    <string name="exam_page_added">Blank page added at the back</string>
+    <string name="exam_page_add_failed">Could not add a page</string>
+    <string name="exam_go_to_notes">Go to the blank pages</string>
+    <string name="exam_back_to_paper">Back to the paper</string>
+    <string name="exam_dark_page">Darken the page</string>
+    <string name="exam_light_page">Light page</string>
+    <string name="exam_redo">Redo</string>
+    <string name="exam_seek">Position in the recording</string>
+    <string name="exams_rename_file_title">Rename this document</string>
+    <string name="exams_rename_audio_title">Rename this recording</string>
+    <string name="exams_rename_file">Rename %1$s</string>
+    <string name="exams_file_actions">Actions for %1$s</string>
+    <string name="exams_audio_length">%1$s long</string>
+    <string name="exams_audio_length_unknown">Length unknown</string>
+    <string name="exams_notes_pages">Blank paper you added</string>
+
+    <string name="tags_rename">Rename tag %1$s</string>
+    <string name="words_open_source">Go to where it was saved</string>
 </resources>

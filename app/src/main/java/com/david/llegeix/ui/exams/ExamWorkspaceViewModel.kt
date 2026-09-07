@@ -125,8 +125,20 @@ data class WorkspaceState(
     val answerKeyPageCount: Int = 0,
     val audio: List<ExamAudioEntity> = emptyList(),
     val zoom: Float = 1f,
+    /**
+     * Draws the page as light-on-dark, without touching the app's theme.
+     *
+     * The same inversion the reader offers, for the same reason and with one
+     * difference: only the *page* is inverted, never the marks over it. An
+     * inverted ink colour would mean the blue the reader is writing in and the
+     * blue on the page were different blues, and the export — which is drawn
+     * from the same marks on white paper — would then disagree with the screen.
+     */
+    val darkPage: Boolean = false,
     /** True while a page is being written out, so the button can say so. */
     val isExporting: Boolean = false,
+    /** Whether there is an undone mark waiting to be put back. */
+    val canRedo: Boolean = false,
 ) {
     val isFinished: Boolean get() = attempt?.finishedAt != null
 
@@ -161,6 +173,14 @@ data class WorkspaceState(
 
     /** Writing is only ever onto the paper, never onto the answer sheet. */
     val canWrite: Boolean get() = !showAnswerKey
+
+    /** True when the page showing is one of the blank ones added for an essay. */
+    val isOnNotes: Boolean get() = !showAnswerKey && here?.part?.isNotes == true
+
+    /** Where the blank pages start, or null when the paper has none yet. */
+    val notesStart: Int?
+        get() = pagination.parts.firstOrNull { it.isNotes }
+            ?.let { pagination.startOf(it.id) }
 }
 
 /**
@@ -425,6 +445,10 @@ class ExamWorkspaceViewModel(
         _state.update { it.copy(zoom = zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)) }
     }
 
+    fun onToggleDarkPage() {
+        _state.update { it.copy(darkPage = !it.darkPage) }
+    }
+
     fun onToggleAnswerKey() {
         _state.update {
             if (!it.hasAnswerKey) {
@@ -482,6 +506,7 @@ class ExamWorkspaceViewModel(
         val current = _state.value
         val here = current.here ?: return@launch
         if (points.size < 2 || !current.canWrite) return@launch
+        forgetRedo()
         val bounds = MarkGeometry.boundsOf(points)
         val isHighlight = current.tool == ExamTool.HIGHLIGHTER
         repository.addMark(
@@ -506,6 +531,7 @@ class ExamWorkspaceViewModel(
         val here = current.here ?: return@launch
         val trimmed = text.trim()
         if (trimmed.isEmpty() || !current.canWrite) return@launch
+        forgetRedo()
         repository.addMark(
             ExamMarkEntity(
                 attemptId = attemptId,
@@ -550,6 +576,7 @@ class ExamWorkspaceViewModel(
         val current = _state.value
         val here = current.here ?: return@launch
         if (!current.canWrite) return@launch
+        forgetRedo()
         if (existing != null) {
             repository.deleteMark(existing.id)
             return@launch
@@ -573,15 +600,130 @@ class ExamWorkspaceViewModel(
 
     fun onErase(mark: ExamMarkEntity) = viewModelScope.launch {
         repository.deleteMark(mark.id)
+        forgetRedo()
+    }
+
+    /**
+     * The marks taken back by undo, newest last, waiting to be put back.
+     *
+     * In memory and not in the database, and that is the right place for it: a
+     * redo stack is about what happened in this sitting of this screen, not
+     * about the reader's work. Coming back to a paper in March with a redo
+     * queue from January would be offering to reinstate a stroke nobody
+     * remembers making.
+     *
+     * Anything else that changes the page — a new stroke, an erase, clearing
+     * the page — empties it, which is what every editor does and is the only
+     * behaviour that cannot surprise: a redo after further drawing would drop a
+     * stroke into a page that has moved on without it.
+     */
+    private val undone = ArrayDeque<ExamMarkEntity>()
+
+    private fun forgetRedo() {
+        if (undone.isEmpty()) return
+        undone.clear()
+        _state.update { it.copy(canRedo = false) }
     }
 
     fun onUndo() = viewModelScope.launch {
-        repository.undoLastMark(attemptId)
+        val removed = repository.undoLastMark(attemptId) ?: return@launch
+        undone.addLast(removed)
+        _state.update { it.copy(canRedo = true) }
+    }
+
+    /**
+     * Put back the last thing undo took away.
+     *
+     * Written as a new row rather than restored with its old id: the id is the
+     * database's and the row it named is gone. Everything that decides where
+     * the mark is drawn — the document, the page, the fractions, the colour —
+     * is carried over exactly, so what comes back is the stroke that went, on
+     * the page it was on, whichever page the reader is looking at now.
+     */
+    fun onRedo() = viewModelScope.launch {
+        val mark = undone.removeLastOrNull() ?: return@launch
+        repository.addMark(mark.copy(id = 0))
+        _state.update { it.copy(canRedo = undone.isNotEmpty()) }
     }
 
     fun onClearPage() = viewModelScope.launch {
         val here = _state.value.here ?: return@launch
         repository.clearPage(attemptId, here.part.id, here.pageInPart)
+        forgetRedo()
+    }
+
+    // ---- Blank paper -------------------------------------------------------
+
+    /**
+     * Where the workspace should jump to next, or null when it should stay put.
+     *
+     * A page number rather than a call into the pager, because the pager
+     * belongs to the composable and the ViewModel has no business holding it.
+     * The screen consumes this and reports back through [onJumpHandled].
+     */
+    private val _jumpTo = MutableStateFlow<Int?>(null)
+    val jumpTo: StateFlow<Int?> = _jumpTo.asStateFlow()
+
+    fun onJumpHandled() {
+        _jumpTo.value = null
+    }
+
+    /** Where the reader was on the printed paper before going to the blank pages. */
+    private var pageOnPaper = 0
+
+    /**
+     * Add a blank page to write an essay on, and go to it.
+     *
+     * Adding and arriving are one action on purpose. The reader asked for this
+     * not to be "100000 separated menus and buttons": a button that silently
+     * appended a page somewhere behind them, leaving them to find it, would be
+     * exactly the thing they were complaining about. The paper simply gets
+     * longer and the workspace turns to the new sheet, the way a booklet does.
+     */
+    fun onAddNotesPage(name: String) = viewModelScope.launch {
+        val examId = _state.value.exam?.id ?: return@launch
+        if (!_state.value.isOnNotes) pageOnPaper = _state.value.currentPage
+        val added = repository.addNotesPage(examId, name)
+        _message.value = UiText.of(
+            if (added == null) R.string.exam_page_add_failed else R.string.exam_page_added,
+        )
+        if (added == null) return@launch
+        // The blank paper is one PDF that is rewritten a page longer each time,
+        // so the renderer opened on it is holding the *shorter* file and would
+        // answer "no such page" for the one just added. Letting it go here — and
+        // not merely evicting the bitmaps — is what makes the new sheet appear.
+        // The cached pages are left alone: page three of a blank document is the
+        // same blank page whether the file has three pages or four.
+        openLock.withLock { papers.remove(added.partId)?.close() }
+        _jumpTo.value = added.page
+    }
+
+    /**
+     * Go to the blank pages, or back to where the paper was left.
+     *
+     * One button rather than two, because it is one thought — *the other part
+     * of this booklet* — and because the reader is always on exactly one side
+     * of the join, so the button is never ambiguous about which way it goes.
+     * Coming back lands on the page the paper was left at rather than at page
+     * one: an essay is written *about* a question, and going back to look at it
+     * is the whole reason this is inside the exam rather than beside it.
+     */
+    fun onToggleNotes(name: String) {
+        val current = _state.value
+        if (current.isOnNotes) {
+            _jumpTo.value = pageOnPaper.coerceIn(0, (current.pageCount - 1).coerceAtLeast(0))
+            return
+        }
+        pageOnPaper = current.currentPage
+        val start = current.notesStart
+        if (start == null) {
+            // No blank paper yet, so the button that goes to it makes it. The
+            // alternative is a button that goes nowhere until some other button
+            // has been found first.
+            onAddNotesPage(name)
+        } else {
+            _jumpTo.value = start
+        }
     }
 
     fun onToggleFinished() = viewModelScope.launch {

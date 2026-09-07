@@ -28,6 +28,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.david.llegeix.ui.bookmarks.BookmarkedCollectionScreen
+import com.david.llegeix.ui.bookmarks.ReadLaterCollectionScreen
 import com.david.llegeix.ui.dictionary.DictionaryScreen
 import com.david.llegeix.ui.exams.ExamDetailScreen
 import com.david.llegeix.ui.exams.ExamWorkspaceScreen
@@ -51,8 +52,17 @@ private object Routes {
     const val SETTINGS = "settings"
     const val PRACTICE = "practice"
 
-    /** The derived "Bookmarked" collection, which is not a real folder row. */
+    /**
+     * The three derived collections, which are not real folder rows.
+     *
+     * Each is a live view of something the app already records — the bookmark
+     * flag, the read-later flag, the reading history — rather than a folder,
+     * because a document belongs to at most one folder and materialising any of
+     * these as one would pull its PDFs out of the collection the reader filed
+     * them in.
+     */
     const val BOOKMARKED_COLLECTION = "collection/bookmarked"
+    const val READ_LATER_COLLECTION = "collection/read-later"
 
     /**
      * Query parameters rather than path segments: a document URI contains
@@ -195,7 +205,9 @@ fun AppNavigation(modifier: Modifier = Modifier) {
 
             // Pushed rather than a tab: the shelf at the top of the library
             // answers "carry on with what I was reading", and this answers the
-            // rarer "what was that thing I opened last week".
+            // rarer "what was that thing I opened last week". It is reached
+            // from the Saved tab, as one of the three collections the app keeps
+            // for you, and from the shelf's own button.
             composable(Routes.RECENT) {
                 RecentScreen(
                     onBack = { navController.popBackStack() },
@@ -221,6 +233,10 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     onOpenBookmarked = {
                         navController.navigate(Routes.BOOKMARKED_COLLECTION)
                     },
+                    onOpenReadLater = {
+                        navController.navigate(Routes.READ_LATER_COLLECTION)
+                    },
+                    onOpenRecent = { navController.navigate(Routes.RECENT) },
                     onPractise = { navController.navigate(Routes.PRACTICE) },
                 )
             }
@@ -266,6 +282,15 @@ fun AppNavigation(modifier: Modifier = Modifier) {
 
             composable(Routes.BOOKMARKED_COLLECTION) {
                 BookmarkedCollectionScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenDocument = { uriString, title ->
+                        navController.navigate(Routes.reader(uriString, title))
+                    },
+                )
+            }
+
+            composable(Routes.READ_LATER_COLLECTION) {
+                ReadLaterCollectionScreen(
                     onBack = { navController.popBackStack() },
                     onOpenDocument = { uriString, title ->
                         navController.navigate(Routes.reader(uriString, title))

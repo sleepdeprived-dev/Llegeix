@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -74,6 +75,28 @@ class FoldersViewModel(
      * bookmarked PDFs out of whatever folder the user had filed them in.
      */
     val bookmarkedCount: StateFlow<Int> = libraryData.observeBookmarkedCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /**
+     * How many PDFs are set aside to read later, and how many have been opened.
+     *
+     * The other two automatic collections. They are derived for the same reason
+     * "Bookmarked" is: read-later is a flag on the document and the history is
+     * its own table, and materialising either as a real folder row would pull
+     * every PDF in it out of whatever collection the reader had filed it in — a
+     * document belongs to at most one folder.
+     *
+     * They used to live in the library: read-later as a third filter chip, the
+     * history behind the overflow menu. Both were shelves the reader had put
+     * something on rather than ways of arranging the library, which is exactly
+     * what a collection is here, so they now sit where the shelves are.
+     */
+    val readLaterCount: StateFlow<Int> = libraryData.observeReadLaterDocuments()
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val recentCount: StateFlow<Int> = libraryData.observeRecent()
+        .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     fun setPinned(folderId: Long, pinned: Boolean) = viewModelScope.launch {
