@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
@@ -38,7 +40,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,6 +67,7 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.ExamAudioEntity
 import com.david.llegeix.data.db.entity.ExamPartEntity
 import com.david.llegeix.ui.common.MenuIcon
+import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import com.david.llegeix.ui.folders.FolderNameDialog
@@ -131,7 +133,7 @@ fun ExamDetailScreen(
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -478,22 +480,13 @@ private fun DocumentRow(
         // records the document it was made on, so moving a document changes
         // which page number a page answers to and nothing else.
         if (count > 1) {
-            IconButton(onClick = { onMove(-1) }, enabled = index > 0) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_up),
-                    contentDescription = stringResource(R.string.exams_move_up, part.sourceName),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            IconButton(onClick = { onMove(1) }, enabled = index < count - 1) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_up),
-                    contentDescription = stringResource(R.string.exams_move_down, part.sourceName),
-                    modifier = Modifier
-                        .size(18.dp)
-                        .rotate(180f),
-                )
-            }
+            ReorderControl(
+                canMoveUp = index > 0,
+                canMoveDown = index < count - 1,
+                upLabel = stringResource(R.string.exams_move_up, part.sourceName),
+                downLabel = stringResource(R.string.exams_move_down, part.sourceName),
+                onMove = onMove,
+            )
         }
         // The menu is here even on a one-document paper, because renaming is
         // worth having on every one of them: an exam sample arrives called
@@ -625,6 +618,90 @@ private fun trackLength(millis: Long): String {
     val totalSeconds = (millis / 1000).coerceAtLeast(0)
     return "${totalSeconds / 60}:${(totalSeconds % 60).toString().padStart(2, '0')}"
 }
+
+/**
+ * The pair of buttons that moves a document up or down the paper.
+ *
+ * They were two loose icon buttons carrying the path bar's *arrow out of a
+ * tray* glyph — one of them rotated 180° in code — sitting next to a third
+ * button that removed the document. Three bare targets in a row, two of them
+ * the same picture pointing opposite ways, on a row that already has a number,
+ * a name and a page count on it.
+ *
+ * Now they are one object: a rounded pill in the row's own surface, holding two
+ * plain chevrons with a hairline between them. That is the shape this control
+ * has everywhere — it reads as "the up/down thing" before either arrow is
+ * looked at — and, because the pill has an edge, the disabled state at the top
+ * and bottom of the list is a dimmed chevron inside something rather than a
+ * ghost floating in the row.
+ *
+ * A chevron rather than the tray arrow because a tray arrow means *out of
+ * here*, which is what the path bar uses it for, and these mean *before this
+ * one* and *after this one*.
+ */
+@Composable
+private fun ReorderControl(
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    upLabel: String,
+    downLabel: String,
+    onMove: (delta: Int) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        ReorderStep(
+            icon = Icons.Default.KeyboardArrowUp,
+            label = upLabel,
+            enabled = canMoveUp,
+            onClick = { onMove(-1) },
+        )
+        Box(
+            modifier = Modifier
+                .size(width = 1.dp, height = 18.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant),
+        )
+        ReorderStep(
+            icon = Icons.Default.KeyboardArrowDown,
+            label = downLabel,
+            enabled = canMoveDown,
+            onClick = { onMove(1) },
+        )
+    }
+}
+
+@Composable
+private fun ReorderStep(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        // Narrower than the 48dp default so the pair reads as one control
+        // rather than as two buttons that happen to touch. The row is 56dp
+        // tall, so the height is still a comfortable target.
+        modifier = Modifier.size(width = ReorderStepWidth, height = ReorderStepWidth),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (enabled) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+            },
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+private val ReorderStepWidth = 40.dp
 
 /**
  * One thing that can be attached to a paper: the answer sheet, or the audio.

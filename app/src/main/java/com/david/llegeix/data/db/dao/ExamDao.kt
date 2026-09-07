@@ -28,15 +28,6 @@ data class ExamWithProgress(
     val pageCount: Int,
     /** How many documents make up the paper; 1 for most of them. */
     val partCount: Int,
-    /**
-     * The first document's stored file, for the cover.
-     *
-     * The first rather than any: a paper's cover is its front page, and the
-     * front page of a multi-part exam is the front page of its first document.
-     * Null only for the moment between a paper being created and its first
-     * document landing, which the list draws as a lettered tile anyway.
-     */
-    val coverFileName: String?,
     val attemptCount: Int,
     val audioCount: Int,
     /** Null when no answer sheet has been attached. */
@@ -65,9 +56,6 @@ interface ExamDao {
                    AS pageCount,
                (SELECT COUNT(*) FROM exam_parts p WHERE p.examId = e.id)
                    AS partCount,
-               (SELECT p.fileName FROM exam_parts p WHERE p.examId = e.id
-                    ORDER BY p.position, p.id LIMIT 1)
-                   AS coverFileName,
                (SELECT COUNT(*) FROM exam_attempts a WHERE a.examId = e.id)
                    AS attemptCount,
                (SELECT COUNT(*) FROM exam_audio u WHERE u.examId = e.id)

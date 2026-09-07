@@ -158,7 +158,14 @@ object MarkPainter {
     }
 
     /**
-     * A typed answer.
+     * A typed answer, in its own box.
+     *
+     * The box is the mark's own [ExamMarkEntity.width] rather than "everything
+     * to the right edge of the page", which is what it used to be. That change
+     * is what makes a text box an object: it can be narrowed to fit the gap on
+     * a printed line, widened into a paragraph, moved without reflowing, and
+     * turned — and it wraps to itself instead of to whatever is left of the
+     * sheet.
      *
      * Wrapped by hand rather than with a StaticLayout, because the only thing
      * that has to be true of the wrap is that it is the same on screen as in
@@ -167,25 +174,74 @@ object MarkPainter {
      */
     private fun text(canvas: Canvas, mark: ExamMarkEntity, width: Float, height: Float, paint: Paint) {
         val content = mark.text ?: return
+        preparePaint(paint, mark, width)
+
+        val left = mark.x * width
+        val top = mark.y * height
+        val boxWidth = (mark.width * width).coerceAtLeast(paint.textSize)
+        val lineHeight = paint.textSize * LINE_SPACING
+
+        // Turned about the box's own centre, so a rotated box stays where it
+        // was put. Rotating about the top-left would swing the text away from
+        // the finger that turned it.
+        val turned = mark.rotation != 0f
+        if (turned) {
+            canvas.save()
+            canvas.rotate(
+                mark.rotation,
+                left + boxWidth / 2f,
+                top + (mark.height * height) / 2f,
+            )
+        }
+
+        var y = top + paint.textSize
+        for (line in layOut(content, paint, boxWidth)) {
+            canvas.drawText(line, left, y, paint)
+            y += lineHeight
+        }
+
+        if (turned) canvas.restore()
+    }
+
+    /**
+     * How tall a text box's content actually is, as a fraction of the page.
+     *
+     * The canvas needs it to draw the frame round a selected box, and the
+     * editor needs it to store a height that the eraser and the hit test can
+     * believe. Both go through here rather than each estimating, because a
+     * frame that does not fit the words inside it is the clearest possible
+     * signal that an app is guessing.
+     */
+    fun textHeightFraction(mark: ExamMarkEntity, width: Float, height: Float): Float {
+        if (height <= 0f) return mark.height
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        preparePaint(paint, mark, width)
+        val boxWidth = (mark.width * width).coerceAtLeast(paint.textSize)
+        val lines = layOut(mark.text.orEmpty(), paint, boxWidth).size.coerceAtLeast(1)
+        return (lines * paint.textSize * LINE_SPACING + paint.textSize * 0.4f) / height
+    }
+
+    private fun preparePaint(paint: Paint, mark: ExamMarkEntity, width: Float) {
         paint.reset()
         paint.isAntiAlias = true
         paint.style = Paint.Style.FILL
         paint.color = mark.colorArgb
         paint.textSize = (mark.size * width).coerceAtLeast(6f)
-
-        val left = mark.x * width
-        val top = mark.y * height
-        val available = (width - left).coerceAtLeast(1f)
-        val lineHeight = paint.textSize * 1.25f
-
-        var y = top + paint.textSize
-        for (line in wrap(content, paint, available)) {
-            canvas.drawText(line, left, y, paint)
-            y += lineHeight
-        }
     }
 
-    /** Greedy word wrap against the room left on the page. */
+    /**
+     * The lines a text box breaks into: hard newlines first, then word wrap.
+     *
+     * Newlines matter now that the blank pages at the back of a paper are
+     * written on like a document. Before this, pressing return in an answer
+     * produced one long line with a space in it.
+     */
+    private fun layOut(text: String, paint: Paint, available: Float): List<String> =
+        text.split('\n').flatMap { paragraph ->
+            if (paragraph.isEmpty()) listOf("") else wrap(paragraph, paint, available)
+        }
+
+    /** Greedy word wrap against the width of the box. */
     private fun wrap(text: String, paint: Paint, available: Float): List<String> {
         val words = text.split(' ')
         val lines = ArrayList<String>()
@@ -202,4 +258,12 @@ object MarkPainter {
         if (line.isNotEmpty()) lines += line.toString()
         return lines
     }
+
+    /**
+     * Line spacing, shared by the painter and the on-screen editor.
+     *
+     * The two have to agree or the text jumps the moment the keyboard closes,
+     * which is the most alarming thing a text box can do.
+     */
+    const val LINE_SPACING = 1.25f
 }

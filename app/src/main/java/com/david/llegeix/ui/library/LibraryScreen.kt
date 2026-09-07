@@ -54,7 +54,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
@@ -86,6 +85,7 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.data.db.dao.RecentDocument
+import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.data.source.LibraryFolder
 import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.data.settings.LibraryLayout
@@ -99,6 +99,7 @@ import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.ui.common.TagPickerDialog
 import com.david.llegeix.ui.common.FlagChoiceDialog
 import com.david.llegeix.ui.common.Senyera
+import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import com.david.llegeix.ui.folders.FolderNameDialog
@@ -157,7 +158,8 @@ fun LibraryScreen(
     var renaming by remember { mutableStateOf<PdfDocument?>(null) }
     var hidingFolder by remember { mutableStateOf<LibraryFolder?>(null) }
     var choosingFlag by remember { mutableStateOf(false) }
-    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+    var forgettingRecent by remember { mutableStateOf<RecentDocument?>(null) }
+    val names by viewModel.names.collectAsStateWithLifecycle()
     val flag by viewModel.flag.collectAsStateWithLifecycle()
     val updateWaiting by viewModel.updateWaiting.collectAsStateWithLifecycle()
 
@@ -219,7 +221,7 @@ fun LibraryScreen(
         // 24dp taller than it asks to be.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -240,6 +242,18 @@ fun LibraryScreen(
                     // when you know you have added a file, which is exactly the
                     // kind of thing that belongs behind the menu rather than
                     // permanently beside the app's name.
+                    // Rescanning has come out of the menu. It was put there on
+                    // the grounds that it is something you do once and forget,
+                    // and that turned out to be wrong in the one case that
+                    // matters: a file has just been added to the phone and is
+                    // not in the library, which is precisely when nobody wants
+                    // to go looking through a menu for the word "rescan".
+                    IconButton(onClick = viewModel::refresh, enabled = !state.isScanning) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.library_rescan),
+                        )
+                    }
                     SettingsButton(
                         updateWaiting = updateWaiting,
                         onClick = onOpenSettings,
@@ -247,10 +261,8 @@ fun LibraryScreen(
                     LibraryMenu(
                         currentSort = state.sort,
                         layout = layout,
-                        isScanning = state.isScanning,
                         onSortChange = viewModel::onSortChange,
                         onToggleLayout = viewModel::onToggleLayout,
-                        onRescan = viewModel::refresh,
                     )
                 },
             )
@@ -309,7 +321,7 @@ fun LibraryScreen(
                 state = state,
                 layout = layout,
                 tagsByDocument = tagsByDocument,
-                customNames = customNames,
+                names = names,
                 folderNameByDocument = folderNameByDocument,
                 progress = progress,
                 continueReading = continueReading,
@@ -317,18 +329,7 @@ fun LibraryScreen(
                 onOpenSources = { sourcesSheetFor = "" },
                 onAddSource = { showAddSource = true },
                 onContinue = { recent -> onOpenReading(recent.uriString, recent.displayName) },
-                onForgetRecent = { recent ->
-                    viewModel.onForgetRecent(recent.uriString)
-                    scope.launch {
-                        val result = snackbarHostState.showSnackbar(
-                            message = recentRemoved,
-                            actionLabel = undoLabel,
-                        )
-                        if (result == SnackbarResult.ActionPerformed) {
-                            viewModel.onRestoreRecent(recent)
-                        }
-                    }
-                },
+                onForgetRecent = { recent -> forgettingRecent = recent },
                 onSeeHistory = onOpenHistory,
                 onOpenFolder = viewModel::onOpenFolder,
                 onHideFolder = { hidingFolder = it },
@@ -340,7 +341,7 @@ fun LibraryScreen(
                 // name for a PDF is the one on the reader's app bar. Everything
                 // else about the document is already on the screen behind it.
                 onOpenDocument = { document ->
-                    val named = customNames[document.uriString]
+                    val named = names.customName(document.uriString)
                     if (named == null) {
                         onOpenDocument(document)
                     } else {
@@ -417,8 +418,8 @@ fun LibraryScreen(
 
     renaming?.let { document ->
         DocumentNameDialog(
-            current = customNames[document.uriString] ?: document.title,
-            hasCustomName = document.uriString in customNames,
+            current = names.titleFor(document.uriString, document.displayName),
+            hasCustomName = names.isRenamed(document.uriString),
             onDismiss = { renaming = null },
             onConfirm = { name ->
                 viewModel.onRenameDocument(document, name)
@@ -442,6 +443,49 @@ fun LibraryScreen(
             },
             dismissButton = {
                 TextButton(onClick = { hidingFolder = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    // Asked rather than done. Holding a card on this shelf used to forget it on
+    // the spot, with an undo in a snackbar — which is the right shape for an
+    // action somebody meant, and the wrong one for a gesture nobody was aiming
+    // for. A shelf whose whole purpose is being tapped without looking is a
+    // shelf where a long press is very often a tap that lingered, and the undo
+    // only helps the reader who noticed the message before it went.
+    forgettingRecent?.let { recent ->
+        AlertDialog(
+            onDismissRequest = { forgettingRecent = null },
+            title = { Text(stringResource(R.string.recent_forget_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.recent_forget_body,
+                        names.titleFor(recent.uriString, recent.displayName),
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        forgettingRecent = null
+                        viewModel.onForgetRecent(recent.uriString)
+                        scope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = recentRemoved,
+                                actionLabel = undoLabel,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                viewModel.onRestoreRecent(recent)
+                            }
+                        }
+                    },
+                ) { Text(stringResource(R.string.recent_forget_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { forgettingRecent = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -777,8 +821,8 @@ private fun LibraryBody(
     state: LibraryUiState,
     layout: LibraryLayout,
     tagsByDocument: Map<String, List<DocumentTag>>,
-    /** The names the reader gave PDFs, keyed by URI. Empty for most of them. */
-    customNames: Map<String, String>,
+    /** What every PDF is called. See [com.david.llegeix.data.source.DocumentNames]. */
+    names: DocumentNames,
     /** The user's folder each PDF is filed in, for the row's detail line. */
     folderNameByDocument: Map<String, String>,
     /** How far through each opened document the reader is, keyed by URI. */
@@ -845,6 +889,7 @@ private fun LibraryBody(
         state.isEmptyAfterScan -> Column(modifier = modifier) {
             LibraryShelves(
                 state = state,
+                names = names,
                 continueReading = continueReading,
                 onViewChange = onViewChange,
                 onOpenSources = onOpenSources,
@@ -876,6 +921,7 @@ private fun LibraryBody(
         state.isFilteredToNothing -> Column(modifier = modifier) {
             LibraryShelves(
                 state = state,
+                names = names,
                 continueReading = continueReading,
                 onViewChange = onViewChange,
                 onOpenSources = onOpenSources,
@@ -912,6 +958,7 @@ private fun LibraryBody(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 LibraryShelves(
                     state = state,
+                    names = names,
                     continueReading = continueReading,
                     onViewChange = onViewChange,
                     onOpenSources = onOpenSources,
@@ -948,7 +995,7 @@ private fun LibraryBody(
             items(state.documents, key = { it.uriString }) { document ->
                 DocumentCell(
                     document = document,
-                    title = customNames[document.uriString] ?: document.title,
+                    title = names.titleFor(document.uriString, document.displayName),
                     isBookmarked = state.isBookmarked(document),
                     isReadLater = state.isReadLater(document),
                     tags = tagsByDocument[document.uriString].orEmpty(),
@@ -971,6 +1018,7 @@ private fun LibraryBody(
             item {
                 LibraryShelves(
                     state = state,
+                    names = names,
                     continueReading = continueReading,
                     onViewChange = onViewChange,
                     onOpenSources = onOpenSources,
@@ -1002,7 +1050,7 @@ private fun LibraryBody(
             items(state.documents, key = { it.uriString }) { document ->
                 DocumentRow(
                     document = document,
-                    title = customNames[document.uriString] ?: document.title,
+                    title = names.titleFor(document.uriString, document.displayName),
                     isBookmarked = state.isBookmarked(document),
                     isReadLater = state.isReadLater(document),
                     tags = tagsByDocument[document.uriString].orEmpty(),
@@ -1034,6 +1082,7 @@ private fun LibraryBody(
 @Composable
 private fun LibraryShelves(
     state: LibraryUiState,
+    names: DocumentNames,
     continueReading: List<RecentDocument>,
     onViewChange: (LibraryView) -> Unit,
     onOpenSources: () -> Unit,
@@ -1055,6 +1104,7 @@ private fun LibraryShelves(
         if (showsContinue) {
             ContinueReadingRow(
                 entries = continueReading,
+                names = names,
                 onOpen = onContinue,
                 onForget = onForgetRecent,
                 onSeeAll = onSeeHistory,
@@ -1314,28 +1364,22 @@ private fun FolderChoiceRow(
 }
 
 /**
- * Sort order, how the library is drawn, and the way into source management.
+ * How the library is drawn, and in what order.
  *
- * Adding folders and turning on the device-wide scan used to sit permanently
- * above the list. They are things you do once and then forget, so they have
- * moved behind this menu and into
- * [com.david.llegeix.ui.sources.SourcesScreen], leaving the library itself as
- * just the documents.
- *
- * The menu is read top to bottom as three questions getting smaller: where the
- * documents come from, how they are drawn, and in what order. The divider is
- * there because the sort options are a set of alternatives and the items above
- * them are not, and a list where everything looks equally clickable is a list
- * you have to read twice.
+ * Two questions and nothing else now. Rescanning has moved out to the app bar,
+ * next to the gear, because it is the one thing in here that is pressed in
+ * answer to a problem — "I just put a file on this phone and it is not
+ * showing" — and an answer to a problem should not be behind a menu. The
+ * divider is there because the sort options are a set of alternatives and the
+ * item above them is not, and a list where everything looks equally clickable
+ * is a list you have to read twice.
  */
 @Composable
 private fun LibraryMenu(
     currentSort: LibrarySort,
     layout: LibraryLayout,
-    isScanning: Boolean,
     onSortChange: (LibrarySort) -> Unit,
     onToggleLayout: () -> Unit,
-    onRescan: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -1377,17 +1421,6 @@ private fun LibraryMenu(
                 },
                 onClick = {
                     onToggleLayout()
-                    expanded = false
-                },
-            )
-            DropdownMenuItem(
-                leadingIcon = { MenuIcon(Icons.Default.Refresh) },
-                text = { Text(stringResource(R.string.library_rescan)) },
-                // A scan already running is the one case where the menu would
-                // otherwise accept a tap and do nothing with it.
-                enabled = !isScanning,
-                onClick = {
-                    onRescan()
                     expanded = false
                 },
             )

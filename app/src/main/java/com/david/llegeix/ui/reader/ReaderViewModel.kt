@@ -14,6 +14,7 @@ import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
 import com.david.llegeix.data.settings.PageTint
+import com.david.llegeix.pdf.PageInvert
 import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
@@ -630,19 +631,45 @@ class ReaderViewModel(
         }
     }
 
-    /** Null when the page could not be rendered; the UI shows a placeholder. */
+    /**
+     * Null when the page could not be rendered; the UI shows a placeholder.
+     *
+     * Inverting happens here rather than as a colour filter over the drawn
+     * page, and that is the difference between a dark mode that is readable and
+     * one that turns every photograph into an X-ray. A `ColorFilter` is a
+     * matrix applied to every pixel with no exceptions: it has no way of being
+     * told that this rectangle is a picture. [PageInvert] does — it finds them
+     * and inverts around them — but it needs the pixels, so it has to run
+     * before the bitmap reaches the screen.
+     *
+     * Sepia stays a filter, because warming a photograph is a reasonable thing
+     * to do to a photograph.
+     */
     suspend fun renderPage(index: Int, widthPx: Int): Bitmap? {
         val active = renderer ?: return null
         val crop = _uiState.value.cropMargins
+        val invert = _uiState.value.pageTint == PageTint.INVERT
         // The crop is part of the key as well as being flushed on the toggle:
         // a page rendered during the change would otherwise be filed under the
-        // key of the other setting.
-        val key = "$index@$widthPx@$crop"
+        // key of the other setting. The same goes for the inversion, which is
+        // now a different bitmap rather than the same one drawn differently.
+        val plainKey = "$index@$widthPx@$crop"
+        val key = if (invert) "$plainKey@dark" else plainKey
         pageCache.get(key)?.let { return it }
 
-        return runCatchingCancellable { active.renderPage(index, widthPx, crop) }
-            .onSuccess { pageCache.put(key, it) }
-            .getOrNull()
+        val plain = pageCache.get(plainKey)
+            ?: runCatchingCancellable { active.renderPage(index, widthPx, crop) }
+                .getOrNull()?.also { pageCache.put(plainKey, it) }
+            ?: return null
+
+        if (!invert) return plain
+        // A full pass over a page-sized array, so off the main thread — and
+        // cached, so turning back to a page already seen costs nothing.
+        val inverted = withContext(Dispatchers.Default) {
+            runCatchingCancellable { PageInvert.invertKeepingPictures(plain) }.getOrNull()
+        } ?: return plain
+        pageCache.put(key, inverted)
+        return inverted
     }
 
     /**

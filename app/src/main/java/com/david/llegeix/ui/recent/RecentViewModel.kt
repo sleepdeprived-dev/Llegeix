@@ -10,6 +10,7 @@ import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.RecentDocument
+import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.data.source.LibraryDataRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,8 +36,8 @@ class RecentViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** The names the reader has given PDFs, so the history calls them the same. */
-    val customNames: StateFlow<Map<String, String>> = libraryData.observeCustomNames()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    val names: StateFlow<DocumentNames> = libraryData.observeDocumentNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DocumentNames.Empty)
 
     val recents: StateFlow<List<RecentDocument>> = libraryData.observeRecent()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

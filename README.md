@@ -42,8 +42,12 @@ does both after bumping the version in `app/build.gradle.kts`.
   is switched off the row reads "31 of 48 PDFs shown", because a library quietly
   missing a folder otherwise looks exactly like a library showing everything.
   Holding a folder in the library offers to stop showing it, which is the same
-  decision reached from the folder it is about. Nothing here deletes anything
-  from the phone.
+  decision reached from the folder it is about — and it is a decision the app
+  remembers: a hidden folder stays in the list, unticked, and ticking it brings
+  its documents straight back. Giving a folder back for good is a separate
+  choice in the same dialog, because it is a different thing: the permission is
+  released and the folder would have to be found in the system picker again.
+  Nothing here deletes anything from the phone.
 - **Browsing** — the library is a small file manager over the folders the PDFs
   are already in: folders first with a count of everything below them, then the
   documents that sit in this folder, with a path along the top and the back
@@ -106,7 +110,9 @@ does both after bumping the version in `app/build.gradle.kts`.
   changes what *Llegeix* calls it and nothing else: the file in Downloads keeps
   its own name, because the app holds a read-only grant on it and has no
   business writing to it. The dialog says so, and clearing the field gives the
-  file's own name back.
+  file's own name back. The name is one fact, held in one place and asked for by
+  every screen that draws a title — including the search, so a book renamed can
+  be found by the name it was given.
 - **Translation** — press and hold a word to translate it with ML Kit's on-device
   models; keep holding and drag to take a whole phrase, which comes back
   translated, broken down word by word, and set in the line it came from. The
@@ -189,6 +195,20 @@ does both after bumping the version in `app/build.gradle.kts`.
   disagree with what you saw. Undo has a redo beside it, the page can be
   darkened without darkening the app, and the documents and recordings of a
   paper can be renamed — inside the app, as everywhere else in Llegeix.
+- **Typing on a paper** — an answer is a text box on the page, not the output
+  of a dialog. Tap where it goes and it appears there with a cursor in it, at
+  the size and in the place it will actually print; then it can be dragged,
+  turned, made bigger or smaller, and deleted, the way a text object behaves in
+  any drawing program. It used to be a modal that covered the page while you
+  typed blind into a field and found out afterwards whether the words fitted.
+- **Dark pages keep their pictures** — inverting a page is not a colour filter
+  any more. A filter is a matrix over every pixel with no exceptions, which is
+  why dark mode used to turn every photograph in a book, and every diagram on a
+  listening paper, into a negative of itself. The page is now inverted as a
+  bitmap by `PageInvert`, which finds the pictures by looking at the pixels —
+  printed text sits on paper and paper is nearly white, and a photograph is not
+  — and leaves them alone. Text goes light-on-dark; the illustrations stay
+  illustrations.
 - **Somewhere to write the essay** — a writing exam needs blank paper, and the
   honest form of that is more paper at the back of the same booklet rather than
   a notes screen with its own navigation. Adding a page appends a real blank PDF
@@ -197,6 +217,12 @@ does both after bumping the version in `app/build.gradle.kts`.
   on the printed pages. One button in the bar goes to the blank pages and back
   again, landing on the question you left rather than at page one — which is the
   whole reason for it being inside the exam instead of beside it.
+
+  On a blank page it behaves like a document: asking for one puts you on it with
+  the text tool in hand and the keyboard up, typing runs down the page and wraps
+  as you go, and switching to the pen sketches over it. Turning back onto a
+  printed page puts the pen away again, so the next tap on a question does not
+  plant a text box in it.
 - **Listening** — the bar above the page has a scrubber rather than a progress
   line: drag it, or tap anywhere along it, and the recording goes there. A
   listening exam is fifteen seconds played four times, and until this the only
@@ -269,6 +295,15 @@ printed on that line only when it is not the obvious one. The same reasoning
 retired the read-later chip, which had been sitting among the two chips that
 decide how the library is arranged while being a shelf rather than an
 arrangement.
+
+And a fourth, which arrived with the essay pages: **the further a control is
+from the thing it changes, the worse it is, and a modal is infinitely far.**
+Typing an answer used to mean a dialog over the page: you typed blind, pressed
+a button, and found out afterwards whether the words fitted the gap. It is now
+a box on the page with a cursor in it. The same reasoning moved rescanning out
+of the overflow menu and onto the app bar, put the choice of translation
+language next to the word being translated rather than in Configuració, and put
+the two flags behind the flag.
 
 There were five tabs, three of them re-cuts of the same documents. There are now
 four: the books, the language, what you set aside, and the papers you sit.

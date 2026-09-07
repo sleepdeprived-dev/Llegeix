@@ -2,6 +2,7 @@ package com.david.llegeix.ui.exams
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,7 +32,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -52,13 +54,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.ExamWithProgress
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.width
-import com.david.llegeix.ui.common.CoverAspectRatio
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.david.llegeix.ui.common.EmptyState
-import com.david.llegeix.ui.common.PdfCover
-import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.ui.common.MenuIcon
+import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import com.david.llegeix.ui.folders.FolderNameDialog
@@ -116,7 +116,7 @@ fun ExamsScreen(
         // 24dp taller than it asks to be.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -158,7 +158,6 @@ fun ExamsScreen(
                     items(exams, key = { it.id }) { exam ->
                         ExamRow(
                             exam = exam,
-                            coverUri = exam.coverFileName?.let(viewModel::coverUriFor),
                             onOpen = { onOpenExam(exam.id) },
                             onRename = { renaming = exam },
                             onDelete = { pendingDelete = exam },
@@ -248,7 +247,6 @@ fun ExamsScreen(
 @Composable
 private fun ExamRow(
     exam: ExamWithProgress,
-    coverUri: String?,
     onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -262,19 +260,36 @@ private fun ExamRow(
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The paper's own front page, exactly as the library draws a book's.
-        // A list of exams without them was a column of filenames, and a column
-        // of filenames from the same course looks like one row repeated.
-        if (coverUri != null) {
-            PdfCover(
-                uriString = coverUri,
-                width = ListCoverWidth,
-                modifier = Modifier
-                    .width(ListCoverWidth)
-                    .aspectRatio(CoverAspectRatio)
-                    .padding(end = Space.lg),
+        // A glyph rather than the paper's own front page.
+        //
+        // The covers were rendered from the PDF, which sounded right — it is
+        // what the library does for a book — and looked wrong for a whole row
+        // of them. An exam's first page is a title block on white: at 46dp it
+        // is a grey smudge with a lighter grey smudge on it, so a column of
+        // papers from the same course came out as a column of identical grey
+        // smudges. The cover was doing none of the telling-apart it costs a
+        // document open per row to draw.
+        //
+        // A page glyph in the muted ink says "this is a paper" at a glance,
+        // costs nothing, matches the single-colour marks the rest of the app
+        // uses, and leaves the *title* — which does tell them apart — as the
+        // only thing on the row competing for attention.
+        Box(
+            modifier = Modifier
+                .size(ExamTileSize)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(end = 0.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_page),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
             )
         }
+        Spacer(modifier = Modifier.width(Space.lg))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -319,6 +334,15 @@ private fun ExamRow(
         }
     }
 }
+
+/**
+ * The tile beside a paper's name.
+ *
+ * The same 40dp disc-and-glyph the library gives a folder and a collection, so
+ * the three read as three kinds of the same object rather than as three
+ * unrelated list designs.
+ */
+private val ExamTileSize = 40.dp
 
 /** "12 pages · 2 attempts · 3 recordings", with the parts that apply. */
 @Composable

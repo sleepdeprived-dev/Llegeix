@@ -69,7 +69,6 @@ import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.data.practice.Leitner
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
-import com.david.llegeix.util.pdfTitle
 
 /**
  * The reader's page bookmarks, as one pane of the Saved tab.
@@ -91,6 +90,7 @@ fun PagesPane(
 ) {
     val pages by viewModel.pageBookmarks.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
+    val names by viewModel.names.collectAsStateWithLifecycle()
 
     if (pages.isEmpty()) {
         EmptyState(
@@ -108,7 +108,7 @@ fun PagesPane(
                 BookmarkRow(
                     documentUri = bookmark.documentUri,
                     tags = tagsByDocument[bookmark.documentUri].orEmpty(),
-                    title = pdfTitle(bookmark.displayName),
+                    title = names.titleFor(bookmark.documentUri, bookmark.displayName),
                     subtitle = stringResource(
                         R.string.bookmarks_page_detail,
                         bookmark.label?.let { label ->
@@ -148,6 +148,7 @@ fun WordsPane(
     val wordQuery by viewModel.wordQuery.collectAsStateWithLifecycle()
     val wordsAlphabetical by viewModel.wordsAlphabetical.collectAsStateWithLifecycle()
     val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
+    val names by viewModel.names.collectAsStateWithLifecycle()
     val dueCount by viewModel.dueCount.collectAsStateWithLifecycle()
     val savedPerDay by viewModel.savedPerDay.collectAsStateWithLifecycle()
 
@@ -193,6 +194,9 @@ fun WordsPane(
                 items(visibleWords, key = { it.id }) { word ->
                     SavedWordRow(
                         word = word,
+                        source = word.documentUri?.let {
+                            names.titleFor(it, word.displayName.orEmpty())
+                        },
                         onOpen = {
                             val uri = word.documentUri
                             if (uri != null) {
@@ -431,6 +435,8 @@ private fun WordControls(
 @Composable
 private fun SavedWordRow(
     word: WordBookmarkEntity,
+    /** What the document is called now, or null for a word from the dictionary. */
+    source: String?,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -590,7 +596,7 @@ private fun SavedWordRow(
             } else {
                 stringResource(
                     R.string.words_source,
-                    pdfTitle(word.displayName.orEmpty()),
+                    source.orEmpty(),
                     word.pageIndex + 1,
                     word.lineNumber,
                 )
@@ -757,11 +763,11 @@ internal fun SavedDocumentDialogs(
 ) {
     val allTags by viewModel.tags.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
-    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+    val names by viewModel.names.collectAsStateWithLifecycle()
 
     tagsFor?.let { document ->
         TagPickerDialog(
-            documentTitle = customNames[document.uriString] ?: pdfTitle(document.displayName),
+            documentTitle = names.titleFor(document.uriString, document.displayName),
             allTags = allTags,
             selectedIds = tagsByDocument[document.uriString].orEmpty().map { it.id }.toSet(),
             onToggle = { viewModel.onToggleTag(document.uriString, document.displayName, it) },
@@ -777,8 +783,8 @@ internal fun SavedDocumentDialogs(
 
     renaming?.let { document ->
         SavedNameDialog(
-            current = customNames[document.uriString] ?: pdfTitle(document.displayName),
-            hasCustomName = document.uriString in customNames,
+            current = names.titleFor(document.uriString, document.displayName),
+            hasCustomName = names.isRenamed(document.uriString),
             onDismiss = onDismissRename,
             onConfirm = { name ->
                 viewModel.onRenameDocument(document.uriString, document.displayName, name)

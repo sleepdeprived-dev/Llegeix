@@ -10,6 +10,7 @@ import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.TagEntity
+import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.data.source.LibraryDataRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,8 +38,8 @@ class FolderDetailViewModel(
      * from a collection is the same tag the library will draw on the same row a
      * moment later.
      */
-    val customNames: StateFlow<Map<String, String>> = libraryData.observeCustomNames()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    val names: StateFlow<DocumentNames> = libraryData.observeDocumentNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DocumentNames.Empty)
 
     val tags: StateFlow<List<TagEntity>> = libraryData.observeTags()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

@@ -40,8 +40,8 @@
     <string name="sources_explainer">Everything the library shows comes from here. Unticking a folder hides it from the app; nothing is ever deleted from your phone.</string>
     <string name="sources_scan_paused">Switched off. Your PDFs stay where they are.</string>
     <string name="sources_count_partial">%1$d of %2$d PDFs shown</string>
-    <string name="sources_remove_title">Stop using %1$s?</string>
-    <string name="sources_remove_body">The app forgets this folder and the PDFs in it disappear from the library. The folder and its files stay on your phone.</string>
+    <string name="sources_remove_title">%1$s</string>
+    <string name="sources_remove_body">Hiding it takes its PDFs out of the library and keeps the folder in this list, unticked — tick it again and they come straight back.\n\nForgetting it gives the permission back, so the folder leaves this list altogether and you would have to find it again in your files.\n\nNeither deletes anything from your phone.</string>
     <string name="sources_remove_confirm">Stop using it</string>
     <!-- One source, collapsed: "48 PDFs · 12 folders". -->
     <plurals name="sources_folder_count">
@@ -562,9 +562,6 @@
     <string name="exam_next_page">Next page</string>
     <string name="exam_open_failed_title">This exam could not be opened</string>
     <string name="exam_open_failed_body">The copy the app made may have been damaged. Delete this exam and import the paper again.</string>
-    <string name="exam_text_hint">Your answer</string>
-    <string name="exam_text_title">Type an answer</string>
-    <string name="exam_text_place">Place</string>
     <string name="exam_finish">Mark as finished</string>
     <string name="exam_unfinish">Mark as unfinished</string>
     <string name="exam_export">Save as a PDF</string>
@@ -667,4 +664,23 @@
 
     <string name="tags_rename">Rename tag %1$s</string>
     <string name="words_open_source">Go to where it was saved</string>
+
+    <!-- ================= v4.0 ================= -->
+
+    <!-- Forgetting one entry of the reading history. -->
+    <string name="recent_forget_title">Forget this one?</string>
+    <string name="recent_forget_body">%1$s comes off the shelf and out of your reading history. The PDF and everything in it stay exactly where they are.</string>
+    <string name="recent_forget_confirm">Forget it</string>
+
+    <!-- Two different things somebody can mean by removing a source. -->
+    <string name="sources_hide_confirm">Hide it</string>
+    <string name="sources_forget_confirm">Forget it</string>
+
+    <!-- The exam workspace: text boxes, and the blank pages. -->
+    <string name="exam_text_resize">Drag to resize</string>
+    <string name="exam_text_rotate">Drag to turn</string>
+    <string name="exam_text_delete">Delete this text</string>
+    <string name="exam_text_placeholder">Type here</string>
+    <string name="exam_notes_hint">Tap to start writing. Switch to the pen to sketch.</string>
+
 </resources>

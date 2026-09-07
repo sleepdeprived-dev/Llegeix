@@ -214,19 +214,26 @@ fun SourcesSheet(
         AlertDialog(
             onDismissRequest = { removing = null },
             title = { Text(stringResource(R.string.sources_remove_title, folder.label)) },
+            // Two ways out, and the difference between them spelled out,
+            // because they are not degrees of the same thing. Hiding is
+            // reversible from this very list; forgetting means finding the
+            // folder in the system picker again.
             text = { Text(stringResource(R.string.sources_remove_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.onRemoveSource(folder)
+                        viewModel.onSetSourceVisible(folder.label, false)
                         removing = null
                     },
-                ) { Text(stringResource(R.string.sources_remove_confirm)) }
+                ) { Text(stringResource(R.string.sources_hide_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { removing = null }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
+                TextButton(
+                    onClick = {
+                        viewModel.onForgetSource(folder)
+                        removing = null
+                    },
+                ) { Text(stringResource(R.string.sources_forget_confirm)) }
             },
         )
     }

@@ -165,13 +165,20 @@ class SourcesViewModel(
     }
 
     /**
-     * Give a source back.
+     * Give a source back for good.
      *
      * The grant is released and the decisions made inside it are forgotten,
      * because keeping them would silently reapply to a folder added again
      * later, which is a decision about a source that no longer exists.
+     *
+     * This is the heavier of the two things somebody might mean by "remove",
+     * and it is now the rarer one: unticking a source hides it and keeps it in
+     * this list, which is almost always what is wanted, and the dialog in front
+     * of this says so. What it costs is that the folder has to be found in the
+     * system picker again — there is nothing left in the app that knows where
+     * it was.
      */
-    fun onRemoveSource(folder: GrantedFolder) = viewModelScope.launch {
+    fun onForgetSource(folder: GrantedFolder) = viewModelScope.launch {
         repository.removeFolder(folder.treeUri)
         libraryData.clearFolderRules(folder.label)
         refresh()

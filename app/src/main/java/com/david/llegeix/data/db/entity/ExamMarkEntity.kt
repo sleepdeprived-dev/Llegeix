@@ -135,6 +135,17 @@ data class ExamMarkEntity(
     val checked: Boolean = false,
 
     /**
+     * How far a text box is turned, in degrees clockwise about its own centre.
+     *
+     * Only text has one. A stroke is already the shape it was drawn in — you
+     * turn a stroke by drawing it turned — and a tick is a tick at any angle.
+     * A typed answer is the one mark that has to fit a box somebody else
+     * printed, and printed answer boxes on a scanned paper are not always
+     * square to the page.
+     */
+    val rotation: Float = 0f,
+
+    /**
      * Draw order, and the order the undo stack pops in.
      *
      * A counter rather than the timestamp, because two strokes made in the same

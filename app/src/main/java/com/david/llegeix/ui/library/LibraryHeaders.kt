@@ -37,10 +37,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.RecentDocument
+import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.Space
-import com.david.llegeix.util.pdfTitle
 import kotlin.math.roundToInt
 
 /**
@@ -152,6 +152,7 @@ private fun AddSourceButton(onClick: () -> Unit) {
 @Composable
 fun ContinueReadingRow(
     entries: List<RecentDocument>,
+    names: DocumentNames,
     onOpen: (RecentDocument) -> Unit,
     onForget: (RecentDocument) -> Unit,
     onSeeAll: () -> Unit,
@@ -181,6 +182,7 @@ fun ContinueReadingRow(
             items(entries, key = { it.uriString }) { entry ->
                 ContinueCard(
                     entry = entry,
+                    title = names.titleFor(entry.uriString, entry.displayName),
                     onClick = { onOpen(entry) },
                     onLongClick = { onForget(entry) },
                 )
@@ -201,6 +203,7 @@ fun ContinueReadingRow(
 @Composable
 private fun ContinueCard(
     entry: RecentDocument,
+    title: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -235,7 +238,7 @@ private fun ContinueCard(
                 .padding(start = Space.md),
         ) {
             Text(
-                text = pdfTitle(entry.displayName),
+                text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 2,

@@ -14,6 +14,7 @@ import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
+import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.data.source.LibraryDataRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -194,8 +195,8 @@ class BookmarksViewModel(
     val tags: StateFlow<List<TagEntity>> = libraryData.observeTags()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val customNames: StateFlow<Map<String, String>> = libraryData.observeCustomNames()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    val names: StateFlow<DocumentNames> = libraryData.observeDocumentNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DocumentNames.Empty)
 
     fun onToggleTag(uriString: String, displayName: String, tag: TagEntity) =
         viewModelScope.launch { libraryData.toggleTag(uriString, displayName, tag.id) }

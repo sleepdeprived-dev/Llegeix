@@ -35,8 +35,8 @@
     <string name="sources_explainer">Tot el que mostra la biblioteca ve d\'aquí. Si desmarques una carpeta, l\'aplicació deixa de mostrar-la; no s\'esborra mai res del telèfon.</string>
     <string name="sources_scan_paused">Desactivat. Els teus PDF es queden on són.</string>
     <string name="sources_count_partial">Es mostren %1$d PDF de %2$d</string>
-    <string name="sources_remove_title">Vols deixar d\'utilitzar %1$s?</string>
-    <string name="sources_remove_body">L\'aplicació s\'oblida d\'aquesta carpeta i els PDF que conté desapareixen de la biblioteca. La carpeta i els fitxers es queden al telèfon.</string>
+    <string name="sources_remove_title">%1$s</string>
+    <string name="sources_remove_body">Si l\'amagues, els seus PDF surten de la biblioteca i la carpeta es queda en aquesta llista, desmarcada — torna-la a marcar i tornen a aparèixer.\n\nSi l\'oblides, es retorna el permís, la carpeta desapareix de la llista i l\'hauries de tornar a buscar als fitxers.\n\nCap de les dues coses no esborra res del telèfon.</string>
     <string name="sources_remove_confirm">Deixa d\'utilitzar-la</string>
     <!-- Una font, plegada: "48 PDF · 12 carpetes". -->
     <plurals name="sources_folder_count">
@@ -542,9 +542,6 @@
     <string name="exam_next_page">Pàgina següent</string>
     <string name="exam_open_failed_title">Aquest examen no s\'ha pogut obrir</string>
     <string name="exam_open_failed_body">Pot ser que la còpia que va fer l\'aplicació estigui malmesa. Suprimeix aquest examen i torna a importar la prova.</string>
-    <string name="exam_text_hint">La teva resposta</string>
-    <string name="exam_text_title">Escriu una resposta</string>
-    <string name="exam_text_place">Col\u00b7loca</string>
     <string name="exam_finish">Marca com a acabat</string>
     <string name="exam_unfinish">Marca com a no acabat</string>
     <string name="exam_export">Desa com a PDF</string>
@@ -647,4 +644,23 @@
 
     <string name="tags_rename">Reanomena l\'etiqueta %1$s</string>
     <string name="words_open_source">Ves on es va desar</string>
+
+    <!-- ================= v4.0 ================= -->
+
+    <!-- Oblidar una entrada de l\'historial de lectura. -->
+    <string name="recent_forget_title">Vols oblidar-lo?</string>
+    <string name="recent_forget_body">%1$s desapareix del prestatge i de l\'historial de lectura. El PDF i tot el que hi ha dins es queden exactament on són.</string>
+    <string name="recent_forget_confirm">Oblida\'l</string>
+
+    <!-- Dues coses diferents que es poden voler dir amb \"treure una font\". -->
+    <string name="sources_hide_confirm">Amaga-la</string>
+    <string name="sources_forget_confirm">Oblida-la</string>
+
+    <!-- L\'espai d\'examen: quadres de text i pàgines en blanc. -->
+    <string name="exam_text_resize">Arrossega per canviar-ne la mida</string>
+    <string name="exam_text_rotate">Arrossega per girar-lo</string>
+    <string name="exam_text_delete">Suprimeix aquest text</string>
+    <string name="exam_text_placeholder">Escriu aquí</string>
+    <string name="exam_notes_hint">Toca per començar a escriure. Canvia al llapis per dibuixar.</string>
+
 </resources>

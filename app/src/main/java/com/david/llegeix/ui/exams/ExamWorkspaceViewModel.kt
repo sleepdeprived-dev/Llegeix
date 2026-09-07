@@ -22,6 +22,7 @@ import com.david.llegeix.data.exam.MarkGeometry
 import android.net.Uri
 import com.david.llegeix.R
 import com.david.llegeix.ui.common.UiText
+import com.david.llegeix.pdf.PageInvert
 import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.TickBox
@@ -139,6 +140,16 @@ data class WorkspaceState(
     val isExporting: Boolean = false,
     /** Whether there is an undone mark waiting to be put back. */
     val canRedo: Boolean = false,
+    /**
+     * The text box the reader has hold of, if any.
+     *
+     * A text box is an object rather than a dialog's output now: it is picked
+     * up, moved, turned, resized and typed into on the page itself, so
+     * something has to remember which one is in hand.
+     */
+    val selectedTextId: Long? = null,
+    /** True when the selected box should open with the keyboard already up. */
+    val editingText: Boolean = false,
 ) {
     val isFinished: Boolean get() = attempt?.finishedAt != null
 
@@ -387,6 +398,20 @@ class ExamWorkspaceViewModel(
         return render(renderer, "p${address.part.id}", address.pageInPart, index, widthPx)
     }
 
+    /**
+     * A page, drawn — and darkened, if that is what the reader has asked for.
+     *
+     * The darkening happens here rather than as a colour filter at draw time,
+     * and that is the whole of the fix for pictures coming out as negatives. A
+     * `ColorFilter` is a matrix applied to every pixel without exception: it
+     * cannot be told that this rectangle is a photograph. Working on the bitmap
+     * can, so [PageInvert] looks at the page, finds the pictures, and inverts
+     * around them.
+     *
+     * The two versions are cached separately, the dark one derived from the
+     * light one, so flipping the switch on a page already drawn costs one pass
+     * over its pixels and flipping back costs nothing at all.
+     */
     private suspend fun render(
         renderer: PdfPageRenderer,
         prefix: String,
@@ -394,13 +419,27 @@ class ExamWorkspaceViewModel(
         globalPage: Int,
         widthPx: Int,
     ): Bitmap? {
-        val key = "$prefix#$pageInDocument@$widthPx"
+        val dark = _state.value.darkPage
+        val plainKey = "$prefix#$pageInDocument@$widthPx"
+        val key = if (dark) "$plainKey!dark" else plainKey
         pageCache.get(key)?.let { return it }
-        // crop = false, always. See the class comment: a cropped bitmap is not
-        // the page the marks were positioned against.
-        return runCatchingCancellable { renderer.renderPage(pageInDocument, widthPx, crop = false) }
-            .onSuccess { pageCache.put(key, it) }
-            .getOrNull()
+
+        val plain = pageCache.get(plainKey)
+            // crop = false, always. See the class comment: a cropped bitmap is
+            // not the page the marks were positioned against.
+            ?: runCatchingCancellable {
+                renderer.renderPage(pageInDocument, widthPx, crop = false)
+            }.getOrNull()?.also { pageCache.put(plainKey, it) }
+            ?: return null
+
+        if (!dark) return plain
+        // Off the main thread: it is a full pass over a page-sized array, which
+        // is milliseconds rather than microseconds.
+        val inverted = withContext(Dispatchers.Default) {
+            runCatchingCancellable { PageInvert.invertKeepingPictures(plain) }.getOrNull()
+        } ?: return plain
+        pageCache.put(key, inverted)
+        return inverted
     }
 
     /**
@@ -432,7 +471,26 @@ class ExamWorkspaceViewModel(
 
     fun onPageChanged(index: Int) {
         if (index == _state.value.currentPage) return
-        _state.update { it.copy(currentPage = index) }
+        // Whatever was in hand belonged to the page that has just left.
+        _state.update { current ->
+            val moved = current.copy(
+                currentPage = index,
+                selectedTextId = null,
+                editingText = false,
+            )
+            // Turning onto blank paper puts the text tool in hand, and turning
+            // off it puts the view tool back. Blank paper is for writing on —
+            // arriving there with the pen selected and having to find the
+            // toolbar first is exactly the friction the blank pages exist to
+            // remove — and carrying the text tool back onto a printed page
+            // would mean the next tap on a question planted a text box in it.
+            when {
+                moved.isOnNotes && !current.isOnNotes -> moved.copy(tool = ExamTool.TEXT)
+                !moved.isOnNotes && current.isOnNotes && moved.tool == ExamTool.TEXT ->
+                    moved.copy(tool = ExamTool.VIEW)
+                else -> moved
+            }
+        }
         refreshTickBoxes()
         // Only the paper's position is remembered. Where the reader had got to
         // in the answer sheet is not where they were working.
@@ -447,6 +505,132 @@ class ExamWorkspaceViewModel(
 
     fun onToggleDarkPage() {
         _state.update { it.copy(darkPage = !it.darkPage) }
+    }
+
+    // ---- Text boxes --------------------------------------------------------
+
+    /**
+     * Take hold of a text box, or let go of the one in hand.
+     *
+     * Selecting is separate from editing on purpose: a box you have selected
+     * can be moved, turned and resized with the keyboard down, which is most of
+     * what is done to a text box after it is written. Editing is one more tap.
+     */
+    fun onSelectText(id: Long?, editing: Boolean = false) {
+        _state.update { it.copy(selectedTextId = id, editingText = editing && id != null) }
+    }
+
+    fun onEditSelectedText() {
+        _state.update { if (it.selectedTextId == null) it else it.copy(editingText = true) }
+    }
+
+    fun onFinishEditing() {
+        _state.update { it.copy(editingText = false) }
+    }
+
+    /**
+     * Put a new text box where the reader pressed, and open it for typing.
+     *
+     * On a printed page the box starts narrow, at the tap, because it is going
+     * into a gap somebody else left. On one of the blank pages at the back it
+     * starts as the whole writing area, because that page *is* the answer —
+     * which is the difference between filling in a form and writing an essay,
+     * and the reason the same tool can do both without a mode switch.
+     */
+    fun onCreateText(x: Float, y: Float) = viewModelScope.launch {
+        val current = _state.value
+        val here = current.here ?: return@launch
+        if (!current.canWrite) return@launch
+        forgetRedo()
+
+        val onBlankPaper = current.isOnNotes
+        val left = if (onBlankPaper) NOTES_MARGIN else x.coerceIn(0f, 1f - MIN_TEXT_WIDTH)
+        val top = if (onBlankPaper) NOTES_MARGIN else y.coerceIn(0f, 0.98f)
+        val boxWidth = if (onBlankPaper) 1f - 2 * NOTES_MARGIN else DEFAULT_TEXT_WIDTH
+        val id = repository.addMark(
+            ExamMarkEntity(
+                attemptId = attemptId,
+                partId = here.part.id,
+                pageIndex = here.pageInPart,
+                kind = MarkKind.TEXT.name,
+                x = left,
+                y = top,
+                width = boxWidth,
+                height = TEXT_SIZE_FRACTION * 1.4f,
+                colorArgb = current.inkColor,
+                size = TEXT_SIZE_FRACTION,
+                text = "",
+            ),
+        )
+        _state.update { it.copy(selectedTextId = id, editingText = true) }
+    }
+
+    /**
+     * Commit what was typed, and the height it turned out to need.
+     *
+     * The height comes from the canvas rather than being guessed here, because
+     * the canvas has the one piece of information that decides it — the size
+     * the page is actually drawn at — and the same measurement draws the frame
+     * round the box. An empty box is deleted rather than kept: a text box with
+     * nothing in it is invisible on the page and impossible to get rid of.
+     */
+    fun onTextEdited(mark: ExamMarkEntity, text: String, heightFraction: Float) =
+        viewModelScope.launch {
+            if (text.isBlank()) {
+                repository.deleteMark(mark.id)
+                // Only if this is still the box in hand. Tapping bare paper
+                // while an empty box is open commits the old one and selects
+                // the new one in the same frame, and clearing the selection
+                // unconditionally here would throw away the new box's
+                // selection a moment after it was made — leaving a box on the
+                // page with no frame round it and no keyboard.
+                _state.update {
+                    if (it.selectedTextId == mark.id) {
+                        it.copy(selectedTextId = null, editingText = false)
+                    } else {
+                        it
+                    }
+                }
+                return@launch
+            }
+            repository.updateMark(mark.copy(text = text, height = heightFraction))
+        }
+
+    /** Moved by dragging it. Kept on the page, so it cannot be lost off an edge. */
+    fun onTextMoved(mark: ExamMarkEntity, x: Float, y: Float) = viewModelScope.launch {
+        repository.updateMark(
+            mark.copy(
+                x = x.coerceIn(-mark.width / 2f, 1f - mark.width / 2f),
+                y = y.coerceIn(-mark.height / 2f, 1f - mark.height / 2f),
+            ),
+        )
+    }
+
+    /**
+     * Scaled by dragging the corner.
+     *
+     * The type size and the box width move together, which is what "make it
+     * bigger" means about a piece of writing. Changing the width alone would be
+     * re-wrapping, and there is a much better control for that: the words.
+     */
+    fun onTextScaled(mark: ExamMarkEntity, scale: Float) = viewModelScope.launch {
+        val factor = scale.coerceIn(MIN_TEXT_SCALE, MAX_TEXT_SCALE)
+        repository.updateMark(
+            mark.copy(
+                size = (mark.size * factor).coerceIn(MIN_TEXT_SIZE, MAX_TEXT_SIZE),
+                width = (mark.width * factor).coerceIn(MIN_TEXT_WIDTH, 1f),
+            ),
+        )
+    }
+
+    /** Turned by dragging the handle above it. */
+    fun onTextRotated(mark: ExamMarkEntity, degrees: Float) = viewModelScope.launch {
+        repository.updateMark(mark.copy(rotation = degrees))
+    }
+
+    fun onDeleteText(mark: ExamMarkEntity) = viewModelScope.launch {
+        repository.deleteMark(mark.id)
+        _state.update { it.copy(selectedTextId = null, editingText = false) }
     }
 
     fun onToggleAnswerKey() {
@@ -524,45 +708,6 @@ class ExamWorkspaceViewModel(
                 points = MarkGeometry.encode(points),
             ),
         )
-    }
-
-    fun onTextPlaced(x: Float, y: Float, text: String) = viewModelScope.launch {
-        val current = _state.value
-        val here = current.here ?: return@launch
-        val trimmed = text.trim()
-        if (trimmed.isEmpty() || !current.canWrite) return@launch
-        forgetRedo()
-        repository.addMark(
-            ExamMarkEntity(
-                attemptId = attemptId,
-                partId = here.part.id,
-                pageIndex = here.pageInPart,
-                kind = MarkKind.TEXT.name,
-                x = x,
-                y = y,
-                // Filled in by the canvas once the text has been measured; the
-                // box is only used for hit-testing, so an estimate is enough.
-                width = trimmed.length * TEXT_SIZE_FRACTION * 0.55f,
-                height = TEXT_SIZE_FRACTION * 1.3f,
-                colorArgb = current.inkColor,
-                size = TEXT_SIZE_FRACTION,
-                text = trimmed,
-            ),
-        )
-    }
-
-    fun onTextEdited(mark: ExamMarkEntity, text: String) = viewModelScope.launch {
-        val trimmed = text.trim()
-        if (trimmed.isEmpty()) {
-            repository.deleteMark(mark.id)
-        } else {
-            repository.updateMark(
-                mark.copy(
-                    text = trimmed,
-                    width = trimmed.length * TEXT_SIZE_FRACTION * 0.55f,
-                ),
-            )
-        }
     }
 
     /**
@@ -699,6 +844,31 @@ class ExamWorkspaceViewModel(
     }
 
     /**
+     * Land on a page of blank paper ready to type.
+     *
+     * Called by the screen once the pager has actually arrived, because until
+     * then there is no page to put a cursor on. A reader who pressed "add a
+     * blank page" has said what they want to do with it in the act of asking
+     * for it, so the keyboard comes up without a further tap — which is the
+     * whole of what "let me type straight away" means.
+     */
+    fun onArrivedOnNotes() = viewModelScope.launch {
+        val current = _state.value
+        if (!current.isOnNotes || current.selectedTextId != null) return@launch
+        val here = current.here ?: return@launch
+        val existing = repository.marks(attemptId).firstOrNull {
+            it.partId == here.part.id &&
+                it.pageIndex == here.pageInPart &&
+                it.kind == MarkKind.TEXT.name
+        }
+        if (existing != null) {
+            _state.update { it.copy(selectedTextId = existing.id, editingText = true) }
+        } else {
+            onCreateText(0f, 0f)
+        }
+    }
+
+    /**
      * Go to the blank pages, or back to where the paper was left.
      *
      * One button rather than two, because it is one thought — *the other part
@@ -803,6 +973,25 @@ class ExamWorkspaceViewModel(
 
         const val MIN_ZOOM = 1f
         const val MAX_ZOOM = 5f
+
+        /** How wide a new box on a printed page starts, as a share of the page. */
+        private const val DEFAULT_TEXT_WIDTH = 0.42f
+
+        /** Narrow enough for one word in a gap, wide enough to still be grabbable. */
+        private const val MIN_TEXT_WIDTH = 0.06f
+
+        /**
+         * The margin the blank pages leave, as a share of the page.
+         *
+         * The same on all four sides and roughly what a word processor uses. A
+         * blank page written edge to edge does not read as a page.
+         */
+        private const val NOTES_MARGIN = 0.07f
+
+        private const val MIN_TEXT_SIZE = 0.008f
+        private const val MAX_TEXT_SIZE = 0.12f
+        private const val MIN_TEXT_SCALE = 0.2f
+        private const val MAX_TEXT_SCALE = 5f
 
         /**
          * A budget for rendered pages, as a share of the heap.

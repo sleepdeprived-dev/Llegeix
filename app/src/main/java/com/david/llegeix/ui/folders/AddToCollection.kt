@@ -49,7 +49,6 @@ import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.Space
-import com.david.llegeix.util.pdfTitle
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -72,6 +71,8 @@ import kotlinx.coroutines.launch
  */
 data class AddCandidate(
     val document: PdfDocument,
+    /** What the reader calls it, which is what the row shows and the search matches. */
+    val title: String,
     val inThisCollection: Boolean,
     val otherCollection: String?,
 )
@@ -112,28 +113,34 @@ class AddToCollectionViewModel(
         _query,
         libraryData.observeFolderAssignments(),
         libraryData.observeFolders(),
-    ) { documents, query, assignments, collections ->
+        libraryData.observeDocumentNames(),
+    ) { documents, query, assignments, collections, names ->
         val namesById = collections.associate { it.id to it.name }
         val needle = query.trim()
         documents
-            .filter { document ->
-                needle.isEmpty() ||
-                    document.displayName.contains(needle, ignoreCase = true) ||
-                    document.parentLabel?.contains(needle, ignoreCase = true) == true
-            }
             .map { document ->
                 val filedIn = assignments[document.uriString]
                 AddCandidate(
                     document = document,
+                    // Resolved once, here, so the row draws it and the search
+                    // matches it without either having to know how a name is
+                    // looked up.
+                    title = names.titleFor(document.uriString, document.displayName),
                     inThisCollection = filedIn == collectionId,
                     otherCollection = filedIn
                         ?.takeIf { it != collectionId }
                         ?.let { namesById[it] },
                 )
             }
+            .filter { candidate ->
+                needle.isEmpty() ||
+                    candidate.title.contains(needle, ignoreCase = true) ||
+                    candidate.document.displayName.contains(needle, ignoreCase = true) ||
+                    candidate.document.parentLabel?.contains(needle, ignoreCase = true) == true
+            }
             .sortedWith(
                 compareByDescending<AddCandidate> { it.inThisCollection }
-                    .thenBy { pdfTitle(it.document.displayName).lowercase() },
+                    .thenBy { it.title.lowercase() },
             )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -325,7 +332,7 @@ private fun CandidateRow(
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = pdfTitle(candidate.document.displayName),
+                text = candidate.title,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

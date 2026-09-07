@@ -382,3 +382,15 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         db.execSQL("ALTER TABLE exam_parts ADD COLUMN isNotes INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * Turned text boxes.
+ *
+ * Zero for every mark that already exists, which is what they all are: text was
+ * placed square to the page because there was no other option.
+ */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE exam_marks ADD COLUMN rotation REAL NOT NULL DEFAULT 0")
+    }
+}

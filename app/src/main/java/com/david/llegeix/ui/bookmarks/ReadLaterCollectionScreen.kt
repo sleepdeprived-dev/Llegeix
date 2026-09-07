@@ -57,7 +57,7 @@ fun ReadLaterCollectionScreen(
 ) {
     val documents by viewModel.readLaterDocuments.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
-    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+    val names by viewModel.names.collectAsStateWithLifecycle()
     var tagsFor by remember { mutableStateOf<DocumentEntity?>(null) }
     var renaming by remember { mutableStateOf<DocumentEntity?>(null) }
 
@@ -113,15 +113,14 @@ fun ReadLaterCollectionScreen(
                     // The same row every other list of set-aside PDFs draws, so
                     // a PDF looks like the same object wherever it is met.
                     BookmarkRow(
-                        title = customNames[document.uriString]
-                            ?: pdfTitle(document.displayName),
+                        title = names.titleFor(document.uriString, document.displayName),
                         subtitle = null,
                         documentUri = document.uriString,
                         tags = tagsByDocument[document.uriString].orEmpty(),
                         onClick = {
                             onOpenDocument(
                                 document.uriString,
-                                customNames[document.uriString] ?: document.displayName,
+                                names.titleFor(document.uriString, document.displayName),
                             )
                         },
                         onEditTags = { tagsFor = document },

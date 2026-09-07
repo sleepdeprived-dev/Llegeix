@@ -67,7 +67,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -132,6 +131,7 @@ import com.david.llegeix.ui.common.DictionaryStatus
 import com.david.llegeix.ui.common.IpaLine
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.TranslationTargetFlags
+import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import kotlin.math.roundToInt
@@ -139,25 +139,6 @@ import kotlin.math.abs
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-/**
- * Inverts a rendered page: light text on a dark ground, without touching the
- * app's own theme.
- *
- * A plain negative rather than anything cleverer. It keeps black text and white
- * paper readable, which is the case that matters, and a diagram inverted is
- * still a legible diagram.
- */
-private val InvertFilter = ColorFilter.colorMatrix(
-    ColorMatrix(
-        floatArrayOf(
-            -1f, 0f, 0f, 0f, 255f,
-            0f, -1f, 0f, 0f, 255f,
-            0f, 0f, -1f, 0f, 255f,
-            0f, 0f, 0f, 1f, 0f,
-        ),
-    ),
-)
 
 /**
  * Warms a page and takes the glare off its white.
@@ -178,11 +159,20 @@ private val SepiaFilter = ColorFilter.colorMatrix(
     ),
 )
 
-/** The filter a tint asks for, or none at all. */
+/**
+ * The filter a tint asks for, or none at all.
+ *
+ * Inverting is deliberately not one of them. A colour filter is a matrix over
+ * every pixel without exception, which is why the inverted page used to turn
+ * every photograph in a book into a negative of itself; it is done to the
+ * bitmap instead, by
+ * [com.david.llegeix.pdf.PageInvert], which can find the pictures and leave
+ * them alone. Warming a photograph, on the other hand, is a perfectly
+ * reasonable thing to do to a photograph, so sepia stays here.
+ */
 private fun filterFor(tint: PageTint): ColorFilter? = when (tint) {
-    PageTint.NONE -> null
+    PageTint.NONE, PageTint.INVERT -> null
     PageTint.SEPIA -> SepiaFilter
-    PageTint.INVERT -> InvertFilter
 }
 
 /** The gutter colour around an inverted page. */
@@ -376,7 +366,7 @@ fun ReaderScreen(
         // 24dp taller than it asks to be.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         // One bar, and only one. The bottom bar this screen used to carry took a
         // second slice out of the page for a toggle that fits in the top row.
         topBar = {
@@ -1107,7 +1097,7 @@ private fun PdfPage(
         // magnified the column is.
         val drawnZoom = if (applyScale) zoom else 1f
 
-        LaunchedEffect(index, widthPx, cropMargins) {
+        LaunchedEffect(index, widthPx, cropMargins, tint) {
             // A page already on screen waits a moment before being redrawn at a
             // new width. In scroll mode the magnification *is* the width of the
             // column, so a pinch walks it through every value in between — and

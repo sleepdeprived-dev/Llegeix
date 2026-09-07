@@ -37,7 +37,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,7 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -67,6 +65,7 @@ import com.david.llegeix.R
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.MenuIcon
+import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import kotlinx.coroutines.launch
@@ -177,12 +176,16 @@ fun ExamWorkspaceScreen(
         if (target >= pageCount) return@LaunchedEffect
         pagerState.animateScrollToPage(target)
         viewModel.onJumpHandled()
+        // Only once the pager has actually arrived. Asking for a cursor on a
+        // page that is still scrolling into view puts the keyboard up over the
+        // page the reader is leaving.
+        viewModel.onArrivedOnNotes()
     }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -349,6 +352,7 @@ fun ExamWorkspaceScreen(
                 userScrollEnabled = !state.tool.takesTheFinger || state.showAnswerKey,
                 beyondViewportPageCount = 1,
             ) { page ->
+                val onThisPage = page == state.currentPage
                 ExamPage(
                     index = page,
                     zoom = state.zoom,
@@ -356,14 +360,32 @@ fun ExamWorkspaceScreen(
                     inkColor = state.inkColor,
                     highlightColor = state.highlightColor,
                     strokeWidth = state.strokeWidth,
-                    marks = if (page == state.currentPage) marks else emptyList(),
-                    tickBoxes = if (page == state.currentPage) tickBoxes else emptyList(),
-                    renderKey = state.showAnswerKey,
+                    marks = if (onThisPage) marks else emptyList(),
+                    tickBoxes = if (onThisPage) tickBoxes else emptyList(),
+                    // Both, because the darkened page is a different bitmap
+                    // rather than the same one under a filter: flipping the
+                    // switch has to send the page back to be drawn again.
+                    renderKey = state.showAnswerKey to state.darkPage,
                     darkPage = state.darkPage,
-                    canWrite = state.canWrite && page == state.currentPage,
+                    canWrite = state.canWrite && onThisPage,
+                    selectedText = if (onThisPage) {
+                        marks.firstOrNull { it.id == state.selectedTextId }
+                    } else {
+                        null
+                    },
+                    editingText = state.editingText,
+                    emptyHint = stringResource(R.string.exam_notes_hint)
+                        .takeIf { onThisPage && state.isOnNotes },
                     render = viewModel::renderPage,
                     onStrokeFinished = viewModel::onStrokeFinished,
-                    onTapWithText = { x, y -> typingAt = x to y },
+                    onCreateText = viewModel::onCreateText,
+                    onSelectText = { viewModel.onSelectText(it?.id) },
+                    onStartEditingText = viewModel::onEditSelectedText,
+                    onTextEdited = viewModel::onTextEdited,
+                    onTextMoved = viewModel::onTextMoved,
+                    onTextScaled = viewModel::onTextScaled,
+                    onTextRotated = viewModel::onTextRotated,
+                    onDeleteText = viewModel::onDeleteText,
                     onTick = viewModel::onTickAt,
                     onErase = viewModel::onErase,
                     onZoomChanged = viewModel::onZoomChanged,
@@ -394,16 +416,6 @@ fun ExamWorkspaceScreen(
                 },
             )
         }
-    }
-
-    typingAt?.let { (x, y) ->
-        TypeAnswerDialog(
-            onDismiss = { typingAt = null },
-            onConfirm = { text ->
-                viewModel.onTextPlaced(x, y, text)
-                typingAt = null
-            },
-        )
     }
 
     if (clearingPage) {
@@ -544,46 +556,59 @@ private fun ExamToolbar(
             }
         }
 
-        // The row below the page counter. The dark-page switch is on it whether
-        // or not the reader is looking at their own work, because a page too
-        // bright to read is too bright to read on the answer sheet as well; the
-        // tools and the two history buttons are only there when there is
-        // something to write on.
+        // The row below the page counter, in two halves: the tools scroll, the
+        // three buttons on the right do not.
+        //
+        // It was one scrolling row, and that was a bug rather than a style —
+        // six tools and three buttons come to more than a phone is wide, so
+        // undo, redo and the dark-page switch went off the end and had to be
+        // scrolled back to. The ones that are always in the same place are the
+        // ones pressed without looking, which is exactly what undo is for.
+        //
+        // The dark-page switch is here whether or not the reader is looking at
+        // their own work, because a page too bright to read is too bright to
+        // read on the answer sheet as well; the tools and the two history
+        // buttons are only there when there is something to write on.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = Space.sm, vertical = Space.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (!state.showAnswerKey) {
-                ExamTool.entries.forEach { tool ->
-                    val selected = state.tool == tool
-                    IconButton(
-                        onClick = { onToolChosen(tool) },
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (selected) {
-                                    MaterialTheme.colorScheme.secondaryContainer
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (!state.showAnswerKey) {
+                    ExamTool.entries.forEach { tool ->
+                        val selected = state.tool == tool
+                        IconButton(
+                            onClick = { onToolChosen(tool) },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (selected) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        Color.Transparent
+                                    },
+                                ),
+                        ) {
+                            Icon(
+                                painter = painterResource(tool.iconRes),
+                                contentDescription = stringResource(tool.labelRes),
+                                tint = if (selected) {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
                                 } else {
-                                    Color.Transparent
+                                    MaterialTheme.colorScheme.onSurfaceVariant
                                 },
-                            ),
-                    ) {
-                        Icon(
-                            painter = painterResource(tool.iconRes),
-                            contentDescription = stringResource(tool.labelRes),
-                            tint = if (selected) {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
+                            )
+                        }
                     }
                 }
             }
-            Box(modifier = Modifier.weight(1f))
             IconButton(
                 onClick = onToggleDarkPage,
                 modifier = Modifier
@@ -597,7 +622,7 @@ private fun ExamToolbar(
                     ),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_display),
+                    painter = painterResource(R.drawable.ic_contrast),
                     contentDescription = stringResource(
                         if (state.darkPage) R.string.exam_light_page else R.string.exam_dark_page,
                     ),
@@ -621,9 +646,8 @@ private fun ExamToolbar(
                 // by accident.
                 IconButton(onClick = onRedo, enabled = state.canRedo) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_undo),
+                        painter = painterResource(R.drawable.ic_redo),
                         contentDescription = stringResource(R.string.exam_redo),
-                        modifier = Modifier.scale(scaleX = -1f, scaleY = 1f),
                     )
                 }
             }
@@ -746,33 +770,6 @@ private fun InkRow(
             }
         }
     }
-}
-
-@Composable
-private fun TypeAnswerDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
-    var text by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.exam_text_title)) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text(stringResource(R.string.exam_text_hint)) },
-                singleLine = false,
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(text) },
-                enabled = text.isNotBlank(),
-            ) { Text(stringResource(R.string.exam_text_place)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
 }
 
 /**

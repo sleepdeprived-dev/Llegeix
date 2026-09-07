@@ -52,7 +52,7 @@ fun BookmarkedCollectionScreen(
 ) {
     val documents by viewModel.bookmarkedDocuments.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
-    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+    val names by viewModel.names.collectAsStateWithLifecycle()
     var tagsFor by remember { mutableStateOf<DocumentEntity?>(null) }
     var renaming by remember { mutableStateOf<DocumentEntity?>(null) }
 
@@ -112,15 +112,14 @@ fun BookmarkedCollectionScreen(
                     // the document's tags and let a PDF be unstarred from the
                     // list. Keeping one list meant keeping the better row.
                     BookmarkRow(
-                        title = customNames[document.uriString]
-                            ?: pdfTitle(document.displayName),
+                        title = names.titleFor(document.uriString, document.displayName),
                         subtitle = null,
                         documentUri = document.uriString,
                         tags = tagsByDocument[document.uriString].orEmpty(),
                         onClick = {
                             onOpenDocument(
                                 document.uriString,
-                                customNames[document.uriString] ?: document.displayName,
+                                names.titleFor(document.uriString, document.displayName),
                             )
                         },
                         onEditTags = { tagsFor = document },

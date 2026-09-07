@@ -119,14 +119,15 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     }
 
     /**
-     * The names the reader has given PDFs, keyed by URI.
+     * What every PDF is called, as one lookup the whole app shares.
      *
-     * A map for the same reason the progress is one: every list already holds
-     * the document it is drawing and only ever asks "what about this one".
+     * A [DocumentNames] rather than a bare map: a name is one fact about a
+     * document, and passing a map around by convention is how half the screens
+     * ended up not consulting it. See that type.
      */
-    fun observeCustomNames(): Flow<Map<String, String>> =
+    fun observeDocumentNames(): Flow<DocumentNames> =
         documents.observeCustomNames().map { rows ->
-            rows.associate { it.uriString to it.customName }
+            DocumentNames(rows.associate { it.uriString to it.customName })
         }
 
     // --- Whole-document bookmarks and read-later -----------------------------

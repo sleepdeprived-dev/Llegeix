@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,8 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -38,7 +38,10 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import com.david.llegeix.data.db.entity.ExamMarkEntity
 import com.david.llegeix.data.db.entity.MarkKind
 import com.david.llegeix.data.exam.MarkGeometry
@@ -100,9 +103,28 @@ fun ExamPage(
      */
     darkPage: Boolean,
     canWrite: Boolean,
+    /** The text box in hand, if one on this page is selected. */
+    selectedText: ExamMarkEntity?,
+    editingText: Boolean,
+    /**
+     * What to say on a blank page nobody has written on yet.
+     *
+     * Null everywhere except an empty sheet of the paper's own blank pages. A
+     * blank page really is blank — there is nothing on it to suggest that
+     * tapping does anything — and one quiet line is the difference between a
+     * feature and a mystery.
+     */
+    emptyHint: String?,
     render: suspend (index: Int, widthPx: Int) -> Bitmap?,
     onStrokeFinished: (List<MarkGeometry.Point>) -> Unit,
-    onTapWithText: (x: Float, y: Float) -> Unit,
+    onCreateText: (x: Float, y: Float) -> Unit,
+    onSelectText: (ExamMarkEntity?) -> Unit,
+    onStartEditingText: () -> Unit,
+    onTextEdited: (ExamMarkEntity, String, Float) -> Unit,
+    onTextMoved: (ExamMarkEntity, Float, Float) -> Unit,
+    onTextScaled: (ExamMarkEntity, Float) -> Unit,
+    onTextRotated: (ExamMarkEntity, Float) -> Unit,
+    onDeleteText: (ExamMarkEntity) -> Unit,
     onTick: (x: Float, y: Float, existing: ExamMarkEntity?) -> Unit,
     onErase: (ExamMarkEntity) -> Unit,
     onZoomChanged: (Float) -> Unit,
@@ -134,12 +156,16 @@ fun ExamPage(
         val currentTool by rememberUpdatedState(tool)
         val currentMarks by rememberUpdatedState(marks)
         val currentBoxes by rememberUpdatedState(tickBoxes)
+        // The page's drawn size in pixels: the text boxes are positioned in
+        // fractions of it, and there is nothing else on screen that knows it.
+        var pageSize by remember { mutableStateOf(IntSize.Zero) }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Space.sm, vertical = Space.sm)
                 .aspectRatio(rendered.width.toFloat() / rendered.height.toFloat())
+                .onSizeChanged { pageSize = it }
                 .graphicsLayer {
                     scaleX = currentZoom
                     scaleY = currentZoom
@@ -152,7 +178,6 @@ fun ExamPage(
                 bitmap = rendered.asImageBitmap(),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                colorFilter = if (darkPage) InvertPage else null,
                 modifier = Modifier
                     .fillMaxSize()
                     .background(if (darkPage) DarkPaper else Color.White),
@@ -168,7 +193,8 @@ fun ExamPage(
                         wet = wet,
                         marks = { currentMarks },
                         onStrokeFinished = onStrokeFinished,
-                        onTapWithText = onTapWithText,
+                        onCreateText = onCreateText,
+                        onSelectText = onSelectText,
                         onTick = onTick,
                         onErase = onErase,
                         boxes = { currentBoxes },
@@ -179,7 +205,16 @@ fun ExamPage(
                 // not a decoration and not a claim that these are all of them.
                 if (tool == ExamTool.TICK) drawTickTargets(tickBoxes)
 
-                drawMarks(marks)
+                // Everything except the box being typed into: while it is
+                // being edited the live field is showing those words, and
+                // painting them underneath as well would double them.
+                drawMarks(
+                    if (editingText && selectedText != null) {
+                        marks.filterNot { it.id == selectedText.id }
+                    } else {
+                        marks
+                    },
+                )
 
                 // The stroke under the finger, drawn in the ink it will be
                 // saved in so that lifting the finger changes nothing visible.
@@ -197,28 +232,41 @@ fun ExamPage(
                     )
                 }
             }
+
+            if (emptyHint != null && marks.isEmpty() && selectedText == null) {
+                Text(
+                    text = emptyHint,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = Space.xxl),
+                )
+            }
+
+            // Above the canvas, so its frame and handles take the touches
+            // rather than the page underneath. Only ever one, because only one
+            // box can be in hand.
+            if (selectedText != null && canWrite && pageSize != IntSize.Zero) {
+                ExamTextBox(
+                    mark = selectedText,
+                    pageWidthPx = pageSize.width.toFloat(),
+                    pageHeightPx = pageSize.height.toFloat(),
+                    editing = editingText,
+                    onStartEditing = onStartEditingText,
+                    onFinishEditing = { text, height ->
+                        onTextEdited(selectedText, text, height)
+                    },
+                    onMove = { x, y -> onTextMoved(selectedText, x, y) },
+                    onScale = { factor -> onTextScaled(selectedText, factor) },
+                    onRotate = { degrees -> onTextRotated(selectedText, degrees) },
+                    onDelete = { onDeleteText(selectedText) },
+                )
+            }
         }
     }
 }
-
-/**
- * A plain negative of the page: black type on white paper becomes white type on
- * black.
- *
- * The same matrix the reader uses on its own pages, and deliberately the same
- * blunt one: it keeps a diagram legible as well as a paragraph, which is what
- * an exam paper is usually half made of.
- */
-private val InvertPage = ColorFilter.colorMatrix(
-    ColorMatrix(
-        floatArrayOf(
-            -1f, 0f, 0f, 0f, 255f,
-            0f, -1f, 0f, 0f, 255f,
-            0f, 0f, -1f, 0f, 255f,
-            0f, 0f, 0f, 1f, 0f,
-        ),
-    ),
-)
 
 /** What an inverted page sits on while it is still loading. */
 private val DarkPaper = Color(0xFF0E0E0E)
@@ -268,7 +316,8 @@ private fun Modifier.drawingGestures(
     wet: SnapshotStateList<MarkGeometry.Point>,
     marks: () -> List<ExamMarkEntity>,
     onStrokeFinished: (List<MarkGeometry.Point>) -> Unit,
-    onTapWithText: (x: Float, y: Float) -> Unit,
+    onCreateText: (x: Float, y: Float) -> Unit,
+    onSelectText: (ExamMarkEntity?) -> Unit,
     onTick: (x: Float, y: Float, existing: ExamMarkEntity?) -> Unit,
     onErase: (ExamMarkEntity) -> Unit,
     boxes: () -> List<TickBox>,
@@ -279,7 +328,13 @@ private fun Modifier.drawingGestures(
             val x = offset.x / size.width
             val y = offset.y / size.height
             when (tool()) {
-                ExamTool.TEXT -> onTapWithText(x, y)
+                // A tap on a box that is already there picks it up; a tap on
+                // bare paper puts a new one down. Both are what a tap means in
+                // every drawing program, and neither needs a mode.
+                ExamTool.TEXT -> {
+                    val existing = marks().textAt(x, y)
+                    if (existing != null) onSelectText(existing) else onCreateText(x, y)
+                }
                 ExamTool.TICK -> {
                     // Snap into a found box when the tap is in one, so a tick
                     // sits squarely rather than wherever the finger landed. A
@@ -353,6 +408,20 @@ private fun List<ExamMarkEntity>.hitTest(x: Float, y: Float): ExamMarkEntity? =
         // Padded, because a hairline stroke is almost impossible to hit exactly
         // and an eraser that misses reads as an eraser that does not work.
         x >= mark.x - HIT_PADDING && x <= mark.x + mark.width + HIT_PADDING &&
+            y >= mark.y - HIT_PADDING && y <= mark.y + mark.height + HIT_PADDING
+    }
+
+/**
+ * The topmost text box under a point.
+ *
+ * Padded like the eraser's test, and for the same reason: an empty or one-word
+ * box is a small target, and a tap that misses it silently makes a second box
+ * on top of the first.
+ */
+private fun List<ExamMarkEntity>.textAt(x: Float, y: Float): ExamMarkEntity? =
+    lastOrNull { mark ->
+        mark.kind == MarkKind.TEXT.name &&
+            x >= mark.x - HIT_PADDING && x <= mark.x + mark.width + HIT_PADDING &&
             y >= mark.y - HIT_PADDING && y <= mark.y + mark.height + HIT_PADDING
     }
 

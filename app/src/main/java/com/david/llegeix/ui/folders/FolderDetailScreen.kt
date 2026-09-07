@@ -86,7 +86,7 @@ fun FolderDetailScreen(
     )
     val documents by viewModel.documents.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
-    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+    val names by viewModel.names.collectAsStateWithLifecycle()
     val allTags by viewModel.tags.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     var tagsFor by remember { mutableStateOf<DocumentEntity?>(null) }
@@ -169,7 +169,10 @@ fun FolderDetailScreen(
                                 onClick = {
                                     onOpenDocument(
                                         document.uriString,
-                                        customNames[document.uriString] ?: document.displayName,
+                                        names.titleFor(
+                                            document.uriString,
+                                            document.displayName,
+                                        ),
                                     )
                                 },
                                 onLongClick = { menuOpen = true },
@@ -194,8 +197,10 @@ fun FolderDetailScreen(
                         Spacer(modifier = Modifier.width(Space.lg))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = customNames[document.uriString]
-                                    ?: pdfTitle(document.displayName),
+                                text = names.titleFor(
+                                    document.uriString,
+                                    document.displayName,
+                                ),
                                 style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
@@ -262,7 +267,7 @@ fun FolderDetailScreen(
 
     tagsFor?.let { document ->
         TagPickerDialog(
-            documentTitle = customNames[document.uriString] ?: pdfTitle(document.displayName),
+            documentTitle = names.titleFor(document.uriString, document.displayName),
             allTags = allTags,
             selectedIds = tagsByDocument[document.uriString].orEmpty().map { it.id }.toSet(),
             onToggle = { viewModel.onToggleTag(document, it) },
@@ -276,8 +281,8 @@ fun FolderDetailScreen(
 
     renaming?.let { document ->
         CollectionDocumentNameDialog(
-            current = customNames[document.uriString] ?: pdfTitle(document.displayName),
-            hasCustomName = document.uriString in customNames,
+            current = names.titleFor(document.uriString, document.displayName),
+            hasCustomName = names.isRenamed(document.uriString),
             onDismiss = { renaming = null },
             onConfirm = { name ->
                 viewModel.onRenameDocument(document, name)

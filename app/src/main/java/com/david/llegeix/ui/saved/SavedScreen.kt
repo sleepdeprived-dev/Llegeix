@@ -20,7 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -41,6 +40,7 @@ import com.david.llegeix.R
 import com.david.llegeix.ui.bookmarks.BookmarksViewModel
 import com.david.llegeix.ui.bookmarks.PagesPane
 import com.david.llegeix.ui.bookmarks.WordsPane
+import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.folders.CollectionsPane
 import com.david.llegeix.ui.folders.FoldersViewModel
@@ -104,7 +104,7 @@ fun SavedScreen(
         // 24dp taller than it asks to be.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),

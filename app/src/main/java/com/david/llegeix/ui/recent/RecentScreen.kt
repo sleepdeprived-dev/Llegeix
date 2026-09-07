@@ -23,7 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,10 +33,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +62,7 @@ import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.library.GridCoverWidth
 import com.david.llegeix.ui.library.ListCoverWidth
+import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.pdfTitle
@@ -76,21 +79,23 @@ fun RecentScreen(
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val layout by viewModel.layout.collectAsStateWithLifecycle()
     val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
-    val customNames by viewModel.customNames.collectAsStateWithLifecycle()
+    val names by viewModel.names.collectAsStateWithLifecycle()
     var menuOpen by remember { mutableStateOf(false) }
+    var forgetting by remember { mutableStateOf<RecentDocument?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val removedLabel = stringResource(R.string.recent_removed)
     val undoLabel = stringResource(R.string.action_undo)
 
     /**
-     * Forget an entry, and offer it straight back.
+     * Forget an entry, having asked, and offer it straight back anyway.
      *
-     * This used to be a confirmation dialog, which is the wrong shape for the
-     * action: removing something from a reading history destroys nothing, is
-     * undone by opening the document again, and is not worth stopping the
-     * reader to ask about. A snackbar with an undo asks nothing and can still
-     * be taken back.
+     * The undo alone was the whole safety net for a while, on the grounds that
+     * removing something from a reading history destroys nothing. That is true
+     * and it was still the wrong shape: the gesture is a long press on a list
+     * whose rows are otherwise tapped, so it fires by accident, and an undo
+     * only helps somebody who noticed the message before it went. Ask first,
+     * then keep the undo for the press that was meant and regretted.
      */
     fun forget(recent: RecentDocument) {
         viewModel.remove(recent.uriString)
@@ -112,7 +117,7 @@ fun RecentScreen(
         // 24dp taller than it asks to be.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -213,10 +218,10 @@ fun RecentScreen(
                                 onClick = {
                                     onOpenDocument(
                                         recent.uriString,
-                                        customNames[recent.uriString] ?: recent.displayName,
+                                        names.titleFor(recent.uriString, recent.displayName),
                                     )
                                 },
-                                onLongClick = { forget(recent) },
+                                onLongClick = { forgetting = recent },
                             )
                             .padding(Space.sm),
                     ) {
@@ -229,7 +234,7 @@ fun RecentScreen(
                             cornerRadius = 12.dp,
                         )
                         Text(
-                            text = customNames[recent.uriString] ?: pdfTitle(recent.displayName),
+                            text = names.titleFor(recent.uriString, recent.displayName),
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -262,10 +267,10 @@ fun RecentScreen(
                                 onClick = {
                                     onOpenDocument(
                                         recent.uriString,
-                                        customNames[recent.uriString] ?: recent.displayName,
+                                        names.titleFor(recent.uriString, recent.displayName),
                                     )
                                 },
-                                onLongClick = { forget(recent) },
+                                onLongClick = { forgetting = recent },
                             )
                             .padding(
                                 start = Space.screen,
@@ -284,8 +289,7 @@ fun RecentScreen(
                         )
                         Column(modifier = Modifier.padding(start = Space.lg)) {
                             Text(
-                                text = customNames[recent.uriString]
-                                    ?: pdfTitle(recent.displayName),
+                                text = names.titleFor(recent.uriString, recent.displayName),
                                 style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -314,4 +318,31 @@ fun RecentScreen(
         }
     }
 
+    forgetting?.let { recent ->
+        AlertDialog(
+            onDismissRequest = { forgetting = null },
+            title = { Text(stringResource(R.string.recent_forget_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.recent_forget_body,
+                        names.titleFor(recent.uriString, recent.displayName),
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        forgetting = null
+                        forget(recent)
+                    },
+                ) { Text(stringResource(R.string.recent_forget_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { forgetting = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }

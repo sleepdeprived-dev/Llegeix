@@ -114,17 +114,6 @@ class ExamsViewModel(private val repository: ExamRepository) : ViewModel() {
         ImportFailure.UNREADABLE -> R.string.exams_import_unreadable
     }
 
-    /**
-     * The cover's file as a URI the thumbnail cache can open.
-     *
-     * Exam papers live in the app's own storage rather than behind a grant, so
-     * this is a `file://` URI. The renderer opens it through the same
-     * ContentResolver call it uses for everything else, which handles that
-     * scheme, so nothing about the cover machinery has to know the difference.
-     */
-    fun coverUriFor(fileName: String): String =
-        android.net.Uri.fromFile(repository.fileFor(fileName)).toString()
-
     fun onRename(examId: Long, title: String) = viewModelScope.launch {
         repository.renameExam(examId, title)
     }

@@ -21,6 +21,7 @@ import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.data.db.entity.TagEntity
+import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.FolderRules
 import com.david.llegeix.data.source.PdfRepository
@@ -116,8 +117,8 @@ class LibraryViewModel(
      * a scan that had to join against the database would be a scan that could
      * not run before the database was ready.
      */
-    val customNames: StateFlow<Map<String, String>> = libraryData.observeCustomNames()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    val names: StateFlow<DocumentNames> = libraryData.observeDocumentNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DocumentNames.Empty)
 
     /** Call a PDF something else inside the app. A blank name gives the file's back. */
     fun onRenameDocument(document: PdfDocument, name: String) = viewModelScope.launch {
@@ -125,28 +126,29 @@ class LibraryViewModel(
     }
 
     /**
-     * Stop showing one folder of the library.
+     * Stop showing one folder of the library, and remember that it exists.
      *
-     * Two different things wear the same word here, so the path decides which
-     * one is meant. A folder that *is* a granted source is given back: the
-     * permission is released and the decisions made inside it are forgotten,
-     * because keeping them would silently reapply to a folder added again next
-     * year. A folder inside a source is switched off instead — the grant is
-     * still wanted, this one folder is not — which is the same rule the Sources
-     * sheet writes when its tick box is cleared.
+     * One thing now, whether the folder is a granted source or a folder inside
+     * one: a decision is written that this path does not reach the library, and
+     * nothing else happens. The permission is kept.
      *
-     * Neither deletes anything from the phone, which is what the dialog says.
+     * It used to release the grant when the folder *was* the source, which was
+     * tidy and wrong. Releasing it means the app forgets the folder completely:
+     * it disappears from the Sources sheet, so there is no tick box left to
+     * change your mind with, and getting it back means finding it again in the
+     * system picker. Switching it off instead leaves it in the list, unticked,
+     * where ticking it brings its documents straight back — which is what
+     * somebody who hid a folder for a fortnight actually wants.
+     *
+     * Giving a folder back for good is still possible, from the Sources sheet,
+     * where the wording can explain what the difference is.
      */
     fun onHideFolder(path: String) = viewModelScope.launch {
-        val granted = _uiState.value.grantedFolders.firstOrNull { it.label == path }
-        if (granted != null) {
-            repository.removeFolder(granted.treeUri)
-            libraryData.clearFolderRules(granted.label)
-            syncSources()
-            refresh()
-        } else {
-            libraryData.setFolderRule(path, included = false)
-        }
+        // Any decisions made underneath it go, so that ticking the folder again
+        // shows all of it rather than all of it except the four subfolders
+        // somebody unticked last month.
+        libraryData.clearFolderRules(path)
+        libraryData.setFolderRule(path, included = false)
     }
 
     /** Rows or covers. Shared with Recent so the app looks like one app. */
@@ -299,6 +301,15 @@ class LibraryViewModel(
         // the documents are already in hand, only the filter has changed.
         viewModelScope.launch {
             folderRules.collect {
+                _uiState.update { state -> state.withVisibleDocuments() }
+            }
+        }
+
+        // And so should renaming one, for the same reason and one more: the
+        // search now matches the reader's own names, so the visible list is a
+        // function of them.
+        viewModelScope.launch {
+            names.collect {
                 _uiState.update { state -> state.withVisibleDocuments() }
             }
         }
@@ -504,9 +515,15 @@ class LibraryViewModel(
         val here = nearestLivePath(path, allowed)
 
         val visible = when {
-            searching -> allowed.filter {
-                it.displayName.contains(needle, ignoreCase = true) ||
-                    it.parentLabel?.contains(needle, ignoreCase = true) == true
+            // The reader's own name is matched as well as the file's. A book
+            // renamed "Petit Príncep" and then searched for by that name found
+            // nothing, because the filter only ever saw the filename — which is
+            // the name the reader had just decided they did not want to use.
+            searching -> allowed.filter { document ->
+                document.displayName.contains(needle, ignoreCase = true) ||
+                    document.parentLabel?.contains(needle, ignoreCase = true) == true ||
+                    names.value.customName(document.uriString)
+                        ?.contains(needle, ignoreCase = true) == true
             }
 
             view == LibraryView.ALL -> allowed
