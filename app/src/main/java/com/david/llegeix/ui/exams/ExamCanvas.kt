@@ -107,19 +107,19 @@ fun ExamPage(
     selectedText: ExamMarkEntity?,
     editingText: Boolean,
     /**
-     * What to say on a blank page nobody has written on yet.
+     * True when this page is blank paper being written on as a document.
      *
-     * Null everywhere except an empty sheet of the paper's own blank pages. A
-     * blank page really is blank — there is nothing on it to suggest that
-     * tapping does anything — and one quiet line is the difference between a
-     * feature and a mystery.
+     * The text tool means two different things and this is which one. See
+     * [com.david.llegeix.ui.exams.WorkspaceState.isDocument].
      */
-    emptyHint: String?,
+    documentMode: Boolean,
     render: suspend (index: Int, widthPx: Int) -> Bitmap?,
     onStrokeFinished: (List<MarkGeometry.Point>) -> Unit,
     onCreateText: (x: Float, y: Float) -> Unit,
     onSelectText: (ExamMarkEntity?) -> Unit,
     onStartEditingText: () -> Unit,
+    onDoneEditingText: () -> Unit,
+    onTextChanged: (ExamMarkEntity, String, Float) -> Unit,
     onTextEdited: (ExamMarkEntity, String, Float) -> Unit,
     onTextMoved: (ExamMarkEntity, Float, Float) -> Unit,
     onTextScaled: (ExamMarkEntity, Float) -> Unit,
@@ -188,7 +188,10 @@ fun ExamPage(
                     .fillMaxSize()
                     .pinchOnly(currentZoom = { currentZoom }, onZoomChanged = onZoomChanged)
                     .drawingGestures(
-                        enabled = canWrite,
+                        // In document mode the field above owns every tap: the
+                        // page is one text area, so there is nothing for a tap
+                        // on the canvas to place.
+                        enabled = canWrite && !documentMode,
                         tool = { currentTool },
                         wet = wet,
                         marks = { currentMarks },
@@ -209,10 +212,13 @@ fun ExamPage(
                 // being edited the live field is showing those words, and
                 // painting them underneath as well would double them.
                 drawMarks(
-                    if (editingText && selectedText != null) {
-                        marks.filterNot { it.id == selectedText.id }
-                    } else {
-                        marks
+                    when {
+                        // On blank paper the field is showing the words, so
+                        // painting them underneath as well would double them.
+                        documentMode -> marks.filterNot { it.kind == MarkKind.TEXT.name }
+                        editingText && selectedText != null ->
+                            marks.filterNot { it.id == selectedText.id }
+                        else -> marks
                     },
                 )
 
@@ -233,28 +239,34 @@ fun ExamPage(
                 }
             }
 
-            if (emptyHint != null && marks.isEmpty() && selectedText == null) {
-                Text(
-                    text = emptyHint,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(horizontal = Space.xxl),
-                )
+            // Above the canvas, so the field or the box's handles take the
+            // touches rather than the page underneath.
+            val document = if (documentMode) {
+                marks.lastOrNull { it.kind == MarkKind.TEXT.name }
+            } else {
+                null
             }
+            when {
+                document != null && canWrite && pageSize != IntSize.Zero -> ExamDocumentEditor(
+                    mark = document,
+                    pageWidthPx = pageSize.width.toFloat(),
+                    pageHeightPx = pageSize.height.toFloat(),
+                    focused = editingText,
+                    onFocused = onStartEditingText,
+                    onDone = onDoneEditingText,
+                    onChanged = { text, height -> onTextChanged(document, text, height) },
+                )
 
-            // Above the canvas, so its frame and handles take the touches
-            // rather than the page underneath. Only ever one, because only one
-            // box can be in hand.
-            if (selectedText != null && canWrite && pageSize != IntSize.Zero) {
-                ExamTextBox(
+                selectedText != null && canWrite && pageSize != IntSize.Zero -> ExamTextBox(
                     mark = selectedText,
                     pageWidthPx = pageSize.width.toFloat(),
                     pageHeightPx = pageSize.height.toFloat(),
                     editing = editingText,
                     onStartEditing = onStartEditingText,
+                    onDoneEditing = onDoneEditingText,
+                    onTextChanged = { text, height ->
+                        onTextChanged(selectedText, text, height)
+                    },
                     onFinishEditing = { text, height ->
                         onTextEdited(selectedText, text, height)
                     },

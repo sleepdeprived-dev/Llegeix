@@ -660,7 +660,6 @@
     <string name="exams_file_actions">Actions for %1$s</string>
     <string name="exams_audio_length">%1$s long</string>
     <string name="exams_audio_length_unknown">Length unknown</string>
-    <string name="exams_notes_pages">Blank paper you added</string>
 
     <string name="tags_rename">Rename tag %1$s</string>
     <string name="words_open_source">Go to where it was saved</string>
@@ -680,7 +679,5 @@
     <string name="exam_text_resize">Drag to resize</string>
     <string name="exam_text_rotate">Drag to turn</string>
     <string name="exam_text_delete">Delete this text</string>
-    <string name="exam_text_placeholder">Type here</string>
-    <string name="exam_notes_hint">Tap to start writing. Switch to the pen to sketch.</string>
 
 </resources>

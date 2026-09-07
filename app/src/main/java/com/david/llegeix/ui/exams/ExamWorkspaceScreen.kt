@@ -374,13 +374,14 @@ fun ExamWorkspaceScreen(
                         null
                     },
                     editingText = state.editingText,
-                    emptyHint = stringResource(R.string.exam_notes_hint)
-                        .takeIf { onThisPage && state.isOnNotes },
+                    documentMode = onThisPage && state.isDocument,
                     render = viewModel::renderPage,
                     onStrokeFinished = viewModel::onStrokeFinished,
                     onCreateText = viewModel::onCreateText,
                     onSelectText = { viewModel.onSelectText(it?.id) },
                     onStartEditingText = viewModel::onEditSelectedText,
+                    onDoneEditingText = viewModel::onFinishEditing,
+                    onTextChanged = viewModel::onTextChanged,
                     onTextEdited = viewModel::onTextEdited,
                     onTextMoved = viewModel::onTextMoved,
                     onTextScaled = viewModel::onTextScaled,

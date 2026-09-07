@@ -199,8 +199,9 @@ does both after bumping the version in `app/build.gradle.kts`.
   of a dialog. Tap where it goes and it appears there with a cursor in it, at
   the size and in the place it will actually print; then it can be dragged,
   turned, made bigger or smaller, and deleted, the way a text object behaves in
-  any drawing program. It used to be a modal that covered the page while you
-  typed blind into a field and found out afterwards whether the words fitted.
+  any drawing program. Closing the keyboard is how you finish with it. It used
+  to be a modal that covered the page while you typed blind into a field and
+  found out afterwards whether the words fitted.
 - **Dark pages keep their pictures** — inverting a page is not a colour filter
   any more. A filter is a matrix over every pixel with no exceptions, which is
   why dark mode used to turn every photograph in a book, and every diagram on a
@@ -218,11 +219,14 @@ does both after bumping the version in `app/build.gradle.kts`.
   again, landing on the question you left rather than at page one — which is the
   whole reason for it being inside the exam instead of beside it.
 
-  On a blank page it behaves like a document: asking for one puts you on it with
-  the text tool in hand and the keyboard up, typing runs down the page and wraps
-  as you go, and switching to the pen sketches over it. Turning back onto a
-  printed page puts the pen away again, so the next tap on a question does not
-  plant a text box in it.
+  On a blank page the text tool means something different, and deliberately so:
+  the whole writing area is one field, with no box and no handles, because the
+  page *is* the answer. Asking for a blank page puts you on it with the keyboard
+  already up; typing runs from the left margin to the right one and down the
+  page, and switching to the pen sketches over it. Turning back onto a printed
+  page puts the pen away again, so the next tap on a question does not plant a
+  text box in it. Everything typed is saved as it is typed, like every stroke of
+  the pen.
 - **Listening** — the bar above the page has a scrubber rather than a progress
   line: drag it, or tap anywhere along it, and the recording goes there. A
   listening exam is fifteen seconds played four times, and until this the only

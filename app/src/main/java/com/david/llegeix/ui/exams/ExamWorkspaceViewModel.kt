@@ -192,6 +192,21 @@ data class WorkspaceState(
     val notesStart: Int?
         get() = pagination.parts.firstOrNull { it.isNotes }
             ?.let { pagination.startOf(it.id) }
+
+    /**
+     * Whether the page is being written on as a document rather than marked up.
+     *
+     * The one place the text tool changes what it means. On a printed page a
+     * typed answer goes in a box, because it is going into a gap somebody else
+     * left and has to be put exactly there. A blank page has no gaps: the page
+     * *is* the answer, so the whole writing area is one field and typing runs
+     * across it and down, the way it does in a word processor.
+     *
+     * Held as a question about the state rather than as a mode the reader
+     * switches: there is no combination of tool and page where the other
+     * behaviour would be the right one.
+     */
+    val isDocument: Boolean get() = isOnNotes && tool == ExamTool.TEXT
 }
 
 /**
@@ -491,6 +506,10 @@ class ExamWorkspaceViewModel(
                 else -> moved
             }
         }
+        // Swiping onto blank paper gets the same page-sized field as arriving
+        // there by the button; only the keyboard is different, because a swipe
+        // is not necessarily somebody about to write.
+        if (_state.value.isOnNotes) ensureDocument()
         refreshTickBoxes()
         // Only the paper's position is remembered. Where the reader had got to
         // in the answer sheet is not where they were working.
@@ -520,8 +539,16 @@ class ExamWorkspaceViewModel(
         _state.update { it.copy(selectedTextId = id, editingText = editing && id != null) }
     }
 
+    /**
+     * Put the cursor in whatever is being written on.
+     *
+     * On a printed page that is the box in hand; on blank paper it is the page,
+     * which has no selection because there is only ever one thing to type into.
+     */
     fun onEditSelectedText() {
-        _state.update { if (it.selectedTextId == null) it else it.copy(editingText = true) }
+        _state.update {
+            if (it.selectedTextId == null && !it.isDocument) it else it.copy(editingText = true)
+        }
     }
 
     fun onFinishEditing() {
@@ -540,22 +567,22 @@ class ExamWorkspaceViewModel(
     fun onCreateText(x: Float, y: Float) = viewModelScope.launch {
         val current = _state.value
         val here = current.here ?: return@launch
-        if (!current.canWrite) return@launch
+        if (!current.canWrite || current.isDocument) return@launch
         forgetRedo()
 
-        val onBlankPaper = current.isOnNotes
-        val left = if (onBlankPaper) NOTES_MARGIN else x.coerceIn(0f, 1f - MIN_TEXT_WIDTH)
-        val top = if (onBlankPaper) NOTES_MARGIN else y.coerceIn(0f, 0.98f)
-        val boxWidth = if (onBlankPaper) 1f - 2 * NOTES_MARGIN else DEFAULT_TEXT_WIDTH
+        // The tap is the box's left edge and its first line, unless that would
+        // leave it too narrow to type in — see TextBoxGeometry, which is where
+        // the arithmetic lives and where it is tested.
+        val placed = TextBoxGeometry.placeAt(x)
         val id = repository.addMark(
             ExamMarkEntity(
                 attemptId = attemptId,
                 partId = here.part.id,
                 pageIndex = here.pageInPart,
                 kind = MarkKind.TEXT.name,
-                x = left,
-                y = top,
-                width = boxWidth,
+                x = placed.left,
+                y = y.coerceIn(0f, 0.98f),
+                width = placed.width,
                 height = TEXT_SIZE_FRACTION * 1.4f,
                 colorArgb = current.inkColor,
                 size = TEXT_SIZE_FRACTION,
@@ -564,6 +591,23 @@ class ExamWorkspaceViewModel(
         )
         _state.update { it.copy(selectedTextId = id, editingText = true) }
     }
+
+    /**
+     * Save what has been typed so far, without ending the edit.
+     *
+     * Called from the editor a moment after typing stops, and it is the fix for
+     * the worst bug this release had: the text was written only when the editor
+     * left the composition, and the most common way for that to happen is the
+     * reader leaving the workspace — at which point [onCleared] has cancelled
+     * the scope the write was launched in, so it never ran and the answer was
+     * gone. Marks made with the pen have always been saved as the finger lifts;
+     * this makes typing keep the same promise.
+     */
+    fun onTextChanged(mark: ExamMarkEntity, text: String, heightFraction: Float) =
+        viewModelScope.launch {
+            if (mark.text == text) return@launch
+            repository.updateMark(mark.copy(text = text, height = heightFraction))
+        }
 
     /**
      * Commit what was typed, and the height it turned out to need.
@@ -660,8 +704,69 @@ class ExamWorkspaceViewModel(
     // ---- Tools ------------------------------------------------------------
 
     fun onToolChosen(tool: ExamTool) {
-        _state.update { it.copy(tool = tool) }
+        _state.update { it.copy(tool = tool, selectedTextId = null, editingText = false) }
         refreshTickBoxes()
+        // Picking the text tool on blank paper is the reader saying they want
+        // to write on it, so the page they are going to write on is made ready
+        // before they touch it rather than on their first tap.
+        if (tool == ExamTool.TEXT) ensureDocument()
+    }
+
+    /**
+     * Make sure a page of blank paper has something to type into.
+     *
+     * One text mark per blank page, spanning the writing area. It is created
+     * before the keyboard rather than on the first keystroke because the editor
+     * needs a row to save into, and a field that quietly discards what was typed
+     * into it until a row appears is the bug this whole release is about.
+     *
+     * Nothing happens on a printed page: there, a text box is placed where the
+     * finger goes, and one conjured up in advance would be a box the reader has
+     * to find and delete.
+     */
+    fun ensureDocument() = viewModelScope.launch {
+        val current = _state.value
+        if (!current.isOnNotes || !current.canWrite) return@launch
+        val here = current.here ?: return@launch
+        val existing = repository.marks(attemptId).firstOrNull {
+            it.partId == here.part.id &&
+                it.pageIndex == here.pageInPart &&
+                it.kind == MarkKind.TEXT.name
+        }
+        if (existing != null) {
+            // Widened if it is not already the writing area. A page written on
+            // in 4.0.0 got whatever width the box tool gave it, which on blank
+            // paper could be a narrow column — and the essay in it would go on
+            // being drawn in that column for ever. The words are untouched;
+            // only the shape they flow in changes, and it changes towards the
+            // page rather than away from it.
+            if (existing.width < 1f - 2 * NOTES_MARGIN - 0.01f) {
+                repository.updateMark(
+                    existing.copy(
+                        x = NOTES_MARGIN,
+                        y = minOf(existing.y, NOTES_MARGIN),
+                        width = 1f - 2 * NOTES_MARGIN,
+                        size = maxOf(existing.size, NOTES_TEXT_SIZE),
+                    ),
+                )
+            }
+            return@launch
+        }
+        repository.addMark(
+            ExamMarkEntity(
+                attemptId = attemptId,
+                partId = here.part.id,
+                pageIndex = here.pageInPart,
+                kind = MarkKind.TEXT.name,
+                x = NOTES_MARGIN,
+                y = NOTES_MARGIN,
+                width = 1f - 2 * NOTES_MARGIN,
+                height = 1f - 2 * NOTES_MARGIN,
+                colorArgb = current.inkColor,
+                size = NOTES_TEXT_SIZE,
+                text = "",
+            ),
+        )
     }
 
     fun onInkColorChosen(argb: Int) {
@@ -853,19 +958,9 @@ class ExamWorkspaceViewModel(
      * whole of what "let me type straight away" means.
      */
     fun onArrivedOnNotes() = viewModelScope.launch {
-        val current = _state.value
-        if (!current.isOnNotes || current.selectedTextId != null) return@launch
-        val here = current.here ?: return@launch
-        val existing = repository.marks(attemptId).firstOrNull {
-            it.partId == here.part.id &&
-                it.pageIndex == here.pageInPart &&
-                it.kind == MarkKind.TEXT.name
-        }
-        if (existing != null) {
-            _state.update { it.copy(selectedTextId = existing.id, editingText = true) }
-        } else {
-            onCreateText(0f, 0f)
-        }
+        if (!_state.value.isOnNotes) return@launch
+        ensureDocument()
+        _state.update { it.copy(editingText = true) }
     }
 
     /**
@@ -974,9 +1069,6 @@ class ExamWorkspaceViewModel(
         const val MIN_ZOOM = 1f
         const val MAX_ZOOM = 5f
 
-        /** How wide a new box on a printed page starts, as a share of the page. */
-        private const val DEFAULT_TEXT_WIDTH = 0.42f
-
         /** Narrow enough for one word in a gap, wide enough to still be grabbable. */
         private const val MIN_TEXT_WIDTH = 0.06f
 
@@ -987,6 +1079,15 @@ class ExamWorkspaceViewModel(
          * blank page written edge to edge does not read as a page.
          */
         private const val NOTES_MARGIN = 0.07f
+
+        /**
+         * How big the type is on a blank page, as a share of the page's width.
+         *
+         * Larger than an answer squeezed into a printed gap, because nothing is
+         * squeezing it: this is somebody writing an essay on their own paper,
+         * and it should read like a document rather than like an annotation.
+         */
+        private const val NOTES_TEXT_SIZE = 0.026f
 
         private const val MIN_TEXT_SIZE = 0.008f
         private const val MAX_TEXT_SIZE = 0.12f

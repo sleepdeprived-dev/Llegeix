@@ -640,7 +640,6 @@
     <string name="exams_file_actions">Accions per a %1$s</string>
     <string name="exams_audio_length">Durada: %1$s</string>
     <string name="exams_audio_length_unknown">Durada desconeguda</string>
-    <string name="exams_notes_pages">Paper en blanc que has afegit</string>
 
     <string name="tags_rename">Reanomena l\'etiqueta %1$s</string>
     <string name="words_open_source">Ves on es va desar</string>
@@ -660,7 +659,5 @@
     <string name="exam_text_resize">Arrossega per canviar-ne la mida</string>
     <string name="exam_text_rotate">Arrossega per girar-lo</string>
     <string name="exam_text_delete">Suprimeix aquest text</string>
-    <string name="exam_text_placeholder">Escriu aquí</string>
-    <string name="exam_notes_hint">Toca per començar a escriure. Canvia al llapis per dibuixar.</string>
 
 </resources>

@@ -467,10 +467,7 @@ private fun DocumentRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = listOfNotNull(
-                    pluralStringResource(R.plurals.exams_pages, part.pageCount, part.pageCount),
-                    stringResource(R.string.exams_notes_pages).takeIf { part.isNotes },
-                ).joinToString(" · "),
+                text = pluralStringResource(R.plurals.exams_pages, part.pageCount, part.pageCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
