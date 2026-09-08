@@ -2,6 +2,8 @@ package com.david.llegeix.ui.exams
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -26,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,6 +43,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -58,6 +63,8 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.ExamMarkEntity
 import com.david.llegeix.data.exam.MarkPainter
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -144,6 +151,28 @@ fun ExamTextBox(
     LaunchedEffect(mark.rotation) { liveRotation = mark.rotation }
 
     val currentMark by rememberUpdatedState(mark)
+
+    // The row as it was when the finger lifted, while the change it made is on
+    // its way to the database and back.
+    //
+    // The live offsets used to be zeroed the instant the gesture ended, which
+    // put the box back where it started for the frame or two the write took to
+    // come round through Room — so every move and every resize finished with a
+    // flinch. They are let go when the row returns changed instead. The timeout
+    // is the other half of that: a move clamped to the edge of the page comes
+    // back *unchanged*, and an offset waiting for a change that will never
+    // arrive would leave the box drawn somewhere it is not.
+    var settlingFrom by remember(mark.id) { mutableStateOf<ExamMarkEntity?>(null) }
+    LaunchedEffect(settlingFrom) {
+        val before = settlingFrom ?: return@LaunchedEffect
+        withTimeoutOrNull(SETTLE_MS) {
+            snapshotFlow { currentMark }.first { it != before }
+        }
+        dragX = 0f
+        dragY = 0f
+        liveScale = 1f
+        settlingFrom = null
+    }
     // Half a handle, so each one straddles its corner instead of hanging off
     // it. In pixels because that is what `offset {}` works in.
     val handleInset = with(density) { (HandleSize / 2).toPx() }
@@ -151,33 +180,104 @@ fun ExamTextBox(
     val boxWidthDp = with(density) { (boxWidthPx * liveScale).toDp() }
     val boxHeightDp = with(density) { (boxHeightPx * liveScale).toDp() }
 
+    // The box, plus half a handle of margin on every side.
+    //
+    // The margin is what makes the thing usable. A one-word answer is a strip
+    // of page nine pixels tall, and nine pixels is not something a finger can
+    // pick up: dragging it was a matter of hitting a hairline, and missing put
+    // a stroke on the page instead. The margin is invisible, it is where the
+    // handles sit — they straddle the corners, so half of each was outside the
+    // box and outside anything that could be touched — and it is part of what
+    // the drag responds to, so what you grab is the box and the air around it.
     Box(
         modifier = modifier
             .offset {
                 IntOffset(
-                    (boxLeftPx + dragX).roundToInt(),
-                    (boxTopPx + dragY).roundToInt(),
+                    (boxLeftPx + dragX - handleInset).roundToInt(),
+                    (boxTopPx + dragY - handleInset).roundToInt(),
                 )
             }
-            .width(boxWidthDp)
+            .width(boxWidthDp + HandleSize)
             // While typing the box grows with the words. Fixing its height to
             // what the *stored* text needs would mean the cursor walking out of
             // the bottom of the frame on the fourth line of an essay, with the
             // words still going in somewhere below the edge of the box.
             .then(
                 if (editing) {
-                    Modifier.heightIn(min = boxHeightDp)
+                    Modifier.heightIn(min = boxHeightDp + HandleSize)
                 } else {
-                    Modifier.height(boxHeightDp)
+                    Modifier.height(boxHeightDp + HandleSize)
                 },
             )
-            .graphicsLayer { rotationZ = liveRotation },
+            .graphicsLayer { rotationZ = liveRotation }
+            // Moving is dragging the box, which is the one gesture nobody has
+            // to be taught, and tapping it opens the keyboard. Both from one
+            // handler rather than a tap detector stacked on a drag detector:
+            // the two negotiate over who owns the finger through the
+            // consumption rules, and what came out of that negotiation was a
+            // box that could be tapped and could not be moved. Here the finger
+            // decides, and it decides by going somewhere: past the touch slop
+            // it is a drag, lifted before that it is a tap.
+            .then(
+                if (editing) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(mark.id) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val slop = viewConfiguration.touchSlop
+                            var travelled = 0f
+                            var moving = false
+                            var lifted = false
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes
+                                    .firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) {
+                                    lifted = true
+                                    break
+                                }
+                                val amount = change.positionChange()
+                                travelled += amount.getDistance()
+                                if (!moving && travelled > slop) moving = true
+                                if (moving) {
+                                    change.consume()
+                                    // Turned back out of the box's own frame
+                                    // before it is added to the offset. Pointer
+                                    // input runs inside the rotation and reports
+                                    // movement along the box's axes, while the
+                                    // offset is applied outside it, in the
+                                    // page's — so on a box turned 45° a drag
+                                    // straight up the screen would have sent it
+                                    // off diagonally.
+                                    val radians = Math.toRadians(liveRotation.toDouble())
+                                    val cosine = cos(radians).toFloat()
+                                    val sine = sin(radians).toFloat()
+                                    dragX += amount.x * cosine - amount.y * sine
+                                    dragY += amount.x * sine + amount.y * cosine
+                                }
+                            }
+                            when {
+                                moving -> {
+                                    settlingFrom = currentMark
+                                    onMove(
+                                        currentMark.x + dragX / pageWidthPx,
+                                        currentMark.y + dragY / pageHeightPx,
+                                    )
+                                }
+                                lifted -> onStartEditing()
+                            }
+                        }
+                    }
+                },
+            ),
     ) {
         // The frame. Dashed would be more conventional and is harder to see on
         // a scan; a hairline in the accent reads as "this is selected" against
         // both white paper and an inverted page.
         Box(
             modifier = Modifier
+                .padding(HandleSize / 2)
                 .fillMaxWidth()
                 .then(
                     if (editing) {
@@ -201,39 +301,7 @@ fun ExamTextBox(
                     } else {
                         Modifier
                     },
-                )
-                // Moving is dragging the box, which is the one gesture nobody
-                // has to be taught. Tapping it opens the keyboard.
-                .pointerInput(mark.id, editing) {
-                    if (editing) return@pointerInput
-                    detectTapGestures(onTap = { onStartEditing() })
-                }
-                .pointerInput(mark.id, editing) {
-                    if (editing) return@pointerInput
-                    detectDragGestures(
-                        onDragEnd = {
-                            onMove(
-                                currentMark.x + dragX / pageWidthPx,
-                                currentMark.y + dragY / pageHeightPx,
-                            )
-                            dragX = 0f
-                            dragY = 0f
-                        },
-                    ) { change, amount ->
-                        change.consume()
-                        // Turned back out of the box's own frame before it is
-                        // added to the offset. Pointer input runs inside the
-                        // rotation and reports movement along the box's axes,
-                        // while the offset is applied outside it, in the page's
-                        // — so on a box turned 45° a drag straight up the
-                        // screen would have sent it off diagonally.
-                        val radians = Math.toRadians(liveRotation.toDouble())
-                        val cosine = cos(radians).toFloat()
-                        val sine = sin(radians).toFloat()
-                        dragX += amount.x * cosine - amount.y * sine
-                        dragY += amount.x * sine + amount.y * cosine
-                    }
-                },
+                ),
         ) {
             if (editing) {
                 TextEditor(
@@ -256,34 +324,35 @@ fun ExamTextBox(
             Handle(
                 icon = Icons.Default.Close,
                 label = stringResource(R.string.exam_text_delete),
-                offsetPx = IntOffset(-handleInset.roundToInt(), -handleInset.roundToInt()),
+                offsetPx = IntOffset.Zero,
                 onClick = onDelete,
             )
             RotateHandle(
                 label = stringResource(R.string.exam_text_rotate),
-                offsetPx = IntOffset(
-                    (boxWidthPx * liveScale - handleInset).roundToInt(),
-                    -handleInset.roundToInt(),
-                ),
+                offsetPx = IntOffset((boxWidthPx * liveScale).roundToInt(), 0),
                 onRotate = { delta -> liveRotation += delta },
                 onRotateEnd = { onRotate(liveRotation) },
                 centreOf = {
                     // In the box's own coordinates, which is what the drag
-                    // amounts are already in.
-                    Pair(boxWidthPx * liveScale / 2f, boxHeightPx * liveScale / 2f)
+                    // amounts are already in — and the box now starts half a
+                    // handle in from the root's corner.
+                    Pair(
+                        handleInset + boxWidthPx * liveScale / 2f,
+                        handleInset + boxHeightPx * liveScale / 2f,
+                    )
                 },
             )
             ScaleHandle(
                 label = stringResource(R.string.exam_text_resize),
                 offsetPx = IntOffset(
-                    (boxWidthPx * liveScale - handleInset).roundToInt(),
-                    (boxHeightPx * liveScale - handleInset).roundToInt(),
+                    (boxWidthPx * liveScale).roundToInt(),
+                    (boxHeightPx * liveScale).roundToInt(),
                 ),
                 diagonalPx = hypot(boxWidthPx, boxHeightPx),
                 onScale = { liveScale = it },
                 onScaleEnd = {
+                    settlingFrom = currentMark
                     onScale(liveScale)
-                    liveScale = 1f
                 },
             )
         }
@@ -520,6 +589,16 @@ private fun BoxScope.ScaleHandle(
  */
 private val HandleSize = 28.dp
 private val HandleGlyph = 16.dp
+
+/**
+ * How long a finished gesture holds its position while the row catches up.
+ *
+ * A Room update and the flow that reports it back take a handful of
+ * milliseconds; this is generous enough that the box never flickers and short
+ * enough that a change which was clamped away, and so never arrives, is not
+ * left drawn out of place long enough to notice.
+ */
+private const val SETTLE_MS = 400L
 
 /**
  * The whole of a blank page, as one field.

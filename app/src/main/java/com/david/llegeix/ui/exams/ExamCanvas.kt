@@ -7,14 +7,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -23,10 +23,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
@@ -39,6 +41,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -50,7 +53,7 @@ import com.david.llegeix.data.db.entity.MarkKind
 import com.david.llegeix.data.exam.MarkGeometry
 import com.david.llegeix.data.exam.MarkPainter
 import com.david.llegeix.pdf.TickBox
-import com.david.llegeix.ui.common.Space
+import kotlinx.coroutines.flow.first
 
 /**
  * One page of the paper, with everything written on it.
@@ -164,25 +167,92 @@ fun ExamPage(
         // fractions of it, and there is nothing else on screen that knows it.
         var pageSize by remember { mutableStateOf(IntSize.Zero) }
 
-        // The page slides under the keyboard while somebody is typing, and only
-        // then.
-        //
-        // The keyboard takes the bottom third of the screen, and the page is a
-        // fixed shape: an answer typed on the last line of it was behind the
-        // keys, being written blind. A page that can be pushed up fixes that by
-        // itself — and it fixes it properly, because Compose's own text field
-        // asks whatever scrolls around it to bring the cursor into view, so the
-        // line being typed comes up on its own without anybody scrolling.
-        //
-        // Off at every other moment, and that is not a detail: a page that
-        // scrolled under a one-finger drag would be a page that could not be
-        // drawn on.
         val typing = editingText && canWrite
+
+        // How big the sheet is drawn, and it is two different answers.
+        //
+        // Reading, it is fitted to the space there is — both ways, not just
+        // across. Fitting the width alone meant that anything which made the
+        // middle of the screen shorter, such as opening the recording, left a
+        // page taller than the room it had; and since there was nothing to
+        // scroll, the top and bottom of it were simply cut off. A page with its
+        // first line missing and no way to get it back is worse than a smaller
+        // page.
+        //
+        // Typing, it is fitted to the width and allowed to be taller than the
+        // screen. The keyboard takes half the height, and a page shrunk to fit
+        // what is left would put the writing at a size nobody can read. So it
+        // stays big and moves instead.
+        val sheet = PageFit.of(
+            roomWide = (maxWidth - PageMargin * 2).coerceAtLeast(0.dp),
+            roomTall = (maxHeight - PageMargin * 2).coerceAtLeast(0.dp),
+            ratio = rendered.width.toFloat() / rendered.height.toFloat(),
+            fillWidth = typing,
+        )
+
+        // Room above and below the page to push it into, while typing.
+        //
+        // Without it there was nothing to scroll whenever the page happened to
+        // fit — which is exactly the case with a floating keyboard, because a
+        // keyboard in its own little window reports no inset at all. The screen
+        // does not get shorter, the page is not too tall for it, and the keys
+        // sit on top of the writing with no way to move either. Half a screen
+        // of slack at each end means the page can always be pushed clear,
+        // whatever kind of keyboard is up and wherever it happens to be.
+        val slack = if (typing) maxHeight * TYPING_SLACK else 0.dp
+        val slackPx = with(density) { slack.roundToPx() }
         val pageScroll = rememberScrollState()
+
+        // How far a magnified page has been pushed up, in pixels.
+        //
+        // Zoom alone was half a feature. It grows the page from its top edge,
+        // so at five times life size everything below the first third of the
+        // page was off the bottom of the screen with no way to reach it — you
+        // could magnify a question and then not read the answer box under it.
+        // The same two fingers that magnified it now move it.
+        var pan by remember { mutableFloatStateOf(0f) }
+        LaunchedEffect(zoom) { if (zoom <= 1f) pan = 0f }
+        val viewportPx = with(density) { maxHeight.toPx() }
+        val pageTallPx = with(density) { sheet.height.toPx() }
+        // Starting at the page's own top rather than in the slack above it.
+        // After the first layout, because until the scroll container has been
+        // measured its range is zero and a jump into it is silently clamped
+        // back to the top — which would open every essay looking at half a
+        // screen of empty desk.
+        LaunchedEffect(typing) {
+            if (!typing) return@LaunchedEffect
+            snapshotFlow { pageScroll.maxValue }.first { it > 0 }
+            pageScroll.scrollTo(slackPx)
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (typing) Modifier.verticalScroll(pageScroll) else Modifier),
+                .then(if (typing) Modifier.verticalScroll(pageScroll) else Modifier)
+                // Two fingers move and magnify the page, one finger writes on
+                // it. On the initial pass, which is the whole point: the thing
+                // most in need of moving out from under a keyboard is a text
+                // field, and a text field takes every one-finger drag over it
+                // for its own cursor. Claiming multi-touch before the field
+                // sees it is what makes the page movable while it is being
+                // written on — and one-finger gestures are never touched, so
+                // nothing about writing changes.
+                .twoFingerZoomAndPan(
+                    currentZoom = { currentZoom },
+                    onZoomChanged = onZoomChanged,
+                    onPan = { dy ->
+                        if (typing) {
+                            pageScroll.dispatchRawDelta(-dy)
+                        } else {
+                            // Only as far as there is page to see. A magnified
+                            // page that can be flung off the screen entirely is
+                            // a page somebody has to hunt for.
+                            val hidden = (pageTallPx * currentZoom - viewportPx)
+                                .coerceAtLeast(0f)
+                            pan = (pan + dy).coerceIn(-hidden, 0f)
+                        }
+                    },
+                ),
             contentAlignment = if (typing) Alignment.TopCenter else Alignment.Center,
         ) {
             // The paper as a sheet of paper: rounded, lifted off the ground
@@ -200,13 +270,13 @@ fun ExamPage(
             val cardShadow = with(density) { PageLift.toPx() }
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Space.md, vertical = Space.md)
-                    .aspectRatio(rendered.width.toFloat() / rendered.height.toFloat())
+                    .padding(horizontal = PageMargin, vertical = PageMargin + slack)
+                    .size(width = sheet.width, height = sheet.height)
                     .onSizeChanged { pageSize = it }
                     .graphicsLayer {
                         scaleX = currentZoom
                         scaleY = currentZoom
+                        translationY = pan
                         // Anchored at the top: a page's writing starts there, and a
                         // centre-anchored zoom throws you into the middle of it.
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
@@ -233,7 +303,6 @@ fun ExamPage(
                 Canvas(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pinchOnly(currentZoom = { currentZoom }, onZoomChanged = onZoomChanged)
                         .drawingGestures(
                             // In document mode the field above owns every tap: the
                             // page is one text area, so there is nothing for a tap
@@ -342,35 +411,57 @@ fun ExamPage(
 private val PageShape = RoundedCornerShape(6.dp)
 private val PageLift = 4.dp
 
+/** The desk showing round the sheet. */
+private val PageMargin = 12.dp
+
+/**
+ * How much empty desk there is above and below the page while it is typed on,
+ * as a share of the screen. Enough that the page can always be pushed clear of
+ * a keyboard sitting anywhere over it.
+ */
+private const val TYPING_SLACK = 0.5f
+
 /** What an inverted page sits on while it is still loading. */
 private val DarkPaper = Color(0xFF0E0E0E)
 
 /**
- * Pinch to zoom, and let every other gesture through.
+ * Two fingers move and magnify the page. One finger is left entirely alone.
  *
  * The same reasoning as the reader's [com.david.llegeix.ui.reader.pinchToZoom]:
  * a helper that reports pan alongside zoom consumes one-finger drags too, and
- * here a one-finger drag is the pen. Two fingers zoom; one finger writes.
+ * here a one-finger drag is the pen. So this watches for a second finger and
+ * does nothing at all until it arrives.
+ *
+ * It runs on [PointerEventPass.Initial], which goes outside-in, so it sees a
+ * gesture before anything inside the page does. That is what makes it work over
+ * a text field: a field takes every one-finger drag across it for its own
+ * cursor and would take a two-finger one as well, and the page that most needs
+ * moving out from under a keyboard is precisely the page with a field on it.
+ * Nothing is consumed unless a second finger is down, so the pen, the eraser
+ * and the cursor all behave exactly as they did.
  */
-private fun Modifier.pinchOnly(
+private fun Modifier.twoFingerZoomAndPan(
     currentZoom: () -> Float,
     onZoomChanged: (Float) -> Unit,
+    onPan: (Float) -> Unit,
 ): Modifier = pointerInput(Unit) {
     awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false)
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         do {
-            val event = awaitPointerEvent()
+            val event = awaitPointerEvent(PointerEventPass.Initial)
             if (event.changes.count { it.pressed } >= 2) {
-                val change = event.calculateZoom()
-                if (change != 1f) {
+                val pinch = event.calculateZoom()
+                if (pinch != 1f) {
                     onZoomChanged(
-                        (currentZoom() * change).coerceIn(
+                        (currentZoom() * pinch).coerceIn(
                             ExamWorkspaceViewModel.MIN_ZOOM,
                             ExamWorkspaceViewModel.MAX_ZOOM,
                         ),
                     )
-                    event.changes.forEach { if (it.pressed) it.consume() }
                 }
+                val pan = event.calculatePan().y
+                if (pan != 0f) onPan(pan)
+                event.changes.forEach { if (it.pressed) it.consume() }
             }
         } while (event.changes.any { it.pressed })
     }
