@@ -573,6 +573,10 @@
     <string name="exam_audio_track">Track %1$d of %2$d</string>
     <string name="exam_next_track">Next track</string>
 
+    <!-- Exam workspace, v4.0.2: room to breathe. -->
+    <string name="exam_listen_show">Show the recording</string>
+    <string name="exam_listen_hide">Hide the recording</string>
+
     <!-- Exam mode, v3.8.1: several files can be one paper. -->
     <string name="exams_imported_partly">%1$d added, %2$d could not be read</string>
     <plurals name="exams_files">

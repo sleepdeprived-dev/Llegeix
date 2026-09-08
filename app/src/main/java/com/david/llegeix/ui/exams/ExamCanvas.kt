@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -160,121 +162,147 @@ fun ExamPage(
         // fractions of it, and there is nothing else on screen that knows it.
         var pageSize by remember { mutableStateOf(IntSize.Zero) }
 
+        // The page slides under the keyboard while somebody is typing, and only
+        // then.
+        //
+        // The keyboard takes the bottom third of the screen, and the page is a
+        // fixed shape: an answer typed on the last line of it was behind the
+        // keys, being written blind. A page that can be pushed up fixes that by
+        // itself — and it fixes it properly, because Compose's own text field
+        // asks whatever scrolls around it to bring the cursor into view, so the
+        // line being typed comes up on its own without anybody scrolling.
+        //
+        // Off at every other moment, and that is not a detail: a page that
+        // scrolled under a one-finger drag would be a page that could not be
+        // drawn on.
+        val typing = editingText && canWrite
+        val pageScroll = rememberScrollState()
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Space.sm, vertical = Space.sm)
-                .aspectRatio(rendered.width.toFloat() / rendered.height.toFloat())
-                .onSizeChanged { pageSize = it }
-                .graphicsLayer {
-                    scaleX = currentZoom
-                    scaleY = currentZoom
-                    // Anchored at the top: a page's writing starts there, and a
-                    // centre-anchored zoom throws you into the middle of it.
-                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
-                },
+                .fillMaxSize()
+                .then(if (typing) Modifier.verticalScroll(pageScroll) else Modifier),
+            contentAlignment = if (typing) Alignment.TopCenter else Alignment.Center,
         ) {
-            Image(
-                bitmap = rendered.asImageBitmap(),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(if (darkPage) DarkPaper else Color.White),
-            )
-
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pinchOnly(currentZoom = { currentZoom }, onZoomChanged = onZoomChanged)
-                    .drawingGestures(
-                        // In document mode the field above owns every tap: the
-                        // page is one text area, so there is nothing for a tap
-                        // on the canvas to place.
-                        enabled = canWrite && !documentMode,
-                        tool = { currentTool },
-                        wet = wet,
-                        marks = { currentMarks },
-                        onStrokeFinished = onStrokeFinished,
-                        onCreateText = onCreateText,
-                        onSelectText = onSelectText,
-                        onTick = onTick,
-                        onErase = onErase,
-                        boxes = { currentBoxes },
-                    ),
-            ) {
-                // The found boxes, outlined faintly, and only while the tick
-                // tool is in hand. They are a hint about where a tap will land,
-                // not a decoration and not a claim that these are all of them.
-                if (tool == ExamTool.TICK) drawTickTargets(tickBoxes)
-
-                // Everything except the box being typed into: while it is
-                // being edited the live field is showing those words, and
-                // painting them underneath as well would double them.
-                drawMarks(
-                    when {
-                        // On blank paper the field is showing the words, so
-                        // painting them underneath as well would double them.
-                        documentMode -> marks.filterNot { it.kind == MarkKind.TEXT.name }
-                        editingText && selectedText != null ->
-                            marks.filterNot { it.id == selectedText.id }
-                        else -> marks
+                    .fillMaxWidth()
+                    .padding(horizontal = Space.md, vertical = Space.md)
+                    .aspectRatio(rendered.width.toFloat() / rendered.height.toFloat())
+                    .onSizeChanged { pageSize = it }
+                    .graphicsLayer {
+                        scaleX = currentZoom
+                        scaleY = currentZoom
+                        // Anchored at the top: a page's writing starts there, and a
+                        // centre-anchored zoom throws you into the middle of it.
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
                     },
+            ) {
+                Image(
+                    bitmap = rendered.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(if (darkPage) DarkPaper else Color.White),
                 )
 
-                // The stroke under the finger, drawn in the ink it will be
-                // saved in so that lifting the finger changes nothing visible.
-                if (wet.size > 1) {
-                    val isHighlight = tool == ExamTool.HIGHLIGHTER
-                    drawWetStroke(
-                        points = wet,
-                        colorArgb = if (isHighlight) highlightColor else inkColor,
-                        widthFraction = if (isHighlight) {
-                            StrokeWidths.HIGHLIGHTER
-                        } else {
-                            strokeWidth
+                // Which mark this page *is*, when it is blank paper being written
+                // as a document. The same rule the ViewModel uses when it makes and
+                // tidies these — see [documentMark] — so the field the reader types
+                // into and the row the app saves into are never two different rows.
+                val document = if (documentMode) marks.documentMark() else null
+
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pinchOnly(currentZoom = { currentZoom }, onZoomChanged = onZoomChanged)
+                        .drawingGestures(
+                            // In document mode the field above owns every tap: the
+                            // page is one text area, so there is nothing for a tap
+                            // on the canvas to place.
+                            enabled = canWrite && !documentMode,
+                            tool = { currentTool },
+                            wet = wet,
+                            marks = { currentMarks },
+                            onStrokeFinished = onStrokeFinished,
+                            onCreateText = onCreateText,
+                            onSelectText = onSelectText,
+                            onTick = onTick,
+                            onErase = onErase,
+                            boxes = { currentBoxes },
+                        ),
+                ) {
+                    // The found boxes, outlined faintly, and only while the tick
+                    // tool is in hand. They are a hint about where a tap will land,
+                    // not a decoration and not a claim that these are all of them.
+                    if (tool == ExamTool.TICK) drawTickTargets(tickBoxes)
+
+                    // Everything except the box being typed into: while it is
+                    // being edited the live field is showing those words, and
+                    // painting them underneath as well would double them.
+                    drawMarks(
+                        when {
+                            // On blank paper the field is showing the words, so
+                            // painting them underneath as well would double them.
+                            // Only that one mark, though: anything else typed on
+                            // this page is not in the field and has to be drawn, or
+                            // it is simply gone from the reader's page.
+                            document != null -> marks.filterNot { it.id == document.id }
+                            editingText && selectedText != null ->
+                                marks.filterNot { it.id == selectedText.id }
+                            else -> marks
                         },
-                        alpha = if (isHighlight) MarkPainter.HIGHLIGHT_ALPHA else 1f,
+                    )
+
+                    // The stroke under the finger, drawn in the ink it will be
+                    // saved in so that lifting the finger changes nothing visible.
+                    if (wet.size > 1) {
+                        val isHighlight = tool == ExamTool.HIGHLIGHTER
+                        drawWetStroke(
+                            points = wet,
+                            colorArgb = if (isHighlight) highlightColor else inkColor,
+                            widthFraction = if (isHighlight) {
+                                StrokeWidths.HIGHLIGHTER
+                            } else {
+                                strokeWidth
+                            },
+                            alpha = if (isHighlight) MarkPainter.HIGHLIGHT_ALPHA else 1f,
+                        )
+                    }
+                }
+
+                // Above the canvas, so the field or the box's handles take the
+                // touches rather than the page underneath.
+                when {
+                    document != null && canWrite && pageSize != IntSize.Zero -> ExamDocumentEditor(
+                        mark = document,
+                        pageWidthPx = pageSize.width.toFloat(),
+                        pageHeightPx = pageSize.height.toFloat(),
+                        focused = editingText,
+                        onFocused = onStartEditingText,
+                        onDone = onDoneEditingText,
+                        onChanged = { text, height -> onTextChanged(document, text, height) },
+                    )
+
+                    selectedText != null && canWrite && pageSize != IntSize.Zero -> ExamTextBox(
+                        mark = selectedText,
+                        pageWidthPx = pageSize.width.toFloat(),
+                        pageHeightPx = pageSize.height.toFloat(),
+                        editing = editingText,
+                        onStartEditing = onStartEditingText,
+                        onDoneEditing = onDoneEditingText,
+                        onTextChanged = { text, height ->
+                            onTextChanged(selectedText, text, height)
+                        },
+                        onFinishEditing = { text, height ->
+                            onTextEdited(selectedText, text, height)
+                        },
+                        onMove = { x, y -> onTextMoved(selectedText, x, y) },
+                        onScale = { factor -> onTextScaled(selectedText, factor) },
+                        onRotate = { degrees -> onTextRotated(selectedText, degrees) },
+                        onDelete = { onDeleteText(selectedText) },
                     )
                 }
-            }
-
-            // Above the canvas, so the field or the box's handles take the
-            // touches rather than the page underneath.
-            val document = if (documentMode) {
-                marks.lastOrNull { it.kind == MarkKind.TEXT.name }
-            } else {
-                null
-            }
-            when {
-                document != null && canWrite && pageSize != IntSize.Zero -> ExamDocumentEditor(
-                    mark = document,
-                    pageWidthPx = pageSize.width.toFloat(),
-                    pageHeightPx = pageSize.height.toFloat(),
-                    focused = editingText,
-                    onFocused = onStartEditingText,
-                    onDone = onDoneEditingText,
-                    onChanged = { text, height -> onTextChanged(document, text, height) },
-                )
-
-                selectedText != null && canWrite && pageSize != IntSize.Zero -> ExamTextBox(
-                    mark = selectedText,
-                    pageWidthPx = pageSize.width.toFloat(),
-                    pageHeightPx = pageSize.height.toFloat(),
-                    editing = editingText,
-                    onStartEditing = onStartEditingText,
-                    onDoneEditing = onDoneEditingText,
-                    onTextChanged = { text, height ->
-                        onTextChanged(selectedText, text, height)
-                    },
-                    onFinishEditing = { text, height ->
-                        onTextEdited(selectedText, text, height)
-                    },
-                    onMove = { x, y -> onTextMoved(selectedText, x, y) },
-                    onScale = { factor -> onTextScaled(selectedText, factor) },
-                    onRotate = { degrees -> onTextRotated(selectedText, degrees) },
-                    onDelete = { onDeleteText(selectedText) },
-                )
             }
         }
     }

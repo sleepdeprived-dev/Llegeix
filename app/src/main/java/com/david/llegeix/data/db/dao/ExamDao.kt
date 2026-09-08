@@ -242,6 +242,18 @@ interface ExamDao {
     @Update
     suspend fun update(mark: ExamMarkEntity)
 
+    /**
+     * The words of a typed mark, and the room they turned out to need.
+     *
+     * By id rather than by writing a whole row back, because the row the editor
+     * is holding is a snapshot taken when the field was composed and typing
+     * goes on for minutes afterwards. Anything that moved the box in the
+     * meantime — widening a blank page's writing area, say — would be undone by
+     * the next keystroke's save putting the old geometry back.
+     */
+    @Query("UPDATE exam_marks SET text = :text, height = :height WHERE id = :markId")
+    suspend fun updateMarkText(markId: Long, text: String, height: Float)
+
     @Query("DELETE FROM exam_marks WHERE id = :markId")
     suspend fun deleteMark(markId: Long)
 

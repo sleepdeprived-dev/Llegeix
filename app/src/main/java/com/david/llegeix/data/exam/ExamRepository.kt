@@ -476,6 +476,10 @@ class ExamRepository(
 
     suspend fun updateMark(mark: ExamMarkEntity) = exams.update(mark)
 
+    /** Just the words and the height, by id. See [ExamDao.updateMarkText]. */
+    suspend fun updateMarkText(markId: Long, text: String, height: Float) =
+        exams.updateMarkText(markId, text, height)
+
     suspend fun deleteMark(markId: Long) = exams.deleteMark(markId)
 
     /** Take back the last thing written anywhere in this sitting. */

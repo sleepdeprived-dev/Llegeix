@@ -553,6 +553,10 @@
     <string name="exam_audio_track">Pista %1$d de %2$d</string>
     <string name="exam_next_track">Pista següent</string>
 
+    <!-- Espai de treball de examen, v4.0.2: espai per respirar. -->
+    <string name="exam_listen_show">Mostra l\'enregistrament</string>
+    <string name="exam_listen_hide">Amaga l\'enregistrament</string>
+
     <string name="exams_imported_partly">%1$d afegits, %2$d no s\'han pogut llegir</string>
     <plurals name="exams_files">
         <item quantity="one">%1$d fitxer</item>

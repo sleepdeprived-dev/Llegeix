@@ -57,6 +57,25 @@ import kotlinx.coroutines.sync.withLock
 data class PageAddress(val part: ExamPartEntity, val pageInPart: Int)
 
 /**
+ * Which mark on a blank page is *the* page, when the page is written as a
+ * document rather than annotated.
+ *
+ * One rule, used by the ViewModel that makes the mark and by the canvas that
+ * puts a cursor in it, because the two disagreeing is how an essay goes
+ * missing: the canvas binding to a different row than the one the app keeps
+ * means the words are typed into one field and displayed from another.
+ *
+ * Written words win over an empty box, and after that the oldest wins. A page
+ * should only ever have one of these — see [ExamWorkspaceViewModel.ensureDocument],
+ * which tidies up the spares — but a sitting written on by an earlier version
+ * may still have two, and the reader's writing is what they came back for.
+ */
+fun List<ExamMarkEntity>.documentMark(): ExamMarkEntity? {
+    val typed = filter { it.kind == MarkKind.TEXT.name }
+    return typed.firstOrNull { !it.text.isNullOrBlank() } ?: typed.firstOrNull()
+}
+
+/**
  * The documents of a paper, laid end to end.
  *
  * Built once per change to the parts list rather than walked on every page
@@ -125,6 +144,18 @@ data class WorkspaceState(
     val hasAnswerKey: Boolean = false,
     val answerKeyPageCount: Int = 0,
     val audio: List<ExamAudioEntity> = emptyList(),
+    /**
+     * Whether the listening player is open.
+     *
+     * Closed to begin with, and that is the point. The player used to sit above
+     * the page for the whole sitting — a filename, a clock and a scrubber over
+     * every question, including the twenty that have nothing to do with the
+     * recording. On a screen built for people who find clutter hard going, a
+     * control that is only needed for one part of the paper should not be on
+     * screen during the rest of it. It opens from the headphones button in the
+     * bar, which is only drawn when the paper actually has recordings.
+     */
+    val audioOpen: Boolean = false,
     val zoom: Float = 1f,
     /**
      * Draws the page as light-on-dark, without touching the app's theme.
@@ -518,6 +549,11 @@ class ExamWorkspaceViewModel(
         }
     }
 
+    /** Open the listening player, or put it away. */
+    fun onToggleAudio() {
+        _state.update { it.copy(audioOpen = !it.audioOpen) }
+    }
+
     fun onZoomChanged(zoom: Float) {
         _state.update { it.copy(zoom = zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)) }
     }
@@ -606,7 +642,7 @@ class ExamWorkspaceViewModel(
     fun onTextChanged(mark: ExamMarkEntity, text: String, heightFraction: Float) =
         viewModelScope.launch {
             if (mark.text == text) return@launch
-            repository.updateMark(mark.copy(text = text, height = heightFraction))
+            repository.updateMarkText(mark.id, text, heightFraction)
         }
 
     /**
@@ -637,7 +673,7 @@ class ExamWorkspaceViewModel(
                 }
                 return@launch
             }
-            repository.updateMark(mark.copy(text = text, height = heightFraction))
+            repository.updateMarkText(mark.id, text, heightFraction)
         }
 
     /** Moved by dragging it. Kept on the page, so it cannot be lost off an edge. */
@@ -713,60 +749,90 @@ class ExamWorkspaceViewModel(
     }
 
     /**
-     * Make sure a page of blank paper has something to type into.
+     * Only one of these may run at a time. See [ensureDocument].
+     *
+     * It is asked for from three places that can all fire within a frame of
+     * each other — the page turning, the reader arriving on the blank pages,
+     * and the text tool being picked — and each call reads the page's marks
+     * before deciding whether to write one. Without the lock two of them read
+     * "no document here" and both make one, and from then on the page has two
+     * fields the reader cannot tell apart.
+     */
+    private val documentLock = Mutex()
+
+    /**
+     * Make sure a page of blank paper has exactly one thing to type into.
      *
      * One text mark per blank page, spanning the writing area. It is created
      * before the keyboard rather than on the first keystroke because the editor
      * needs a row to save into, and a field that quietly discards what was typed
      * into it until a row appears is the bug this whole release is about.
      *
+     * *Exactly* one, and that is the fix for the bug it left behind. Two of
+     * these racing each other left a page carrying two document marks; the
+     * editor bound to whichever the rule picked, and an essay typed into the
+     * other one was still in the database, still exported — but nowhere on
+     * screen, which to the reader is indistinguishable from not having been
+     * saved at all. So the spares are cleared up here, and only ever the empty
+     * ones: a mark with words in it is the reader's work and is never deleted
+     * to tidy up after the app.
+     *
      * Nothing happens on a printed page: there, a text box is placed where the
      * finger goes, and one conjured up in advance would be a box the reader has
      * to find and delete.
      */
     fun ensureDocument() = viewModelScope.launch {
-        val current = _state.value
-        if (!current.isOnNotes || !current.canWrite) return@launch
-        val here = current.here ?: return@launch
-        val existing = repository.marks(attemptId).firstOrNull {
-            it.partId == here.part.id &&
-                it.pageIndex == here.pageInPart &&
-                it.kind == MarkKind.TEXT.name
-        }
-        if (existing != null) {
-            // Widened if it is not already the writing area. A page written on
-            // in 4.0.0 got whatever width the box tool gave it, which on blank
-            // paper could be a narrow column — and the essay in it would go on
-            // being drawn in that column for ever. The words are untouched;
-            // only the shape they flow in changes, and it changes towards the
-            // page rather than away from it.
-            if (existing.width < 1f - 2 * NOTES_MARGIN - 0.01f) {
-                repository.updateMark(
-                    existing.copy(
-                        x = NOTES_MARGIN,
-                        y = minOf(existing.y, NOTES_MARGIN),
-                        width = 1f - 2 * NOTES_MARGIN,
-                        size = maxOf(existing.size, NOTES_TEXT_SIZE),
-                    ),
-                )
+        documentLock.withLock {
+            val current = _state.value
+            if (!current.isOnNotes || !current.canWrite) return@withLock
+            val here = current.here ?: return@withLock
+            val onThisPage = repository.marks(attemptId).filter {
+                it.partId == here.part.id && it.pageIndex == here.pageInPart
             }
-            return@launch
+            val existing = onThisPage.documentMark()
+            if (existing != null) {
+                onThisPage.forEach { mark ->
+                    if (mark.id != existing.id &&
+                        mark.kind == MarkKind.TEXT.name &&
+                        mark.text.isNullOrBlank()
+                    ) {
+                        repository.deleteMark(mark.id)
+                    }
+                }
+                // Widened if it is not already the writing area. A page written
+                // on in 4.0.0 got whatever width the box tool gave it, which on
+                // blank paper could be a narrow column — and the essay in it
+                // would go on being drawn in that column for ever. The words are
+                // untouched; only the shape they flow in changes, and it changes
+                // towards the page rather than away from it.
+                if (existing.width < 1f - 2 * NOTES_MARGIN - 0.01f) {
+                    repository.updateMark(
+                        existing.copy(
+                            x = NOTES_MARGIN,
+                            y = minOf(existing.y, NOTES_MARGIN),
+                            width = 1f - 2 * NOTES_MARGIN,
+                            size = maxOf(existing.size, NOTES_TEXT_SIZE),
+                        ),
+                    )
+                }
+                return@withLock
+            }
+            repository.addMark(
+                ExamMarkEntity(
+                    attemptId = attemptId,
+                    partId = here.part.id,
+                    pageIndex = here.pageInPart,
+                    kind = MarkKind.TEXT.name,
+                    x = NOTES_MARGIN,
+                    y = NOTES_MARGIN,
+                    width = 1f - 2 * NOTES_MARGIN,
+                    height = 1f - 2 * NOTES_MARGIN,
+                    colorArgb = current.inkColor,
+                    size = NOTES_TEXT_SIZE,
+                    text = "",
+                ),
+            )
         }
-        repository.addMark(
-            ExamMarkEntity(
-                attemptId = attemptId,
-                partId = here.part.id,
-                pageIndex = here.pageInPart,
-                kind = MarkKind.TEXT.name,
-                x = NOTES_MARGIN,
-                y = NOTES_MARGIN,
-                width = 1f - 2 * NOTES_MARGIN,
-                height = 1f - 2 * NOTES_MARGIN,
-                colorArgb = current.inkColor,
-                size = NOTES_TEXT_SIZE,
-                text = "",
-            ),
-        )
     }
 
     fun onInkColorChosen(argb: Int) {

@@ -11,8 +11,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -32,6 +36,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +46,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -73,10 +80,18 @@ import kotlinx.coroutines.launch
 /**
  * One sitting of an exam, open and being written on.
  *
- * The layout is a sandwich and the order is deliberate: the recordings on top,
+ * The layout is a sandwich and the order is deliberate: the recording on top,
  * where a listening exercise can be started without leaving the question; the
  * page in the middle taking every pixel that is left; the tools at the bottom,
  * under the thumb.
+ *
+ * Both ends of that sandwich get out of the way, because on a screen for people
+ * who find clutter hard going the page is the thing and everything else is
+ * scaffolding. The player is closed until the headphones button in the bar asks
+ * for it, so twenty pages of reading are not spent looking at the controls for
+ * the one listening task; and while somebody is typing, the tools and the ink
+ * fold away, because none of them can be used with a cursor in a field and all
+ * of them were taking room from the keyboard.
  *
  * The one interaction worth explaining is why the pager stops taking swipes.
  * A finger on a page can mean "turn this" or "write here", and it cannot mean
@@ -100,13 +115,13 @@ fun ExamWorkspaceScreen(
     val tickBoxes by viewModel.tickBoxes.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     var menuOpen by remember { mutableStateOf(false) }
     var clearingPage by remember { mutableStateOf(false) }
     // The name the app gives the blank paper it makes, read here so both the
     // menu and the bar hand the same one down.
     val notesLabel = stringResource(R.string.exam_notes_name)
-    var typingAt by remember { mutableStateOf<Pair<Float, Float>?>(null) }
 
     // CreateDocument, so the reader says where their copy goes. The app never
     // decides that for them: this is their work leaving the app, and it should
@@ -219,6 +234,30 @@ fun ExamWorkspaceScreen(
                     }
                 },
                 actions = {
+                    // The way to the recording, and the way to put it away.
+                    // In the bar rather than in the overflow menu: it is the
+                    // control for a thing that is part of this paper, and the
+                    // reader should be able to see that the paper has one
+                    // without opening a menu to find out.
+                    if (state.audio.isNotEmpty()) {
+                        IconButton(onClick = viewModel::onToggleAudio) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_headphones),
+                                contentDescription = stringResource(
+                                    if (state.audioOpen) {
+                                        R.string.exam_listen_hide
+                                    } else {
+                                        R.string.exam_listen_show
+                                    },
+                                ),
+                                tint = if (state.audioOpen) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+                    }
                     if (state.hasAnswerKey) {
                         IconButton(onClick = viewModel::onToggleAnswerKey) {
                             Icon(
@@ -309,7 +348,25 @@ fun ExamWorkspaceScreen(
             )
         },
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
+        // imePadding, so the whole sandwich sits above the keyboard rather than
+        // behind it. Without it the tools were under the keys and — much worse —
+        // so was the bottom third of the page, which is where somebody writing
+        // an essay spends most of their time: they were typing into a line they
+        // could not see. The page itself scrolls inside what is left; see
+        // [ExamPage].
+        //
+        // The navigation bar is declared consumed first because the screen is
+        // already inside the padding the app's own scaffold applies for it.
+        // Left unsaid, the keyboard's inset — which is measured from the bottom
+        // of the window and therefore includes the navigation bar — would be
+        // added on top of that padding a second time, and the bar would float a
+        // finger's width above the keys.
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(WindowInsets.navigationBars)
+                .imePadding(),
+        ) {
             if (state.isExporting) {
                 Row(
                     modifier = Modifier
@@ -326,7 +383,12 @@ fun ExamWorkspaceScreen(
                 }
             }
 
-            ExamAudioBar(tracks = state.audio, fileOf = viewModel::fileFor)
+            ExamAudioBar(
+                tracks = state.audio,
+                fileOf = viewModel::fileFor,
+                expanded = state.audioOpen,
+                onExpand = viewModel::onToggleAudio,
+            )
 
             if (state.showAnswerKey) {
                 // Said out loud rather than left to be inferred from a tinted
@@ -398,6 +460,11 @@ fun ExamWorkspaceScreen(
                 state = state,
                 page = pagerState.currentPage,
                 pageCount = pageCount,
+                // Taking the cursor out of the field is what "done" means: the
+                // editors close themselves when they lose focus, and the
+                // keyboard goes down with it. Setting a flag instead would put
+                // the tools back while the keys were still up.
+                onDoneTyping = { focusManager.clearFocus() },
                 onToolChosen = viewModel::onToolChosen,
                 onInkColorChosen = viewModel::onInkColorChosen,
                 onHighlightColorChosen = viewModel::onHighlightColorChosen,
@@ -448,12 +515,22 @@ fun ExamWorkspaceScreen(
  * tool needs — ink, thickness — appears on a second row underneath only when
  * it applies. A bar that showed pen colours while the eraser was selected
  * would be offering settings for a tool that is not running.
+ *
+ * ### While the keyboard is up
+ *
+ * All of it folds away to the page counter and a Done button. Not to save room
+ * for its own sake, though it does save it: with a cursor in a field there is
+ * no tool that can be used and no colour that can be chosen, so three rows of
+ * controls were standing between the keyboard and the words being typed while
+ * doing nothing at all. What is left is the one thing somebody typing needs —
+ * the way out.
  */
 @Composable
 private fun ExamToolbar(
     state: WorkspaceState,
     page: Int,
     pageCount: Int,
+    onDoneTyping: () -> Unit,
     onToolChosen: (ExamTool) -> Unit,
     onInkColorChosen: (Int) -> Unit,
     onHighlightColorChosen: (Int) -> Unit,
@@ -465,18 +542,24 @@ private fun ExamToolbar(
     onAddNotesPage: () -> Unit,
     onStep: (Int) -> Unit,
 ) {
+    val typing = state.editingText
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
+        // A line where the page stops and the tools start. The two are the same
+        // few shades of near-black in the dark theme, and without it the bar
+        // read as more page rather than as a different thing.
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
         // The page counter, with arrows that are the only way to turn a page
         // while a tool has the finger. Always present so their position never
         // moves, and disabled rather than hidden at the ends.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Space.sm),
+                .padding(horizontal = Space.sm, vertical = Space.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = { onStep(-1) }, enabled = page > 0) {
@@ -515,38 +598,51 @@ private fun ExamToolbar(
                     )
                 }
             }
-            // The way to the blank pages, and back. One button, because it is
-            // one thought — the other part of this booklet — and the reader is
-            // always on exactly one side of the join, so it is never ambiguous
-            // about which way it goes. On the blank pages a plus appears beside
-            // it, which is the only place another blank page could be wanted.
-            if (!state.showAnswerKey) {
-                if (state.isOnNotes) {
-                    IconButton(onClick = onAddNotesPage) {
+            when {
+                // The way out of the keyboard, in the place the other page
+                // controls sit, so nothing moves when it appears.
+                typing -> TextButton(onClick = onDoneTyping) {
+                    Text(stringResource(R.string.action_done))
+                }
+
+                // The way to the blank pages, and back. One button, because it
+                // is one thought — the other part of this booklet — and the
+                // reader is always on exactly one side of the join, so it is
+                // never ambiguous about which way it goes. On the blank pages a
+                // plus appears beside it, which is the only place another blank
+                // page could be wanted.
+                !state.showAnswerKey -> {
+                    if (state.isOnNotes) {
+                        IconButton(onClick = onAddNotesPage) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = stringResource(R.string.exam_add_page),
+                            )
+                        }
+                    }
+                    IconButton(onClick = onToggleNotes) {
                         Icon(
-                            Icons.Default.Add,
-                            contentDescription = stringResource(R.string.exam_add_page),
+                            painter = painterResource(
+                                if (state.isOnNotes) {
+                                    R.drawable.ic_exam
+                                } else {
+                                    R.drawable.ic_text_field
+                                },
+                            ),
+                            contentDescription = stringResource(
+                                if (state.isOnNotes) {
+                                    R.string.exam_back_to_paper
+                                } else {
+                                    R.string.exam_go_to_notes
+                                },
+                            ),
+                            tint = if (state.isOnNotes) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
                     }
-                }
-                IconButton(onClick = onToggleNotes) {
-                    Icon(
-                        painter = painterResource(
-                            if (state.isOnNotes) R.drawable.ic_exam else R.drawable.ic_text_field,
-                        ),
-                        contentDescription = stringResource(
-                            if (state.isOnNotes) {
-                                R.string.exam_back_to_paper
-                            } else {
-                                R.string.exam_go_to_notes
-                            },
-                        ),
-                        tint = if (state.isOnNotes) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
                 }
             }
             IconButton(onClick = { onStep(1) }, enabled = page < pageCount - 1) {
@@ -557,14 +653,22 @@ private fun ExamToolbar(
             }
         }
 
+        if (typing) return@Column
+
         // The row below the page counter, in two halves: the tools scroll, the
-        // three buttons on the right do not.
+        // three buttons on the right do not, and a rule between them says so.
         //
         // It was one scrolling row, and that was a bug rather than a style —
         // six tools and three buttons come to more than a phone is wide, so
         // undo, redo and the dark-page switch went off the end and had to be
         // scrolled back to. The ones that are always in the same place are the
         // ones pressed without looking, which is exactly what undo is for.
+        //
+        // The rule earns its place too. Both halves can hold a lit-up button —
+        // the tool in hand on the left, the dark-page switch on the right — and
+        // with the two sitting flush against each other the pair read as one
+        // wide, meaningless block rather than as two separate things that
+        // happen to both be on.
         //
         // The dark-page switch is here whether or not the reader is looking at
         // their own work, because a page too bright to read is too bright to
@@ -581,6 +685,7 @@ private fun ExamToolbar(
                     .weight(1f)
                     .horizontalScroll(rememberScrollState()),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.xs),
             ) {
                 if (!state.showAnswerKey) {
                     ExamTool.entries.forEach { tool ->
@@ -610,6 +715,12 @@ private fun ExamToolbar(
                     }
                 }
             }
+            VerticalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier
+                    .padding(horizontal = Space.sm)
+                    .height(Space.xl),
+            )
             IconButton(
                 onClick = onToggleDarkPage,
                 modifier = Modifier
@@ -697,9 +808,9 @@ private fun InkRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = Space.md, vertical = Space.xs),
+            .padding(horizontal = Space.lg, vertical = Space.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.sm),
+        horizontalArrangement = Arrangement.spacedBy(Space.md),
     ) {
         colors.forEach { argb ->
             val selected = argb == selectedColor
@@ -710,7 +821,7 @@ private fun InkRow(
                         contentDescription = colorName
                         this.selected = selected
                     }
-                    .size(28.dp)
+                    .size(SwatchSize)
                     .clip(CircleShape)
                     .background(Color(argb))
                     .border(
@@ -747,7 +858,7 @@ private fun InkRow(
                             contentDescription = widthName
                             this.selected = selected
                         }
-                        .size(28.dp)
+                        .size(SwatchSize)
                         .clip(CircleShape)
                         .background(
                             if (selected) {
@@ -772,6 +883,16 @@ private fun InkRow(
         }
     }
 }
+
+/**
+ * How big a colour or nib swatch is.
+ *
+ * Under the 48dp a button would get, and that is what the row's own padding and
+ * the gaps between them are for: the target a finger has is the swatch plus the
+ * air around it, and a row of discs jammed edge to edge is both harder to hit
+ * and harder to look at.
+ */
+private val SwatchSize = 30.dp
 
 /**
  * How much to magnify a nib fraction to make a visible dot.
