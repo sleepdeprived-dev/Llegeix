@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -130,10 +131,16 @@ fun ExamTextBox(
     // Live drag offsets, kept here rather than written to the database on every
     // pointer event: a drag produces one move per frame, and a round trip
     // through Room per frame is a box that lags behind the finger.
-    var dragX by remember(mark.id) { mutableStateOf(0f) }
-    var dragY by remember(mark.id) { mutableStateOf(0f) }
-    var liveScale by remember(mark.id) { mutableStateOf(1f) }
-    var liveRotation by remember(mark.id) { mutableStateOf(mark.rotation) }
+    //
+    // Float states rather than boxed ones for the same reason. These are
+    // written on every pointer event of a drag, and a plain mutableStateOf
+    // allocates a java.lang.Float for each of those — a few hundred short-lived
+    // objects per gesture, on the one code path where a collection pause is
+    // visible as the box stuttering behind the finger.
+    var dragX by remember(mark.id) { mutableFloatStateOf(0f) }
+    var dragY by remember(mark.id) { mutableFloatStateOf(0f) }
+    var liveScale by remember(mark.id) { mutableFloatStateOf(1f) }
+    var liveRotation by remember(mark.id) { mutableFloatStateOf(mark.rotation) }
     LaunchedEffect(mark.rotation) { liveRotation = mark.rotation }
 
     val currentMark by rememberUpdatedState(mark)

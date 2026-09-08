@@ -557,6 +557,12 @@
     <string name="exam_listen_show">Mostra l\'enregistrament</string>
     <string name="exam_listen_hide">Amaga l\'enregistrament</string>
 
+    <!-- Espai de treball, v4.0.3: una barra per on ets, una per al que fa el dit. -->
+    <string name="exam_colour_heading">Color</string>
+    <string name="exam_thickness_heading">Gruix</string>
+    <string name="exam_choose_colour">%1$s \u00b7 tria un color</string>
+    <string name="exam_add_page_here">Afegeix un altre full en blanc</string>
+
     <string name="exams_imported_partly">%1$d afegits, %2$d no s\'han pogut llegir</string>
     <plurals name="exams_files">
         <item quantity="one">%1$d fitxer</item>

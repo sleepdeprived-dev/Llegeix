@@ -577,6 +577,12 @@
     <string name="exam_listen_show">Show the recording</string>
     <string name="exam_listen_hide">Hide the recording</string>
 
+    <!-- Exam workspace, v4.0.3: one bar for where you are, one for what your finger does. -->
+    <string name="exam_colour_heading">Colour</string>
+    <string name="exam_thickness_heading">Thickness</string>
+    <string name="exam_choose_colour">%1$s \u00b7 choose a colour</string>
+    <string name="exam_add_page_here">Add another blank page</string>
+
     <!-- Exam mode, v3.8.1: several files can be one paper. -->
     <string name="exams_imported_partly">%1$d added, %2$d could not be read</string>
     <plurals name="exams_files">

@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateZoom
@@ -15,10 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,9 +42,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import com.david.llegeix.data.db.entity.ExamMarkEntity
 import com.david.llegeix.data.db.entity.MarkKind
 import com.david.llegeix.data.exam.MarkGeometry
@@ -136,7 +137,8 @@ fun ExamPage(
         modifier = modifier.clipToBounds(),
         contentAlignment = Alignment.Center,
     ) {
-        val widthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
+        val density = LocalDensity.current
+        val widthPx = with(density) { maxWidth.roundToPx() }
         var bitmap by remember(index, renderKey) { mutableStateOf<Bitmap?>(null) }
 
         LaunchedEffect(index, widthPx, renderKey) {
@@ -183,6 +185,19 @@ fun ExamPage(
                 .then(if (typing) Modifier.verticalScroll(pageScroll) else Modifier),
             contentAlignment = if (typing) Alignment.TopCenter else Alignment.Center,
         ) {
+            // The paper as a sheet of paper: rounded, lifted off the ground
+            // behind it, and edged with a hairline.
+            //
+            // The rounding and the shadow are cosmetic and the hairline is not.
+            // A darkened page is very nearly the colour of the ground it sits
+            // on, so without an edge there was no way to see where the sheet
+            // stopped — which matters, because where the sheet stops is where
+            // writing stops being saved.
+            //
+            // All of it rides on the same layer as the zoom so nothing can
+            // drift out of register with the marks: one transform, applied
+            // once, to the image and the canvas together.
+            val cardShadow = with(density) { PageLift.toPx() }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -195,6 +210,9 @@ fun ExamPage(
                         // Anchored at the top: a page's writing starts there, and a
                         // centre-anchored zoom throws you into the middle of it.
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
+                        shadowElevation = cardShadow
+                        shape = PageShape
+                        clip = true
                     },
             ) {
                 Image(
@@ -303,10 +321,26 @@ fun ExamPage(
                         onDelete = { onDeleteText(selectedText) },
                     )
                 }
+
+                // Last, so it draws over the page's own edge rather than under
+                // it. It takes no touches, being a plain outline.
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            shape = PageShape,
+                        ),
+                )
             }
         }
     }
 }
+
+/** The corner a sheet of paper gets, and how far it is lifted off the desk. */
+private val PageShape = RoundedCornerShape(6.dp)
+private val PageLift = 4.dp
 
 /** What an inverted page sits on while it is still loading. */
 private val DarkPaper = Color(0xFF0E0E0E)
