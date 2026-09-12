@@ -167,7 +167,26 @@ fun ExamPage(
         // fractions of it, and there is nothing else on screen that knows it.
         var pageSize by remember { mutableStateOf(IntSize.Zero) }
 
-        val typing = editingText && canWrite
+        // Writing on the page is two different situations, and they are told
+        // apart here because they want two different pages.
+        //
+        // A box on a printed page is typed into where it sits. The page keeps
+        // the size it has and the only thing that needs to move is whatever the
+        // keyboard is covering. A blank page in the text tool *is* the field:
+        // it is being written as a document, so it is fitted to the width and
+        // scrolled through — and it is like that from the moment the tool is
+        // chosen, whether or not the cursor happens to be in it this instant.
+        //
+        // That last clause is the fix for the worst of how typing used to feel.
+        // The page changed size, changed alignment and jumped its scroll at the
+        // moment the cursor arrived, and undid all three when the keyboard went
+        // down; so every tap into the page re-laid out the thing being written
+        // on, and the words moved under the finger that was aiming at them. Now
+        // picking the tool settles the layout, and the keyboard only changes how
+        // much of it can be seen at once.
+        val writing = documentMode && canWrite
+        val editingBox = editingText && canWrite && !documentMode
+        val scrolling = writing || editingBox
 
         // How big the sheet is drawn, and it is two different answers.
         //
@@ -179,15 +198,17 @@ fun ExamPage(
         // first line missing and no way to get it back is worse than a smaller
         // page.
         //
-        // Typing, it is fitted to the width and allowed to be taller than the
-        // screen. The keyboard takes half the height, and a page shrunk to fit
-        // what is left would put the writing at a size nobody can read. So it
-        // stays big and moves instead.
+        // Written on, it is fitted to the width and allowed to be taller than
+        // the screen. A keyboard takes half the height, and a page shrunk to fit
+        // what is left would put the writing at a size nobody can read; and
+        // since the width is the only thing this answer depends on, a keyboard
+        // coming up or going down cannot resize the page or re-wrap a line of
+        // it. It stays the size it is and moves instead.
         val sheet = PageFit.of(
             roomWide = (maxWidth - PageMargin * 2).coerceAtLeast(0.dp),
             roomTall = (maxHeight - PageMargin * 2).coerceAtLeast(0.dp),
             ratio = rendered.width.toFloat() / rendered.height.toFloat(),
-            fillWidth = typing,
+            fillWidth = scrolling,
         )
 
         // Room above and below the page to push it into, while typing.
@@ -199,36 +220,157 @@ fun ExamPage(
         // sit on top of the writing with no way to move either. Half a screen
         // of slack at each end means the page can always be pushed clear,
         // whatever kind of keyboard is up and wherever it happens to be.
-        val slack = if (typing) maxHeight * TYPING_SLACK else 0.dp
+        val slack = if (scrolling) maxHeight * TYPING_SLACK else 0.dp
         val slackPx = with(density) { slack.roundToPx() }
         val pageScroll = rememberScrollState()
 
-        // How far a magnified page has been pushed up, in pixels.
+        // What the zoom adds below the page.
+        //
+        // The magnification is a layer transform, so the layout still measures
+        // the page at its unmagnified height and the scroll it sits in runs out
+        // halfway down a magnified one — the bottom of a zoomed page could not
+        // be reached at all while writing on it. Declared as padding under the
+        // sheet, because that is the one place a scroll container will believe
+        // the extra height exists.
+        val overhang = if (scrolling) {
+            (sheet.height * (zoom - 1f)).coerceAtLeast(0.dp)
+        } else {
+            0.dp
+        }
+
+        // How far a magnified page has been pushed, in pixels.
         //
         // Zoom alone was half a feature. It grows the page from its top edge,
         // so at five times life size everything below the first third of the
         // page was off the bottom of the screen with no way to reach it — you
         // could magnify a question and then not read the answer box under it.
-        // The same two fingers that magnified it now move it.
-        var pan by remember { mutableFloatStateOf(0f) }
-        LaunchedEffect(zoom) { if (zoom <= 1f) pan = 0f }
+        // Sideways had the same hole and it was worse, because the page grows
+        // from its middle: the left margin of every line — which is where
+        // writing starts — was off the edge of the screen the moment the page
+        // was magnified. The same two fingers that magnified it now move it
+        // both ways.
+        var panX by remember { mutableFloatStateOf(0f) }
+        var panY by remember { mutableFloatStateOf(0f) }
+        LaunchedEffect(zoom) { if (zoom <= 1f) { panX = 0f; panY = 0f } }
         val viewportPx = with(density) { maxHeight.toPx() }
+        val viewportWidePx = with(density) { maxWidth.toPx() }
+        val marginPx = with(density) { PageMargin.toPx() }
         val pageTallPx = with(density) { sheet.height.toPx() }
+        val pageWidePx = with(density) { sheet.width.toPx() }
+
+        // Two fingers, read fresh every time they are put down.
+        //
+        // Not as a lambda handed to the gesture modifier and captured there: a
+        // pointer-input handler keyed on nothing outlives the composition that
+        // started it, so anything it closed over is whatever it was when the
+        // page first appeared. That is what this used to do, and the cost was
+        // exactly the complaint that prompted this release — the handler
+        // believed nobody was writing, so a two-finger push moved the page as
+        // if it were merely zoomed, clamped to the page's own bottom edge, and
+        // the last lines of an essay could not be pushed out from under the
+        // keys at all.
+        val panning by rememberUpdatedState<(Float, Float) -> Unit> { dx, dy ->
+            // Sideways is the same in both modes: only as far as there is page
+            // hidden past the edge of the screen, and the page is centred, so
+            // half of that is hidden on each side.
+            val hiddenWide = ((pageWidePx * zoom - viewportWidePx) / 2f).coerceAtLeast(0f)
+            if (hiddenWide > 0f) panX = (panX + dx).coerceIn(-hiddenWide, hiddenWide)
+            if (scrolling) {
+                // Into the scroll, which is the thing that has the slack above
+                // and below the page in it. A layer translation would stop at
+                // the page's own edge and leave the bottom line under the keys.
+                pageScroll.dispatchRawDelta(-dy)
+            } else {
+                // Only as far as there is page to see. A magnified page that
+                // can be flung off the screen entirely is a page somebody has
+                // to hunt for.
+                val hidden = (pageTallPx * zoom - viewportPx).coerceAtLeast(0f)
+                panY = (panY + dy).coerceIn(-hidden, 0f)
+            }
+        }
+
+        // Where the cursor is, in the page's own pixels, as the editor last
+        // measured it. States rather than parameters because they are written
+        // on every keystroke and read by one effect, and nothing about the page
+        // needs to be composed again when the cursor moves.
+        val caretTop = remember { mutableFloatStateOf(Float.NaN) }
+        val caretBottom = remember { mutableFloatStateOf(Float.NaN) }
+
         // Starting at the page's own top rather than in the slack above it.
         // After the first layout, because until the scroll container has been
         // measured its range is zero and a jump into it is silently clamped
         // back to the top — which would open every essay looking at half a
         // screen of empty desk.
-        LaunchedEffect(typing) {
-            if (!typing) return@LaunchedEffect
+        LaunchedEffect(scrolling) {
+            if (!scrolling) return@LaunchedEffect
+            // A page that is scrolled is never also translated: the two would
+            // add up and the arithmetic that follows the cursor would be out by
+            // however far the last pinch had pushed the page.
+            panY = 0f
+            // And the cursor's last position is forgotten, so that arriving on
+            // a page to write on it cannot begin by scrolling to where some
+            // other page's cursor happened to be.
+            caretTop.floatValue = Float.NaN
+            caretBottom.floatValue = Float.NaN
             snapshotFlow { pageScroll.maxValue }.first { it > 0 }
             pageScroll.scrollTo(slackPx)
+        }
+
+        // A box being typed into has no cursor of its own to report — the field
+        // inside it is the box — so the box itself is what has to be kept in
+        // view. Its top line is close enough to a cursor for this purpose.
+        LaunchedEffect(editingBox, selectedText?.id, pageSize) {
+            val box = selectedText?.takeIf { editingBox } ?: return@LaunchedEffect
+            val tall = pageSize.height.toFloat()
+            if (tall <= 0f) return@LaunchedEffect
+            caretTop.floatValue = box.y * tall
+            caretBottom.floatValue = (box.y + box.height) * tall
+        }
+
+        // Keeping the line being written in front of the reader.
+        //
+        // This is the whole difference between typing on a page and typing in a
+        // text field. A field lives in a list that knows where its cursor is; a
+        // page is a fixed sheet with a field pinned over part of it, and nothing
+        // in that arrangement moves the sheet when the writing reaches the
+        // bottom of the screen. So the editor says where the cursor is and the
+        // page is scrolled to keep it in sight.
+        //
+        // The arithmetic is in [CaretFollow], which is where it is explained and
+        // where it is tested. This is the plumbing: watch where the editor says
+        // the cursor is, and move the page when it says so.
+        LaunchedEffect(scrolling, slackPx, viewportPx, marginPx) {
+            if (!scrolling) return@LaunchedEffect
+            snapshotFlow { pageScroll.maxValue }.first { it > 0 }
+            var placed = false
+            snapshotFlow { caretTop.floatValue to caretBottom.floatValue }.collect { (top, bottom) ->
+                if (top.isNaN()) return@collect
+                val first = !placed
+                placed = true
+                val target = CaretFollow.scrollFor(
+                    caretTopPx = top,
+                    caretBottomPx = bottom,
+                    pageTopPx = marginPx + slackPx,
+                    zoom = currentZoom,
+                    scrolledPx = pageScroll.value,
+                    furthestPx = pageScroll.maxValue,
+                    viewportPx = viewportPx,
+                    lowestPx = slackPx,
+                    alwaysPlace = first,
+                ) ?: return@collect
+                // The first one is a jump. Coming back to a half-written page
+                // with the cursor ten lines down, an animation would be the app
+                // scrolling through the reader's own essay at them; after that
+                // the page is already where they are looking, and a move they
+                // did not ask for should be slow enough to be read as a move.
+                if (first) pageScroll.scrollTo(target) else pageScroll.animateScrollTo(target)
+            }
         }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (typing) Modifier.verticalScroll(pageScroll) else Modifier)
+                .then(if (scrolling) Modifier.verticalScroll(pageScroll) else Modifier)
                 // Two fingers move and magnify the page, one finger writes on
                 // it. On the initial pass, which is the whole point: the thing
                 // most in need of moving out from under a keyboard is a text
@@ -240,20 +382,9 @@ fun ExamPage(
                 .twoFingerZoomAndPan(
                     currentZoom = { currentZoom },
                     onZoomChanged = onZoomChanged,
-                    onPan = { dy ->
-                        if (typing) {
-                            pageScroll.dispatchRawDelta(-dy)
-                        } else {
-                            // Only as far as there is page to see. A magnified
-                            // page that can be flung off the screen entirely is
-                            // a page somebody has to hunt for.
-                            val hidden = (pageTallPx * currentZoom - viewportPx)
-                                .coerceAtLeast(0f)
-                            pan = (pan + dy).coerceIn(-hidden, 0f)
-                        }
-                    },
+                    onPan = { dx, dy -> panning(dx, dy) },
                 ),
-            contentAlignment = if (typing) Alignment.TopCenter else Alignment.Center,
+            contentAlignment = if (scrolling) Alignment.TopCenter else Alignment.Center,
         ) {
             // The paper as a sheet of paper: rounded, lifted off the ground
             // behind it, and edged with a hairline.
@@ -270,13 +401,19 @@ fun ExamPage(
             val cardShadow = with(density) { PageLift.toPx() }
             Box(
                 modifier = Modifier
-                    .padding(horizontal = PageMargin, vertical = PageMargin + slack)
+                    .padding(
+                        start = PageMargin,
+                        end = PageMargin,
+                        top = PageMargin + slack,
+                        bottom = PageMargin + slack + overhang,
+                    )
                     .size(width = sheet.width, height = sheet.height)
                     .onSizeChanged { pageSize = it }
                     .graphicsLayer {
                         scaleX = currentZoom
                         scaleY = currentZoom
-                        translationY = pan
+                        translationX = panX
+                        translationY = panY
                         // Anchored at the top: a page's writing starts there, and a
                         // centre-anchored zoom throws you into the middle of it.
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
@@ -299,6 +436,14 @@ fun ExamPage(
                 // tidies these — see [documentMark] — so the field the reader types
                 // into and the row the app saves into are never two different rows.
                 val document = if (documentMode) marks.documentMark() else null
+
+                // Where the box in hand is at this instant, shared by the
+                // frame that is being dragged and the canvas that paints the
+                // words inside it. Keyed on the box, so picking up a different
+                // one starts from where that one actually is.
+                val live = remember(selectedText?.id) {
+                    TextBoxLive(selectedText?.rotation ?: 0f)
+                }
 
                 Canvas(
                     modifier = Modifier
@@ -324,9 +469,8 @@ fun ExamPage(
                     // not a decoration and not a claim that these are all of them.
                     if (tool == ExamTool.TICK) drawTickTargets(tickBoxes)
 
-                    // Everything except the box being typed into: while it is
-                    // being edited the live field is showing those words, and
-                    // painting them underneath as well would double them.
+                    // Everything except whatever is in hand, which is drawn
+                    // after this and from somewhere else.
                     drawMarks(
                         when {
                             // On blank paper the field is showing the words, so
@@ -335,11 +479,34 @@ fun ExamPage(
                             // this page is not in the field and has to be drawn, or
                             // it is simply gone from the reader's page.
                             document != null -> marks.filterNot { it.id == document.id }
-                            editingText && selectedText != null ->
+                            selectedText != null ->
                                 marks.filterNot { it.id == selectedText.id }
                             else -> marks
                         },
                     )
+
+                    // The box in hand, painted where the finger has it rather
+                    // than where the database still has it.
+                    //
+                    // This is what made dragging text feel wrong. The frame and
+                    // the handles are composables and followed the finger; the
+                    // words are painted here, from a row that is not written
+                    // until the finger comes up — so an empty rectangle slid
+                    // across the page and the answer stayed behind and then
+                    // teleported. Reading the live geometry inside the draw
+                    // means a drag costs this canvas a redraw and nothing else,
+                    // and the words move with their own frame.
+                    //
+                    // Not while it is being typed into: then the field above is
+                    // showing them and painting them here as well would double
+                    // every letter.
+                    // And never on blank paper, where the page is the field and
+                    // the box in hand belongs to some other page: the branch
+                    // above kept it in the list, so painting it here as well
+                    // would draw it twice.
+                    if (document == null && selectedText != null && !editingText) {
+                        drawMark(live.preview(selectedText, size.width, size.height))
+                    }
 
                     // The stroke under the finger, drawn in the ink it will be
                     // saved in so that lifting the finger changes nothing visible.
@@ -369,6 +536,10 @@ fun ExamPage(
                         onFocused = onStartEditingText,
                         onDone = onDoneEditingText,
                         onChanged = { text, height -> onTextChanged(document, text, height) },
+                        onCaretMoved = { top, bottom ->
+                            caretTop.floatValue = top
+                            caretBottom.floatValue = bottom
+                        },
                     )
 
                     selectedText != null && canWrite && pageSize != IntSize.Zero -> ExamTextBox(
@@ -376,6 +547,7 @@ fun ExamPage(
                         pageWidthPx = pageSize.width.toFloat(),
                         pageHeightPx = pageSize.height.toFloat(),
                         editing = editingText,
+                        live = live,
                         onStartEditing = onStartEditingText,
                         onDoneEditing = onDoneEditingText,
                         onTextChanged = { text, height ->
@@ -443,7 +615,8 @@ private val DarkPaper = Color(0xFF0E0E0E)
 private fun Modifier.twoFingerZoomAndPan(
     currentZoom: () -> Float,
     onZoomChanged: (Float) -> Unit,
-    onPan: (Float) -> Unit,
+    /** How far the two fingers moved together, across and down. */
+    onPan: (Float, Float) -> Unit,
 ): Modifier = pointerInput(Unit) {
     awaitEachGesture {
         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -459,8 +632,8 @@ private fun Modifier.twoFingerZoomAndPan(
                         ),
                     )
                 }
-                val pan = event.calculatePan().y
-                if (pan != 0f) onPan(pan)
+                val pan = event.calculatePan()
+                if (pan.x != 0f || pan.y != 0f) onPan(pan.x, pan.y)
                 event.changes.forEach { if (it.pressed) it.consume() }
             }
         } while (event.changes.any { it.pressed })
@@ -631,6 +804,13 @@ private fun DrawScope.drawTickTargets(boxes: List<TickBox>) {
 private fun DrawScope.drawMarks(marks: List<ExamMarkEntity>) {
     drawIntoCanvas { canvas ->
         MarkPainter.draw(canvas.nativeCanvas, marks, size.width, size.height)
+    }
+}
+
+/** One mark, for the box being moved: the same painter, without a list. */
+private fun DrawScope.drawMark(mark: ExamMarkEntity) {
+    drawIntoCanvas { canvas ->
+        MarkPainter.draw(canvas.nativeCanvas, mark, size.width, size.height)
     }
 }
 

@@ -72,7 +72,18 @@ object ExamInk {
 
     val palette: List<Int> = listOf(Black, Blue, Red, Green)
 
-    val Default: Int = Blue
+    /**
+     * Black, because that is what writing is.
+     *
+     * It was blue, on the reasoning that a pen is often blue and that blue ink
+     * over printed black type says which words are the reader's. Both are true
+     * of handwriting on somebody else's paper and neither is true of the thing
+     * the tool is used for most: typing on a blank page, where the reader is
+     * not annotating anything and blue is simply a colour their own document
+     * has been given without being asked. The other three are one tap away on
+     * the tool itself.
+     */
+    val Default: Int = Black
 
     @StringRes
     fun nameOf(argb: Int): Int = when (argb) {

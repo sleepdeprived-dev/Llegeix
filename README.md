@@ -202,6 +202,12 @@ does both after bumping the version in `app/build.gradle.kts`.
   any drawing program. Closing the keyboard is how you finish with it. It used
   to be a modal that covered the page while you typed blind into a field and
   found out afterwards whether the words fitted.
+
+  Writing is black unless you choose otherwise, and dragging a box moves the
+  words with it: the frame on screen and the text painted on the page are two
+  drawings of one thing, and they now read the same live position, so a box no
+  longer slides across the page as an empty rectangle with its answer left
+  behind.
 - **Dark pages keep their pictures** — inverting a page is not a colour filter
   any more. A filter is a matrix over every pixel with no exceptions, which is
   why dark mode used to turn every photograph in a book, and every diagram on a
@@ -227,6 +233,15 @@ does both after bumping the version in `app/build.gradle.kts`.
   page puts the pen away again, so the next tap on a question does not plant a
   text box in it. Everything typed is saved as it is typed, like every stroke of
   the pen.
+
+  The page follows the cursor. A sheet of paper with a field pinned over it is
+  not a scrolling list and does not know where its own cursor is, so the writing
+  used to disappear under the keyboard a few lines in and had to be pushed clear
+  by hand. Now the line being typed is kept in the upper middle of what can be
+  seen — which works with a floating keyboard too, since a keyboard in its own
+  window tells the app nothing about where it is. The page is also sized by the
+  tool rather than by the keyboard, so raising and lowering the keys no longer
+  resizes the paper and re-wraps the sentence being written.
 - **Listening** — the bar above the page has a scrubber rather than a progress
   line: drag it, or tap anywhere along it, and the recording goes there. A
   listening exam is fifteen seconds played four times, and until this the only
