@@ -394,3 +394,37 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         db.execSQL("ALTER TABLE exam_marks ADD COLUMN rotation REAL NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * Exams leave the app, and their five tables go with them.
+ *
+ * The feature is gone in v4.1, and a database that keeps the tables would be a
+ * database whose shape no longer matches the code: Room validates the schema on
+ * open and refuses to start against extra tables it was not told about, so this
+ * is not optional tidying.
+ *
+ * ### Order, and why it is this order
+ *
+ * The children are dropped before their parents. Dropping a table performs an
+ * implicit `DELETE FROM` first, and with foreign keys enabled — which is how the
+ * app runs — deleting a parent row fires `ON DELETE CASCADE` on the children
+ * that point at it. Dropping `exams` while `exam_attempts` still existed would
+ * therefore cascade into a table this statement has not reached yet, which
+ * SQLite is entitled to complain about. Going upwards from the leaves means
+ * every table is childless by the time it is dropped, and each cascade has
+ * nothing left to reach.
+ *
+ * The *files* the rows named — the copied PDFs, the recordings — are deleted by
+ * [com.david.llegeix.LlegeixApp] on the first launch after this upgrade. SQLite
+ * cannot unlink anything, and dropping the tables here is what makes those files
+ * unreachable, so the two halves have to happen together.
+ */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS exam_marks")
+        db.execSQL("DROP TABLE IF EXISTS exam_audio")
+        db.execSQL("DROP TABLE IF EXISTS exam_attempts")
+        db.execSQL("DROP TABLE IF EXISTS exam_parts")
+        db.execSQL("DROP TABLE IF EXISTS exams")
+    }
+}

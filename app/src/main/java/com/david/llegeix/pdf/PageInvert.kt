@@ -9,8 +9,8 @@ import android.graphics.Bitmap
  * a page with a picture on it: black text on white paper becomes white text on
  * black paper, which is what somebody reading at night asked for, but a
  * photograph becomes an X-ray of itself and a colour diagram becomes a diagram
- * in the wrong colours. On an exam paper that matters more than usual — half of
- * a listening comprehension is pictures of the thing being described.
+ * in the wrong colours — and a language textbook is mostly pictures of the thing
+ * being described.
  *
  * PDFium hands over pixels and nothing else: there is no object model here to
  * ask "which of you is an image". So the picture regions are found by looking

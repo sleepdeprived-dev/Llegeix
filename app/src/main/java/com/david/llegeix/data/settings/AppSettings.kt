@@ -159,6 +159,36 @@ enum class LibraryLayout(val key: String) {
 }
 
 /**
+ * How much of the Continue reading shelf the library draws.
+ *
+ * Three states rather than a switch, because "I do not want this" and "I do not
+ * want this *right now*" are different wishes and the shelf is the sort of thing
+ * people change their mind about. [COLLAPSED] keeps the heading and folds the
+ * cards away, so the shelf is one tap from being back and the reader can still
+ * see that the app knows where they were; [HIDDEN] takes the whole thing off the
+ * library.
+ *
+ * Nothing is forgotten in either state. The reading history is untouched, it is
+ * still listed under Saved as *Recently viewed*, and every book keeps the page
+ * it was left on — this is a decision about one shelf on one screen, not about
+ * what the app remembers.
+ */
+enum class ContinueShelf(val key: String, @param:StringRes val labelRes: Int) {
+    SHOWN("shown", R.string.library_continue_shown),
+    COLLAPSED("collapsed", R.string.library_continue_collapsed),
+    HIDDEN("hidden", R.string.library_continue_hidden),
+    ;
+
+    /** The state the chevron on the shelf's own heading leads to. */
+    fun toggled(): ContinueShelf = if (this == COLLAPSED) SHOWN else COLLAPSED
+
+    companion object {
+        fun fromKey(key: String?): ContinueShelf =
+            entries.firstOrNull { it.key == key } ?: SHOWN
+    }
+}
+
+/**
  * What the page itself is tinted to, which is not the same question as the
  * app's theme.
  *
@@ -205,6 +235,8 @@ data class AppSettings(
     val accent: AccentColor = AccentColor.SYSTEM,
     val language: AppLanguage = AppLanguage.Default,
     val libraryLayout: LibraryLayout = LibraryLayout.LIST,
+    /** How much of the Continue reading shelf the library draws. See [ContinueShelf]. */
+    val continueShelf: ContinueShelf = ContinueShelf.SHOWN,
     val translationTarget: TranslationTarget = TranslationTarget.Default,
     /**
      * Inverts the rendered page so a white PDF reads as light-on-dark.

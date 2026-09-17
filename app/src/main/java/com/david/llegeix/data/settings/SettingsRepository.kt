@@ -44,6 +44,12 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(libraryLayout = layout)
     }
 
+    /** Shown, folded shut, or off the library altogether. See [ContinueShelf]. */
+    fun setContinueShelf(shelf: ContinueShelf) {
+        prefs.edit { putString(KEY_CONTINUE_SHELF, shelf.key) }
+        _settings.value = current.copy(continueShelf = shelf)
+    }
+
     fun setCustomAccent(argb: Int) {
         prefs.edit { putInt(KEY_CUSTOM_ACCENT, argb) }
         _settings.value = current.copy(customAccent = argb, accent = AccentColor.CUSTOM)
@@ -103,6 +109,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_ACCENT = "accent"
         private const val KEY_LANGUAGE = "language"
         private const val KEY_LAYOUT = "library_layout"
+        private const val KEY_CONTINUE_SHELF = "continue_shelf"
         private const val KEY_TRANSLATION = "translation_target"
         private const val KEY_INVERT_PAGES = "invert_pages"
         private const val KEY_PAGE_TINT = "page_tint"
@@ -121,6 +128,7 @@ class SettingsRepository(context: Context) {
             accent = AccentColor.fromKey(prefs.getString(KEY_ACCENT, null)),
             language = AppLanguage.fromTag(prefs.getString(KEY_LANGUAGE, null)),
             libraryLayout = LibraryLayout.fromKey(prefs.getString(KEY_LAYOUT, null)),
+            continueShelf = ContinueShelf.fromKey(prefs.getString(KEY_CONTINUE_SHELF, null)),
             translationTarget = TranslationTarget.fromCode(prefs.getString(KEY_TRANSLATION, null)),
             deviceScanOptOut = prefs.getBoolean(KEY_DEVICE_SCAN_OPT_OUT, false),
             // The old boolean is still read, so a reader who had inverted

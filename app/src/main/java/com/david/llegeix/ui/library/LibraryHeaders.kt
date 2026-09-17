@@ -1,5 +1,7 @@
 package com.david.llegeix.ui.library
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -19,19 +21,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,93 +47,102 @@ import com.david.llegeix.ui.common.Space
 import kotlin.math.roundToInt
 
 /**
- * Where the library's documents come from, as one line at the top of it.
+ * Where the library's documents come from, as one row at the top of it.
  *
- * This was a heading reading *Sources* over a strip of tiles that scrolled
- * sideways, one per source, each with its own count. That strip replaced an
- * item in an overflow menu and it was right to: a reader looking at a library
- * missing a book thinks "where has it gone", not "I should open the three-dot
- * menu". But a permanent horizontal scroller is a heavy way to say it. Half of
- * it is always off the edge of the screen, it takes three lines of height on
- * every visit to the library, and the counts on it are only ever read on the
- * one visit in fifty where something is actually missing.
+ * This has been three things. It was an item in the overflow menu, which is the
+ * worst place for it: a reader looking at a library missing a book thinks "where
+ * has it gone", not "I should open the three-dot menu". Then it was a strip of
+ * tiles that scrolled sideways, one per source — honest, and three lines of
+ * permanent furniture with half of itself always off the edge of the screen.
+ * Then it was a text button reading *See sources* with a bare plus disc beside
+ * it, which packed two unrelated jobs into one line: going to the sources, and
+ * bringing in a new one.
  *
- * So the whole thing is one press now. *See sources* opens the sheet that has
- * always held the real answer — every source, every folder inside it, and a
- * tick box against each — and the plus beside it adds one. The plus carries no
- * word because it does not need one: a plus at the end of a row about sources
- * adds a source, and the word was the widest thing in the row.
+ * It is now one row that does one thing, built exactly like the folder rows
+ * below it — a disc, a name, a line of detail, a chevron — because that is what
+ * it is: a place in the library you can go into. Adding documents left this row
+ * for a button of its own that says the word "add", since a plus disc at the end
+ * of a row is the least obvious control on the screen and importing is the first
+ * thing anybody has to do.
+ *
+ * The detail line is the one thing the strip of tiles said that a button could
+ * not: a library quietly missing a folder looks exactly like a library showing
+ * everything, so when the two counts differ this row says "31 of 48 PDFs shown"
+ * rather than a total.
  */
 @Composable
-fun SourcesStrip(
+fun SourcesRow(
+    sourceCount: Int,
+    visibleCount: Int,
+    totalCount: Int,
     onOpenSources: () -> Unit,
-    onAddSource: () -> Unit,
     modifier: Modifier = Modifier,
-    /** Only drawn when the two numbers differ. See [LibraryUiState.isPartlyShown]. */
-    partial: Pair<Int, Int>? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = Space.md, end = Space.screen),
+            .clickable(onClick = onOpenSources)
+            .padding(start = Space.screen, end = Space.md)
+            .padding(vertical = Space.md),
     ) {
-        TextButton(onClick = onOpenSources) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_folder),
                 contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-            Text(
-                text = stringResource(R.string.library_see_sources),
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(start = Space.sm),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
             )
         }
-        // The one thing the strip of tiles said that this row would otherwise
-        // lose: a library quietly missing a folder looks exactly like a library
-        // showing everything, and this is the sentence that tells them apart.
-        partial?.let { (visible, total) ->
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.lg),
+        ) {
             Text(
-                text = stringResource(R.string.sources_count_partial, visible, total),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = stringResource(R.string.library_sources),
+                style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = Space.sm),
             )
-        } ?: Box(modifier = Modifier.weight(1f))
-        AddSourceButton(onClick = onAddSource)
-    }
-}
-
-/**
- * The plus that brings in another source.
- *
- * A filled disc rather than an outlined tile with the word "Add" in it. It sits
- * at the end of a row that has just said the word *sources*, so what it adds is
- * not in doubt, and a round target under the thumb is easier to hit than a
- * pill it has to be aimed inside.
- */
-@Composable
-private fun AddSourceButton(onClick: () -> Unit) {
-    val label = stringResource(R.string.library_add_source)
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(AddButtonSize)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-    ) {
+            Text(
+                text = listOf(
+                    if (visibleCount < totalCount) {
+                        stringResource(R.string.sources_count_partial, visibleCount, totalCount)
+                    } else {
+                        pluralStringResource(
+                            R.plurals.folders_pdf_count,
+                            totalCount,
+                            totalCount,
+                        )
+                    },
+                    pluralStringResource(
+                        R.plurals.sources_source_count,
+                        sourceCount,
+                        sourceCount,
+                    ),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (visibleCount < totalCount) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
         Icon(
-            imageVector = Icons.Default.Add,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -147,15 +159,35 @@ private fun AddSourceButton(onClick: () -> Unit) {
  * Finished books drop off it on their own, and so do ones never opened past the
  * first page: a shelf of things to resume should hold only things there is
  * something to resume.
+ *
+ * ### Folding it away, and taking it off the screen
+ *
+ * Not everybody wants it. Somebody who reads one book at a time has a shelf of
+ * one, and somebody who browses their library more than they resume it has a
+ * shelf that is simply in the way — so the heading is a control rather than a
+ * label, and the chevron on it folds the cards away. Collapsed, the heading
+ * stays and says how many books are on the shelf, which is the point: the state
+ * is visible, so it is one tap from being undone, and nobody has to remember
+ * that they turned something off.
+ *
+ * *Hide* is offered only once the shelf is collapsed, and that is deliberate.
+ * The two are one escalation apart — fold it away, and then, if it is still not
+ * wanted, take it off the library — so the stronger of the two is not sitting on
+ * a shelf that most people are happy with, waiting to be pressed by mistake.
+ * Neither control is in a menu: this is a decision about the thing being looked
+ * at, made on the thing being looked at.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ContinueReadingRow(
     entries: List<RecentDocument>,
     names: DocumentNames,
+    collapsed: Boolean,
     onOpen: (RecentDocument) -> Unit,
     onForget: (RecentDocument) -> Unit,
     onSeeAll: () -> Unit,
+    onToggleCollapsed: () -> Unit,
+    onHide: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -163,29 +195,88 @@ fun ContinueReadingRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = Space.screen, end = Space.sm),
+                .padding(start = Space.md, end = Space.sm),
         ) {
-            Text(
-                text = stringResource(R.string.library_continue_title),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onSeeAll) {
-                Text(stringResource(R.string.library_continue_history))
+            // The whole heading is the target, not just the chevron: the
+            // chevron is what says the row can be folded, and a 24dp arrow is
+            // not what anybody aims at once they know it can.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onToggleCollapsed)
+                    .padding(vertical = Space.xs),
+            ) {
+                // One arrow turned rather than two icons swapped, so the fold
+                // reads as the same control moving instead of a different one
+                // appearing.
+                val turn by animateFloatAsState(
+                    targetValue = if (collapsed) 0f else 90f,
+                    label = "continueChevron",
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(
+                        if (collapsed) {
+                            R.string.library_continue_expand
+                        } else {
+                            R.string.library_continue_collapse
+                        },
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(horizontal = Space.xs)
+                        .size(22.dp)
+                        .rotate(turn),
+                )
+                Column(modifier = Modifier.padding(start = Space.xs)) {
+                    Text(
+                        text = stringResource(R.string.library_continue_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    // Only while folded. Expanded, the cards underneath are a
+                    // better answer to "how many" than a number is.
+                    if (collapsed) {
+                        Text(
+                            text = pluralStringResource(
+                                R.plurals.library_continue_count,
+                                entries.size,
+                                entries.size,
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            // One trailing action per state, and each is the one that state
+            // makes sense of. Open, the useful offer is the rest of the
+            // history; folded, it is getting rid of the shelf for good.
+            if (collapsed) {
+                TextButton(onClick = onHide) {
+                    Text(stringResource(R.string.library_continue_hide))
+                }
+            } else {
+                TextButton(onClick = onSeeAll) {
+                    Text(stringResource(R.string.library_continue_history))
+                }
             }
         }
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(Space.sm),
-            contentPadding = PaddingValues(horizontal = Space.screen),
-            modifier = Modifier.padding(top = Space.xs),
-        ) {
-            items(entries, key = { it.uriString }) { entry ->
-                ContinueCard(
-                    entry = entry,
-                    title = names.titleFor(entry.uriString, entry.displayName),
-                    onClick = { onOpen(entry) },
-                    onLongClick = { onForget(entry) },
-                )
+        AnimatedVisibility(visible = !collapsed) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(Space.sm),
+                contentPadding = PaddingValues(horizontal = Space.screen),
+                modifier = Modifier.padding(top = Space.xs),
+            ) {
+                items(entries, key = { it.uriString }) { entry ->
+                    ContinueCard(
+                        entry = entry,
+                        title = names.titleFor(entry.uriString, entry.displayName),
+                        onClick = { onOpen(entry) },
+                        onLongClick = { onForget(entry) },
+                    )
+                }
             }
         }
     }
@@ -272,6 +363,3 @@ private fun ContinueCard(
  */
 private val ContinueCardWidth = 250.dp
 private val ContinueCoverWidth = 44.dp
-
-/** The platform's smallest comfortable round target. */
-private val AddButtonSize = 40.dp

@@ -3,7 +3,6 @@ package com.david.llegeix.data
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
-import com.david.llegeix.data.exam.ExamRepository
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.source.LibraryDataRepository
@@ -42,7 +41,6 @@ class DataEraser(
     private val settings: SettingsRepository,
     private val searchHistory: SearchHistoryRepository,
     private val thumbnails: PdfThumbnails,
-    private val exams: ExamRepository,
 ) {
 
     /**
@@ -56,9 +54,6 @@ class DataEraser(
         releaseAllUriPermissions()
         runCatching { deleteTranslationModels() }
         runCatching { libraryData.eraseEverything() }
-        // Exams are the one thing the app stores rather than merely refers to,
-        // so they are the one thing a wipe has to delete rather than forget.
-        runCatching { exams.eraseEverything() }
         thumbnails.clear()
         searchHistory.clear()
         runCatching { context.cacheDir.deleteRecursively() }

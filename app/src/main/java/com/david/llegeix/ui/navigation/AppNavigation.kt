@@ -30,9 +30,6 @@ import androidx.navigation.navArgument
 import com.david.llegeix.ui.bookmarks.BookmarkedCollectionScreen
 import com.david.llegeix.ui.bookmarks.ReadLaterCollectionScreen
 import com.david.llegeix.ui.dictionary.DictionaryScreen
-import com.david.llegeix.ui.exams.ExamDetailScreen
-import com.david.llegeix.ui.exams.ExamWorkspaceScreen
-import com.david.llegeix.ui.exams.ExamsScreen
 import com.david.llegeix.ui.folders.FolderDetailScreen
 import com.david.llegeix.ui.library.LibraryScreen
 import com.david.llegeix.ui.practice.PracticeScreen
@@ -46,9 +43,6 @@ private object Routes {
     const val DICTIONARY = "dictionary"
     const val RECENT = "recent"
     const val SAVED = "saved"
-    const val EXAMS = "exams"
-    const val EXAM_DETAIL = "exam/{examId}"
-    const val EXAM_ATTEMPT = "attempt/{attemptId}"
     const val SETTINGS = "settings"
     const val PRACTICE = "practice"
 
@@ -83,10 +77,6 @@ private object Routes {
 
     fun folderDetail(folderId: Long, name: String, adding: Boolean = false): String =
         "folder/$folderId?name=${Uri.encode(name)}&adding=$adding"
-
-    fun examDetail(examId: Long): String = "exam/$examId"
-
-    fun examAttempt(attemptId: Long): String = "attempt/$attemptId"
 }
 
 private data class TopLevelDestination(
@@ -102,23 +92,24 @@ private data class TopLevelDestination(
  * because it is the other reason to open this app at all: the library is the
  * books, and the dictionary is the language.
  *
- * There were five. Three of them — Recent, Bookmarks, Folders — were three
- * re-cuts of the same documents, so the bar spent most of its width offering
- * ways to list things the library was already listing. Recent has become the
- * shelf of part-read books at the top of the library, which is where somebody
- * wanting to carry on reading was going to look anyway, and its full history is
- * one press of that shelf's own button away.
+ * There were five, then four, and there are three. Recent, Bookmarks and
+ * Folders were three re-cuts of the same documents, so the bar spent most of
+ * its width offering ways to list what the library was already listing; Recent
+ * became the shelf of part-read books at the top of the library, and Bookmarks
+ * and Folders became the one Saved tab, because they were two names for setting
+ * something aside and between them listed the starred PDFs twice.
  *
- * Collections and Saved have since become one tab for the same reason: they
- * were two names for setting something aside, and between them they listed the
- * starred PDFs twice. Joining them is what makes room for Exams without the bar
- * growing back to five, which is the count that made it a menu.
+ * Exams was the fourth and is gone in v4.1, feature and all. Nothing has been
+ * promoted into the space it leaves, and that is the point: the bar is not a
+ * shelf with four slots to keep filled, it is the list of things this app is
+ * for. Three of them are the books, the language, and what has been set aside.
+ * Practice and the reading history are reached from the Saved tab, where
+ * somebody looking for what they have put by is already standing.
  */
 private val topLevelDestinations = listOf(
     TopLevelDestination(Routes.LIBRARY, R.string.nav_library, R.drawable.ic_library),
     TopLevelDestination(Routes.DICTIONARY, R.string.nav_dictionary, R.drawable.ic_dictionary),
     TopLevelDestination(Routes.SAVED, R.string.nav_saved, R.drawable.ic_bookmark),
-    TopLevelDestination(Routes.EXAMS, R.string.nav_exams, R.drawable.ic_exam),
 )
 
 @Composable
@@ -238,37 +229,6 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     },
                     onOpenRecent = { navController.navigate(Routes.RECENT) },
                     onPractise = { navController.navigate(Routes.PRACTICE) },
-                )
-            }
-
-            composable(Routes.EXAMS) {
-                ExamsScreen(
-                    onOpenExam = { examId ->
-                        navController.navigate(Routes.examDetail(examId))
-                    },
-                )
-            }
-
-            composable(
-                route = Routes.EXAM_DETAIL,
-                arguments = listOf(navArgument("examId") { type = NavType.LongType }),
-            ) { entry ->
-                ExamDetailScreen(
-                    examId = entry.arguments?.getLong("examId") ?: 0L,
-                    onBack = { navController.popBackStack() },
-                    onOpenAttempt = { attemptId ->
-                        navController.navigate(Routes.examAttempt(attemptId))
-                    },
-                )
-            }
-
-            composable(
-                route = Routes.EXAM_ATTEMPT,
-                arguments = listOf(navArgument("attemptId") { type = NavType.LongType }),
-            ) { entry ->
-                ExamWorkspaceScreen(
-                    attemptId = entry.arguments?.getLong("attemptId") ?: 0L,
-                    onBack = { navController.popBackStack() },
                 )
             }
 

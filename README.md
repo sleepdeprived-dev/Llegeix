@@ -19,28 +19,52 @@ does both after bumping the version in `app/build.gradle.kts`.
   Access Framework, and direct file picks, with sorting, search, first-page
   cover thumbnails, and a choice of list or grid. It opens on the two things
   somebody launching a reading app actually wants: the books they are part-way
-  through, and the places their books come from. Sorting, the layout and a
-  rescan live behind the one overflow menu, so the app bar carries the app's
-  name and nothing else it does not need.
+  through, and the places their books come from. There is no overflow menu on
+  it at all any more. A menu hides which setting is in force — the only way to
+  find out how the library was sorted was to open it — so the sort order is a
+  chip in the list carrying the name of the order it is in, the layout is an
+  icon in the bar showing the layout it switches to, and a rescan is the button
+  beside them. Everything the screen does is visible on the screen.
 - **Continue reading** — a shelf of part-read books along the top of the
   library, newest first, each with its cover, its progress and the page it was
   left on. Finished books drop off it on their own, and so do ones never opened
   past the first page. This used to be a tab called Recent, which put "carry on
   with what I was reading" one tap away from the screen that appears on launch;
   the full history is still there, one press of the shelf's own button away.
+
+  Not everybody wants it, so the heading is a control rather than a label. The
+  chevron on it folds the cards away and leaves a line saying how many books are
+  on the shelf — the state is visible, so it is one tap from being undone. Only
+  once it is folded does the shelf offer to be hidden altogether, because the
+  two are one escalation apart and the stronger of them has no business sitting
+  on a shelf most people are happy with. Hiding is undone from the message that
+  follows it and, later, from Configuració, which is the only honest place to
+  put the way back to something that is no longer on the screen. Nothing is
+  forgotten in either state: the reading history is untouched, and every book
+  keeps the page it was left on.
 - **Reading progress** — how long a document is, learned the first time it is
   opened, so every cover in the app carries a bar along its foot and every list
   row says how far in you are. A shelf of two hundred PDFs answers "which of
   these have I started" without a single number being read.
-- **Sources** — where the library's documents come from, as one line at the top
-  of the library rather than an item in a menu. *See sources* opens every source
-  and every folder inside it as a tree of tick boxes, and a round plus beside it
-  adds another. This was a strip of tiles that scrolled sideways, one per
-  source: honest, and three lines of permanent furniture over a screen that is
-  meant to be a list of books, with half of itself always off the edge. The one
-  thing the tiles said that a button could not is kept — when part of a source
-  is switched off the row reads "31 of 48 PDFs shown", because a library quietly
-  missing a folder otherwise looks exactly like a library showing everything.
+- **Adding documents** — one sheet, reached from everywhere. There was a
+  version of this app where the welcome screen offered a folder and a
+  whole-device sweep, the empty library offered whichever of the two was not
+  already on, and a small plus disc at the top of the list offered a third pair
+  in a sheet of its own: three surfaces, overlapping, none of them the whole
+  answer. Now every one of those buttons opens the same sheet, which lists every
+  way in with a line each saying what it does — a folder and everything inside
+  it, single PDFs, or the whole phone — in the order they should be preferred,
+  and drops the sweep from the list once it is already on. The button that opens
+  it says *Add documents* in words, at the bottom right where a phone puts its
+  main action, because importing is the first thing anybody has to do here and
+  it used to be the smallest, least-labelled target on the screen.
+- **Sources** — where the library's documents come from, as one row at the top
+  of the library rather than an item in a menu: a disc, a name and a line of
+  detail, built like the folder rows under it, because that is what it is — a
+  place in the library you can go into. It opens every source and every folder
+  inside it as a tree of tick boxes. When part of a source is switched off the
+  row reads "31 of 48 PDFs shown", because a library quietly missing a folder
+  otherwise looks exactly like a library showing everything.
   Holding a folder in the library offers to stop showing it, which is the same
   decision reached from the folder it is about — and it is a decision the app
   remembers: a hidden folder stays in the list, unticked, and ticking it brings
@@ -104,8 +128,8 @@ does both after bumping the version in `app/build.gradle.kts`.
   Holding any row — in the library, in a collection, on a saved word — opens the
   same menu the three dots would, which is the gesture every file list on the
   phone already answers to.
-- **Names** — a PDF can be called something else. Exam boards and course sites
-  hand out files called `PROVA_C1_2019_comprensio_lectora_v2.pdf`, and that
+- **Names** — a PDF can be called something else. Course sites and language
+  schools hand out files called `PROVA_C1_2019_comprensio_lectora_v2.pdf`, and that
   string is then the title on every shelf, row and app bar in the app. Renaming
   changes what *Llegeix* calls it and nothing else: the file in Downloads keeps
   its own name, because the app holds a read-only grant on it and has no
@@ -173,79 +197,14 @@ does both after bumping the version in `app/build.gradle.kts`.
   speech engine, so nothing leaves the device, and where there is no Catalan
   voice at all the button is simply not drawn rather than sitting there dead.
   Where the voice merely has not been downloaded, the button offers to fetch it.
-- **Exam mode** — a tab for the papers you sit rather than the books you read.
-  A paper is not always one file: an exam sample routinely arrives as a reading
-  PDF, a listening PDF and a writing PDF, which are one exam to whoever sits
-  them, so several files can be imported at once and grouped into a single
-  paper. Its pages then run straight through the join, and the documents can be
-  reordered or removed without disturbing a single answer — a mark records the
-  document it was made on, not a page number counted across the whole paper.
-  Import is **copied** into the app, which is the decision the whole feature
-  rests on: your answers are marks positioned on particular
-  pages, and a paper that another app can rename, move or delete would take them
-  with it. Each go at a paper is an *attempt* — write on it with a pen, type
-  answers, tick boxes, highlight the question — and every stroke is saved as
-  your finger lifts, not on the way out. Come back in March and start a second
-  attempt over the same pages to see how you have moved. Positions are stored as
-  fractions of the page, never pixels, so answers stay on their questions through
-  a rotation, a pinch, or a new phone. Listening tracks attach to the paper and
-  play from a bar above it; an official answer sheet can be attached and flipped
-  to. The original PDF is never written to — an attempt can be exported as its
-  own flat PDF, drawn by the same code that drew it on screen so the file cannot
-  disagree with what you saw. Undo has a redo beside it, the page can be
-  darkened without darkening the app, and the documents and recordings of a
-  paper can be renamed — inside the app, as everywhere else in Llegeix.
-- **Typing on a paper** — an answer is a text box on the page, not the output
-  of a dialog. Tap where it goes and it appears there with a cursor in it, at
-  the size and in the place it will actually print; then it can be dragged,
-  turned, made bigger or smaller, and deleted, the way a text object behaves in
-  any drawing program. Closing the keyboard is how you finish with it. It used
-  to be a modal that covered the page while you typed blind into a field and
-  found out afterwards whether the words fitted.
-
-  Writing is black unless you choose otherwise, and dragging a box moves the
-  words with it: the frame on screen and the text painted on the page are two
-  drawings of one thing, and they now read the same live position, so a box no
-  longer slides across the page as an empty rectangle with its answer left
-  behind.
 - **Dark pages keep their pictures** — inverting a page is not a colour filter
   any more. A filter is a matrix over every pixel with no exceptions, which is
-  why dark mode used to turn every photograph in a book, and every diagram on a
-  listening paper, into a negative of itself. The page is now inverted as a
+  why dark mode used to turn every photograph in a book, and every diagram in a
+  textbook, into a negative of itself. The page is now inverted as a
   bitmap by `PageInvert`, which finds the pictures by looking at the pixels —
   printed text sits on paper and paper is nearly white, and a photograph is not
   — and leaves them alone. Text goes light-on-dark; the illustrations stay
   illustrations.
-- **Somewhere to write the essay** — a writing exam needs blank paper, and the
-  honest form of that is more paper at the back of the same booklet rather than
-  a notes screen with its own navigation. Adding a page appends a real blank PDF
-  to the paper and turns to it, so an essay is written with the same pen, saved
-  by the same row-per-stroke, and carried into the same export as every answer
-  on the printed pages. One button in the bar goes to the blank pages and back
-  again, landing on the question you left rather than at page one — which is the
-  whole reason for it being inside the exam instead of beside it.
-
-  On a blank page the text tool means something different, and deliberately so:
-  the whole writing area is one field, with no box and no handles, because the
-  page *is* the answer. Asking for a blank page puts you on it with the keyboard
-  already up; typing runs from the left margin to the right one and down the
-  page, and switching to the pen sketches over it. Turning back onto a printed
-  page puts the pen away again, so the next tap on a question does not plant a
-  text box in it. Everything typed is saved as it is typed, like every stroke of
-  the pen.
-
-  The page follows the cursor. A sheet of paper with a field pinned over it is
-  not a scrolling list and does not know where its own cursor is, so the writing
-  used to disappear under the keyboard a few lines in and had to be pushed clear
-  by hand. Now the line being typed is kept in the upper middle of what can be
-  seen — which works with a floating keyboard too, since a keyboard in its own
-  window tells the app nothing about where it is. The page is also sized by the
-  tool rather than by the keyboard, so raising and lowering the keys no longer
-  resizes the paper and re-wraps the sentence being written.
-- **Listening** — the bar above the page has a scrubber rather than a progress
-  line: drag it, or tap anywhere along it, and the recording goes there. A
-  listening exam is fifteen seconds played four times, and until this the only
-  way back was to start the track again.
 - **Saved words** — star a word or phrase and it is kept with its translation,
   its pronunciation, the line it appeared in, and the document, page and line it
   came from. One starred in the Dictionary has no page behind it and says so,
@@ -325,18 +284,23 @@ language next to the word being translated rather than in Configuració, and put
 the two flags behind the flag.
 
 There were five tabs, three of them re-cuts of the same documents. There are now
-four: the books, the language, what you set aside, and the papers you sit.
-Recent became the shelf of part-read books at the top of the library, which is
-where somebody wanting to carry on reading was going to look anyway, and its
-full history is now one of the three collections the app keeps for itself —
-which is where a reader looking for something they set aside goes.
+three: the books, the language, and what you set aside. Recent became the shelf
+of part-read books at the top of the library, which is where somebody wanting to
+carry on reading was going to look anyway, and its full history is now one of the
+three collections the app keeps for itself — which is where a reader looking for
+something they set aside goes.
 
 Collections and Saved were the next pair to go. They were two names for setting
 something aside, sitting next to each other in the bar, and between them they
 drew the starred PDFs twice — once as an automatic collection and once as a whole
-tab, from the same query on the same object. Joining them is what made room for
-Exams without the bar growing back to five, and it let one of those two lists go,
-which is the better half of the trade.
+tab, from the same query on the same object. Joining them let one of those two
+lists go, which is the better half of the trade.
+
+Exam mode was the fourth tab, and in v4.1 it is gone — the feature, its five
+tables, and the copies of the papers it kept on disk. Doing a practice paper on
+a phone turned out to be worse than doing it on paper, which is what it was
+imitating. Nothing has been promoted into the space it leaves: the bar is not a
+shelf with four slots to keep filled, it is the list of things this app is for.
 
 ## Language
 

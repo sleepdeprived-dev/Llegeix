@@ -18,7 +18,6 @@
     <string name="nav_dictionary">Dictionary</string>
     <string name="nav_collections">Collections</string>
     <string name="nav_saved">Saved</string>
-    <string name="nav_exams">Exams</string>
 
     <!-- Shared actions -->
     <string name="action_cancel">Cancel</string>
@@ -35,7 +34,7 @@
 
     <!-- Library -->
     <string name="library_welcome_title">Start your library</string>
-    <string name="library_welcome_body">Let Llegeix find the PDFs already on your device, or point it at a single folder.</string>
+    <string name="library_welcome_body">Point it at a folder of PDFs, pick out single files, or let it look through the whole phone. Nothing is ever copied or moved.</string>
     <string name="library_sources">Sources</string>
     <string name="sources_explainer">Everything the library shows comes from here. Unticking a folder hides it from the app; nothing is ever deleted from your phone.</string>
     <string name="sources_scan_paused">Switched off. Your PDFs stay where they are.</string>
@@ -77,7 +76,7 @@
     <string name="library_sort_size">Size</string>
     <string name="library_sort_tag">Tag</string>
     <string name="library_empty_title">No PDFs found</string>
-    <string name="library_empty_body">Nothing with a .pdf extension turned up. PDFs in Downloads cannot be reached by watching a folder — scan the whole device instead, or add them individually from the menu.</string>
+    <string name="library_empty_body">Nothing with a .pdf extension turned up. PDFs in Downloads cannot be reached by watching a folder — scan the whole phone instead, or add them one at a time.</string>
     <string name="library_no_matches_title">No matches</string>
     <string name="library_no_matches_body">None of the %1$d PDFs match \"%2$s\".</string>
     <string name="library_move_to_folder">Move to collection</string>
@@ -471,151 +470,17 @@
     <string name="swipe_read_later">Read later</string>
     <string name="swipe_not_read_later">Not later</string>
 
-
-    <!--
-        Exams: a paper the reader has brought in to sit, and each go at it.
-
-        "Attempt" rather than "try" or "go": it is what the reader would call it
-        about a real exam, and this list is read months apart, when a vaguer
-        word would have stopped meaning anything.
-    -->
-    <string name="exams_import">Import an exam</string>
-    <string name="exams_empty_title">No exams yet</string>
-    <string name="exams_empty_body">Bring in an exam paper as a PDF and work through it here. Your answers are kept separately, so the original file is never changed \u2014 and you can sit the same paper again later and compare.</string>
-    <string name="exams_imported">\u201c%1$s\u201d is ready</string>
-    <string name="exams_import_not_a_pdf">That file could not be opened as a PDF.</string>
-    <string name="exams_import_unreadable">That file could not be read.</string>
-    <string name="exams_import_no_space">There is not enough room on the phone for a copy of that file.</string>
-    <string name="exams_rename_title">Rename this exam</string>
-    <string name="exams_delete_title">Delete this exam?</string>
-    <string name="exams_more">More for %1$s</string>
-    <plurals name="exams_pages">
-        <item quantity="one">%1$d page</item>
-        <item quantity="other">%1$d pages</item>
-    </plurals>
-    <plurals name="exams_attempts">
-        <item quantity="one">%1$d attempt</item>
-        <item quantity="other">%1$d attempts</item>
-    </plurals>
-    <plurals name="exams_recordings">
-        <item quantity="one">%1$d recording</item>
-        <item quantity="other">%1$d recordings</item>
-    </plurals>
     <!--
         The no-attempts case is a string of its own rather than a zero item.
         Neither English nor Catalan selects the `zero` quantity, so an item
         under it is never shown: a paper with no attempts read "All 0 attempts
         will be deleted".
     -->
-    <string name="exams_delete_body_none">The copy this app made will be deleted. The file you imported it from is not touched.</string>
-    <plurals name="exams_delete_body">
-        <item quantity="one">Its %1$d attempt will be deleted along with the copy this app made. The file you imported it from is not touched.</item>
-        <item quantity="other">All %1$d attempts will be deleted along with the copy this app made. The file you imported it from is not touched.</item>
-    </plurals>
 
-    <string name="exams_new_attempt">New attempt</string>
-    <string name="exams_attempts_heading">Attempts</string>
-    <string name="exams_no_attempts">No attempts yet. Start one and work through the paper \u2014 everything you write is saved as you go.</string>
-    <string name="exams_attempt_label">Attempt %1$s</string>
     <!-- "3 of 12 pages written on". Progress, not a score. -->
-    <string name="exams_attempt_progress">%1$d of %2$d pages</string>
-    <string name="exams_attempt_finished">Finished</string>
-    <string name="exams_mark_finished">Mark as finished</string>
-    <string name="exams_mark_unfinished">Mark as unfinished</string>
-    <string name="exams_rename_attempt_title">Rename this attempt</string>
-    <string name="exams_delete_attempt_title">Delete this attempt?</string>
-    <string name="exams_delete_attempt_body">Everything written on it will be deleted. The exam paper itself is kept, and your other attempts are not affected.</string>
-    <string name="exams_key_present">Answer sheet</string>
-    <string name="exams_key_remove">Remove the answer sheet</string>
-    <string name="exams_key_attached">Answer sheet added</string>
-    <string name="exams_audio_remove">Remove %1$s</string>
-
-    <!--
-        The exam workspace: the tools, the ink, and the page underneath.
-
-        "View" leads the tool list and is where the workspace opens, because a
-        finger on a page can mean turn-this or write-here and it cannot mean
-        both. The reader says which before touching the page.
-    -->
-    <string name="exam_tool_view">View</string>
-    <string name="exam_tool_pen">Pen</string>
-    <string name="exam_tool_text">Type</string>
-    <string name="exam_tool_tick">Tick</string>
-    <string name="exam_tool_highlighter">Highlight</string>
-    <string name="exam_tool_eraser">Erase</string>
-    <string name="exam_ink_black">Black</string>
-    <string name="exam_ink_blue">Blue</string>
-    <string name="exam_ink_red">Red</string>
-    <string name="exam_ink_green">Green</string>
-    <string name="exam_stroke_fine">Fine</string>
-    <string name="exam_stroke_medium">Medium</string>
-    <string name="exam_stroke_thick">Thick</string>
-    <string name="exam_undo">Undo the last mark</string>
-    <string name="exam_clear_page">Clear this page</string>
-    <string name="exam_clear_page_title">Clear this page?</string>
-    <string name="exam_clear_page_body">Everything written on this page of this attempt will be deleted. Your other pages are not affected.</string>
-    <string name="exam_show_key">Show the answer sheet</string>
-    <string name="exam_show_work">Back to your work</string>
-    <string name="exam_key_banner">Answer sheet \u2014 read only</string>
-    <string name="exam_page_of">%1$d / %2$d</string>
-    <string name="exam_previous_page">Previous page</string>
-    <string name="exam_next_page">Next page</string>
-    <string name="exam_open_failed_title">This exam could not be opened</string>
-    <string name="exam_open_failed_body">The copy the app made may have been damaged. Delete this exam and import the paper again.</string>
-    <string name="exam_finish">Mark as finished</string>
-    <string name="exam_unfinish">Mark as unfinished</string>
-    <string name="exam_export">Save as a PDF</string>
-    <string name="exam_exporting">Writing your PDF\u2026</string>
-    <string name="exam_export_done">Saved</string>
-    <string name="exam_export_failed">That could not be saved.</string>
-    <string name="exam_play">Play</string>
-    <string name="exam_pause">Pause</string>
-    <string name="exam_audio_track">Track %1$d of %2$d</string>
-    <string name="exam_next_track">Next track</string>
-
-    <!-- Exam workspace, v4.0.2: room to breathe. -->
-    <string name="exam_listen_show">Show the recording</string>
-    <string name="exam_listen_hide">Hide the recording</string>
-
-    <!-- Exam workspace, v4.0.3: one bar for where you are, one for what your finger does. -->
-    <string name="exam_colour_heading">Colour</string>
-    <string name="exam_thickness_heading">Thickness</string>
-    <string name="exam_choose_colour">%1$s \u00b7 choose a colour</string>
-    <string name="exam_add_page_here">Add another blank page</string>
-
-    <!-- Exam mode, v3.8.1: several files can be one paper. -->
-    <string name="exams_imported_partly">%1$d added, %2$d could not be read</string>
-    <plurals name="exams_files">
-        <item quantity="one">%1$d file</item>
-        <item quantity="other">%1$d files</item>
-    </plurals>
-    <plurals name="exams_group_title">
-        <item quantity="one">%1$d file picked</item>
-        <item quantity="other">%1$d files picked</item>
-    </plurals>
-    <string name="exams_group_body">Are these one exam split across several files \u2014 a reading paper, a listening paper \u2014 or separate exams?</string>
-    <string name="exams_group_one">One exam</string>
-    <string name="exams_group_separate">Separate exams</string>
 
     <!-- The paper's own documents, on its screen. -->
-    <string name="exams_documents_heading">Paper</string>
-    <string name="exams_materials_heading">Materials</string>
-    <string name="exams_add_file">Add a file</string>
-    <string name="exams_remove_file">Remove %1$s</string>
-    <string name="exams_remove_file_title">Remove this file?</string>
-    <string name="exams_remove_file_body">Its pages leave the paper, and anything written on them in any attempt goes with them. Your other files are not affected.</string>
-    <string name="exams_key_none">No answer sheet</string>
-    <string name="exams_audio_none">No audio</string>
-    <string name="exams_key_summary">Flip to it while you work</string>
-    <string name="exams_audio_summary">Plays above the page</string>
     <!-- e.g. "Part 2 of 3 \u00b7 comprensio.pdf" over the page. -->
-    <string name="exam_part_of">%1$d/%2$d \u00b7 %3$s</string>
-    <plurals name="exams_imported_many">
-        <item quantity="one">%1$d exam added</item>
-        <item quantity="other">%1$d exams added</item>
-    </plurals>
-    <string name="exams_move_up">Move %1$s earlier</string>
-    <string name="exams_move_down">Move %1$s later</string>
 
     <!-- ================= v3.9 ================= -->
 
@@ -623,8 +488,6 @@
     <string name="search_recent_forget">Forget the search for %1$s</string>
 
     <!-- The library's sources, behind one word rather than a strip of tiles. -->
-    <string name="library_see_sources">See sources</string>
-    <string name="library_add_source">Add a source</string>
 
     <!-- Holding a folder in the library offers to stop showing it. -->
     <string name="library_folder_hide_title">Stop showing %1$s?</string>
@@ -653,24 +516,6 @@
     <string name="flag_estelada">Estelada</string>
     <string name="estelada_content_description">Estelada, the Catalan independence flag</string>
 
-    <!-- Exams: blank paper, renaming, and the page controls. -->
-    <string name="exam_notes_name">Notes</string>
-    <string name="exam_add_page">Add a blank page</string>
-    <string name="exam_page_added">Blank page added at the back</string>
-    <string name="exam_page_add_failed">Could not add a page</string>
-    <string name="exam_go_to_notes">Go to the blank pages</string>
-    <string name="exam_back_to_paper">Back to the paper</string>
-    <string name="exam_dark_page">Darken the page</string>
-    <string name="exam_light_page">Light page</string>
-    <string name="exam_redo">Redo</string>
-    <string name="exam_seek">Position in the recording</string>
-    <string name="exams_rename_file_title">Rename this document</string>
-    <string name="exams_rename_audio_title">Rename this recording</string>
-    <string name="exams_rename_file">Rename %1$s</string>
-    <string name="exams_file_actions">Actions for %1$s</string>
-    <string name="exams_audio_length">%1$s long</string>
-    <string name="exams_audio_length_unknown">Length unknown</string>
-
     <string name="tags_rename">Rename tag %1$s</string>
     <string name="words_open_source">Go to where it was saved</string>
 
@@ -685,9 +530,61 @@
     <string name="sources_hide_confirm">Hide it</string>
     <string name="sources_forget_confirm">Forget it</string>
 
-    <!-- The exam workspace: text boxes, and the blank pages. -->
-    <string name="exam_text_resize">Drag to resize</string>
-    <string name="exam_text_rotate">Drag to turn</string>
-    <string name="exam_text_delete">Delete this text</string>
+    <!-- ================= v4.1 ================= -->
 
+    <!--
+        The Continue reading shelf, which the reader can now fold away or take
+        off the library altogether.
+
+        "Hide" rather than "Remove" or "Turn off": nothing is being deleted and
+        nothing stops being remembered — the shelf simply stops being drawn, and
+        the word has to carry that. The message afterwards names the way back,
+        because a control that is gone from the screen it was on is a control
+        nobody will find again by looking.
+    -->
+    <string name="library_continue_collapse">Fold this shelf away</string>
+    <string name="library_continue_expand">Open this shelf</string>
+    <string name="library_continue_hide">Hide</string>
+    <string name="library_continue_hidden_message">Shelf hidden. You can bring it back in Settings.</string>
+    <plurals name="library_continue_count">
+        <item quantity="one">%1$d book on the go</item>
+        <item quantity="other">%1$d books on the go</item>
+    </plurals>
+    <string name="library_continue_shown">Shown</string>
+    <string name="library_continue_collapsed">Folded away</string>
+    <string name="library_continue_hidden">Hidden</string>
+
+    <!-- The same three choices, in Configuració, which is the way back from Hidden. -->
+    <string name="settings_library">Library</string>
+    <string name="settings_continue_shelf_summary">The shelf of part-read books at the top of the library.</string>
+
+    <!--
+        Sorting, out of the overflow menu and onto the library.
+
+        Each order now has three names: the long one for the sheet, a short one
+        for the chip that says which order is in force, and a line saying what it
+        does. Only "Recently modified" needs a short form of its own — the other
+        three are already one word.
+    -->
+    <string name="library_sort_recent_short">Recent</string>
+    <string name="library_sort_recent_summary">Newest changes first</string>
+    <string name="library_sort_name_summary">A to Z</string>
+    <string name="library_sort_size_summary">Biggest files first</string>
+    <string name="library_sort_tag_summary">Grouped by their first tag, untagged last</string>
+
+    <!--
+        Bringing documents in: one sheet, reached from everywhere.
+
+        "Documents" rather than "sources" on the button, because a source is what
+        the app calls the arrangement afterwards and a document is what the
+        reader thinks they are adding.
+    -->
+    <string name="library_add_documents">Add documents</string>
+    <string name="sources_add_body">Nothing is copied or moved. Llegeix reads your PDFs where they already are.</string>
+    <string name="sources_add_device_body">Look for PDFs everywhere on the phone. Needs a special permission.</string>
+    <string name="sources_manage_body">See what is being shown, and hide what you do not want</string>
+    <plurals name="sources_source_count">
+        <item quantity="one">%1$d source</item>
+        <item quantity="other">%1$d sources</item>
+    </plurals>
 </resources>

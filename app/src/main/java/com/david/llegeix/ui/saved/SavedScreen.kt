@@ -53,9 +53,8 @@ import kotlinx.coroutines.launch
  * bar and were answering the same question — *where did I put that* — in two
  * places, and between them they were drawing the starred PDFs twice: once as
  * the automatic "Bookmarked" collection and once as a whole tab of its own,
- * from the same query on the same ViewModel. Joining them freed the slot Exams
- * needed and let one of those two lists go, which is the better half of the
- * trade: the bar is no longer a menu of near-synonyms.
+ * from the same query on the same ViewModel. Joining them let one of those two
+ * lists go, and the bar stopped being a menu of near-synonyms.
  *
  * Three panes, in the order things are set aside in: the shelves you built, the
  * pages you marked, the words you kept. The tab row carries counts because the

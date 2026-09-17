@@ -14,6 +14,9 @@ import com.david.llegeix.data.db.MIGRATION_6_7
 import com.david.llegeix.data.db.MIGRATION_7_8
 import com.david.llegeix.data.db.MIGRATION_8_9
 import com.david.llegeix.data.db.MIGRATION_9_10
+import com.david.llegeix.data.db.MIGRATION_10_11
+import com.david.llegeix.data.db.MIGRATION_11_12
+import com.david.llegeix.data.db.MIGRATION_12_13
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -649,16 +652,104 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Exams leave, and nothing the reader built leaves with them.
+     *
+     * The seeded database is a populated one on purpose. Dropping a parent table
+     * with foreign keys on performs an implicit delete first, which fires every
+     * `ON DELETE CASCADE` hanging off it — so a migration that dropped `exams`
+     * before its children would be reaching into tables it had not got to yet.
+     * The five drops go upwards from the leaves, and `PRAGMA foreign_keys=ON`
+     * here is what makes this test able to tell the difference.
+     */
+    @Test
+    fun migrate12To13_dropsEveryExamTableAndKeepsTheLibrary() {
+        helper.createDatabase(TEST_DB, 12).use { db ->
+            db.execSQL("PRAGMA foreign_keys=ON")
+            db.execSQL("INSERT INTO folders (id, name, createdAt, isPinned, isBookmarked) " +
+                "VALUES (1, 'Gramatica', 100, 0, 0)")
+            db.execSQL(
+                """
+                INSERT INTO documents
+                    (uriString, displayName, folderId, highlightColor, addedAt,
+                     isBookmarked, isReadLater, pageCount, customName)
+                VALUES ('content://test/1', 'princep.pdf', 1, NULL, 200, 1, 0, 96, 'El Princep')
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO word_bookmarks
+                    (word, translation, ipa, context, documentUri, displayName,
+                     pageIndex, lineNumber, createdAt, box, dueAt, reviewCount)
+                VALUES ('enrenou', 'commotion', 'ənrəˈnɔw', 'quin enrenou',
+                        'content://test/1', 'princep.pdf', 3, 7, 500, 1, 900, 2)
+                """.trimIndent(),
+            )
+            // A paper, a document in it, a sitting, a recording and a mark: one
+            // row in each of the five tables that are about to go.
+            db.execSQL(
+                "INSERT INTO exams (id, title, answerKeyFileName, answerKeyPageCount, createdAt) " +
+                    "VALUES (1, 'C1 mostra', NULL, NULL, 1000)",
+            )
+            db.execSQL(
+                "INSERT INTO exam_parts (id, examId, sourceName, fileName, pageCount, " +
+                    "position, isNotes) VALUES (1, 1, 'c1.pdf', 'abc.pdf', 12, 0, 0)",
+            )
+            db.execSQL(
+                "INSERT INTO exam_attempts (id, examId, label, startedAt, lastOpenedAt, " +
+                    "finishedAt, lastPage) VALUES (1, 1, '1', 1100, 1200, NULL, 3)",
+            )
+            db.execSQL(
+                "INSERT INTO exam_audio (id, examId, displayName, fileName, durationMs, " +
+                    "position) VALUES (1, 1, 'Pista 1', 'a.m4a', 60000, 0)",
+            )
+            db.execSQL(
+                """
+                INSERT INTO exam_marks
+                    (id, attemptId, partId, pageIndex, kind, x, y, width, height,
+                     colorArgb, size, text, points, checked, sequence, createdAt, rotation)
+                VALUES (1, 1, 1, 2, 'TEXT', 0.1, 0.2, 0.3, 0.05, -16777216, 14.0,
+                        'resposta', NULL, 0, 0, 1300, 0.0)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 13, true, MIGRATION_12_13)
+
+        db.query(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'exam%'",
+        ).use { cursor ->
+            assertEquals("every exam table is gone", 0, cursor.count)
+        }
+        // The half of the upgrade that matters: a reader who never sat an exam
+        // should not be able to tell this happened.
+        db.query("SELECT displayName, customName, isBookmarked FROM documents").use { cursor ->
+            assertTrue("document row survived", cursor.moveToFirst())
+            assertEquals("princep.pdf", cursor.getString(0))
+            assertEquals("the reader's own name survived", "El Princep", cursor.getString(1))
+            assertEquals("and the star on it", 1, cursor.getInt(2))
+        }
+        db.query("SELECT word, box FROM word_bookmarks").use { cursor ->
+            assertTrue("saved word survived", cursor.moveToFirst())
+            assertEquals("enrenou", cursor.getString(0))
+            assertEquals("its place in the deck survived", 1, cursor.getInt(1))
+        }
+        db.query("SELECT name FROM folders").use { cursor ->
+            assertTrue("folder survived", cursor.moveToFirst())
+            assertEquals("Gramatica", cursor.getString(0))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To10_runsEveryStepInSequence() {
+    fun migrate1To13_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            10,
+            13,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -669,15 +760,19 @@ class MigrationTest {
             MIGRATION_7_8,
             MIGRATION_8_9,
             MIGRATION_9_10,
+            MIGRATION_10_11,
+            MIGRATION_11_12,
+            MIGRATION_12_13,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals("Vell", cursor.getString(0))
         }
-        db.query("SELECT COUNT(*) FROM exams").use { cursor ->
-            assertTrue(cursor.moveToFirst())
-            assertEquals(0, cursor.getInt(0))
+        db.query(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'exam%'",
+        ).use { cursor ->
+            assertEquals("exams came and went", 0, cursor.count)
         }
     }
 }

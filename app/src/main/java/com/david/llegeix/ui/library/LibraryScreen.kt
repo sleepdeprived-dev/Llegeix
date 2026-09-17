@@ -3,7 +3,6 @@ package com.david.llegeix.ui.library
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,16 +32,17 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -88,10 +88,10 @@ import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.data.source.LibraryFolder
 import com.david.llegeix.data.model.LibrarySort
+import com.david.llegeix.data.settings.ContinueShelf
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.ui.common.EmptyState
-import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.HighlightColors
@@ -154,13 +154,15 @@ fun LibraryScreen(
     // Which source the sheet was raised about, if it is up at all. A source of
     // "" means it was raised without one in mind.
     var sourcesSheetFor by remember { mutableStateOf<String?>(null) }
-    var showAddSource by remember { mutableStateOf(false) }
+    var showAddDocuments by remember { mutableStateOf(false) }
+    var showSort by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<PdfDocument?>(null) }
     var hidingFolder by remember { mutableStateOf<LibraryFolder?>(null) }
     var choosingFlag by remember { mutableStateOf(false) }
     var forgettingRecent by remember { mutableStateOf<RecentDocument?>(null) }
     val names by viewModel.names.collectAsStateWithLifecycle()
     val flag by viewModel.flag.collectAsStateWithLifecycle()
+    val continueShelf by viewModel.continueShelf.collectAsStateWithLifecycle()
     val updateWaiting by viewModel.updateWaiting.collectAsStateWithLifecycle()
 
     // Back goes up a folder before it leaves the library. Anything else makes
@@ -206,6 +208,7 @@ fun LibraryScreen(
 
     val recentRemoved = stringResource(R.string.recent_removed)
     val undoLabel = stringResource(R.string.action_undo)
+    val continueHidden = stringResource(R.string.library_continue_hidden_message)
 
     val errorMessage = state.errorMessage?.resolved()
     LaunchedEffect(errorMessage) {
@@ -222,6 +225,22 @@ fun LibraryScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize(),
         snackbarHost = { AppSnackbarHost(snackbarHostState) },
+        // The way documents get in, in words, in the place a phone puts its main
+        // action. It was a 40dp plus disc at the end of the sources row: the
+        // smallest target on the screen, unlabelled, for the one thing nobody
+        // can use this app without doing. Not drawn over either of the empty
+        // states, which already put a full-width button saying the same thing in
+        // the middle of the screen — one screen should never offer the same
+        // action twice.
+        floatingActionButton = {
+            if (state.hasAnySource && !state.isEmptyAfterScan) {
+                ExtendedFloatingActionButton(
+                    onClick = { showAddDocuments = true },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.library_add_documents)) },
+                )
+            }
+        },
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -238,31 +257,25 @@ fun LibraryScreen(
                     }
                 },
                 actions = {
-                    // Two icons and no more. Rescanning is something you do
-                    // when you know you have added a file, which is exactly the
-                    // kind of thing that belongs behind the menu rather than
-                    // permanently beside the app's name.
-                    // Rescanning has come out of the menu. It was put there on
-                    // the grounds that it is something you do once and forget,
-                    // and that turned out to be wrong in the one case that
-                    // matters: a file has just been added to the phone and is
-                    // not in the library, which is precisely when nobody wants
-                    // to go looking through a menu for the word "rescan".
+                    // Three icons, no menu. There used to be a three-dot menu
+                    // here holding the layout and the sort order, and it was
+                    // wrong twice over: a menu hides which setting is in force,
+                    // so the only way to find out how the library was sorted
+                    // was to open it, and a decision about the screen you are
+                    // looking at belongs on that screen. Rescanning came out of
+                    // it first, then the layout came out to sit here, and the
+                    // sort order became a chip in the list that says what it
+                    // is. Nothing was left behind worth keeping.
                     IconButton(onClick = viewModel::refresh, enabled = !state.isScanning) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = stringResource(R.string.library_rescan),
                         )
                     }
+                    LayoutButton(layout = layout, onClick = viewModel::onToggleLayout)
                     SettingsButton(
                         updateWaiting = updateWaiting,
                         onClick = onOpenSettings,
-                    )
-                    LibraryMenu(
-                        currentSort = state.sort,
-                        layout = layout,
-                        onSortChange = viewModel::onSortChange,
-                        onToggleLayout = viewModel::onToggleLayout,
                     )
                 },
             )
@@ -320,23 +333,39 @@ fun LibraryScreen(
             LibraryBody(
                 state = state,
                 layout = layout,
+                continueShelf = continueShelf,
                 tagsByDocument = tagsByDocument,
                 names = names,
                 folderNameByDocument = folderNameByDocument,
                 progress = progress,
                 continueReading = continueReading,
                 onViewChange = viewModel::onViewChange,
+                onOpenSort = { showSort = true },
                 onOpenSources = { sourcesSheetFor = "" },
-                onAddSource = { showAddSource = true },
                 onContinue = { recent -> onOpenReading(recent.uriString, recent.displayName) },
                 onForgetRecent = { recent -> forgettingRecent = recent },
                 onSeeHistory = onOpenHistory,
+                onToggleContinue = viewModel::onToggleContinueShelf,
+                onHideContinue = {
+                    viewModel.onHideContinueShelf()
+                    // Undone from here, and findable in Configuració afterwards:
+                    // a shelf that vanished with no way back would be a setting
+                    // the reader had no way of knowing they had changed.
+                    scope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = continueHidden,
+                            actionLabel = undoLabel,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            viewModel.onContinueShelfChange(ContinueShelf.SHOWN)
+                        }
+                    }
+                },
                 onOpenFolder = viewModel::onOpenFolder,
                 onHideFolder = { hidingFolder = it },
                 onEditTags = { tagsFor = it },
                 onRename = { renaming = it },
-                onAddFolder = { folderPicker.launch(null) },
-                onScanDevice = ::openAllFilesSettings,
+                onAddDocuments = { showAddDocuments = true },
                 // Opened by handle rather than by document, so the reader's own
                 // name for a PDF is the one on the reader's app bar. Everything
                 // else about the document is already on the screen behind it.
@@ -398,21 +427,38 @@ fun LibraryScreen(
         )
     }
 
-    if (showAddSource) {
-        AddSourceSheet(
-            onDismiss = { showAddSource = false },
+    if (showAddDocuments) {
+        AddDocumentsSheet(
+            hasAnySource = state.hasAnySource,
+            deviceScanEnabled = state.deviceScanEnabled,
+            onDismiss = { showAddDocuments = false },
             onAddFolder = {
-                showAddSource = false
+                showAddDocuments = false
                 folderPicker.launch(null)
             },
             onAddFiles = {
-                showAddSource = false
+                showAddDocuments = false
                 filePicker.launch(arrayOf(PDF_MIME_TYPE))
             },
+            onScanDevice = {
+                showAddDocuments = false
+                openAllFilesSettings()
+            },
             onManage = {
-                showAddSource = false
+                showAddDocuments = false
                 sourcesSheetFor = ""
             },
+        )
+    }
+
+    if (showSort) {
+        SortSheet(
+            current = state.sort,
+            onChoose = {
+                viewModel.onSortChange(it)
+                showSort = false
+            },
+            onDismiss = { showSort = false },
         )
     }
 
@@ -512,31 +558,153 @@ fun LibraryScreen(
 }
 
 /**
- * How the library is arranged: by folder, or everything at once.
+ * The two questions about how the library is drawn, answered on the library.
  *
- * Chips rather than a menu item, because which of the two you are looking at
+ * On the left, whether you are walking the folders or looking at everything at
+ * once: chips rather than a menu item, because which of the two you are in
  * changes what the whole screen means, and a mode you cannot see is a mode you
  * have to remember. Read-later was a third chip and has become a collection,
  * which is what it always was.
+ *
+ * On the right, the order the documents are in — and this is the part that is
+ * new. Sorting lived in a three-dot menu, which meant the answer to "why is this
+ * list in this order" was invisible until the menu was opened, and the order is
+ * not a rare setting: it is the difference between finding the thing you saved
+ * this morning and scrolling past two hundred books. The chip carries the short
+ * name of the order in force, so the screen says how it is sorted whether or not
+ * anybody asks, and pressing it opens the sheet where the choice is made.
  */
 @Composable
-private fun LibraryViewRow(
+private fun LibraryControlsRow(
     current: LibraryView,
+    sort: LibrarySort,
     onViewChange: (LibraryView) -> Unit,
+    onOpenSort: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Space.sm),
-        contentPadding = PaddingValues(horizontal = Space.screen),
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            // Narrower than the screen margin the rest of the library uses: a
+            // chip carries its own padding inside its outline, so lining the
+            // outline up with the text above it leaves the words indented.
+            .padding(horizontal = Space.md),
     ) {
-        items(LibraryView.entries) { view ->
+        LibraryView.entries.forEach { view ->
             FilterChip(
                 selected = view == current,
                 onClick = { onViewChange(view) },
                 label = { Text(stringResource(view.labelRes)) },
+                modifier = Modifier.padding(end = Space.sm),
             )
         }
+        Box(modifier = Modifier.weight(1f))
+        AssistChip(
+            onClick = onOpenSort,
+            label = {
+                Text(
+                    text = stringResource(sort.shortLabelRes),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sort),
+                    contentDescription = null,
+                    modifier = Modifier.size(AssistChipDefaults.IconSize),
+                )
+            },
+        )
+    }
+}
+
+/**
+ * The order the library is in, chosen where there is room to say what each one
+ * does.
+ *
+ * A sheet rather than the dropdown this used to be. A dropdown menu gives a line
+ * of text per option and no more, so four orders arrived as four bare words —
+ * "Tag" tells you nothing about what sorting by tag does to a list, and "Size"
+ * does not say which end the big ones go. Here each has a sentence under it, and
+ * the targets are rows rather than menu items.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SortSheet(
+    current: LibrarySort,
+    onChoose: (LibrarySort) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = Space.xl),
+        ) {
+            Text(
+                text = stringResource(R.string.library_sort_by),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier
+                    .padding(horizontal = Space.screen)
+                    .padding(bottom = Space.sm),
+            )
+            LibrarySort.entries.forEach { sort ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = sort == current,
+                            role = Role.RadioButton,
+                            onClick = { onChoose(sort) },
+                        )
+                        .padding(horizontal = Space.lg, vertical = Space.md),
+                ) {
+                    RadioButton(selected = sort == current, onClick = null)
+                    Column(modifier = Modifier.padding(start = Space.md)) {
+                        Text(
+                            text = stringResource(sort.labelRes),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(sort.summaryRes),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Rows or covers, as one icon that shows the other one.
+ *
+ * A toggle rather than a pair of options, because there are only two and either
+ * of them is one press from the other. The icon is the layout it switches *to*,
+ * which is the convention every phone gallery uses and the only one that works
+ * on a single button.
+ */
+@Composable
+private fun LayoutButton(layout: LibraryLayout, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            painter = painterResource(
+                if (layout == LibraryLayout.GRID) R.drawable.ic_list else R.drawable.ic_grid,
+            ),
+            contentDescription = stringResource(
+                if (layout == LibraryLayout.GRID) {
+                    R.string.library_view_list
+                } else {
+                    R.string.library_view_grid
+                },
+            ),
+        )
     }
 }
 
@@ -820,6 +988,7 @@ private fun LibraryFolderRow(
 private fun LibraryBody(
     state: LibraryUiState,
     layout: LibraryLayout,
+    continueShelf: ContinueShelf,
     tagsByDocument: Map<String, List<DocumentTag>>,
     /** What every PDF is called. See [com.david.llegeix.data.source.DocumentNames]. */
     names: DocumentNames,
@@ -829,17 +998,18 @@ private fun LibraryBody(
     progress: Map<String, ReadingProgress>,
     continueReading: List<RecentDocument>,
     onViewChange: (LibraryView) -> Unit,
+    onOpenSort: () -> Unit,
     onOpenSources: () -> Unit,
-    onAddSource: () -> Unit,
     onContinue: (RecentDocument) -> Unit,
     onForgetRecent: (RecentDocument) -> Unit,
     onSeeHistory: () -> Unit,
+    onToggleContinue: () -> Unit,
+    onHideContinue: () -> Unit,
     onOpenFolder: (String) -> Unit,
     onHideFolder: (LibraryFolder) -> Unit,
     onEditTags: (PdfDocument) -> Unit,
     onRename: (PdfDocument) -> Unit,
-    onAddFolder: () -> Unit,
-    onScanDevice: () -> Unit,
+    onAddDocuments: () -> Unit,
     onOpenDocument: (PdfDocument) -> Unit,
     onFindInDocument: (PdfDocument) -> Unit,
     onMoveToFolder: (PdfDocument) -> Unit,
@@ -848,28 +1018,22 @@ private fun LibraryBody(
     modifier: Modifier = Modifier,
 ) {
     when {
-        // Nothing is set up yet. One obvious way in, with the narrower option
-        // offered underneath rather than beside it.
-        // Choosing a folder leads, and the whole-device sweep is the quieter
-        // offer underneath. They were the other way round, which meant the very
-        // first thing a new reader was asked to do was leave the app for the
-        // system's All Files Access screen — the broadest permission Android
-        // has, requested before the app had shown them anything at all. Picking
-        // a folder grants nothing beyond that folder, happens in a dialog, and
-        // is enough for most people for ever.
+        // Nothing is set up yet, so there is exactly one thing to do and one
+        // button that does it. It used to be two — a folder, with the
+        // whole-device sweep offered quietly underneath — which was the right
+        // order of preference and the wrong number of decisions for somebody
+        // who has just opened the app for the first time and does not yet know
+        // what either of them means. The button opens the same sheet the rest of
+        // the app opens, where the three ways in are listed with a line each
+        // saying what they do, folder first.
         !state.hasAnySource -> EmptyState(
             title = stringResource(R.string.library_welcome_title),
             body = stringResource(R.string.library_welcome_body),
             icon = painterResource(R.drawable.ic_library),
             modifier = modifier,
             primaryAction = {
-                Button(onClick = onAddFolder) {
-                    Text(stringResource(R.string.action_add_folder))
-                }
-            },
-            secondaryAction = {
-                TextButton(onClick = onScanDevice) {
-                    Text(stringResource(R.string.action_scan_device))
+                Button(onClick = onAddDocuments) {
+                    Text(stringResource(R.string.library_add_documents))
                 }
             },
         )
@@ -882,21 +1046,24 @@ private fun LibraryBody(
         }
 
         // The shelves stay above both of the "nothing here" states, and they
-        // are most of the answer in each. An empty library with a source tile
-        // reading "Documents · none shown" has diagnosed itself; and a
-        // read-later shelf with nothing on it needs the chips to be reachable,
-        // or the only way out of the empty screen is the back button.
+        // are most of the answer in each. An empty library whose sources row
+        // reads "0 of 48 PDFs shown" has diagnosed itself, and a library
+        // filtered down to nothing needs the chips to still be reachable, or
+        // the only way out of the empty screen is the back button.
         state.isEmptyAfterScan -> Column(modifier = modifier) {
             LibraryShelves(
                 state = state,
+                shelf = continueShelf,
                 names = names,
                 continueReading = continueReading,
                 onViewChange = onViewChange,
                 onOpenSources = onOpenSources,
-                onAddSource = onAddSource,
                 onContinue = onContinue,
                 onForgetRecent = onForgetRecent,
                 onSeeHistory = onSeeHistory,
+                onToggleContinue = onToggleContinue,
+                onHideContinue = onHideContinue,
+                onOpenSort = onOpenSort,
             )
             EmptyState(
                 title = stringResource(R.string.library_empty_title),
@@ -906,14 +1073,13 @@ private fun LibraryBody(
                 // taken height, and an empty state that insists on the whole
                 // screen would centre itself half off the bottom of it.
                 modifier = Modifier.weight(1f),
-                primaryAction = if (!state.deviceScanEnabled) {
-                    { Button(onClick = onScanDevice) {
-                        Text(stringResource(R.string.action_scan_device))
-                    } }
-                } else {
-                    { Button(onClick = onAddFolder) {
-                        Text(stringResource(R.string.action_add_folder))
-                    } }
+                // The same one button as everywhere else, rather than guessing
+                // which of the two ways in this reader needs next. The sheet
+                // knows which ones are still available and offers those.
+                primaryAction = {
+                    Button(onClick = onAddDocuments) {
+                        Text(stringResource(R.string.library_add_documents))
+                    }
                 },
             )
         }
@@ -921,14 +1087,17 @@ private fun LibraryBody(
         state.isFilteredToNothing -> Column(modifier = modifier) {
             LibraryShelves(
                 state = state,
+                shelf = continueShelf,
                 names = names,
                 continueReading = continueReading,
                 onViewChange = onViewChange,
                 onOpenSources = onOpenSources,
-                onAddSource = onAddSource,
                 onContinue = onContinue,
                 onForgetRecent = onForgetRecent,
                 onSeeHistory = onSeeHistory,
+                onToggleContinue = onToggleContinue,
+                onHideContinue = onHideContinue,
+                onOpenSort = onOpenSort,
             )
             EmptyState(
                 title = stringResource(R.string.library_no_matches_title),
@@ -949,7 +1118,10 @@ private fun LibraryBody(
             contentPadding = PaddingValues(
                 start = Space.md,
                 end = Space.md,
-                bottom = Space.lg,
+                // Room for the Add button to float over nothing. Without it the
+                // last row of covers sits under it and cannot be read or
+                // pressed.
+                bottom = FabClearance,
             ),
         ) {
             // The shelves scroll away with the library rather than being pinned
@@ -958,14 +1130,17 @@ private fun LibraryBody(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 LibraryShelves(
                     state = state,
+                    shelf = continueShelf,
                     names = names,
                     continueReading = continueReading,
                     onViewChange = onViewChange,
                     onOpenSources = onOpenSources,
-                    onAddSource = onAddSource,
                     onContinue = onContinue,
                     onForgetRecent = onForgetRecent,
                     onSeeHistory = onSeeHistory,
+                    onToggleContinue = onToggleContinue,
+                    onHideContinue = onHideContinue,
+                    onOpenSort = onOpenSort,
                 )
             }
             // Folders keep the full width even in the grid: they are not
@@ -1013,19 +1188,22 @@ private fun LibraryBody(
 
         else -> LazyColumn(
             modifier = modifier,
-            contentPadding = PaddingValues(bottom = Space.lg),
+            contentPadding = PaddingValues(bottom = FabClearance),
         ) {
             item {
                 LibraryShelves(
                     state = state,
+                    shelf = continueShelf,
                     names = names,
                     continueReading = continueReading,
                     onViewChange = onViewChange,
                     onOpenSources = onOpenSources,
-                    onAddSource = onAddSource,
                     onContinue = onContinue,
                     onForgetRecent = onForgetRecent,
                     onSeeHistory = onSeeHistory,
+                    onToggleContinue = onToggleContinue,
+                    onHideContinue = onHideContinue,
+                    onOpenSort = onOpenSort,
                 )
             }
             items(state.folders, key = { "folder:" + it.path }) { folder ->
@@ -1071,69 +1249,75 @@ private fun LibraryBody(
 }
 
 /**
- * The two shelves above the library: what it is made of, and what to carry on
- * with.
+ * What sits above the library: what to carry on with, where it all comes from,
+ * and how it is being shown.
  *
- * Both are drawn only at the top of the library and only when they have
+ * All three are drawn only at the top of the library and only when they have
  * something to say. Inside a folder the question on screen is what is in this
- * folder, and a strip of sources or a shelf of unrelated part-read books is an
- * answer to a question nobody asked there.
+ * folder, and a shelf of unrelated part-read books is an answer to a question
+ * nobody asked there.
  */
 @Composable
 private fun LibraryShelves(
     state: LibraryUiState,
+    shelf: ContinueShelf,
     names: DocumentNames,
     continueReading: List<RecentDocument>,
     onViewChange: (LibraryView) -> Unit,
+    onOpenSort: () -> Unit,
     onOpenSources: () -> Unit,
-    onAddSource: () -> Unit,
     onContinue: (RecentDocument) -> Unit,
     onForgetRecent: (RecentDocument) -> Unit,
     onSeeHistory: () -> Unit,
+    onToggleContinue: () -> Unit,
+    onHideContinue: () -> Unit,
 ) {
     val showsContinue = continueReading.isNotEmpty() &&
         state.path == null &&
-        state.query.isBlank()
-    val showsChips = state.totalFound > 0
+        state.query.isBlank() &&
+        shelf != ContinueShelf.HIDDEN
+    val showsControls = state.totalFound > 0
     // Nothing to say, and therefore no height taken. Without this the header is
     // a bare gap above the first document on every screen that has none of the
     // three to draw.
-    if (!state.showsSources && !showsContinue && !showsChips) return
+    if (!state.showsSources && !showsContinue && !showsControls) return
 
     Column(modifier = Modifier.padding(bottom = Space.sm)) {
         if (showsContinue) {
             ContinueReadingRow(
                 entries = continueReading,
                 names = names,
+                collapsed = shelf == ContinueShelf.COLLAPSED,
                 onOpen = onContinue,
                 onForget = onForgetRecent,
                 onSeeAll = onSeeHistory,
+                onToggleCollapsed = onToggleContinue,
+                onHide = onHideContinue,
             )
         }
         if (state.showsSources) {
-            SourcesStrip(
+            SourcesRow(
+                sourceCount = state.sources.size,
+                visibleCount = state.sourcesVisibleCount,
+                totalCount = state.sourcesTotalCount,
                 onOpenSources = onOpenSources,
-                onAddSource = onAddSource,
-                partial = if (state.isPartlyShown) {
-                    state.sourcesVisibleCount to state.sourcesTotalCount
-                } else {
-                    null
-                },
-                modifier = Modifier.padding(top = if (showsContinue) Space.md else 0.dp),
+                modifier = Modifier.padding(top = if (showsContinue) Space.sm else 0.dp),
             )
         }
-        // The chips scroll with the library rather than sitting under the
+        // The controls scroll with the library rather than sitting under the
         // search field for ever. Between the bar, the field, the chips and the
         // path there were five rows of furniture above the first document; the
         // field is the only one worth keeping on screen at all times, because
         // it is the only one somebody reaches for without having scrolled back
         // to the top first.
-        if (showsChips) {
-            LibraryViewRow(
+        if (showsControls) {
+            LibraryControlsRow(
                 current = state.view,
+                sort = state.sort,
                 onViewChange = onViewChange,
+                onOpenSort = onOpenSort,
                 modifier = Modifier.padding(
-                    top = if (showsContinue || state.showsSources) Space.lg else 0.dp,
+                    top = if (showsContinue || state.showsSources) Space.md else 0.dp,
                     bottom = Space.sm,
                 ),
             )
@@ -1142,19 +1326,37 @@ private fun LibraryShelves(
 }
 
 /**
- * The two ways to bring in something new, and the way to the rest.
+ * The one place documents get into this app, whichever button was pressed.
  *
- * A sheet rather than a menu hanging off a tile in a scrolling row: "a folder
- * and everything inside it" against "single PDFs" is the distinction people get
- * wrong, and it costs one line each to answer in advance — which a dropdown has
- * no room for.
+ * The welcome screen, the empty library and the button at the bottom right all
+ * open this, and that is the point: there was a version of this app where the
+ * first screen offered a folder and a whole-device sweep, the empty state
+ * offered one of the two depending on what was already on, and a plus disc at
+ * the top offered a third pair in a sheet. Three surfaces, overlapping, none of
+ * them the complete answer. This one lists every way in, in the order they
+ * should be preferred, and each says what it actually does — "a folder and
+ * everything inside it" against "single PDFs" is the distinction people get
+ * wrong, and it costs one line to answer in advance.
+ *
+ * Folder first, deliberately. The whole-device sweep is last because it means
+ * leaving the app for Android's All Files Access screen — the broadest permission
+ * the system has — and it is not offered at all once it is already on. Picking a
+ * folder grants nothing beyond that folder, happens in a dialog, and is enough
+ * for most people for ever.
+ *
+ * *Manage sources* is below a rule and reads as the quieter thing it is: not a
+ * way of adding anything, but the way to see what is already being shown. It is
+ * only there once there is something to manage.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddSourceSheet(
+private fun AddDocumentsSheet(
+    hasAnySource: Boolean,
+    deviceScanEnabled: Boolean,
     onDismiss: () -> Unit,
     onAddFolder: () -> Unit,
     onAddFiles: () -> Unit,
+    onScanDevice: () -> Unit,
     onManage: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -1165,41 +1367,74 @@ private fun AddSourceSheet(
                 .padding(bottom = Space.xl),
         ) {
             Text(
-                text = stringResource(R.string.sources_add_title),
+                text = stringResource(R.string.library_add_documents),
                 style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = Space.screen),
+            )
+            // The sentence that stops the whole sheet being frightening: none of
+            // these three moves, copies or changes anybody's files.
+            Text(
+                text = stringResource(R.string.sources_add_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .padding(horizontal = Space.screen)
-                    .padding(bottom = Space.md),
+                    .padding(top = Space.xs, bottom = Space.md),
             )
-            AddSourceOption(
+            AddDocumentsOption(
                 icon = painterResource(R.drawable.ic_folder),
                 title = stringResource(R.string.action_add_folder),
                 body = stringResource(R.string.sources_add_folder_body),
                 onClick = onAddFolder,
             )
-            AddSourceOption(
+            AddDocumentsOption(
                 icon = painterResource(R.drawable.ic_file),
                 title = stringResource(R.string.library_add_files),
                 body = stringResource(R.string.sources_add_files_body),
                 onClick = onAddFiles,
             )
-            HorizontalDivider(modifier = Modifier.padding(vertical = Space.sm))
-            AddSourceOption(
-                icon = painterResource(R.drawable.ic_settings),
-                title = stringResource(R.string.library_source_manage),
-                body = stringResource(R.string.sources_explainer),
-                onClick = onManage,
-            )
+            if (!deviceScanEnabled) {
+                AddDocumentsOption(
+                    icon = painterResource(R.drawable.ic_device),
+                    title = stringResource(R.string.action_scan_device),
+                    body = stringResource(R.string.sources_add_device_body),
+                    onClick = onScanDevice,
+                )
+            }
+            if (hasAnySource) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier
+                        .padding(horizontal = Space.screen)
+                        .padding(vertical = Space.sm),
+                )
+                AddDocumentsOption(
+                    icon = painterResource(R.drawable.ic_settings),
+                    title = stringResource(R.string.library_source_manage),
+                    body = stringResource(R.string.sources_manage_body),
+                    onClick = onManage,
+                    quiet = true,
+                )
+            }
         }
     }
 }
 
+/**
+ * One way in, as a row you could read out loud.
+ *
+ * The icon sits in a tinted disc, the same 40dp disc a folder gets everywhere
+ * else in the library, because a bare glyph beside two lines of text reads as
+ * decoration and a disc reads as an object. [quiet] drops the tint for the row
+ * below the rule, which is not one of the ways in and should not look like one.
+ */
 @Composable
-private fun AddSourceOption(
+private fun AddDocumentsOption(
     icon: androidx.compose.ui.graphics.painter.Painter,
     title: String,
     body: String,
     onClick: () -> Unit,
+    quiet: Boolean = false,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1208,7 +1443,30 @@ private fun AddSourceOption(
             .clickable(onClick = onClick)
             .padding(horizontal = Space.screen, vertical = Space.md),
     ) {
-        MenuIcon(icon)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                    if (quiet) {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                tint = if (quiet) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                },
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Column(modifier = Modifier.padding(start = Space.lg)) {
             Text(text = title, style = MaterialTheme.typography.bodyLarge)
             Text(
@@ -1364,83 +1622,10 @@ private fun FolderChoiceRow(
 }
 
 /**
- * How the library is drawn, and in what order.
+ * How much room the Add button needs under the last document.
  *
- * Two questions and nothing else now. Rescanning has moved out to the app bar,
- * next to the gear, because it is the one thing in here that is pressed in
- * answer to a problem — "I just put a file on this phone and it is not
- * showing" — and an answer to a problem should not be behind a menu. The
- * divider is there because the sort options are a set of alternatives and the
- * item above them is not, and a list where everything looks equally clickable
- * is a list you have to read twice.
+ * A 56dp extended button with its own 16dp margin, and a little over: the
+ * bottom of a list should not stop exactly where a floating control starts, or
+ * the last row looks like it has been cut off rather than left clear.
  */
-@Composable
-private fun LibraryMenu(
-    currentSort: LibrarySort,
-    layout: LibraryLayout,
-    onSortChange: (LibrarySort) -> Unit,
-    onToggleLayout: () -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                Icons.Default.MoreVert,
-                contentDescription = stringResource(R.string.action_more_options),
-            )
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            // The reading history used to have an item here, because the shelf
-            // at the top of the library is only drawn when something is
-            // part-read and a library of finished books had no entrance to it
-            // at all. It now has a permanent one: "Recently viewed" is a
-            // collection, alongside Starred and Read later, which is where a
-            // reader looking for things they have set aside was going to look.
-            DropdownMenuItem(
-                leadingIcon = {
-                    MenuIcon(
-                        painterResource(
-                            if (layout == LibraryLayout.GRID) {
-                                R.drawable.ic_list
-                            } else {
-                                R.drawable.ic_grid
-                            },
-                        ),
-                    )
-                },
-                text = {
-                    Text(
-                        stringResource(
-                            if (layout == LibraryLayout.GRID) {
-                                R.string.library_view_list
-                            } else {
-                                R.string.library_view_grid
-                            },
-                        ),
-                    )
-                },
-                onClick = {
-                    onToggleLayout()
-                    expanded = false
-                },
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = Space.xs))
-            Text(
-                text = stringResource(R.string.library_sort_by),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Space.lg, vertical = Space.sm),
-            )
-            LibrarySort.entries.forEach { sort ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(sort.labelRes)) },
-                    leadingIcon = { RadioButton(selected = sort == currentSort, onClick = null) },
-                    onClick = {
-                        onSortChange(sort)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
-}
+private val FabClearance = 88.dp

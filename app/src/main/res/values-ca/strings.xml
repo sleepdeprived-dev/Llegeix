@@ -13,7 +13,6 @@
     <string name="nav_dictionary">Diccionari</string>
     <string name="nav_collections">Col·leccions</string>
     <string name="nav_saved">Desat</string>
-    <string name="nav_exams">Exàmens</string>
 
     <!-- Accions compartides -->
     <string name="action_cancel">Cancel·la</string>
@@ -30,7 +29,7 @@
 
     <!-- Biblioteca -->
     <string name="library_welcome_title">Comença la biblioteca</string>
-    <string name="library_welcome_body">Deixa que Llegeix trobi els PDF que ja tens al dispositiu, o indica-li una sola carpeta.</string>
+    <string name="library_welcome_body">Indica-li una carpeta de PDF, tria fitxers concrets o deixa que es miri tot el telèfon. No es copia ni es mou res.</string>
     <string name="library_sources">Fonts</string>
     <string name="sources_explainer">Tot el que mostra la biblioteca ve d\'aquí. Si desmarques una carpeta, l\'aplicació deixa de mostrar-la; no s\'esborra mai res del telèfon.</string>
     <string name="sources_scan_paused">Desactivat. Els teus PDF es queden on són.</string>
@@ -73,7 +72,7 @@
     <string name="library_sort_size">Mida</string>
     <string name="library_sort_tag">Etiqueta</string>
     <string name="library_empty_title">No s\'ha trobat cap PDF</string>
-    <string name="library_empty_body">No ha aparegut res amb l\'extensió .pdf. Els PDF de Baixades no es poden llegir vigilant una carpeta: escaneja tot el dispositiu o afegeix-los un a un des del menú.</string>
+    <string name="library_empty_body">No ha aparegut res amb l\'extensió .pdf. Els PDF de Baixades no es poden llegir vigilant una carpeta: escaneja tot el telèfon o afegeix-los un a un.</string>
     <string name="library_no_matches_title">Cap coincidència</string>
     <string name="library_no_matches_body">Cap dels %1$d PDF no coincideix amb \"%2$s\".</string>
     <string name="library_move_to_folder">Mou a una col·lecció</string>
@@ -464,138 +463,7 @@
     <string name="swipe_read_later">Per llegir</string>
     <string name="swipe_not_read_later">Ja no</string>
 
-
-    <!--
-        Exàmens: una prova que el lector ha portat per fer, i cada intent.
-    -->
-    <string name="exams_import">Importa un examen</string>
-    <string name="exams_empty_title">Encara no hi ha exàmens</string>
-    <string name="exams_empty_body">Porta una prova en PDF i treballa-hi aquí. Les teves respostes es desen a part, de manera que el fitxer original no es toca mai \u2014 i pots tornar a fer la mateixa prova més endavant i comparar.</string>
-    <string name="exams_imported">\u201c%1$s\u201d és a punt</string>
-    <string name="exams_import_not_a_pdf">Aquest fitxer no s\'ha pogut obrir com a PDF.</string>
-    <string name="exams_import_unreadable">Aquest fitxer no s\'ha pogut llegir.</string>
-    <string name="exams_import_no_space">No hi ha prou espai al telèfon per fer-ne una còpia.</string>
-    <string name="exams_rename_title">Canvia el nom de l\'examen</string>
-    <string name="exams_delete_title">Vols suprimir aquest examen?</string>
-    <string name="exams_more">Més per a %1$s</string>
-    <plurals name="exams_pages">
-        <item quantity="many">%1$d pàgines</item>
-        <item quantity="one">%1$d pàgina</item>
-        <item quantity="other">%1$d pàgines</item>
-    </plurals>
-    <plurals name="exams_attempts">
-        <item quantity="many">%1$d intents</item>
-        <item quantity="one">%1$d intent</item>
-        <item quantity="other">%1$d intents</item>
-    </plurals>
-    <plurals name="exams_recordings">
-        <item quantity="many">%1$d enregistraments</item>
-        <item quantity="one">%1$d enregistrament</item>
-        <item quantity="other">%1$d enregistraments</item>
-    </plurals>
-    <string name="exams_delete_body_none">Se suprimirà la còpia que ha fet l\'aplicació. El fitxer que vas importar no es toca.</string>
-    <plurals name="exams_delete_body">
-        <item quantity="one">Se suprimirà el seu %1$d intent juntament amb la còpia que ha fet l\'aplicació. El fitxer que vas importar no es toca.</item>
-        <item quantity="many">Se suprimiran els %1$d intents juntament amb la còpia que ha fet l\'aplicació. El fitxer que vas importar no es toca.</item>
-        <item quantity="other">Se suprimiran els %1$d intents juntament amb la còpia que ha fet l\'aplicació. El fitxer que vas importar no es toca.</item>
-    </plurals>
-
-    <string name="exams_new_attempt">Intent nou</string>
-    <string name="exams_attempts_heading">Intents</string>
-    <string name="exams_no_attempts">Encara no hi ha cap intent. Comença\'n un i fes la prova \u2014 tot el que escriguis es desa sobre la marxa.</string>
-    <string name="exams_attempt_label">Intent %1$s</string>
-    <string name="exams_attempt_progress">%1$d de %2$d pàgines</string>
-    <string name="exams_attempt_finished">Acabat</string>
-    <string name="exams_mark_finished">Marca com a acabat</string>
-    <string name="exams_mark_unfinished">Marca com a no acabat</string>
-    <string name="exams_rename_attempt_title">Canvia el nom de l\'intent</string>
-    <string name="exams_delete_attempt_title">Vols suprimir aquest intent?</string>
-    <string name="exams_delete_attempt_body">Se suprimirà tot el que hi has escrit. La prova es conserva i els altres intents no es toquen.</string>
-    <string name="exams_key_present">Full de respostes</string>
-    <string name="exams_key_remove">Treu el full de respostes</string>
-    <string name="exams_key_attached">Full de respostes afegit</string>
-    <string name="exams_audio_remove">Treu %1$s</string>
-
-    <!-- L\'espai de treball de l\'examen: les eines, la tinta i la pàgina. -->
-    <string name="exam_tool_view">Mira</string>
-    <string name="exam_tool_pen">Ploma</string>
-    <string name="exam_tool_text">Escriu</string>
-    <string name="exam_tool_tick">Marca</string>
-    <string name="exam_tool_highlighter">Subratlla</string>
-    <string name="exam_tool_eraser">Esborra</string>
-    <string name="exam_ink_black">Negre</string>
-    <string name="exam_ink_blue">Blau</string>
-    <string name="exam_ink_red">Vermell</string>
-    <string name="exam_ink_green">Verd</string>
-    <string name="exam_stroke_fine">Fi</string>
-    <string name="exam_stroke_medium">Mitjà</string>
-    <string name="exam_stroke_thick">Gruixut</string>
-    <string name="exam_undo">Desfés l\'última marca</string>
-    <string name="exam_clear_page">Buida aquesta pàgina</string>
-    <string name="exam_clear_page_title">Vols buidar aquesta pàgina?</string>
-    <string name="exam_clear_page_body">Se suprimirà tot el que has escrit en aquesta pàgina d\'aquest intent. Les altres pàgines no es toquen.</string>
-    <string name="exam_show_key">Mostra el full de respostes</string>
-    <string name="exam_show_work">Torna a la teva feina</string>
-    <string name="exam_key_banner">Full de respostes \u2014 només lectura</string>
-    <string name="exam_page_of">%1$d / %2$d</string>
-    <string name="exam_previous_page">Pàgina anterior</string>
-    <string name="exam_next_page">Pàgina següent</string>
-    <string name="exam_open_failed_title">Aquest examen no s\'ha pogut obrir</string>
-    <string name="exam_open_failed_body">Pot ser que la còpia que va fer l\'aplicació estigui malmesa. Suprimeix aquest examen i torna a importar la prova.</string>
-    <string name="exam_finish">Marca com a acabat</string>
-    <string name="exam_unfinish">Marca com a no acabat</string>
-    <string name="exam_export">Desa com a PDF</string>
-    <string name="exam_exporting">S\'està escrivint el PDF\u2026</string>
-    <string name="exam_export_done">Desat</string>
-    <string name="exam_export_failed">No s\'ha pogut desar.</string>
-    <string name="exam_play">Reprodueix</string>
-    <string name="exam_pause">Atura</string>
-    <string name="exam_audio_track">Pista %1$d de %2$d</string>
-    <string name="exam_next_track">Pista següent</string>
-
-    <!-- Espai de treball de examen, v4.0.2: espai per respirar. -->
-    <string name="exam_listen_show">Mostra l\'enregistrament</string>
-    <string name="exam_listen_hide">Amaga l\'enregistrament</string>
-
     <!-- Espai de treball, v4.0.3: una barra per on ets, una per al que fa el dit. -->
-    <string name="exam_colour_heading">Color</string>
-    <string name="exam_thickness_heading">Gruix</string>
-    <string name="exam_choose_colour">%1$s \u00b7 tria un color</string>
-    <string name="exam_add_page_here">Afegeix un altre full en blanc</string>
-
-    <string name="exams_imported_partly">%1$d afegits, %2$d no s\'han pogut llegir</string>
-    <plurals name="exams_files">
-        <item quantity="one">%1$d fitxer</item>
-        <item quantity="many">%1$d fitxers</item>
-        <item quantity="other">%1$d fitxers</item>
-    </plurals>
-    <plurals name="exams_group_title">
-        <item quantity="one">%1$d fitxer triat</item>
-        <item quantity="many">%1$d fitxers triats</item>
-        <item quantity="other">%1$d fitxers triats</item>
-    </plurals>
-    <string name="exams_group_body">Són un sol examen repartit en diversos fitxers \u2014 una prova de lectura, una d\'audició \u2014 o exàmens diferents?</string>
-    <string name="exams_group_one">Un sol examen</string>
-    <string name="exams_group_separate">Exàmens separats</string>
-
-    <string name="exams_documents_heading">Prova</string>
-    <string name="exams_materials_heading">Materials</string>
-    <string name="exams_add_file">Afegeix un fitxer</string>
-    <string name="exams_remove_file">Treu %1$s</string>
-    <string name="exams_remove_file_title">Vols treure aquest fitxer?</string>
-    <string name="exams_remove_file_body">Les seves pàgines surten de la prova, i tot el que hi hagis escrit en qualsevol intent se\'n va amb elles. Els altres fitxers no es toquen.</string>
-    <string name="exams_key_none">Sense full de respostes</string>
-    <string name="exams_audio_none">Sense àudio</string>
-    <string name="exams_key_summary">Consulta\'l mentre treballes</string>
-    <string name="exams_audio_summary">Sona sobre la pàgina</string>
-    <string name="exam_part_of">%1$d/%2$d \u00b7 %3$s</string>
-    <plurals name="exams_imported_many">
-        <item quantity="one">%1$d examen afegit</item>
-        <item quantity="many">%1$d exàmens afegits</item>
-        <item quantity="other">%1$d exàmens afegits</item>
-    </plurals>
-    <string name="exams_move_up">Mou %1$s cap amunt</string>
-    <string name="exams_move_down">Mou %1$s cap avall</string>
 
     <!-- ================= v3.9 ================= -->
 
@@ -603,8 +471,6 @@
     <string name="search_recent_forget">Oblida la cerca de %1$s</string>
 
     <!-- Les fonts de la biblioteca, darrere d\'una paraula. -->
-    <string name="library_see_sources">Mostra les fonts</string>
-    <string name="library_add_source">Afegeix una font</string>
 
     <!-- Mantenir premuda una carpeta ofereix deixar de mostrar-la. -->
     <string name="library_folder_hide_title">Vols deixar de mostrar %1$s?</string>
@@ -633,24 +499,6 @@
     <string name="flag_estelada">Estelada</string>
     <string name="estelada_content_description">Estelada, la bandera independentista catalana</string>
 
-    <!-- Exàmens: paper en blanc, reanomenar i els controls de pàgina. -->
-    <string name="exam_notes_name">Notes</string>
-    <string name="exam_add_page">Afegeix una pàgina en blanc</string>
-    <string name="exam_page_added">Pàgina en blanc afegida al final</string>
-    <string name="exam_page_add_failed">No s\'ha pogut afegir la pàgina</string>
-    <string name="exam_go_to_notes">Ves a les pàgines en blanc</string>
-    <string name="exam_back_to_paper">Torna a l\'examen</string>
-    <string name="exam_dark_page">Enfosqueix la pàgina</string>
-    <string name="exam_light_page">Pàgina clara</string>
-    <string name="exam_redo">Refés</string>
-    <string name="exam_seek">Posició de l\'enregistrament</string>
-    <string name="exams_rename_file_title">Reanomena aquest document</string>
-    <string name="exams_rename_audio_title">Reanomena aquest enregistrament</string>
-    <string name="exams_rename_file">Reanomena %1$s</string>
-    <string name="exams_file_actions">Accions per a %1$s</string>
-    <string name="exams_audio_length">Durada: %1$s</string>
-    <string name="exams_audio_length_unknown">Durada desconeguda</string>
-
     <string name="tags_rename">Reanomena l\'etiqueta %1$s</string>
     <string name="words_open_source">Ves on es va desar</string>
 
@@ -665,9 +513,59 @@
     <string name="sources_hide_confirm">Amaga-la</string>
     <string name="sources_forget_confirm">Oblida-la</string>
 
-    <!-- L\'espai d\'examen: quadres de text i pàgines en blanc. -->
-    <string name="exam_text_resize">Arrossega per canviar-ne la mida</string>
-    <string name="exam_text_rotate">Arrossega per girar-lo</string>
-    <string name="exam_text_delete">Suprimeix aquest text</string>
+    <!-- ================= v4.1 ================= -->
 
+    <!--
+        El prestatge «Continua llegint», que ara es pot plegar o treure de la
+        biblioteca.
+
+        «Amaga» i no «Esborra»: no es perd res i l'app no oblida res — el
+        prestatge només deixa de dibuixar-se. El missatge de després diu per on es
+        recupera, perquè un control que ha desaparegut de la pantalla on era no es
+        torna a trobar mirant.
+    -->
+    <string name="library_continue_collapse">Plega aquest prestatge</string>
+    <string name="library_continue_expand">Desplega aquest prestatge</string>
+    <string name="library_continue_hide">Amaga</string>
+    <string name="library_continue_hidden_message">Prestatge amagat. El pots recuperar a Configuració.</string>
+    <plurals name="library_continue_count">
+        <item quantity="one">%1$d llibre a mitges</item>
+        <item quantity="many">%1$d de llibres a mitges</item>
+        <item quantity="other">%1$d llibres a mitges</item>
+    </plurals>
+    <string name="library_continue_shown">Visible</string>
+    <string name="library_continue_collapsed">Plegat</string>
+    <string name="library_continue_hidden">Amagat</string>
+
+    <!-- Les mateixes tres opcions, a Configuració, que és el camí de tornada. -->
+    <string name="settings_library">Biblioteca</string>
+    <string name="settings_continue_shelf_summary">El prestatge de llibres a mitges, a dalt de la biblioteca.</string>
+
+    <!--
+        L'ordenació, fora del menú de tres punts i dins de la biblioteca.
+
+        Cada ordre té tres noms ara: el llarg per al full, un curt per al xip que
+        diu quin ordre hi ha, i una línia que diu què fa.
+    -->
+    <string name="library_sort_recent_short">Recents</string>
+    <string name="library_sort_recent_summary">Els canviats fa poc, primer</string>
+    <string name="library_sort_name_summary">De la A a la Z</string>
+    <string name="library_sort_size_summary">Els més grossos, primer</string>
+    <string name="library_sort_tag_summary">Agrupats per la primera etiqueta; els sense etiqueta, al final</string>
+
+    <!--
+        Afegir documents: un sol full, que s'obre des de tot arreu.
+
+        «Documents» i no «fonts» al botó: una font és com en diu l'app després, i un
+        document és el que el lector creu que està afegint.
+    -->
+    <string name="library_add_documents">Afegeix documents</string>
+    <string name="sources_add_body">No es copia ni es mou res: els teus PDF es llegeixen allà on ja són.</string>
+    <string name="sources_add_device_body">Busca PDF per tot el telèfon. Cal un permís especial.</string>
+    <string name="sources_manage_body">Mira què s\'està mostrant i amaga el que no vulguis</string>
+    <plurals name="sources_source_count">
+        <item quantity="one">%1$d font</item>
+        <item quantity="many">%1$d de fonts</item>
+        <item quantity="other">%1$d fonts</item>
+    </plurals>
 </resources>

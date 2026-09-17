@@ -72,6 +72,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.AppLanguage
+import com.david.llegeix.data.settings.ContinueShelf
 import com.david.llegeix.data.settings.ThemeMode
 import com.david.llegeix.ui.common.Space
 import kotlin.math.roundToInt
@@ -169,6 +170,28 @@ fun SettingsScreen(
                         modifier = Modifier.padding(top = Space.xs),
                     )
                 }
+            }
+
+            SectionHeader(stringResource(R.string.settings_library))
+
+            // One control, and it is here for one reason: *Hidden* has to be
+            // undoable. The shelf's own heading on the library is where it is
+            // folded away and where hiding is offered, because that is the
+            // screen the decision is about — but a shelf that has been taken off
+            // the library cannot carry the button that puts it back, so the
+            // three states are listed here as well.
+            SettingsCard {
+                FieldLabel(stringResource(R.string.library_continue_title))
+                ContinueShelfPicker(
+                    current = settings.continueShelf,
+                    onChoose = viewModel::onContinueShelfChange,
+                )
+                Text(
+                    text = stringResource(R.string.settings_continue_shelf_summary),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.md),
+                )
             }
 
             SectionHeader(stringResource(R.string.settings_language))
@@ -555,6 +578,32 @@ private fun ThemeTile(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+    }
+}
+
+/**
+ * Shown, folded away, or hidden, for the shelf of part-read books.
+ *
+ * A segmented row rather than a switch and a checkbox, because the three are one
+ * question with three answers rather than two independent flags — and because
+ * all three fit: the longest of them is one word.
+ */
+@Composable
+private fun ContinueShelfPicker(current: ContinueShelf, onChoose: (ContinueShelf) -> Unit) {
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        ContinueShelf.entries.forEachIndexed { index, shelf ->
+            SegmentedButton(
+                selected = shelf == current,
+                onClick = { onChoose(shelf) },
+                shape = SegmentedButtonDefaults.itemShape(index, ContinueShelf.entries.size),
+            ) {
+                Text(
+                    text = stringResource(shelf.labelRes),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

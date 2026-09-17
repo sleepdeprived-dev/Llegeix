@@ -2,7 +2,6 @@ package com.david.llegeix
 
 import android.app.Application
 import com.david.llegeix.data.db.LlegeixDatabase
-import com.david.llegeix.data.exam.ExamRepository
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.lang.ApertureLexicon
@@ -13,6 +12,11 @@ import com.david.llegeix.data.source.PdfRepository
 import com.david.llegeix.data.DataEraser
 import com.david.llegeix.pdf.PdfThumbnails
 import com.david.llegeix.update.UpdateRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Holds the app's singletons.
@@ -28,6 +32,33 @@ class LlegeixApp : Application() {
         // The transcriber is a plain object so it can be unit tested without a
         // context; this is where the device hands it the word list.
         CatalanIpa.useLexicon(ApertureLexicon.get(this))
+        deleteStaleExamFiles()
+    }
+
+    /**
+     * Reclaim the disk the exams feature was using, once, on the upgrade to v4.1.
+     *
+     * Exams were the one thing this app *stored* rather than merely referred to:
+     * every paper was copied into `files/exams` and kept there, alongside any
+     * recordings that came with it, which on a reader who had imported a few
+     * sample papers is tens of megabytes. Dropping the tables in
+     * [com.david.llegeix.data.db.MIGRATION_12_13] forgets the rows that named
+     * those files; SQLite cannot unlink anything, so without this the files
+     * themselves would sit in the app's private storage for ever with nothing
+     * left in the app that could ever open, list or delete them.
+     *
+     * No flag is needed to make it happen only once. Nothing in the app creates
+     * this directory any more, so after the first pass there is nothing to find,
+     * and the check costs one `exists()` per launch.
+     */
+    private fun deleteStaleExamFiles() {
+        val leftovers = File(filesDir, STALE_EXAM_DIRECTORY)
+        if (!leftovers.exists()) return
+        // Off the main thread: this is a recursive delete over files that can
+        // run to tens of megabytes, and nothing on screen is waiting for it.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { leftovers.deleteRecursively() }
+        }
     }
 
     /** What is on the device. */
@@ -37,9 +68,8 @@ class LlegeixApp : Application() {
      * The one database, shared.
      *
      * Hoisted out of [libraryDataRepository], where it used to be built inline.
-     * Room permits only one open instance per file, and the moment a second
-     * repository needed it — exams — building it in whichever lazy happened to
-     * run first would have been two instances of the same file.
+     * Room permits only one open instance per file, so the builder lives here
+     * rather than inside whichever repository happens to be constructed first.
      */
     private val database: LlegeixDatabase by lazy { LlegeixDatabase.build(this) }
 
@@ -47,9 +77,6 @@ class LlegeixApp : Application() {
     val libraryDataRepository: LibraryDataRepository by lazy {
         LibraryDataRepository(database)
     }
-
-    /** The exam papers the reader has brought in, and the copies behind them. */
-    val examRepository: ExamRepository by lazy { ExamRepository(this, database) }
 
     /** First-page covers for the library, shared so the cache outlives a screen. */
     val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(this) }
@@ -62,7 +89,6 @@ class LlegeixApp : Application() {
             settingsRepository,
             searchHistoryRepository,
             pdfThumbnails,
-            examRepository,
         )
     }
 
@@ -87,4 +113,9 @@ class LlegeixApp : Application() {
 
     /** The app's only way of learning that a newer version of itself exists. */
     val updateRepository: UpdateRepository by lazy { UpdateRepository(this) }
+
+    private companion object {
+        /** Where exam papers were copied to, before v4.1 dropped the feature. */
+        const val STALE_EXAM_DIRECTORY = "exams"
+    }
 }

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.settings.AppFlag
+import com.david.llegeix.data.settings.ContinueShelf
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
@@ -157,6 +158,30 @@ class LibraryViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.current.libraryLayout)
 
     fun onToggleLayout() = settings.setLibraryLayout(layout.value.toggled())
+
+    /**
+     * How much of the Continue reading shelf the library draws.
+     *
+     * A preference rather than remembered-per-visit state, because a shelf that
+     * unfolded itself every time the app was launched would not be folded away
+     * in any useful sense.
+     */
+    val continueShelf: StateFlow<ContinueShelf> = settings.settings
+        .map { it.continueShelf }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            settings.current.continueShelf,
+        )
+
+    /** The chevron on the shelf's heading: folded away, or back again. */
+    fun onToggleContinueShelf() =
+        settings.setContinueShelf(continueShelf.value.toggled())
+
+    /** Take the shelf off the library. Undone from the snackbar, or in Configuració. */
+    fun onHideContinueShelf() = settings.setContinueShelf(ContinueShelf.HIDDEN)
+
+    fun onContinueShelfChange(shelf: ContinueShelf) = settings.setContinueShelf(shelf)
 
     /**
      * How far through each opened document the reader got.

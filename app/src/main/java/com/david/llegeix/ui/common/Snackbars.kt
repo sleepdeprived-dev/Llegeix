@@ -21,10 +21,9 @@ import androidx.compose.ui.unit.dp
  * the theme's own ink on it and the accent on its action. Light in light mode,
  * dark in dark mode, black on AMOLED.
  *
- * One of these rather than seven copies of the same three colour arguments: the
- * app has snackbars on the library, the reader, the history, the saved words and
- * three exam screens, and a themed snackbar on six of them is a bug on the
- * seventh.
+ * One of these rather than a copy of the same three colour arguments per screen:
+ * the app has snackbars on the library, the reader, the history and the saved
+ * words, and a themed snackbar on three of them is a bug on the fourth.
  */
 @Composable
 fun AppSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier) {
