@@ -58,17 +58,22 @@ import kotlin.math.roundToInt
  * it, which packed two unrelated jobs into one line: going to the sources, and
  * bringing in a new one.
  *
- * It is now one row that does one thing, built exactly like the folder rows
- * below it — a disc, a name, a line of detail, a chevron — because that is what
- * it is: a place in the library you can go into. Adding documents left this row
- * for a button of its own that says the word "add", since a plus disc at the end
- * of a row is the least obvious control on the screen and importing is the first
- * thing anybody has to do.
+ * It is now one card that does one thing. It was briefly built exactly like the
+ * folder rows below it, on the grounds that it is a place you go into — and that
+ * turned out to be the mistake: it is *not* one of the library's folders, and
+ * dressing it as one put a row reading "Sources" in among the reader's own
+ * folders where it read as another of them. So it is a card now, lifted off the
+ * ground with the tinted disc the app gives to things that are actions rather
+ * than contents, sitting in its own space above the list. Adding documents left
+ * this row for a button of its own that says the word "add", since a plus disc
+ * at the end of a row is the least obvious control on the screen and importing
+ * is the first thing anybody has to do.
  *
  * The detail line is the one thing the strip of tiles said that a button could
  * not: a library quietly missing a folder looks exactly like a library showing
- * everything, so when the two counts differ this row says "31 of 48 PDFs shown"
- * rather than a total.
+ * everything, so when the two counts differ this card says "31 of 48 PDFs shown"
+ * rather than a total — in the accent, because it is the one line here that is
+ * telling the reader something is missing.
  */
 @Composable
 fun SourcesRow(
@@ -82,21 +87,24 @@ fun SourcesRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = onOpenSources)
-            .padding(start = Space.screen, end = Space.md)
+            .padding(start = Space.lg, end = Space.md)
             .padding(vertical = Space.md),
     ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                .background(MaterialTheme.colorScheme.secondaryContainer),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_folder),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -107,7 +115,7 @@ fun SourcesRow(
         ) {
             Text(
                 text = stringResource(R.string.library_sources),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -174,8 +182,13 @@ fun SourcesRow(
  * The two are one escalation apart — fold it away, and then, if it is still not
  * wanted, take it off the library — so the stronger of the two is not sitting on
  * a shelf that most people are happy with, waiting to be pressed by mistake.
- * Neither control is in a menu: this is a decision about the thing being looked
- * at, made on the thing being looked at.
+ *
+ * Holding the heading opens all three states at once. The tap is the thing you
+ * do without thinking and the hold is the thing you do when you have a view
+ * about it, which is the same division every list row in this app already makes,
+ * and it means somebody who wants the shelf gone does not have to fold it first
+ * to be offered that. Neither route is a menu on the app bar: this is a decision
+ * about the thing being looked at, made on the thing being looked at.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -188,6 +201,7 @@ fun ContinueReadingRow(
     onSeeAll: () -> Unit,
     onToggleCollapsed: () -> Unit,
     onHide: () -> Unit,
+    onShowOptions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -205,7 +219,10 @@ fun ContinueReadingRow(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onToggleCollapsed)
+                    .combinedClickable(
+                        onClick = onToggleCollapsed,
+                        onLongClick = onShowOptions,
+                    )
                     .padding(vertical = Space.xs),
             ) {
                 // One arrow turned rather than two icons swapped, so the fold

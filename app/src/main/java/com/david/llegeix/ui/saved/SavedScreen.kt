@@ -41,6 +41,7 @@ import com.david.llegeix.ui.bookmarks.BookmarksViewModel
 import com.david.llegeix.ui.bookmarks.PagesPane
 import com.david.llegeix.ui.bookmarks.WordsPane
 import com.david.llegeix.ui.common.AppSnackbarHost
+import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.folders.CollectionsPane
 import com.david.llegeix.ui.folders.FoldersViewModel
@@ -108,7 +109,12 @@ fun SavedScreen(
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
-                title = { Text(stringResource(R.string.nav_saved)) },
+                title = {
+                    ScreenTitle(
+                        icon = R.drawable.ic_bookmark,
+                        title = stringResource(R.string.nav_saved),
+                    )
+                },
             )
         },
         floatingActionButton = {

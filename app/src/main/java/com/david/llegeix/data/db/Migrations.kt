@@ -428,3 +428,23 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
         db.execSQL("DROP TABLE IF EXISTS exams")
     }
 }
+
+/**
+ * Records when a saved word was last answered about.
+ *
+ * Nullable with no default rather than a zero, because "never practised" and
+ * "practised at the epoch" are different facts and only the first one is true of
+ * every row that exists when this runs. Nothing is back-filled: the app has
+ * never written this down before, so there is nothing to back-fill it from, and
+ * a guess would put words in today's list that the reader never saw today.
+ *
+ * `dueAt` cannot be read as a substitute. It says when a word comes round next,
+ * which depends on how many times it has been right — a fortnight for a word
+ * well known, ten minutes for one just missed — so the day it was last seen
+ * cannot be recovered from it.
+ */
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN lastReviewedAt INTEGER")
+    }
+}

@@ -61,11 +61,12 @@ interface WordBookmarkDao {
     @Query(
         """
         UPDATE word_bookmarks
-        SET box = :box, dueAt = :dueAt, reviewCount = reviewCount + 1
+        SET box = :box, dueAt = :dueAt, reviewCount = reviewCount + 1,
+            lastReviewedAt = :reviewedAt
         WHERE id = :id
         """,
     )
-    suspend fun recordReview(id: Long, box: Int, dueAt: Long)
+    suspend fun recordReview(id: Long, box: Int, dueAt: Long, reviewedAt: Long)
 
     /** Just the words, for marking the ones already saved on a page. */
     @Query("SELECT word FROM word_bookmarks")

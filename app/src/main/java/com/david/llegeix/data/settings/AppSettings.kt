@@ -173,10 +173,31 @@ enum class LibraryLayout(val key: String) {
  * it was left on — this is a decision about one shelf on one screen, not about
  * what the app remembers.
  */
-enum class ContinueShelf(val key: String, @param:StringRes val labelRes: Int) {
-    SHOWN("shown", R.string.library_continue_shown),
-    COLLAPSED("collapsed", R.string.library_continue_collapsed),
-    HIDDEN("hidden", R.string.library_continue_hidden),
+enum class ContinueShelf(
+    val key: String,
+    @param:StringRes val labelRes: Int,
+    /**
+     * One line saying what the state does, for the dialog raised by holding the
+     * shelf's heading. "Folded away" and "hidden" are near enough in ordinary
+     * speech that three bare words would be a guess.
+     */
+    @param:StringRes val summaryRes: Int,
+) {
+    SHOWN(
+        "shown",
+        R.string.library_continue_shown,
+        R.string.library_continue_shown_summary,
+    ),
+    COLLAPSED(
+        "collapsed",
+        R.string.library_continue_collapsed,
+        R.string.library_continue_collapsed_summary,
+    ),
+    HIDDEN(
+        "hidden",
+        R.string.library_continue_hidden,
+        R.string.library_continue_hidden_summary,
+    ),
     ;
 
     /** The state the chevron on the shelf's own heading leads to. */

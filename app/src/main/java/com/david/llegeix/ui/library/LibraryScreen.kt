@@ -156,6 +156,7 @@ fun LibraryScreen(
     var sourcesSheetFor by remember { mutableStateOf<String?>(null) }
     var showAddDocuments by remember { mutableStateOf(false) }
     var showSort by remember { mutableStateOf(false) }
+    var showContinueOptions by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<PdfDocument?>(null) }
     var hidingFolder by remember { mutableStateOf<LibraryFolder?>(null) }
     var choosingFlag by remember { mutableStateOf(false) }
@@ -346,6 +347,7 @@ fun LibraryScreen(
                 onForgetRecent = { recent -> forgettingRecent = recent },
                 onSeeHistory = onOpenHistory,
                 onToggleContinue = viewModel::onToggleContinueShelf,
+                onContinueOptions = { showContinueOptions = true },
                 onHideContinue = {
                     viewModel.onHideContinueShelf()
                     // Undone from here, and findable in Configuració afterwards:
@@ -429,7 +431,6 @@ fun LibraryScreen(
 
     if (showAddDocuments) {
         AddDocumentsSheet(
-            hasAnySource = state.hasAnySource,
             deviceScanEnabled = state.deviceScanEnabled,
             onDismiss = { showAddDocuments = false },
             onAddFolder = {
@@ -444,10 +445,17 @@ fun LibraryScreen(
                 showAddDocuments = false
                 openAllFilesSettings()
             },
-            onManage = {
-                showAddDocuments = false
-                sourcesSheetFor = ""
+        )
+    }
+
+    if (showContinueOptions) {
+        ContinueShelfDialog(
+            current = continueShelf,
+            onChoose = {
+                viewModel.onContinueShelfChange(it)
+                showContinueOptions = false
             },
+            onDismiss = { showContinueOptions = false },
         )
     }
 
@@ -618,6 +626,67 @@ private fun LibraryControlsRow(
             },
         )
     }
+}
+
+/**
+ * All three states of the Continue reading shelf, from holding its heading.
+ *
+ * The heading's tap folds the shelf and the button on it hides the shelf, and
+ * between them they cover what most people want without a dialog ever opening.
+ * This is for the rest: somebody who wants it gone should not have to fold it
+ * first to be offered that, and somebody who has hidden it and is now looking at
+ * a library without it should not have to remember that Configuració is where it
+ * lives. A hold is the gesture every other list in this app answers with its
+ * options, so it is the gesture this one answers with too.
+ *
+ * Each state carries a line saying what it does, because "folded away" and
+ * "hidden" are near enough in ordinary speech that three bare words would be a
+ * guess.
+ */
+@Composable
+private fun ContinueShelfDialog(
+    current: ContinueShelf,
+    onChoose: (ContinueShelf) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.library_continue_title)) },
+        text = {
+            Column {
+                ContinueShelf.entries.forEach { shelf ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .selectable(
+                                selected = shelf == current,
+                                role = Role.RadioButton,
+                                onClick = { onChoose(shelf) },
+                            )
+                            .padding(vertical = Space.sm, horizontal = Space.xs),
+                    ) {
+                        RadioButton(selected = shelf == current, onClick = null)
+                        Column(modifier = Modifier.padding(start = Space.md)) {
+                            Text(
+                                text = stringResource(shelf.labelRes),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                text = stringResource(shelf.summaryRes),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+        },
+    )
 }
 
 /**
@@ -1005,6 +1074,7 @@ private fun LibraryBody(
     onSeeHistory: () -> Unit,
     onToggleContinue: () -> Unit,
     onHideContinue: () -> Unit,
+    onContinueOptions: () -> Unit,
     onOpenFolder: (String) -> Unit,
     onHideFolder: (LibraryFolder) -> Unit,
     onEditTags: (PdfDocument) -> Unit,
@@ -1063,6 +1133,7 @@ private fun LibraryBody(
                 onSeeHistory = onSeeHistory,
                 onToggleContinue = onToggleContinue,
                 onHideContinue = onHideContinue,
+                onContinueOptions = onContinueOptions,
                 onOpenSort = onOpenSort,
             )
             EmptyState(
@@ -1097,6 +1168,7 @@ private fun LibraryBody(
                 onSeeHistory = onSeeHistory,
                 onToggleContinue = onToggleContinue,
                 onHideContinue = onHideContinue,
+                onContinueOptions = onContinueOptions,
                 onOpenSort = onOpenSort,
             )
             EmptyState(
@@ -1140,6 +1212,7 @@ private fun LibraryBody(
                     onSeeHistory = onSeeHistory,
                     onToggleContinue = onToggleContinue,
                     onHideContinue = onHideContinue,
+                    onContinueOptions = onContinueOptions,
                     onOpenSort = onOpenSort,
                 )
             }
@@ -1203,6 +1276,7 @@ private fun LibraryBody(
                     onSeeHistory = onSeeHistory,
                     onToggleContinue = onToggleContinue,
                     onHideContinue = onHideContinue,
+                    onContinueOptions = onContinueOptions,
                     onOpenSort = onOpenSort,
                 )
             }
@@ -1271,6 +1345,7 @@ private fun LibraryShelves(
     onSeeHistory: () -> Unit,
     onToggleContinue: () -> Unit,
     onHideContinue: () -> Unit,
+    onContinueOptions: () -> Unit,
 ) {
     val showsContinue = continueReading.isNotEmpty() &&
         state.path == null &&
@@ -1282,7 +1357,7 @@ private fun LibraryShelves(
     // three to draw.
     if (!state.showsSources && !showsContinue && !showsControls) return
 
-    Column(modifier = Modifier.padding(bottom = Space.sm)) {
+    Column(modifier = Modifier.padding(bottom = Space.md)) {
         if (showsContinue) {
             ContinueReadingRow(
                 entries = continueReading,
@@ -1293,6 +1368,8 @@ private fun LibraryShelves(
                 onSeeAll = onSeeHistory,
                 onToggleCollapsed = onToggleContinue,
                 onHide = onHideContinue,
+                onShowOptions = onContinueOptions,
+                modifier = Modifier.padding(top = Space.md),
             )
         }
         if (state.showsSources) {
@@ -1301,7 +1378,11 @@ private fun LibraryShelves(
                 visibleCount = state.sourcesVisibleCount,
                 totalCount = state.sourcesTotalCount,
                 onOpenSources = onOpenSources,
-                modifier = Modifier.padding(top = if (showsContinue) Space.sm else 0.dp),
+                // Room on both sides of it. The shelf above and the list below
+                // are both long runs of similar-looking rows, and a card with
+                // eight points of air around it reads as a third thing rather
+                // than as the seam between the other two.
+                modifier = Modifier.padding(top = if (showsContinue) Space.xl else Space.md),
             )
         }
         // The controls scroll with the library rather than sitting under the
@@ -1317,7 +1398,7 @@ private fun LibraryShelves(
                 onViewChange = onViewChange,
                 onOpenSort = onOpenSort,
                 modifier = Modifier.padding(
-                    top = if (showsContinue || state.showsSources) Space.md else 0.dp,
+                    top = if (showsContinue || state.showsSources) Space.xl else 0.dp,
                     bottom = Space.sm,
                 ),
             )
@@ -1344,20 +1425,19 @@ private fun LibraryShelves(
  * folder grants nothing beyond that folder, happens in a dialog, and is enough
  * for most people for ever.
  *
- * *Manage sources* is below a rule and reads as the quieter thing it is: not a
- * way of adding anything, but the way to see what is already being shown. It is
- * only there once there is something to manage.
+ * There is no *manage sources* row on it. There was, under a rule, and it was
+ * the one thing in the sheet that did not add anything: a reader who pressed
+ * *Add documents* had already said what they wanted, and the card at the top of
+ * the library says *Sources* and opens exactly that. One sheet, one job.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddDocumentsSheet(
-    hasAnySource: Boolean,
     deviceScanEnabled: Boolean,
     onDismiss: () -> Unit,
     onAddFolder: () -> Unit,
     onAddFiles: () -> Unit,
     onScanDevice: () -> Unit,
-    onManage: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -1401,21 +1481,6 @@ private fun AddDocumentsSheet(
                     onClick = onScanDevice,
                 )
             }
-            if (hasAnySource) {
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier
-                        .padding(horizontal = Space.screen)
-                        .padding(vertical = Space.sm),
-                )
-                AddDocumentsOption(
-                    icon = painterResource(R.drawable.ic_settings),
-                    title = stringResource(R.string.library_source_manage),
-                    body = stringResource(R.string.sources_manage_body),
-                    onClick = onManage,
-                    quiet = true,
-                )
-            }
         }
     }
 }
@@ -1423,10 +1488,9 @@ private fun AddDocumentsSheet(
 /**
  * One way in, as a row you could read out loud.
  *
- * The icon sits in a tinted disc, the same 40dp disc a folder gets everywhere
- * else in the library, because a bare glyph beside two lines of text reads as
- * decoration and a disc reads as an object. [quiet] drops the tint for the row
- * below the rule, which is not one of the ways in and should not look like one.
+ * The icon sits in a tinted disc, the same 40dp disc the sources card gets at the
+ * top of the library, because a bare glyph beside two lines of text reads as
+ * decoration and a disc reads as an object.
  */
 @Composable
 private fun AddDocumentsOption(
@@ -1434,7 +1498,6 @@ private fun AddDocumentsOption(
     title: String,
     body: String,
     onClick: () -> Unit,
-    quiet: Boolean = false,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1447,23 +1510,13 @@ private fun AddDocumentsOption(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(
-                    if (quiet) {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    } else {
-                        MaterialTheme.colorScheme.secondaryContainer
-                    },
-                ),
+                .background(MaterialTheme.colorScheme.secondaryContainer),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = icon,
                 contentDescription = null,
-                tint = if (quiet) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                },
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(22.dp),
             )
         }

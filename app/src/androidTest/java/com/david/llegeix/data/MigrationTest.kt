@@ -17,6 +17,7 @@ import com.david.llegeix.data.db.MIGRATION_9_10
 import com.david.llegeix.data.db.MIGRATION_10_11
 import com.david.llegeix.data.db.MIGRATION_11_12
 import com.david.llegeix.data.db.MIGRATION_12_13
+import com.david.llegeix.data.db.MIGRATION_13_14
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -740,16 +741,53 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Words gain the day they were last practised, and nothing is guessed.
+     *
+     * The new column is nullable with no default on purpose: "never practised"
+     * and "practised at the epoch" are different facts, and a back-filled zero
+     * would be the app claiming to know a day it has never recorded.
+     */
+    @Test
+    fun migrate13To14_addsLastReviewedAtAndLeavesItUnknown() {
+        helper.createDatabase(TEST_DB, 13).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO word_bookmarks
+                    (id, word, translation, ipa, context, documentUri, displayName,
+                     pageIndex, lineNumber, createdAt, box, dueAt, reviewCount)
+                VALUES (1, 'enrenou', 'commotion', 'ənrəˈnɔw', 'quin enrenou', NULL,
+                        NULL, 3, 7, 500, 2, 900, 4)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 14, true, MIGRATION_13_14)
+
+        db.query(
+            "SELECT word, box, reviewCount, lastReviewedAt FROM word_bookmarks",
+        ).use { cursor ->
+            assertTrue("saved word survived", cursor.moveToFirst())
+            assertEquals("enrenou", cursor.getString(0))
+            assertEquals("its place in the deck survived", 2, cursor.getInt(1))
+            assertEquals("and its count of answers", 4, cursor.getInt(2))
+            assertTrue(
+                "a word practised before this existed has no recorded day",
+                cursor.isNull(3),
+            )
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To13_runsEveryStepInSequence() {
+    fun migrate1To14_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            13,
+            14,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -763,6 +801,7 @@ class MigrationTest {
             MIGRATION_10_11,
             MIGRATION_11_12,
             MIGRATION_12_13,
+            MIGRATION_13_14,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

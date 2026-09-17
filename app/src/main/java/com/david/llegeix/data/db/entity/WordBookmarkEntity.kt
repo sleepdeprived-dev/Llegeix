@@ -92,4 +92,15 @@ data class WordBookmarkEntity(
     val dueAt: Long = 0,
     /** How many times it has been answered, right or wrong. */
     val reviewCount: Int = 0,
+    /**
+     * When it was last answered about, in epoch millis, or null if never.
+     *
+     * [dueAt] cannot stand in for this. It says when the word comes round
+     * *next*, which is a different fact and a lossy one: a word answered
+     * correctly three times is due in a fortnight and a word answered wrongly
+     * this morning is due in ten minutes, so "worked on today" cannot be read
+     * off it at all. This is what lets the app say which words the reader
+     * actually went through today, as against which ones it is waiting on.
+     */
+    val lastReviewedAt: Long? = null,
 )

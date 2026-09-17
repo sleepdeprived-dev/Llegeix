@@ -37,11 +37,13 @@ does both after bumping the version in `app/build.gradle.kts`.
   on the shelf — the state is visible, so it is one tap from being undone. Only
   once it is folded does the shelf offer to be hidden altogether, because the
   two are one escalation apart and the stronger of them has no business sitting
-  on a shelf most people are happy with. Hiding is undone from the message that
-  follows it and, later, from Configuració, which is the only honest place to
-  put the way back to something that is no longer on the screen. Nothing is
-  forgotten in either state: the reading history is untouched, and every book
-  keeps the page it was left on.
+  on a shelf most people are happy with; holding the heading offers all three
+  states at once, with a line each saying what they do, which is the same
+  division between tap and hold that every list row in this app already makes.
+  Hiding is undone from the message that follows it and, later, from
+  Configuració, which is the only honest place to put the way back to something
+  that is no longer on the screen. Nothing is forgotten in either state: the
+  reading history is untouched, and every book keeps the page it was left on.
 - **Reading progress** — how long a document is, learned the first time it is
   opened, so every cover in the app carries a bar along its foot and every list
   row says how far in you are. A shelf of two hundred PDFs answers "which of
@@ -57,14 +59,21 @@ does both after bumping the version in `app/build.gradle.kts`.
   and drops the sweep from the list once it is already on. The button that opens
   it says *Add documents* in words, at the bottom right where a phone puts its
   main action, because importing is the first thing anybody has to do here and
-  it used to be the smallest, least-labelled target on the screen.
-- **Sources** — where the library's documents come from, as one row at the top
-  of the library rather than an item in a menu: a disc, a name and a line of
-  detail, built like the folder rows under it, because that is what it is — a
-  place in the library you can go into. It opens every source and every folder
-  inside it as a tree of tick boxes. When part of a source is switched off the
-  row reads "31 of 48 PDFs shown", because a library quietly missing a folder
-  otherwise looks exactly like a library showing everything.
+  it used to be the smallest, least-labelled target on the screen. There is no
+  *manage sources* row on the sheet: somebody who pressed *Add documents* has
+  already said what they want, and the card at the top of the library is where
+  the other question is asked.
+- **Sources** — where the library's documents come from, as one card at the top
+  of the library rather than an item in a menu: a tinted disc, a name and a line
+  of detail, with room around it. It was briefly built like the folder rows under
+  it, on the grounds that it is a place you go into, and that was the mistake —
+  it is not one of the reader's own folders and should not sit among them looking
+  like one. It opens every source and every folder inside it as a tree of tick
+  boxes, under the same disc and title that were pressed to get there, so the
+  sheet reads as the inside of that card rather than as somewhere new. When part
+  of a source is switched off the card reads "31 of 48 PDFs shown", in the
+  accent, because a library quietly missing a folder otherwise looks exactly like
+  a library showing everything.
   Holding a folder in the library offers to stop showing it, which is the same
   decision reached from the folder it is about — and it is a decision the app
   remembers: a hidden folder stays in the list, unticked, and ticking it brings
@@ -211,6 +220,16 @@ does both after bumping the version in `app/build.gradle.kts`.
   rather than quoting a line it was never on. Where a saved word turns up on a
   page you are reading it is quietly underlined, so the book itself shows what
   has been worked on.
+- **Today's words** — a card at the top of the saved words, headed *Words I
+  have learned today*, holding the words themselves rather than a number. A word
+  is on it if it was saved today or practised today, because those are the two
+  ways a word gets worked on here and a card that emptied itself on every day
+  spent revising would only ever congratulate new reading. Each word is a pill
+  showing the Catalan, and pressing it turns over the meaning it was saved with —
+  the whole transaction of learning a word, offered where the day's words are
+  already gathered, at the cost of a tap and no navigation at all. It is not
+  drawn on a day with nothing on it: an empty card headed *today* is a reproach,
+  and this is a record of what happened rather than a target that was missed.
 - **Practice** — the saved words are also a deck. A word saved and never met
   again is a word that was not learned, and a list you scroll past is not
   meeting it, so a short session asks about the ones that are due: the Catalan,
@@ -238,6 +257,12 @@ does both after bumping the version in `app/build.gradle.kts`.
   flag beside the word, where the question is actually asked, and a second
   control for it in Configuració only meant one of the two was always the wrong
   place to look.
+- **Titles that carry their own mark** — the bottom bar draws an icon against
+  every destination and the app then used to drop it the moment you arrived: the
+  Dictionary was a book at the bottom of the screen and a bare word at the top of
+  it. The icon now sits beside the title too, in the bar's own ink, so arriving
+  somewhere confirms the press rather than merely following it. The library has
+  always done this with the flag; the other two tabs had nothing.
 - **The flag** — the mark beside the app's name is the Senyera, drawn rather
   than shipped as an asset so it stays crisp at any size. Pressing it offers the
   Estelada instead. It is not in Configuració on purpose: the question only

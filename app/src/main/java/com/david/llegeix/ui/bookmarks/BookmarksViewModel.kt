@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
 
 /**
  * The three things that can be bookmarked, kept deliberately distinct.
@@ -112,6 +114,22 @@ class BookmarksViewModel(
             SharingStarted.WhileSubscribed(5_000),
             List(ACTIVITY_DAYS) { 0 },
         )
+
+    /**
+     * The words today has actually given the reader.
+     *
+     * Saved today, or practised today. Both belong: meeting a word in a book
+     * and keeping it is the moment it enters the language you are learning, and
+     * being asked about one you kept in March is the moment it stays there. A
+     * list of only the new ones would go empty on every day spent revising, and
+     * a list of only the practised ones would go empty on every day spent
+     * reading — and those are the two halves of what this app is for.
+     *
+     * Newest first, so the word just saved is the one at the front.
+     */
+    val learnedToday: StateFlow<List<WordBookmarkEntity>> = savedWords
+        .map { words -> learnedSince(words, startOfToday(System.currentTimeMillis())) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _wordQuery = MutableStateFlow("")
     val wordQuery: StateFlow<String> = _wordQuery.asStateFlow()
@@ -239,6 +257,37 @@ private const val SEARCH_SETTLE_MS = 1_200L
 
 /** How many days the activity strip covers. */
 const val ACTIVITY_DAYS = 14
+
+/**
+ * Midnight at the start of the day [now] falls in, in the device's own zone.
+ *
+ * A real calendar day rather than the rolling 24-hour block [countPerDay] uses,
+ * and the two are different on purpose. The strip is a texture and would flicker
+ * if its buckets slid at midnight; "today" is a word the reader uses about the
+ * calendar, and a list headed *today* that quietly included last night's words
+ * until lunchtime would be lying about the only thing it says.
+ */
+internal fun startOfToday(now: Long): Long =
+    Instant.ofEpochMilli(now)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
+        .atStartOfDay(ZoneId.systemDefault())
+        .toInstant()
+        .toEpochMilli()
+
+/**
+ * The words saved or practised since [since], newest first.
+ *
+ * A word counts once however many times it was touched: this is a list of
+ * words, not of events, and a word saved this morning and practised this
+ * afternoon is one word the reader worked on.
+ */
+internal fun learnedSince(
+    words: List<WordBookmarkEntity>,
+    since: Long,
+): List<WordBookmarkEntity> = words
+    .filter { it.createdAt >= since || (it.lastReviewedAt ?: 0L) >= since }
+    .sortedByDescending { maxOf(it.createdAt, it.lastReviewedAt ?: 0L) }
 
 /**
  * How many words were saved on each of the last [ACTIVITY_DAYS] days.

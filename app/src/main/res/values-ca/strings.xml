@@ -366,7 +366,6 @@
         ho pregunta a la biblioteca, i per tant la resposta hi ha de ser.
     -->
     <string name="library_source_device">Tot el dispositiu</string>
-    <string name="library_source_manage">Gestiona les fonts</string>
 
     <!-- El prestatge de llibres començats, a dalt de la biblioteca. -->
     <string name="library_continue_title">Continua llegint</string>
@@ -562,10 +561,30 @@
     <string name="library_add_documents">Afegeix documents</string>
     <string name="sources_add_body">No es copia ni es mou res: els teus PDF es llegeixen allà on ja són.</string>
     <string name="sources_add_device_body">Busca PDF per tot el telèfon. Cal un permís especial.</string>
-    <string name="sources_manage_body">Mira què s\'està mostrant i amaga el que no vulguis</string>
     <plurals name="sources_source_count">
         <item quantity="one">%1$d font</item>
         <item quantity="many">%1$d de fonts</item>
         <item quantity="other">%1$d fonts</item>
     </plurals>
+
+    <!-- ================= v4.1.1 ================= -->
+
+    <!--
+        Mantenir premut el títol de «Continua llegint» obre els tres estats
+        alhora, i per això cada un porta una línia que diu què fa: «plegat» i
+        «amagat» s\'assemblen prou perquè tres paraules soles fossin una endevinalla.
+    -->
+    <string name="library_continue_shown_summary">El prestatge i els seus llibres</string>
+    <string name="library_continue_collapsed_summary">Només el títol, a un toc d\'obrir-se</string>
+    <string name="library_continue_hidden_summary">Res a dalt de la biblioteca</string>
+
+    <!--
+        Les paraules del dia, dins de les paraules desades.
+
+        «Après» i no «desat»: una paraula hi compta si s\'ha desat avui o s\'ha
+        practicat avui, que són les dues maneres de treballar una paraula aquí.
+    -->
+    <string name="words_today_title">Paraules que he après avui</string>
+    <string name="words_today_hint">Toca\'n una per veure què volia dir</string>
+    <string name="words_today_more">+%1$d més</string>
 </resources>

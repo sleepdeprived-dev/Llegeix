@@ -376,7 +376,6 @@
         library.
     -->
     <string name="library_source_device">Whole device</string>
-    <string name="library_source_manage">Manage sources</string>
 
     <!-- The shelf of part-read books at the top of the library. -->
     <string name="library_continue_title">Continue reading</string>
@@ -582,9 +581,31 @@
     <string name="library_add_documents">Add documents</string>
     <string name="sources_add_body">Nothing is copied or moved. Llegeix reads your PDFs where they already are.</string>
     <string name="sources_add_device_body">Look for PDFs everywhere on the phone. Needs a special permission.</string>
-    <string name="sources_manage_body">See what is being shown, and hide what you do not want</string>
     <plurals name="sources_source_count">
         <item quantity="one">%1$d source</item>
         <item quantity="other">%1$d sources</item>
     </plurals>
+
+    <!-- ================= v4.1.1 ================= -->
+
+    <!--
+        Holding the Continue reading heading opens all three states at once, so
+        each needs a line saying what it does: "folded away" and "hidden" are
+        near enough in ordinary speech that three bare words would be a guess.
+    -->
+    <string name="library_continue_shown_summary">The shelf and its books</string>
+    <string name="library_continue_collapsed_summary">Just the heading, one tap from opening</string>
+    <string name="library_continue_hidden_summary">Nothing at the top of the library</string>
+
+    <!--
+        The day\'s words, in the Saved words list.
+
+        "Learned" rather than "saved": a word counts here if it was saved today
+        or practised today, because those are the two ways a word gets worked on
+        in this app and a list of only the new ones would go empty on every day
+        spent revising.
+    -->
+    <string name="words_today_title">Words I have learned today</string>
+    <string name="words_today_hint">Press one to see what it meant</string>
+    <string name="words_today_more">+%1$d more</string>
 </resources>

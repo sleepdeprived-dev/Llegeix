@@ -331,7 +331,7 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     /** Record an answer and move the word to where the schedule puts it. */
     suspend fun recordReview(id: Long, box: Int, correct: Boolean, now: Long) {
         val next = Leitner.answer(box, correct, now)
-        words.recordReview(id, next.box, next.dueAt)
+        words.recordReview(id, next.box, next.dueAt, reviewedAt = now)
     }
 
     // ---- Tags -------------------------------------------------------------

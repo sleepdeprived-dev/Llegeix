@@ -51,6 +51,7 @@ import com.david.llegeix.ui.common.DictionaryCard
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.IpaLine
 import com.david.llegeix.ui.common.PronounceButton
+import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.Space
@@ -97,7 +98,12 @@ fun DictionaryScreen(
             TopAppBar(
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 expandedHeight = Space.topBar,
-                title = { Text(stringResource(R.string.dictionary_title)) },
+                title = {
+                    ScreenTitle(
+                        icon = R.drawable.ic_dictionary,
+                        title = stringResource(R.string.dictionary_title),
+                    )
+                },
             )
         },
     ) { innerPadding ->

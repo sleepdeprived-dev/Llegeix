@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -62,7 +63,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.data.source.SourceFolder
-import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.allFilesAccessIntents
 
@@ -145,10 +145,31 @@ fun SourcesSheet(
                 .padding(bottom = Space.xxl),
             verticalArrangement = Arrangement.spacedBy(Space.md),
         ) {
-            Text(
-                text = stringResource(R.string.library_sources),
-                style = MaterialTheme.typography.titleLarge,
-            )
+            // The same disc and title the library's own sources card carries,
+            // so opening it reads as going into that card rather than as
+            // arriving somewhere new. A sheet that repeats the thing you
+            // pressed is a sheet you can tell you are inside.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_folder),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.library_sources),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(start = Space.lg),
+                )
+            }
             Text(
                 text = stringResource(R.string.sources_explainer),
                 style = MaterialTheme.typography.bodyMedium,
@@ -291,7 +312,8 @@ private fun SourceCard(
                         Modifier
                     },
                 )
-                .padding(start = Space.sm, end = Space.sm, top = Space.xs, bottom = Space.xs),
+                .padding(start = Space.sm, end = Space.sm)
+                .padding(vertical = Space.sm),
         ) {
             // The root box is all-or-nothing on purpose: it is the fastest way
             // to say "not this one at all", and the folders below it are where
@@ -511,7 +533,25 @@ private fun DeviceScanCard(
             .padding(start = Space.lg, end = if (permitted) Space.md else Space.lg)
             .padding(vertical = Space.md),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_device),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.lg),
+        ) {
             Text(
                 text = stringResource(R.string.action_scan_device),
                 style = MaterialTheme.typography.titleMedium,
@@ -591,6 +631,15 @@ private fun SectionLabel(text: String) {
     )
 }
 
+/**
+ * One way to bring in another source, drawn the way the library's own *Add
+ * documents* sheet draws them.
+ *
+ * The tinted disc rather than a bare glyph, and the same two lines in the same
+ * order, because these are literally the same two choices reached from a
+ * different door — and two dialogues offering the same pair of options in two
+ * different shapes is how an app stops looking like one app.
+ */
 @Composable
 private fun AddSourceRow(
     icon: Painter,
@@ -605,7 +654,20 @@ private fun AddSourceRow(
             .clickable(onClick = onClick)
             .padding(horizontal = Space.lg, vertical = Space.md),
     ) {
-        MenuIcon(icon)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Column(modifier = Modifier.padding(start = Space.lg)) {
             Text(text = title, style = MaterialTheme.typography.bodyLarge)
             Text(

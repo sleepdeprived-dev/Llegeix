@@ -7,6 +7,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -151,6 +153,7 @@ fun WordsPane(
     val names by viewModel.names.collectAsStateWithLifecycle()
     val dueCount by viewModel.dueCount.collectAsStateWithLifecycle()
     val savedPerDay by viewModel.savedPerDay.collectAsStateWithLifecycle()
+    val learnedToday by viewModel.learnedToday.collectAsStateWithLifecycle()
 
     if (savedWords.isEmpty()) {
         EmptyState(
@@ -169,6 +172,7 @@ fun WordsPane(
             savedPerDay = savedPerDay,
             onPractise = onPractise,
         )
+        TodayCard(words = learnedToday)
         WordControls(
             query = wordQuery,
             alphabetical = wordsAlphabetical,
@@ -270,6 +274,135 @@ private fun PracticeHeader(
                 modifier = Modifier.padding(top = Space.lg),
             )
         }
+    }
+}
+
+/**
+ * What today gave you, as the words themselves.
+ *
+ * The card above it is a scoreboard — how many are saved, how many are due — and
+ * a scoreboard is not a thing anybody learns from. This is the same day written
+ * out in the only units that mean anything in a language: *enrenou*, *capgirar*,
+ * *a contracor*. Saved today or practised today, because those are the two ways
+ * a word gets worked on here, and a card that emptied itself on every day spent
+ * revising would be a card that only ever congratulated new reading.
+ *
+ * Every pill is a small test rather than an answer. It shows the Catalan, and
+ * pressing it turns over the meaning it was saved with — which is the whole
+ * transaction of learning a word, offered in the one place where the words of
+ * the day are already gathered, at the cost of a tap and no navigation at all.
+ * Pressing it again puts it back, so the card can be gone through twice.
+ *
+ * Nothing is drawn on a day with nothing on it. An empty card headed "today"
+ * is a reproach, and this list is a record of what happened rather than a target
+ * that was missed.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TodayCard(words: List<WordBookmarkEntity>, modifier: Modifier = Modifier) {
+    if (words.isEmpty()) return
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .padding(top = Space.md)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(Space.lg),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.words_today_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            // The count is worth a glance of its own on a good day, and it is
+            // the one number here that goes up.
+            Text(
+                text = words.size.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Text(
+            text = stringResource(R.string.words_today_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Space.sm),
+            verticalArrangement = Arrangement.spacedBy(Space.sm),
+            modifier = Modifier.padding(top = Space.md),
+        ) {
+            words.take(TodayWordLimit).forEach { word -> TodayWord(word) }
+            // A very good day is capped rather than allowed to push the list of
+            // saved words off the bottom of the screen. The header carries the
+            // true count and the list below holds every one of them, newest
+            // first, so nothing is hidden by this — only deferred by a scroll.
+            val rest = words.size - TodayWordLimit
+            if (rest > 0) {
+                Text(
+                    text = stringResource(R.string.words_today_more, rest),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Space.sm, vertical = Space.sm),
+                )
+            }
+        }
+    }
+}
+
+/** As many words as fit in a card without it becoming the screen. */
+private const val TodayWordLimit = 12
+
+/**
+ * One word of the day, with its meaning on the other side.
+ *
+ * Turned over in place rather than expanded into a row, so going through the
+ * card is reading along a line rather than opening and closing entries in a
+ * list. The pill takes the tinted background while it is showing its answer,
+ * which is what lets the reader see at a glance how much of the day they have
+ * already been through. A word saved with no translation — from a page the
+ * model could not reach — has nothing to turn over, and says so by not
+ * answering the press at all.
+ */
+@Composable
+private fun TodayWord(word: WordBookmarkEntity) {
+    val meaning = word.senseTranslation ?: word.translation
+    var shown by remember(word.id) { mutableStateOf(false) }
+    val revealed = shown && meaning != null
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                if (revealed) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                },
+            )
+            .then(
+                if (meaning == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable { shown = !shown }
+                },
+            )
+            .padding(horizontal = Space.md, vertical = Space.sm),
+    ) {
+        Text(
+            text = if (revealed) meaning.orEmpty() else word.word,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (revealed) {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
