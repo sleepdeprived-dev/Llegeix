@@ -30,7 +30,7 @@ class PictureResultsTest {
     fun `Openverse is asked for a page of safe results`() {
         val url = PictureResults.openverseSearchUrl("apple tree")
         assertEquals(
-            "https://api.openverse.org/v1/images/?q=apple+tree&page_size=12&mature=false",
+            "https://api.openverse.org/v1/images/?q=apple+tree&page_size=20&mature=false&category=photograph",
             url,
         )
         assertTrue(PictureResults.openverseSearchUrl("a&b=c").contains("q=a%26b%3Dc&"))
@@ -93,6 +93,18 @@ class PictureResultsTest {
         assertEquals("https://api.openverse.org/v1/images/ae9d/thumb/", photo.thumbnailUrl)
         assertEquals("https://live.staticflickr.com/1/a_b.jpg", photo.fullUrl)
         assertEquals("astronomy_blog · Flickr · CC BY-NC-SA 2.0", photo.credit)
+    }
+
+    @Test
+    fun `a photo is dropped for a word in its title or tags even when nothing flagged it`() {
+        val json = """{"results": [
+            {"id": "ok", "url": "https://a/bread.jpg", "title": "Fresh bread",
+             "tags": [{"name": "bakery"}, {"name": "loaf"}]},
+            {"id": "tagged", "url": "https://a/x.jpg", "title": "Beach",
+             "tags": [{"name": "summer"}, {"name": "nude"}]},
+            {"id": "titled", "url": "https://a/y.jpg", "title": "Erotic still life"}
+        ]}"""
+        assertEquals(listOf("ok"), PictureResults.parseOpenverse(json).map { it.id })
     }
 
     @Test

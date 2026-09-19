@@ -41,8 +41,14 @@ data class PictureHit(
  */
 object PictureResults {
 
-    /** How many to offer. A row a thumb can flick through, not a gallery. */
+    /** How many to offer: a small grid, not a gallery. */
     const val LIMIT = 12
+
+    /**
+     * How many photos to ask for, more than are offered, so that the ones the
+     * safety check drops still leave a full grid.
+     */
+    const val FETCH = 20
 
     const val ARASAAC_CREDIT = "Sergio Palao · ARASAAC · CC BY-NC-SA"
 
@@ -52,7 +58,7 @@ object PictureResults {
     fun openverseSearchUrl(query: String): String =
         "https://api.openverse.org/v1/images/?q=" +
             URLEncoder.encode(query.trim(), "UTF-8") +
-            "&page_size=$LIMIT&mature=false"
+            "&page_size=$FETCH&mature=false&category=photograph"
 
     /**
      * ARASAAC's answer: an array of pictograms.
@@ -94,6 +100,9 @@ object PictureResults {
         return (0 until results.length()).asSequence()
             .mapNotNull { results.optJSONObject(it) }
             .filterNot { it.optBoolean("mature", false) }
+            // Openverse's own flag is only as complete as whoever set it, so
+            // every photo is also read for itself: its title and its tags.
+            .filterNot { PictureSafety.isBlockedPhoto(it.optString("title"), tagsOf(it)) }
             .mapNotNull { photo ->
                 val id = photo.optString("id").takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 val full = photo.optString("url").takeIf { it.startsWith("https://") }
@@ -115,6 +124,11 @@ object PictureResults {
             }
             .take(LIMIT)
             .toList()
+    }
+
+    private fun tagsOf(photo: JSONObject): List<String> {
+        val tags = photo.optJSONArray("tags") ?: return emptyList()
+        return (0 until tags.length()).mapNotNull { tags.optJSONObject(it)?.optString("name") }
     }
 
     /** "astronomy_blog · Flickr · CC BY-NC-SA 2.0", leaving out what is unknown. */

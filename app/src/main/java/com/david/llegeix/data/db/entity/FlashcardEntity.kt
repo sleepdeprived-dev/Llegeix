@@ -39,6 +39,14 @@ data class FlashcardEntity(
     val deckId: Long,
     val catalan: String,
     val romanian: String,
+    /**
+     * The meaning in English, for practising Catalan against English instead.
+     *
+     * Optional, and a second meaning rather than a second card: the schedule
+     * is about knowing the Catalan — recognising it, producing it — and that
+     * is the same skill whichever language the meaning is given in.
+     */
+    val english: String? = null,
     /** Central Catalan IPA, generated from the spelling and then the reader's. */
     val ipa: String? = null,
     /**

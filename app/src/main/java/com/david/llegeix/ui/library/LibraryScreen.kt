@@ -42,7 +42,7 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -235,11 +235,12 @@ fun LibraryScreen(
         // action twice.
         floatingActionButton = {
             if (state.hasAnySource && !state.isEmptyAfterScan) {
-                ExtendedFloatingActionButton(
-                    onClick = { showAddDocuments = true },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text(stringResource(R.string.library_add_documents)) },
-                )
+                FloatingActionButton(onClick = { showAddDocuments = true }) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.library_add_documents),
+                    )
+                }
             }
         },
         topBar = {

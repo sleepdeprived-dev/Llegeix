@@ -26,7 +26,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -119,20 +119,16 @@ fun FolderDetailScreen(
             )
         },
         floatingActionButton = {
-            // Extended, and only here. A bare plus on a screen showing a list of
-            // books would be read as "add a book to my phone"; the word is what
-            // says it is about this collection.
+            // A bare plus, like every add button in the app; what it adds to is
+            // the collection whose name is in the bar above it, and the words
+            // are kept for anyone listening rather than looking.
             if (documents.isNotEmpty()) {
-                ExtendedFloatingActionButton(
-                    onClick = { adding = true },
-                    icon = {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
-                        )
-                    },
-                    text = { Text(stringResource(R.string.collections_add_action)) },
-                )
+                FloatingActionButton(onClick = { adding = true }) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = stringResource(R.string.collections_add_action),
+                    )
+                }
             }
         },
     ) { innerPadding ->

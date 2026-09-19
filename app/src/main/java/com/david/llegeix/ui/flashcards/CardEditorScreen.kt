@@ -1,6 +1,10 @@
 package com.david.llegeix.ui.flashcards
 
 import androidx.activity.compose.BackHandler
+import com.david.llegeix.data.flashcards.Suggested
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.FilledTonalButton
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.LlegeixApp
@@ -241,23 +245,23 @@ fun CardEditorScreen(
             Box(Modifier.padding(innerPadding))
             return@Scaffold
         }
+        val pictures by viewModel.pictures.state.collectAsStateWithLifecycle()
+        val pictureSource by viewModel.pictures.source.collectAsStateWithLifecycle()
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = Space.screen, vertical = Space.lg),
-            verticalArrangement = Arrangement.spacedBy(Space.lg),
+                .padding(horizontal = Space.screen, vertical = Space.md),
+            verticalArrangement = Arrangement.spacedBy(Space.md),
         ) {
-            // The two sides of the card, each marked with its flag: the same
-            // mark the practice switch uses for the same two languages, so the
-            // card and the way it is asked read as one thing.
+            // The word, and how it sounds.
             FormSection {
                 OutlinedTextField(
                     value = state.catalan,
                     onValueChange = viewModel::onCatalanChange,
                     label = { Text(stringResource(R.string.flashcards_field_catalan)) },
-                    textStyle = MaterialTheme.typography.titleLarge,
+                    textStyle = MaterialTheme.typography.headlineSmall,
                     singleLine = true,
                     leadingIcon = { LanguageFlag(R.drawable.ic_flag_ca) },
                     // Hearing it is the check the transcription cannot give.
@@ -273,7 +277,6 @@ fun CardEditorScreen(
                         .fillMaxWidth()
                         .focusRequester(catalanFocus),
                 )
-
                 OutlinedTextField(
                     value = state.ipa.text,
                     onValueChange = viewModel::onIpaChange,
@@ -301,7 +304,9 @@ fun CardEditorScreen(
                 )
             }
 
-            FormSection {
+            // What it means: Romanian, which every card has, and English, which
+            // it may. One section, because they are one fact in two languages.
+            FormSection(title = stringResource(R.string.flashcards_section_meaning)) {
                 OutlinedTextField(
                     value = state.romanian.text,
                     onValueChange = viewModel::onRomanianChange,
@@ -309,22 +314,54 @@ fun CardEditorScreen(
                     textStyle = MaterialTheme.typography.titleLarge,
                     singleLine = true,
                     leadingIcon = { LanguageFlag(R.drawable.ic_flag_ro) },
-                    supportingText = meaningNote(state)?.let { note -> { Text(note) } },
+                    supportingText = meaningNote(state.romanian, state.romanianSuggestion)?.let { { Text(it) } },
+                    keyboardOptions = WordKeyboard,
+                    shape = FieldShape,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { if (!it.isFocused) viewModel.onMeaningEditingDone() },
+                )
+                OutlinedTextField(
+                    value = state.english.text,
+                    onValueChange = viewModel::onEnglishChange,
+                    label = { Text(stringResource(R.string.flashcards_field_english)) },
+                    singleLine = true,
+                    leadingIcon = { LanguageFlag(R.drawable.ic_flag_uk) },
+                    supportingText = meaningNote(state.english, state.englishSuggestion)?.let { { Text(it) } },
                     keyboardOptions = WordKeyboard.copy(imeAction = ImeAction.Done),
                     shape = FieldShape,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Space.sm)
+                        .onFocusChanged { if (!it.isFocused) viewModel.onMeaningEditingDone() },
                 )
             }
 
-            FormSection {
-                PictureSection(
-                    state = state,
-                    onPickSuggestion = viewModel::onPickSuggestion,
-                    onSourceChange = viewModel::onPictureSourceChange,
-                    onRetry = viewModel::onRetryPictures,
-                    onPickFromGallery = openPicker,
-                    onRemove = viewModel::onRemoveImage,
-                )
+            FormSection(title = stringResource(R.string.flashcards_picture)) {
+                val imagePath = state.imagePath
+                when {
+                    state.isImporting -> Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(4f / 3f),
+                        contentAlignment = Alignment.Center,
+                    ) { CircularProgressIndicator() }
+
+                    imagePath != null -> ChosenPicture(
+                        path = imagePath,
+                        credit = state.imageCredit,
+                        onChange = viewModel::onRemoveImage,
+                    )
+
+                    else -> PictureGrid(
+                        suggestions = pictures,
+                        source = pictureSource,
+                        onSourceChange = viewModel::onPictureSourceChange,
+                        onPick = viewModel::onPickSuggestion,
+                        onPickOwn = openPicker,
+                        onRetry = viewModel::onRetryPictures,
+                    )
+                }
             }
         }
     }
@@ -363,32 +400,39 @@ fun CardEditorScreen(
     }
 }
 
-/** What to say under the Romanian field, if anything. */
+/** What to say under a meaning's field, if anything. */
 @Composable
-private fun meaningNote(state: CardEditorUiState): String? = when {
-    state.meaningSuggestion == MeaningSuggestion.DOWNLOADING ->
-        stringResource(R.string.flashcards_meaning_downloading)
-
-    state.romanian.isSuggestion && state.romanian.text.isNotBlank() ->
-        stringResource(R.string.flashcards_meaning_suggested)
-
-    state.meaningSuggestion == MeaningSuggestion.NEEDS_MODEL && state.romanian.text.isBlank() ->
+private fun meaningNote(field: Suggested, status: MeaningSuggestion): String? = when {
+    status == MeaningSuggestion.DOWNLOADING -> stringResource(R.string.flashcards_meaning_downloading)
+    field.isSuggestion && field.text.isNotBlank() -> stringResource(R.string.flashcards_meaning_suggested)
+    status == MeaningSuggestion.NEEDS_MODEL && field.text.isBlank() ->
         stringResource(R.string.flashcards_meaning_needs_model)
-
     else -> null
 }
 
-/** A group of fields on its own quiet surface, so the form reads as three parts, not six boxes. */
+/**
+ * A group of fields on its own quiet surface, with a small heading when the
+ * group needs one, so the form reads as three parts rather than six boxes.
+ */
 @Composable
-private fun FormSection(content: @Composable ColumnScope.() -> Unit) {
+private fun FormSection(title: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(Space.lg),
-        content = content,
-    )
+    ) {
+        title?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = Space.sm),
+            )
+        }
+        content()
+    }
 }
 
 @Composable
@@ -403,246 +447,45 @@ private fun LanguageFlag(@DrawableRes res: Int) {
 }
 
 /**
- * The card's picture: the one chosen, or a row of suggestions to choose from.
- *
- * Suggestions are offered, never placed. A picture of the wrong sense of a
- * word — *banc* the bench for *banc* the bank — is worse than none on a card
- * meant to be learned from, so nothing reaches the card without a tap. Once
- * one is chosen the row makes way for it, and says who made it.
+ * The picture on the card, large, with who made it under it and a way to
+ * choose another over its corner. Fit rather than crop: this is where the
+ * reader checks the whole picture came in.
  */
 @Composable
-private fun PictureSection(
-    state: CardEditorUiState,
-    onPickSuggestion: (PictureHit) -> Unit,
-    onSourceChange: (PictureSource) -> Unit,
-    onRetry: () -> Unit,
-    onPickFromGallery: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(R.string.flashcards_picture),
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.weight(1f),
-        )
-        if (state.imagePath == null) {
-            SourceSwitch(selected = state.pictureSource, onSelect = onSourceChange)
-        }
-    }
-
-    val imagePath = state.imagePath
-    when {
-        state.isImporting -> Box(
+private fun ChosenPicture(path: String, credit: String?, onChange: () -> Unit) {
+    Box {
+        CardImage(
+            path = path,
+            maxEdge = ImageSizing.MAX_EDGE,
+            contentDescription = stringResource(R.string.flashcards_picture),
+            contentScale = ContentScale.Fit,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = Space.md)
                 .aspectRatio(4f / 3f)
-                .clip(RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center,
-        ) { CircularProgressIndicator() }
-
-        imagePath != null -> {
-            // Fit rather than crop: this is where the reader checks the whole
-            // picture came in, so none of it is cut away here.
-            CardImage(
-                path = imagePath,
-                maxEdge = ImageSizing.MAX_EDGE,
-                contentDescription = stringResource(R.string.flashcards_picture),
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .padding(top = Space.md)
-                    .fillMaxWidth()
-                    .aspectRatio(4f / 3f)
-                    .clip(RoundedCornerShape(16.dp)),
-            )
-            state.imageCredit?.let { credit ->
-                Text(
-                    text = credit,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Space.xs),
-                )
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Space.sm),
-                modifier = Modifier.padding(top = Space.sm),
-            ) {
-                OutlinedButton(onClick = onRemove) {
-                    Text(stringResource(R.string.flashcards_picture_other))
-                }
-            }
-        }
-
-        else -> {
-            Suggestions(
-                state = state,
-                onPick = onPickSuggestion,
-                onRetry = onRetry,
-            )
+                .clip(RoundedCornerShape(18.dp)),
+        )
+        FilledTonalButton(
+            onClick = onChange,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(Space.sm),
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
             Text(
-                text = stringResource(
-                    when (state.pictureSource) {
-                        PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_credit_pictograms
-                        PictureSource.PHOTOS -> R.string.flashcards_pictures_credit_photos
-                    },
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Space.sm),
-            )
-            OutlinedButton(
-                onClick = onPickFromGallery,
-                modifier = Modifier.padding(top = Space.md),
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.size(Space.sm))
-                Text(stringResource(R.string.flashcards_picture_from_gallery))
-            }
-        }
-    }
-}
-
-/** Pictograms or photos: two small chips, the one in use lit. */
-@Composable
-private fun SourceSwitch(selected: PictureSource, onSelect: (PictureSource) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Space.xs)) {
-        PictureSource.entries.forEach { source ->
-            FilterChip(
-                selected = source == selected,
-                onClick = { onSelect(source) },
-                label = {
-                    Text(
-                        stringResource(
-                            when (source) {
-                                PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_pictograms
-                                PictureSource.PHOTOS -> R.string.flashcards_pictures_photos
-                            },
-                        ),
-                    )
-                },
+                stringResource(R.string.flashcards_picture_other),
+                modifier = Modifier.padding(start = Space.xs),
             )
         }
     }
-}
-
-@Composable
-private fun Suggestions(
-    state: CardEditorUiState,
-    onPick: (PictureHit) -> Unit,
-    onRetry: () -> Unit,
-) {
-    val pictures = state.pictures
-    val showingCurrent = pictures.source == state.pictureSource
-    when {
-        pictures.status == PictureStatus.SEARCHING -> LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(Space.sm),
-            userScrollEnabled = false,
-            modifier = Modifier.padding(top = Space.md),
-        ) {
-            // Tiles standing in for the answer, so the row does not jump
-            // from a line of text to a row of pictures when it arrives.
-            items(4) { Box(Modifier.tile().background(MaterialTheme.colorScheme.surfaceContainerHighest)) }
-        }
-
-        pictures.status == PictureStatus.FOUND && showingCurrent -> LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(Space.sm),
-            modifier = Modifier.padding(top = Space.md),
-        ) {
-            items(pictures.hits, key = { it.source.name + it.id }) { hit ->
-                SuggestionTile(
-                    hit = hit,
-                    isFetching = state.fetchingPicture == hit.id,
-                    enabled = state.fetchingPicture == null,
-                    onClick = { onPick(hit) },
-                )
-            }
-        }
-
-        else -> {
-            val note = when (pictures.status) {
-                PictureStatus.WAITING -> stringResource(R.string.flashcards_pictures_waiting)
-                PictureStatus.NONE_FOUND -> stringResource(
-                    when (state.pictureSource) {
-                        PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_none_pictograms
-                        PictureSource.PHOTOS -> R.string.flashcards_pictures_none_photos
-                    },
-                    pictures.word,
-                )
-                PictureStatus.OFFLINE -> stringResource(R.string.flashcards_pictures_offline)
-                PictureStatus.NEEDS_ENGLISH -> stringResource(R.string.flashcards_pictures_needs_english)
-                else -> null
-            }
-            note?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Space.md),
-                )
-            }
-            if (pictures.status == PictureStatus.OFFLINE) {
-                TextButton(onClick = onRetry) {
-                    Text(stringResource(R.string.flashcards_pictures_retry))
-                }
-            }
-        }
+    credit?.let {
+        Text(
+            text = it,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Space.xs),
+        )
     }
 }
-
-@Composable
-private fun SuggestionTile(
-    hit: PictureHit,
-    isFetching: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val context = LocalContext.current
-    val search = remember(context) { (context.applicationContext as LlegeixApp).pictureSearch }
-    val thumbnail by produceState<ImageBitmap?>(initialValue = null, hit.thumbnailUrl) {
-        value = search.thumbnail(hit.thumbnailUrl)?.asImageBitmap()
-    }
-    // Pictograms are drawn on white, and read best on it in either theme;
-    // a photo fills its tile.
-    val isPictogram = hit.source == PictureSource.PICTOGRAMS
-    Box(
-        modifier = Modifier.tile()
-            .background(
-                if (isPictogram) Color.White else MaterialTheme.colorScheme.surfaceContainerHighest,
-            )
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        thumbnail?.let {
-            Image(
-                bitmap = it,
-                contentDescription = stringResource(R.string.flashcards_picture_use),
-                contentScale = if (isPictogram) ContentScale.Fit else ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(if (isPictogram) Space.sm else 0.dp),
-            )
-        }
-        if (isFetching) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.35f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(28.dp))
-            }
-        }
-    }
-}
-
-/** A suggestion's square, the same size whether it holds a picture or is waiting for one. */
-private fun Modifier.tile(): Modifier = size(TileSize).clip(RoundedCornerShape(14.dp))
-
-private val TileSize = 96.dp
 
 private val FieldShape = RoundedCornerShape(14.dp)
 

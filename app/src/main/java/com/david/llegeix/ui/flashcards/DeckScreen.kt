@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.LinearProgressIndicator
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.practice.Leitner
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -29,7 +31,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -85,6 +87,8 @@ fun DeckScreen(
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val shown by viewModel.shown.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
+    val missingEnglish by viewModel.missingEnglish.collectAsStateWithLifecycle()
+    val fillingEnglish by viewModel.fillingEnglish.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var deleting by remember { mutableStateOf<FlashcardEntity?>(null) }
@@ -122,11 +126,9 @@ fun DeckScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAddCard,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.flashcards_add_card)) },
-            )
+            FloatingActionButton(onClick = onAddCard) {
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.flashcards_add_card))
+            }
         },
     ) { innerPadding ->
         val list = cards
@@ -172,6 +174,15 @@ fun DeckScreen(
                 ) {
                     if (query.isBlank()) {
                         item(key = "known") { HowWellKnown(list) }
+                        if (missingEnglish > 0) {
+                            item(key = "english") {
+                                MissingEnglish(
+                                    count = missingEnglish,
+                                    isFilling = fillingEnglish,
+                                    onFill = viewModel::onFillEnglish,
+                                )
+                            }
+                        }
                     }
                     items(found, key = { it.id }) { card ->
                         CardRow(
@@ -358,6 +369,44 @@ private fun HowWellKnown(cards: List<FlashcardEntity>) {
                         .height(6.dp),
                 )
             }
+        }
+    }
+}
+
+/**
+ * Cards an English session would leave out, said once, with the way to fix it
+ * beside it — rather than an English session that is mysteriously shorter
+ * than the deck.
+ */
+@Composable
+private fun MissingEnglish(count: Int, isFilling: Boolean, onFill: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .padding(bottom = Space.sm)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(start = Space.lg, end = Space.sm, top = Space.sm, bottom = Space.sm),
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_flag_uk),
+            contentDescription = null,
+            modifier = Modifier
+                .size(width = 21.dp, height = 14.dp)
+                .clip(RoundedCornerShape(2.dp)),
+        )
+        Text(
+            text = pluralStringResource(R.plurals.flashcards_english_missing, count, count),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = Space.md),
+        )
+        TextButton(onClick = onFill, enabled = !isFilling) {
+            Text(stringResource(R.string.flashcards_english_fill))
         }
     }
 }

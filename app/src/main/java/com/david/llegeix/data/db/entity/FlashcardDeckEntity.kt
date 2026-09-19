@@ -1,5 +1,6 @@
 package com.david.llegeix.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -20,4 +21,15 @@ data class FlashcardDeckEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val createdAt: Long = System.currentTimeMillis(),
+    /** Kept at the top of the list, above the alphabetical rest. */
+    @ColumnInfo(defaultValue = "0")
+    val isPinned: Boolean = false,
+    /**
+     * A picture the reader chose to stand for the deck, relative to the files
+     * directory like a card's. Null means the deck shows its first card's
+     * picture, or its initial.
+     */
+    val coverPath: String? = null,
+    /** Who made [coverPath], when it came from a search. */
+    val coverCredit: String? = null,
 )

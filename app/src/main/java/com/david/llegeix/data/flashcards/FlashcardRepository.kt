@@ -28,6 +28,8 @@ class FlashcardRepository(
     private val database: LlegeixDatabase,
     private val images: FlashcardImages,
     private val backupFiles: FlashcardBackupFiles,
+    /** How the reader last chose to practise, remembered between visits. */
+    val prefs: FlashcardPrefs,
 ) {
 
     private val dao = database.flashcardDao()
@@ -71,12 +73,47 @@ class FlashcardRepository(
      */
     suspend fun deleteDeck(id: Long) {
         val paths = database.withTransaction {
-            val paths = dao.imagePathsInDeck(id)
+            val paths = dao.imagePathsInDeck(id) + listOfNotNull(dao.deck(id)?.coverPath)
             dao.deleteDeck(id)
             paths
         }
         images.delete(paths)
     }
+
+    suspend fun setDeckPinned(id: Long, pinned: Boolean) = dao.setDeckPinned(id, pinned)
+
+    /**
+     * Give a deck a picture of its own, or take it away with null.
+     *
+     * The picture replaced is deleted once the deck no longer points at it,
+     * in the same order a card's is.
+     */
+    suspend fun setDeckCover(id: Long, path: String?, credit: String?) {
+        val old = dao.deck(id)?.coverPath
+        dao.setDeckCover(id, path, credit.takeIf { path != null })
+        if (old != null && old != path) images.delete(listOf(old))
+    }
+
+    /**
+     * Fill in English for a deck's cards that have none, with [translate].
+     *
+     * Returns how many were filled. A card the translator cannot do — or hands
+     * back unchanged, which is it not knowing the word — is left without, to
+     * be written by hand, rather than given a guess dressed as an answer.
+     */
+    suspend fun fillEnglish(deckId: Long, translate: suspend (String) -> String?): Int {
+        var filled = 0
+        for (card in dao.cardsWithoutEnglish(deckId)) {
+            val english = translate(card.catalan)?.trim()
+                ?.takeIf { it.isNotEmpty() && !it.equals(card.catalan.trim(), ignoreCase = true) }
+                ?: continue
+            dao.setEnglish(card.id, matchLeadingCase(card.catalan, english))
+            filled++
+        }
+        return filled
+    }
+
+    suspend fun cardsWithoutEnglish(deckId: Long): Int = dao.cardsWithoutEnglish(deckId).size
 
     // ---- Cards -------------------------------------------------------------
 
@@ -100,6 +137,7 @@ class FlashcardRepository(
                 id = card.id,
                 catalan = card.catalan,
                 romanian = card.romanian,
+                english = card.english,
                 ipa = card.ipa,
                 ipaApproximate = card.ipaApproximate,
                 imagePath = card.imagePath,
@@ -116,8 +154,12 @@ class FlashcardRepository(
 
     // ---- Study -------------------------------------------------------------
 
-    /** Due counts per deck and direction, as of [now]. */
-    fun observeDueCounts(now: Long): Flow<List<DeckDue>> = dao.observeDueCounts(now)
+    /**
+     * Due counts per deck and direction, as of [now], counting only cards
+     * that can be asked in [language].
+     */
+    fun observeDueCounts(now: Long, language: MeaningLanguage): Flow<List<DeckDue>> =
+        dao.observeDueCounts(now, englishOnly = language == MeaningLanguage.ENGLISH)
 
     /** Every card a session could be dealt from: one deck's, or all of them for null. */
     suspend fun cardsToStudy(deckId: Long?): List<FlashcardEntity> =
@@ -139,10 +181,10 @@ class FlashcardRepository(
     ) {
         val next = direction.answer(card, correct, now)
         when (direction) {
-            StudyDirection.CATALAN_TO_ROMANIAN ->
+            StudyDirection.CATALAN_TO_MEANING ->
                 dao.recordForward(card.id, next.box, next.dueAt, reviewedAt = now)
 
-            StudyDirection.ROMANIAN_TO_CATALAN ->
+            StudyDirection.MEANING_TO_CATALAN ->
                 dao.recordReverse(card.id, next.box, next.dueAt, reviewedAt = now)
         }
     }
@@ -185,9 +227,17 @@ class FlashcardRepository(
         val decks = dao.decks()
             .sortedBy { it.name.lowercase(Locale.ROOT) }
             .map { deck ->
+                val coverEntry = deck.coverPath?.let { path ->
+                    (FlashcardBackup.IMAGE_FOLDER + File(path).name).also {
+                        pictures[it] = images.fileOf(path)
+                    }
+                }
                 FlashcardBackup.Deck(
                     name = deck.name,
                     createdAt = deck.createdAt,
+                    isPinned = deck.isPinned,
+                    cover = coverEntry,
+                    coverCredit = deck.coverCredit.takeIf { coverEntry != null },
                     cards = CardOrder.sorted(cardsByDeck[deck.id].orEmpty()).map { card ->
                         val entry = card.imagePath?.let { path ->
                             (FlashcardBackup.IMAGE_FOLDER + File(path).name).also {
@@ -228,6 +278,15 @@ class FlashcardRepository(
 
             var picturesLost = 0
             val broughtIn = mutableListOf<String>()
+            // A deck's own picture comes back only for a deck the copy creates:
+            // one already on the phone keeps whatever it has chosen since.
+            val covers = plan.decks.filter { it.existingId == null && it.cover != null }.associate { deck ->
+                val stored = unpacked.images[deck.cover]?.let { file ->
+                    runCatchingCancellable { images.import(Uri.fromFile(file)) }.getOrNull()
+                }
+                if (stored == null) picturesLost++ else broughtIn += stored
+                deck.name to stored
+            }
             val prepared = plan.decks.map { deck ->
                 deck to deck.cards.map { card ->
                     val source = card.image?.let { unpacked.images[it] }
@@ -249,6 +308,9 @@ class FlashcardRepository(
                             FlashcardDeckEntity(
                                 name = deck.name,
                                 createdAt = deck.createdAt.takeIf { it > 0 } ?: now,
+                                isPinned = deck.isPinned,
+                                coverPath = covers[deck.name],
+                                coverCredit = deck.coverCredit.takeIf { covers[deck.name] != null },
                             ),
                         )
                         for ((card, picture) in cards) dao.insertCard(card.toEntity(deckId, picture))
@@ -271,5 +333,6 @@ class FlashcardRepository(
             dao.clearDecks()
         }
         images.deleteAll()
+        prefs.clear()
     }
 }

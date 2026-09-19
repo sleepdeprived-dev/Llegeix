@@ -34,6 +34,7 @@ import com.david.llegeix.ui.flashcards.CardEditorScreen
 import com.david.llegeix.ui.flashcards.DeckScreen
 import com.david.llegeix.ui.flashcards.FlashcardsScreen
 import com.david.llegeix.ui.flashcards.StudyScreen
+import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.folders.FolderDetailScreen
 import com.david.llegeix.ui.library.LibraryScreen
@@ -59,13 +60,22 @@ private object Routes {
      */
     const val CARD_EDITOR = "flashcards/card?deckId={deckId}&cardId={cardId}"
 
-    /** A study session. `deckId` is -1 for every deck at once. */
-    const val FLASHCARD_STUDY = "flashcards/study?deckId={deckId}&direction={direction}"
+    /**
+     * A study session. `deckId` is -1 for every deck at once; `extra` is a
+     * round of practice off the schedule.
+     */
+    const val FLASHCARD_STUDY =
+        "flashcards/study?deckId={deckId}&direction={direction}&language={language}&extra={extra}"
 
     fun flashcardDeck(deckId: Long): String = "flashcards/deck/$deckId"
 
-    fun flashcardStudy(deckId: Long?, direction: StudyDirection): String =
-        "flashcards/study?deckId=${deckId ?: -1}&direction=${direction.name}"
+    fun flashcardStudy(
+        deckId: Long?,
+        direction: StudyDirection,
+        language: MeaningLanguage,
+        extra: Boolean,
+    ): String = "flashcards/study?deckId=${deckId ?: -1}&direction=${direction.name}" +
+        "&language=${language.name}&extra=$extra"
 
     fun cardEditor(deckId: Long, cardId: Long? = null): String =
         "flashcards/card?deckId=$deckId&cardId=${cardId ?: -1}"
@@ -267,8 +277,8 @@ fun AppNavigation(modifier: Modifier = Modifier) {
             composable(Routes.FLASHCARDS) {
                 FlashcardsScreen(
                     onOpenDeck = { deckId -> navController.navigate(Routes.flashcardDeck(deckId)) },
-                    onStudy = { deckId, direction ->
-                        navController.navigate(Routes.flashcardStudy(deckId, direction))
+                    onStudy = { deckId, direction, language, extra ->
+                        navController.navigate(Routes.flashcardStudy(deckId, direction, language, extra))
                     },
                 )
             }
@@ -281,11 +291,18 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                         type = NavType.StringType
                         defaultValue = StudyDirection.Default.name
                     },
+                    navArgument("language") {
+                        type = NavType.StringType
+                        defaultValue = MeaningLanguage.Default.name
+                    },
+                    navArgument("extra") { type = NavType.BoolType; defaultValue = false },
                 ),
             ) { entry ->
                 StudyScreen(
                     deckId = entry.arguments?.getLong("deckId")?.takeIf { it >= 0 },
                     direction = StudyDirection.fromName(entry.arguments?.getString("direction")),
+                    language = MeaningLanguage.fromName(entry.arguments?.getString("language")),
+                    extra = entry.arguments?.getBoolean("extra") == true,
                     onBack = { navController.popBackStack() },
                 )
             }

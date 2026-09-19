@@ -11,6 +11,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.key
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.icons.filled.Refresh
+import com.david.llegeix.data.flashcards.MeaningLanguage
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -83,11 +85,13 @@ import com.david.llegeix.ui.common.Space
 fun StudyScreen(
     deckId: Long?,
     direction: StudyDirection,
+    language: MeaningLanguage,
+    extra: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: StudyViewModel = viewModel(
-        key = "study-$deckId-$direction",
-        factory = StudyViewModel.factory(deckId, direction),
+        key = "study-$deckId-$direction-$language-$extra",
+        factory = StudyViewModel.factory(deckId, direction, language, extra),
     ),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -116,11 +120,26 @@ fun StudyScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            DirectionFlags(
-                                direction = state.direction,
-                                flagWidth = 18.dp,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(top = 2.dp),
-                            )
+                            ) {
+                                DirectionFlags(
+                                    direction = state.direction,
+                                    language = state.language,
+                                    flagWidth = 18.dp,
+                                )
+                                // Said, because it behaves differently: nothing
+                                // answered here moves a card's schedule.
+                                if (state.isExtra) {
+                                    Text(
+                                        text = stringResource(R.string.flashcards_extra_label),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = Space.sm),
+                                    )
+                                }
+                            }
                         }
                     },
                     actions = {
@@ -160,6 +179,19 @@ fun StudyScreen(
             when {
                 state.isLoading -> CircularProgressIndicator()
 
+                // There are cards, but none with a meaning in this language: say
+                // that, rather than "add some cards" to a deck that has them.
+                state.isEmpty && state.cardsInScope == 0 && state.cardsWithoutMeaning > 0 -> EmptyState(
+                    title = stringResource(R.string.flashcards_study_no_english_title),
+                    body = stringResource(R.string.flashcards_study_no_english_body),
+                    icon = painterResource(R.drawable.ic_flag_uk),
+                    primaryAction = {
+                        OutlinedButton(onClick = onBack) {
+                            Text(stringResource(R.string.practice_done))
+                        }
+                    },
+                )
+
                 state.isEmpty && state.cardsInScope == 0 -> EmptyState(
                     title = stringResource(R.string.flashcards_study_no_cards_title),
                     body = stringResource(R.string.flashcards_study_no_cards_body),
@@ -174,12 +206,13 @@ fun StudyScreen(
                 state.isEmpty -> NothingDue(
                     state = state,
                     onSwitchDirection = viewModel::onSwitchDirection,
+                    onPractiseAnyway = viewModel::onPractiseAnyway,
                     onBack = onBack,
                 )
 
                 state.isFinished -> Finished(
                     state = state,
-                    onAgain = { viewModel.deal() },
+                    onRepeat = viewModel::onRepeat,
                     onDone = onBack,
                 )
 
@@ -189,6 +222,7 @@ fun StudyScreen(
                 else -> state.current?.let { card -> key(card.id) {
                     StudyCard(
                         card = card,
+                        meaning = state.meaningOf(card),
                         direction = state.direction,
                         isRevealed = state.isRevealed,
                         onReveal = viewModel::onReveal,
@@ -213,6 +247,7 @@ fun StudyScreen(
 private fun NothingDue(
     state: StudyUiState,
     onSwitchDirection: () -> Unit,
+    onPractiseAnyway: () -> Unit,
     onBack: () -> Unit,
 ) {
     val nextDue = state.nextDueAt?.let { dueAt ->
@@ -236,42 +271,39 @@ private fun NothingDue(
             nextDue,
         ).joinToString(" "),
         icon = painterResource(R.drawable.ic_check_circle),
-        primaryAction = if (canSwitch) {
-            {
+        // The work waiting the other way round first, when there is any; then
+        // going through these again anyway, because repetition is never wasted.
+        primaryAction = {
+            if (canSwitch) {
                 Button(onClick = onSwitchDirection) {
                     Text(
                         stringResource(
                             R.string.flashcards_study_switch,
-                            stringResource(directionLabel(state.otherDirection)),
+                            directionName(state.otherDirection, state.language),
                             state.otherDirectionDue,
                         ),
                     )
                 }
-            }
-        } else {
-            {
-                OutlinedButton(onClick = onBack) {
-                    Text(stringResource(R.string.practice_done))
+            } else {
+                Button(onClick = onPractiseAnyway) {
+                    Text(stringResource(R.string.flashcards_practise_anyway))
                 }
             }
         },
-        secondaryAction = if (canSwitch) {
-            {
+        secondaryAction = {
+            if (canSwitch) {
+                OutlinedButton(onClick = onPractiseAnyway) {
+                    Text(stringResource(R.string.flashcards_practise_anyway))
+                }
+            } else {
                 OutlinedButton(onClick = onBack) {
                     Text(stringResource(R.string.practice_done))
                 }
             }
-        } else {
-            null
         },
     )
 }
 
-/** How a direction is named wherever it is chosen or shown. */
-internal fun directionLabel(direction: StudyDirection): Int = when (direction) {
-    StudyDirection.CATALAN_TO_ROMANIAN -> R.string.flashcards_direction_ca_ro
-    StudyDirection.ROMANIAN_TO_CATALAN -> R.string.flashcards_direction_ro_ca
-}
 
 /**
  * One card, asked — and turned over when the reader has had a go.
@@ -289,6 +321,8 @@ internal fun directionLabel(direction: StudyDirection): Int = when (direction) {
 @Composable
 private fun StudyCard(
     card: FlashcardEntity,
+    /** The meaning in the language being practised. */
+    meaning: String,
     direction: StudyDirection,
     isRevealed: Boolean,
     onReveal: () -> Unit,
@@ -322,8 +356,8 @@ private fun StudyCard(
             if (turn <= 90f) {
                 Face {
                     when (direction) {
-                        StudyDirection.CATALAN_TO_ROMANIAN -> CatalanSide(card, asAnswer = false)
-                        StudyDirection.ROMANIAN_TO_CATALAN -> MeaningSide(card, asAnswer = false)
+                        StudyDirection.CATALAN_TO_MEANING -> CatalanSide(card, asAnswer = false)
+                        StudyDirection.MEANING_TO_CATALAN -> MeaningSide(card, meaning, asAnswer = false)
                     }
                     Text(
                         text = stringResource(R.string.practice_tap_to_reveal),
@@ -337,8 +371,8 @@ private fun StudyCard(
                 Face(modifier = Modifier.graphicsLayer { rotationY = 180f }) {
                     Text(
                         text = when (direction) {
-                            StudyDirection.CATALAN_TO_ROMANIAN -> card.catalan
-                            StudyDirection.ROMANIAN_TO_CATALAN -> card.romanian
+                            StudyDirection.CATALAN_TO_MEANING -> card.catalan
+                            StudyDirection.MEANING_TO_CATALAN -> meaning
                         },
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -350,8 +384,8 @@ private fun StudyCard(
                             .fillMaxWidth(0.3f),
                     )
                     when (direction) {
-                        StudyDirection.CATALAN_TO_ROMANIAN -> MeaningSide(card, asAnswer = true)
-                        StudyDirection.ROMANIAN_TO_CATALAN -> CatalanSide(card, asAnswer = true)
+                        StudyDirection.CATALAN_TO_MEANING -> MeaningSide(card, meaning, asAnswer = true)
+                        StudyDirection.MEANING_TO_CATALAN -> CatalanSide(card, asAnswer = true)
                     }
                 }
             }
@@ -419,7 +453,7 @@ private fun Face(modifier: Modifier = Modifier, content: @Composable ColumnScope
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Finished(state: StudyUiState, onAgain: () -> Unit, onDone: () -> Unit) {
+private fun Finished(state: StudyUiState, onRepeat: () -> Unit, onDone: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -440,11 +474,11 @@ private fun Finished(state: StudyUiState, onAgain: () -> Unit, onDone: () -> Uni
             modifier = Modifier.padding(top = Space.sm),
         )
         Text(
-            text = stringResource(
-                R.string.practice_finished_body,
-                state.correct,
-                state.cards.size,
-            ),
+            text = if (state.isExtra) {
+                stringResource(R.string.flashcards_extra_finished_body)
+            } else {
+                stringResource(R.string.practice_finished_body, state.correct, state.cards.size)
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -477,7 +511,7 @@ private fun Finished(state: StudyUiState, onAgain: () -> Unit, onDone: () -> Uni
                     ) {
                         Text(card.catalan, style = MaterialTheme.typography.titleSmall)
                         Text(
-                            card.romanian,
+                            state.meaningOf(card),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -486,10 +520,18 @@ private fun Finished(state: StudyUiState, onAgain: () -> Unit, onDone: () -> Uni
             }
         }
 
+        // Going over the same cards again, straight away, is the one thing the
+        // end of a session should make easy: repetition is how they stick.
         Button(
-            onClick = onAgain,
+            onClick = onRepeat,
             modifier = Modifier.padding(top = Space.xxl),
-        ) { Text(stringResource(R.string.practice_again)) }
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(
+                stringResource(R.string.flashcards_repeat_these),
+                modifier = Modifier.padding(start = Space.sm),
+            )
+        }
         OutlinedButton(
             onClick = onDone,
             modifier = Modifier.padding(top = Space.sm),
@@ -535,7 +577,7 @@ private fun CatalanSide(card: FlashcardEntity, asAnswer: Boolean) {
  * question side of Romanian → Catalan, and part of the answer the other way.
  */
 @Composable
-private fun MeaningSide(card: FlashcardEntity, asAnswer: Boolean) {
+private fun MeaningSide(card: FlashcardEntity, meaning: String, asAnswer: Boolean) {
     card.imagePath?.let { path ->
         CardImage(
             path = path,
@@ -550,7 +592,7 @@ private fun MeaningSide(card: FlashcardEntity, asAnswer: Boolean) {
         Spacer(modifier = Modifier.height(Space.lg))
     }
     Text(
-        text = card.romanian,
+        text = meaning,
         style = if (asAnswer) {
             MaterialTheme.typography.headlineSmall
         } else {

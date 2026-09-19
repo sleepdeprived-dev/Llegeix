@@ -45,6 +45,7 @@ object FlashcardBackup {
     data class Card(
         val catalan: String,
         val romanian: String,
+        val english: String? = null,
         val ipa: String? = null,
         val ipaApproximate: Boolean = false,
         /** The picture's name inside the zip, e.g. `images/3f2a.jpg`. */
@@ -62,7 +63,15 @@ object FlashcardBackup {
         val reverseLastReviewedAt: Long? = null,
     )
 
-    data class Deck(val name: String, val createdAt: Long, val cards: List<Card>)
+    data class Deck(
+        val name: String,
+        val createdAt: Long,
+        val cards: List<Card>,
+        val isPinned: Boolean = false,
+        /** The deck's own picture's name inside the zip, if it chose one. */
+        val cover: String? = null,
+        val coverCredit: String? = null,
+    )
 
     /** Why a file could not be read as a copy, for the message the reader sees. */
     class UnreadableException(val reason: Reason, cause: Throwable? = null) :
@@ -84,6 +93,9 @@ object FlashcardBackup {
                         JSONObject()
                             .put("name", deck.name)
                             .put("createdAt", deck.createdAt)
+                            .put("pinned", deck.isPinned)
+                            .putOpt("cover", deck.cover)
+                            .putOpt("coverCredit", deck.coverCredit)
                             .put("cards", JSONArray(deck.cards.map(::encodeCard)))
                     },
                 ),
@@ -94,6 +106,7 @@ object FlashcardBackup {
     private fun encodeCard(card: Card): JSONObject = JSONObject()
         .put("catalan", card.catalan)
         .put("romanian", card.romanian)
+        .putOpt("english", card.english)
         .putOpt("ipa", card.ipa)
         .put("ipaApproximate", card.ipaApproximate)
         .putOpt("image", card.image)
@@ -140,6 +153,9 @@ object FlashcardBackup {
             Deck(
                 name = name,
                 createdAt = deck.optLong("createdAt", 0),
+                isPinned = deck.optBoolean("pinned", false),
+                cover = deck.optStringOrNull("cover"),
+                coverCredit = deck.optStringOrNull("coverCredit"),
                 cards = (0 until cards.length()).mapNotNull { j ->
                     cards.optJSONObject(j)?.let(::decodeCard)
                 },
@@ -155,6 +171,7 @@ object FlashcardBackup {
         return Card(
             catalan = catalan,
             romanian = romanian,
+            english = card.optStringOrNull("english"),
             ipa = card.optStringOrNull("ipa"),
             ipaApproximate = card.optBoolean("ipaApproximate", false),
             image = card.optStringOrNull("image"),
@@ -193,7 +210,15 @@ object FlashcardBackup {
         val cardCount: Int get() = decks.sumOf { it.cards.size }
     }
 
-    data class DeckPlan(val name: String, val existingId: Long?, val createdAt: Long, val cards: List<Card>)
+    data class DeckPlan(
+        val name: String,
+        val existingId: Long?,
+        val createdAt: Long,
+        val cards: List<Card>,
+        val isPinned: Boolean = false,
+        val cover: String? = null,
+        val coverCredit: String? = null,
+    )
 
     fun plan(incoming: List<Deck>, existing: List<ExistingDeck>): Plan {
         // Keyed as DeckNames compares them, so "Menjar" in the copy fills
@@ -210,7 +235,15 @@ object FlashcardBackup {
         var skipped = 0
         for (deck in incoming) {
             val target = byKey.getOrPut(deckKey(deck.name)) {
-                MutableDeck(deck.name, existingId = null, createdAt = deck.createdAt, seen = HashSet())
+                MutableDeck(
+                    deck.name,
+                    existingId = null,
+                    createdAt = deck.createdAt,
+                    seen = HashSet(),
+                    isPinned = deck.isPinned,
+                    cover = deck.cover,
+                    coverCredit = deck.coverCredit,
+                )
             }
             for (card in deck.cards) {
                 // `seen` holds the deck's cards and everything already taken
@@ -225,7 +258,17 @@ object FlashcardBackup {
         return Plan(
             decks = byKey.values
                 .filter { it.adding.isNotEmpty() }
-                .map { DeckPlan(it.name, it.existingId, it.createdAt, it.adding.toList()) },
+                .map {
+                    DeckPlan(
+                        name = it.name,
+                        existingId = it.existingId,
+                        createdAt = it.createdAt,
+                        cards = it.adding.toList(),
+                        isPinned = it.isPinned,
+                        cover = it.cover,
+                        coverCredit = it.coverCredit,
+                    )
+                },
             skipped = skipped,
         )
     }
@@ -236,6 +279,9 @@ object FlashcardBackup {
         val createdAt: Long,
         val seen: MutableSet<String>,
         val adding: MutableList<Card> = mutableListOf(),
+        val isPinned: Boolean = false,
+        val cover: String? = null,
+        val coverCredit: String? = null,
     )
 
     private fun deckKey(name: String): String = DeckNames.tidy(name).lowercase(Locale.ROOT)
@@ -251,6 +297,7 @@ object FlashcardBackup {
         deckId = deckId,
         catalan = catalan,
         romanian = romanian,
+        english = english,
         ipa = ipa,
         ipaApproximate = ipaApproximate,
         imagePath = imagePath,
@@ -270,6 +317,7 @@ object FlashcardBackup {
     fun FlashcardEntity.toBackup(image: String?): Card = Card(
         catalan = catalan,
         romanian = romanian,
+        english = english,
         ipa = ipa,
         ipaApproximate = ipaApproximate,
         image = image,

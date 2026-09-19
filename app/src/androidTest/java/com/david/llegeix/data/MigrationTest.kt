@@ -20,6 +20,7 @@ import com.david.llegeix.data.db.MIGRATION_12_13
 import com.david.llegeix.data.db.MIGRATION_13_14
 import com.david.llegeix.data.db.MIGRATION_14_15
 import com.david.llegeix.data.db.MIGRATION_15_16
+import com.david.llegeix.data.db.MIGRATION_16_17
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -887,16 +888,55 @@ class MigrationTest {
         }
     }
 
+    /** Decks can be pinned and pictured, cards gain English, and nothing moves. */
+    @Test
+    fun migrate16To17_addsPinsCoversAndEnglishAndKeepsEverything() {
+        helper.createDatabase(TEST_DB, 16).use { db ->
+            db.execSQL("INSERT INTO flashcard_decks (id, name, createdAt) VALUES (1, 'Menjar', 1)")
+            db.execSQL(
+                """
+                INSERT INTO flashcards
+                    (id, deckId, catalan, romanian, ipa, ipaApproximate, imagePath, imageCredit,
+                     createdAt, box, dueAt, reviewCount, lastReviewedAt,
+                     reverseBox, reverseDueAt, reverseReviewCount, reverseLastReviewedAt)
+                VALUES (1, 1, 'pa', 'pâine', 'ˈpa', 0, 'flashcards/pa.jpg', 'ARASAAC', 5,
+                        3, 900, 7, 800, 1, 950, 2, NULL)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 17, true, MIGRATION_16_17)
+
+        db.query("SELECT name, isPinned, coverPath, coverCredit FROM flashcard_decks").use { cursor ->
+            assertTrue("deck survived", cursor.moveToFirst())
+            assertEquals("Menjar", cursor.getString(0))
+            assertEquals("no deck starts pinned", 0, cursor.getInt(1))
+            assertTrue("and none has a chosen picture", cursor.isNull(2))
+            assertTrue(cursor.isNull(3))
+        }
+        db.query(
+            "SELECT catalan, romanian, imageCredit, box, reverseDueAt, english FROM flashcards",
+        ).use { cursor ->
+            assertTrue("card survived", cursor.moveToFirst())
+            assertEquals("pa", cursor.getString(0))
+            assertEquals("pâine", cursor.getString(1))
+            assertEquals("its credit survived", "ARASAAC", cursor.getString(2))
+            assertEquals("and its schedule", 3, cursor.getInt(3))
+            assertEquals(950L, cursor.getLong(4))
+            assertTrue("no English was invented", cursor.isNull(5))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To16_runsEveryStepInSequence() {
+    fun migrate1To17_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            16,
+            17,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -913,6 +953,7 @@ class MigrationTest {
             MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
+            MIGRATION_16_17,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

@@ -652,16 +652,13 @@
     <string name="flashcards_picture">Picture</string>
     <string name="flashcards_image_failed">That picture could not be read. Try another one.</string>
     <string name="flashcards_save">Save</string>
-    <string name="flashcards_save_and_add">Save and add another</string>
+    <string name="flashcards_save_and_add">Save &amp; new</string>
     <string name="flashcards_discard_title">Discard changes?</string>
     <string name="flashcards_discard_body">What you have typed on this card will be lost.</string>
     <string name="flashcards_discard">Discard</string>
     <string name="flashcards_keep_editing">Keep editing</string>
     <string name="flashcards_study_title">Practice</string>
-    <string name="flashcards_study_start">Start</string>
     <string name="flashcards_all_decks">All decks</string>
-    <string name="flashcards_direction_ca_ro">Catalan → Romanian</string>
-    <string name="flashcards_direction_ro_ca">Romanian → Catalan</string>
     <string name="flashcards_study_no_cards_title">No cards to practise</string>
     <string name="flashcards_study_no_cards_body">Add some cards to this deck first.</string>
     <string name="flashcards_study_nothing_due_title">Nothing due</string>
@@ -719,7 +716,6 @@
     <string name="flashcards_pictures_none_photos">No photos for \"%1$s\". Try Pictograms.</string>
     <string name="flashcards_pictures_offline">No connection, so no pictures to suggest.</string>
     <string name="flashcards_pictures_retry">Try again</string>
-    <string name="flashcards_pictures_needs_english">Photos are searched in English, and the English language model is not on this phone yet. It downloads once, over Wi-Fi.</string>
     <string name="flashcards_pictures_credit_pictograms">Pictograms by Sergio Palao for ARASAAC, CC BY-NC-SA.</string>
     <string name="flashcards_pictures_credit_photos">Photos from Openverse, each under its own open licence.</string>
     <string name="flashcards_picture_use">Use this picture</string>
@@ -735,4 +731,30 @@
     <string name="flashcards_practise_deck">Practise %1$s (%2$d)</string>
     <string name="flashcards_study_missed">Worth another look</string>
     <string name="flashcards_study_perfect">Every one right.</string>
+    <string name="flashcards_section_meaning">Meaning</string>
+    <string name="flashcards_field_english">English (optional)</string>
+    <string name="flashcards_direction_from_catalan">Catalan → %1$s</string>
+    <string name="flashcards_direction_to_catalan">%1$s → Catalan</string>
+    <string name="flashcards_practise_again">Practise again</string>
+    <string name="flashcards_practise_deck_again">Practise %1$s again</string>
+    <string name="flashcards_practise_anyway">Practise them anyway</string>
+    <string name="flashcards_repeat_these">Repeat these</string>
+    <string name="flashcards_extra_label">Extra practice</string>
+    <string name="flashcards_extra_finished_body">Extra practice does not change when cards come back, so go round as often as you like.</string>
+    <string name="flashcards_deck_picture">Picture…</string>
+    <string name="flashcards_deck_picture_title">A picture for \"%1$s\"</string>
+    <string name="flashcards_deck_picture_remove">Use no chosen picture</string>
+    <string name="flashcards_pictures_no_english">Photos are searched in English, and no English word could be found for \"%1$s\". Add the English meaning, or try Pictograms.</string>
+    <string name="flashcards_pictures_blocked">For safety, this word is not searched in Photos. Try Pictograms.</string>
+    <plurals name="flashcards_english_missing">
+        <item quantity="one">%1$d card has no English meaning yet, so English practice leaves it out.</item>
+        <item quantity="other">%1$d cards have no English meaning yet, so English practice leaves them out.</item>
+    </plurals>
+    <string name="flashcards_english_fill">Fill in</string>
+    <plurals name="flashcards_english_filled">
+        <item quantity="one">English filled in for %1$d card. Check it in the card.</item>
+        <item quantity="other">English filled in for %1$d cards. Check them in the cards.</item>
+    </plurals>
+    <string name="flashcards_study_no_english_title">No English meanings yet</string>
+    <string name="flashcards_study_no_english_body">These cards have only their Romanian meaning. Fill in the English from the deck, or practise in Romanian with the flag at the top of the tab.</string>
 </resources>

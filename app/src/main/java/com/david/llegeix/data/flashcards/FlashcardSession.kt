@@ -16,6 +16,9 @@ object FlashcardSession {
      */
     const val DEFAULT_LIMIT = 20
 
+    /** An extra round can go through a whole ordinary deck. */
+    const val EXTRA_LIMIT = 50
+
     /**
      * The cards due in [direction], longest-waiting first.
      *
@@ -33,8 +36,9 @@ object FlashcardSession {
         now: Long,
         limit: Int = DEFAULT_LIMIT,
         random: Random = Random.Default,
+        language: MeaningLanguage = MeaningLanguage.Default,
     ): List<FlashcardEntity> =
-        cards.filter { direction.isDue(it, now) }
+        cards.filter { direction.isDue(it, now) && language.meaningOf(it) != null }
             .groupBy { direction.dueAtOf(it) }
             .toSortedMap()
             .values
@@ -42,6 +46,37 @@ object FlashcardSession {
             .take(limit)
 
     /** When the next card not yet due will be, or null if none is waiting. */
-    fun nextDueAt(cards: List<FlashcardEntity>, direction: StudyDirection, now: Long): Long? =
-        cards.map { direction.dueAtOf(it) }.filter { it > now }.minOrNull()
+    fun nextDueAt(
+        cards: List<FlashcardEntity>,
+        direction: StudyDirection,
+        now: Long,
+        language: MeaningLanguage = MeaningLanguage.Default,
+    ): Long? = cards.filter { language.meaningOf(it) != null }
+        .map { direction.dueAtOf(it) }.filter { it > now }.minOrNull()
+
+    /**
+     * A round of extra practice: cards whether they are due or not.
+     *
+     * Repetition is good, and a reader who wants to go through a deck again
+     * after getting everything right should be able to. It is kept off the
+     * schedule, though — answers in an extra round are not recorded — because
+     * a card answered right three times in ten minutes has not been learned
+     * three times over, and moving it up three boxes would say it had.
+     *
+     * The least-known come first, then shuffled among equals, so a short round
+     * is spent where it helps most.
+     */
+    fun extra(
+        cards: List<FlashcardEntity>,
+        direction: StudyDirection,
+        limit: Int = EXTRA_LIMIT,
+        random: Random = Random.Default,
+        language: MeaningLanguage = MeaningLanguage.Default,
+    ): List<FlashcardEntity> =
+        cards.filter { language.meaningOf(it) != null }
+            .groupBy { direction.boxOf(it) }
+            .toSortedMap()
+            .values
+            .flatMap { sameBox -> sameBox.sortedBy { it.id }.shuffled(random) }
+            .take(limit)
 }

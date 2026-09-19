@@ -34,7 +34,17 @@ class FlashcardBackupTest {
 
     @Test
     fun `a copy reads back exactly as it was written, schedules and all`() {
-        val decks = listOf(Deck("Menjar", 10, listOf(pa, cotxe)), Deck("Buit", 20, emptyList()))
+        val decks = listOf(
+            Deck(
+                "Menjar",
+                10,
+                listOf(pa.copy(english = "bread"), cotxe),
+                isPinned = true,
+                cover = "images/menjar.jpg",
+                coverCredit = "Sergio Palao · ARASAAC · CC BY-NC-SA",
+            ),
+            Deck("Buit", 20, emptyList()),
+        )
         val json = FlashcardBackup.encode(decks, exportedAt = 99)
         assertEquals(decks, FlashcardBackup.decode(json))
     }
@@ -176,5 +186,32 @@ class FlashcardBackupTest {
         } catch (error: UnreadableException) {
             assertEquals(reason, error.reason)
         }
+    }
+
+    @Test
+    fun `a copy written before English and deck pictures still reads`() {
+        val json = """
+            {"format":"llegeix-flashcards","version":1,"decks":[
+              {"name":"Menjar","createdAt":1,"cards":[{"catalan":"pa","romanian":"pâine"}]}
+            ]}
+        """.trimIndent()
+        val deck = FlashcardBackup.decode(json).single()
+        assertEquals(false, deck.isPinned)
+        assertNull(deck.cover)
+        assertNull(deck.cards.single().english)
+    }
+
+    @Test
+    fun `a new deck from a copy brings its pin and picture, an existing one keeps its own`() {
+        val copy = listOf(
+            Deck("Menjar", 10, listOf(pa), isPinned = true, cover = "images/m.jpg"),
+            Deck("Verbs", 11, listOf(cotxe), isPinned = true, cover = "images/v.jpg"),
+        )
+        val plan = FlashcardBackup.plan(copy, listOf(ExistingDeck(3, "verbs", emptyList())))
+        val menjar = plan.decks.first { it.name == "Menjar" }
+        val verbs = plan.decks.first { it.existingId == 3L }
+        assertEquals(true, menjar.isPinned)
+        assertEquals("images/m.jpg", menjar.cover)
+        assertNull("the deck on the phone is filled, not re-dressed", verbs.cover)
     }
 }

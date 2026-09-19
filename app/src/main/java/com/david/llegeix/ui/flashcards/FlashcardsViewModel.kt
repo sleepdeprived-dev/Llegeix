@@ -14,6 +14,7 @@ import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.FlashcardBackup
 import com.david.llegeix.data.flashcards.FlashcardRepository
+import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -48,8 +50,12 @@ class FlashcardsViewModel(
 
     // ---- What to study -----------------------------------------------------
 
-    private val _direction = MutableStateFlow(StudyDirection.Default)
+    private val _direction = MutableStateFlow(flashcards.prefs.direction)
     val direction: StateFlow<StudyDirection> = _direction.asStateFlow()
+
+    /** Which language the meanings are practised in. */
+    private val _language = MutableStateFlow(flashcards.prefs.language)
+    val language: StateFlow<MeaningLanguage> = _language.asStateFlow()
 
     /**
      * The moment "due" is measured against.
@@ -63,13 +69,23 @@ class FlashcardsViewModel(
     private val now = MutableStateFlow(System.currentTimeMillis())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val dueByDeck: StateFlow<Map<Long, DeckDue>> = now
-        .flatMapLatest { flashcards.observeDueCounts(it) }
+    val dueByDeck: StateFlow<Map<Long, DeckDue>> = combine(now, _language) { at, language -> at to language }
+        .flatMapLatest { (at, language) -> flashcards.observeDueCounts(at, language) }
         .map { rows -> rows.associateBy { it.deckId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     fun onChooseDirection(direction: StudyDirection) {
         _direction.value = direction
+        flashcards.prefs.direction = direction
+    }
+
+    fun onChooseLanguage(language: MeaningLanguage) {
+        _language.value = language
+        flashcards.prefs.language = language
+    }
+
+    fun setPinned(deck: DeckWithCount, pinned: Boolean) = viewModelScope.launch {
+        flashcards.setDeckPinned(deck.id, pinned)
     }
 
     /** The tab is being looked at again: count against the time it is now. */

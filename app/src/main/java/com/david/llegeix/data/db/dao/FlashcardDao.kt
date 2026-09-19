@@ -12,11 +12,19 @@ data class DeckWithCount(
     val id: Long,
     val name: String,
     val createdAt: Long,
+    val isPinned: Boolean,
     val cardCount: Int,
     /** How many of its cards carry a picture, which deleting the deck also deletes. */
     val imageCount: Int,
-    /** The picture of its first illustrated card, to stand for the deck. */
+    /** How many of its cards have an English meaning, and so can be practised in English. */
+    val englishCount: Int,
+    /**
+     * The picture that stands for the deck: the one the reader chose, or
+     * failing that the picture of its first illustrated card.
+     */
     val coverImage: String?,
+    /** Only the chosen picture, so the menu knows whether there is one to remove. */
+    val chosenCover: String?,
     /** The Leitner boxes of its cards added up, one sum per direction, for how well it is known. */
     val boxTotal: Int,
     val reverseBoxTotal: Int,
@@ -32,20 +40,23 @@ data class DeckDue(
 @Dao
 interface FlashcardDao {
 
-    /** Alphabetical, because a deck is found by its name. */
+    /** Pinned first, then alphabetical, because a deck is found by its name. */
     @Query(
         """
-        SELECT d.id AS id, d.name AS name, d.createdAt AS createdAt,
+        SELECT d.id AS id, d.name AS name, d.createdAt AS createdAt, d.isPinned AS isPinned,
                COUNT(c.id) AS cardCount, COUNT(c.imagePath) AS imageCount,
-               (SELECT imagePath FROM flashcards
+               COALESCE(SUM(CASE WHEN c.english IS NOT NULL AND TRIM(c.english) != ''
+                   THEN 1 ELSE 0 END), 0) AS englishCount,
+               COALESCE(d.coverPath, (SELECT imagePath FROM flashcards
                 WHERE deckId = d.id AND imagePath IS NOT NULL
-                ORDER BY createdAt, id LIMIT 1) AS coverImage,
+                ORDER BY createdAt, id LIMIT 1)) AS coverImage,
+               d.coverPath AS chosenCover,
                COALESCE(SUM(c.box), 0) AS boxTotal,
                COALESCE(SUM(c.reverseBox), 0) AS reverseBoxTotal
         FROM flashcard_decks d
         LEFT JOIN flashcards c ON c.deckId = d.id
         GROUP BY d.id
-        ORDER BY d.name COLLATE NOCASE
+        ORDER BY d.isPinned DESC, d.name COLLATE NOCASE
         """,
     )
     fun observeDecks(): Flow<List<DeckWithCount>>
@@ -58,6 +69,15 @@ interface FlashcardDao {
 
     @Query("UPDATE flashcard_decks SET name = :name WHERE id = :id")
     suspend fun renameDeck(id: Long, name: String)
+
+    @Query("UPDATE flashcard_decks SET isPinned = :pinned WHERE id = :id")
+    suspend fun setDeckPinned(id: Long, pinned: Boolean)
+
+    @Query("UPDATE flashcard_decks SET coverPath = :path, coverCredit = :credit WHERE id = :id")
+    suspend fun setDeckCover(id: Long, path: String?, credit: String?)
+
+    @Query("SELECT * FROM flashcard_decks WHERE id = :id")
+    suspend fun deck(id: Long): FlashcardDeckEntity?
 
     /** Its cards go with it, by cascade; their pictures do not, see [imagePathsInDeck]. */
     @Query("DELETE FROM flashcard_decks WHERE id = :id")
@@ -87,7 +107,7 @@ interface FlashcardDao {
     @Query(
         """
         UPDATE flashcards
-        SET catalan = :catalan, romanian = :romanian, ipa = :ipa,
+        SET catalan = :catalan, romanian = :romanian, english = :english, ipa = :ipa,
             ipaApproximate = :ipaApproximate, imagePath = :imagePath,
             imageCredit = :imageCredit
         WHERE id = :id
@@ -97,6 +117,7 @@ interface FlashcardDao {
         id: Long,
         catalan: String,
         romanian: String,
+        english: String?,
         ipa: String?,
         ipaApproximate: Boolean,
         imagePath: String?,
@@ -125,10 +146,18 @@ interface FlashcardDao {
                SUM(CASE WHEN dueAt <= :now THEN 1 ELSE 0 END) AS forwardDue,
                SUM(CASE WHEN reverseDueAt <= :now THEN 1 ELSE 0 END) AS reverseDue
         FROM flashcards
+        WHERE :englishOnly = 0 OR (english IS NOT NULL AND TRIM(english) != '')
         GROUP BY deckId
         """,
     )
-    fun observeDueCounts(now: Long): Flow<List<DeckDue>>
+    fun observeDueCounts(now: Long, englishOnly: Boolean): Flow<List<DeckDue>>
+
+    /** A deck's cards still without an English meaning, for filling them in. */
+    @Query("SELECT * FROM flashcards WHERE deckId = :deckId AND (english IS NULL OR TRIM(english) = '')")
+    suspend fun cardsWithoutEnglish(deckId: Long): List<FlashcardEntity>
+
+    @Query("UPDATE flashcards SET english = :english WHERE id = :id")
+    suspend fun setEnglish(id: Long, english: String)
 
     /** Record an answer Catalan → Romanian, leaving the other direction alone. */
     @Query(
@@ -152,8 +181,18 @@ interface FlashcardDao {
     )
     suspend fun recordReverse(id: Long, box: Int, dueAt: Long, reviewedAt: Long)
 
-    /** Every picture any card points at, for the sweep of stray files. */
-    @Query("SELECT imagePath FROM flashcards WHERE imagePath IS NOT NULL")
+    /**
+     * Every picture anything points at — cards and deck covers alike — for the
+     * sweep of stray files. A cover left out of this would be swept an hour
+     * after it was chosen.
+     */
+    @Query(
+        """
+        SELECT imagePath FROM flashcards WHERE imagePath IS NOT NULL
+        UNION
+        SELECT coverPath FROM flashcard_decks WHERE coverPath IS NOT NULL
+        """,
+    )
     suspend fun allImagePaths(): List<String>
 
     /** The picture files a deck's cards point at, to delete alongside it. */

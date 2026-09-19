@@ -517,3 +517,21 @@ val MIGRATION_15_16 = object : Migration(15, 16) {
         db.execSQL("ALTER TABLE flashcards ADD COLUMN imageCredit TEXT")
     }
 }
+
+/**
+ * Decks that can be pinned and given a picture, and cards that can carry an
+ * English meaning.
+ *
+ * Four columns, all additive. `isPinned` defaults to 0 because no deck was
+ * pinned before there was a way to pin one; the rest are nullable because a
+ * deck with no chosen picture and a card with no English meaning are exactly
+ * what every existing row is.
+ */
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE flashcard_decks ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE flashcard_decks ADD COLUMN coverPath TEXT")
+        db.execSQL("ALTER TABLE flashcard_decks ADD COLUMN coverCredit TEXT")
+        db.execSQL("ALTER TABLE flashcards ADD COLUMN english TEXT")
+    }
+}

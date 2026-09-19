@@ -57,10 +57,10 @@ does both after bumping the version in `app/build.gradle.kts`.
   way in with a line each saying what it does — a folder and everything inside
   it, single PDFs, or the whole phone — in the order they should be preferred,
   and drops the sweep from the list once it is already on. The button that opens
-  it says *Add documents* in words, at the bottom right where a phone puts its
-  main action, because importing is the first thing anybody has to do here and
-  it used to be the smallest, least-labelled target on the screen. There is no
-  *manage sources* row on the sheet: somebody who pressed *Add documents* has
+  it is a plain + at the bottom right, where a phone puts its main action — as
+  every add button in the app now is: the + is the most recognised mark there
+  is, and the words are kept for screen readers rather than printed over the
+  list. There is no *manage sources* row on the sheet: somebody who pressed + has
   already said what they want, and the card at the top of the library is where
   the other question is asked.
 - **Sources** — where the library's documents come from, as one card at the top
@@ -173,7 +173,7 @@ does both after bumping the version in `app/build.gradle.kts`.
   One feature talks to the internet without a button press, and only while a
   flashcard is open to be written: picture suggestions. After a pause in the
   typing, the word goes to ARASAAC (in Catalan) or, on the Photos tab, its
-  English translation goes to Openverse — the word and nothing else, with no
+  English meaning goes to Openverse — the word and nothing else, with no
   identifier. Both are free public services that need no account or key. With
   no card open, nothing is sent.
 
@@ -250,10 +250,14 @@ does both after bumping the version in `app/build.gradle.kts`.
   picture if one helps. Writing a card fills in what the app can and says that
   it did: the pronunciation is worked out from the spelling as you type, marked
   *approx.* where the spelling cannot settle a vowel, and the translator on the
-  phone suggests a meaning — both follow the word until you type in the field,
-  and are yours from then on. Pictures are offered as the word is typed: a row
-  of ARASAAC pictograms, searched in Catalan, or openly licensed photos from
-  Openverse, searched with the word's English translation made on the phone.
+  phone suggests a meaning, in Romanian and, optionally, in English — each
+  follows the word until you type in the field, and is yours from then on.
+  Pictures are offered as the word is typed, as a grid: ARASAAC pictograms,
+  searched in Catalan, or openly licensed photos from Openverse, searched with
+  the card's English meaning — the lone Catalan word is too thin a thing to
+  translate, and *pa* on its own comes back as Pennsylvania. Photos are held to
+  three safety checks: Openverse's own adult flag, a list of words never
+  searched for, and the same list read against every photo's title and tags.
   They are offered and never placed — a picture of the wrong sense of *banc* is
   worse than none — and the one chosen keeps its maker's credit on the card.
   Your own photos come through Android's photo picker, so the app is never given
@@ -262,11 +266,18 @@ does both after bumping the version in `app/build.gradle.kts`.
   ignored, because the word you half remember is typed on whichever keyboard is
   up.
 
-  Each deck is a card of its own on the tab, with its first picture as a
-  cover, a bar for how well it is known and its own button into practice
-  carrying how many are waiting — the decks are the choice, so there is no
-  second list of them to choose from. Which way round is two flags, not two
-  language names: they are told apart at a glance.
+  Each deck is a card of its own on the tab, with a picture of its own — chosen
+  from the same grid, or its first card's — a bar for how well it is known and
+  its own button into practice carrying how many are waiting. Decks can be
+  pinned to the top. The decks are the choice, so there is no second list of
+  them to choose from. Which way round is two flags, not two language names,
+  and the meaning can be practised in Romanian or in English: a second flag
+  switch, because recognising a Catalan word is the same skill whichever
+  language the answer comes in, so it is the same schedule. Going through cards
+  again when none are due is always one press away, as extra practice that does
+  not move the schedule — repetition helps, and three right answers in ten
+  minutes are not three days' learning. Saving a copy is a button in the
+  corner.
 
   Practice asks one way round at a time, and each way keeps its own schedule:
   recognising *pa* says nothing about producing it from *pâine*, so a right
