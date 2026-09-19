@@ -642,4 +642,23 @@
     <string name="flashcards_discard_body">Es perdrà el que has escrit en aquesta targeta.</string>
     <string name="flashcards_discard">Descarta</string>
     <string name="flashcards_keep_editing">Continua editant</string>
+    <string name="flashcards_study_title">Repàs</string>
+    <string name="flashcards_study_start">Comença</string>
+    <plurals name="flashcards_study_cards">
+        <item quantity="one">Repassa %1$d targeta</item>
+        <item quantity="many">Repassa %1$d targetes</item>
+        <item quantity="other">Repassa %1$d targetes</item>
+    </plurals>
+    <plurals name="flashcards_due_count">
+        <item quantity="one">%1$d per repassar</item>
+        <item quantity="many">%1$d per repassar</item>
+        <item quantity="other">%1$d per repassar</item>
+    </plurals>
+    <string name="flashcards_all_decks">Totes les baralles</string>
+    <string name="flashcards_direction_ca_ro">Català → Romanès</string>
+    <string name="flashcards_direction_ro_ca">Romanès → Català</string>
+    <string name="flashcards_study_no_cards_title">No hi ha targetes per repassar</string>
+    <string name="flashcards_study_no_cards_body">Primer afegeix alguna targeta a aquesta baralla.</string>
+    <string name="flashcards_study_nothing_due_title">No toca res</string>
+    <string name="flashcards_study_nothing_due_body">Totes les targetes s\'han repassat fa poc en aquest sentit. Tornaran quan toqui: com millor te\'n saps una, més triga a tornar.</string>
 </resources>

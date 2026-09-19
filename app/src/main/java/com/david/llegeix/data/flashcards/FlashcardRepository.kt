@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.room.withTransaction
 import com.david.llegeix.data.db.LlegeixDatabase
+import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
@@ -104,6 +105,39 @@ class FlashcardRepository(
     suspend fun deleteCard(card: FlashcardEntity) {
         dao.deleteCard(card.id)
         card.imagePath?.let { images.delete(listOf(it)) }
+    }
+
+    // ---- Study -------------------------------------------------------------
+
+    /** Due counts per deck and direction, as of [now]. */
+    fun observeDueCounts(now: Long): Flow<List<DeckDue>> = dao.observeDueCounts(now)
+
+    /** Every card a session could be dealt from: one deck's, or all of them for null. */
+    suspend fun cardsToStudy(deckId: Long?): List<FlashcardEntity> =
+        if (deckId == null) dao.allCards() else dao.cardsInDeck(deckId)
+
+    /**
+     * Record an answer in [direction], and only there.
+     *
+     * The schedule comes from [com.david.llegeix.data.practice.Leitner] by way
+     * of [StudyDirection.answer]: the flashcards and the saved words are
+     * scheduled by the same rule, so a card and a saved word answered the same
+     * way come back at the same time.
+     */
+    suspend fun recordAnswer(
+        card: FlashcardEntity,
+        direction: StudyDirection,
+        correct: Boolean,
+        now: Long,
+    ) {
+        val next = direction.answer(card, correct, now)
+        when (direction) {
+            StudyDirection.CATALAN_TO_ROMANIAN ->
+                dao.recordForward(card.id, next.box, next.dueAt, reviewedAt = now)
+
+            StudyDirection.ROMANIAN_TO_CATALAN ->
+                dao.recordReverse(card.id, next.box, next.dueAt, reviewedAt = now)
+        }
     }
 
     // ---- Pictures ----------------------------------------------------------

@@ -7,14 +7,19 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
+import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.FlashcardRepository
+import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -36,6 +41,45 @@ class FlashcardsViewModel(
 
     private val _message = MutableStateFlow<UiText?>(null)
     val message: StateFlow<UiText?> = _message.asStateFlow()
+
+    // ---- What to study -----------------------------------------------------
+
+    /** The deck chosen to study, or null for all of them. */
+    private val _studyDeck = MutableStateFlow<Long?>(null)
+    val studyDeck: StateFlow<Long?> = _studyDeck.asStateFlow()
+
+    private val _direction = MutableStateFlow(StudyDirection.Default)
+    val direction: StateFlow<StudyDirection> = _direction.asStateFlow()
+
+    /**
+     * The moment "due" is measured against.
+     *
+     * A due count is a question about the clock, and a query takes its answer
+     * at the moment it is asked. So the clock is moved on each time the tab is
+     * looked at again — coming back from a session, or from another app — and
+     * the counts follow, rather than a card that fell due ten minutes ago
+     * staying out of the count until the app is restarted.
+     */
+    private val now = MutableStateFlow(System.currentTimeMillis())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val dueByDeck: StateFlow<Map<Long, DeckDue>> = now
+        .flatMapLatest { flashcards.observeDueCounts(it) }
+        .map { rows -> rows.associateBy { it.deckId } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    fun onChooseStudyDeck(deckId: Long?) {
+        _studyDeck.value = deckId
+    }
+
+    fun onChooseDirection(direction: StudyDirection) {
+        _direction.value = direction
+    }
+
+    /** The tab is being looked at again: count against the time it is now. */
+    fun onResumed() {
+        now.value = System.currentTimeMillis()
+    }
 
     init {
         viewModelScope.launch { flashcards.sweepImagesOnce() }

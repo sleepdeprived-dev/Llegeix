@@ -2,6 +2,15 @@ package com.david.llegeix.ui.flashcards
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,11 +57,14 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
+import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.DeckNames
+import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuIcon
@@ -77,12 +89,21 @@ import com.david.llegeix.ui.common.resolved
 @Composable
 fun FlashcardsScreen(
     onOpenDeck: (deckId: Long) -> Unit,
+    onStudy: (deckId: Long?, direction: StudyDirection) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FlashcardsViewModel = viewModel(factory = FlashcardsViewModel.Factory),
 ) {
     val decks by viewModel.decks.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val dueByDeck by viewModel.dueByDeck.collectAsStateWithLifecycle()
+    val studyDeck by viewModel.studyDeck.collectAsStateWithLifecycle()
+    val direction by viewModel.direction.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LifecycleResumeEffect(Unit) {
+        viewModel.onResumed()
+        onPauseOrDispose { }
+    }
 
     var creating by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<DeckWithCount?>(null) }
@@ -141,9 +162,33 @@ fun FlashcardsScreen(
                 // scrolled clear of it.
                 contentPadding = PaddingValues(top = Space.sm, bottom = BottomClearance),
             ) {
+                // Only once there is something to study: a panel of choices
+                // over decks with nothing in them is a question with no answer.
+                val studyable = list.filter { it.cardCount > 0 }
+                if (studyable.isNotEmpty()) {
+                    item(key = "study") {
+                        // A deck that has since been deleted or emptied quietly
+                        // falls back to all of them.
+                        val chosen = studyDeck?.takeIf { id -> studyable.any { it.id == id } }
+                        StudyPanel(
+                            decks = studyable,
+                            chosenDeck = chosen,
+                            direction = direction,
+                            dueCount = if (chosen == null) {
+                                dueByDeck.values.sumOf { it.dueIn(direction) }
+                            } else {
+                                dueByDeck[chosen]?.dueIn(direction) ?: 0
+                            },
+                            onChooseDeck = viewModel::onChooseStudyDeck,
+                            onChooseDirection = viewModel::onChooseDirection,
+                            onStudy = { onStudy(chosen, direction) },
+                        )
+                    }
+                }
                 items(list, key = { it.id }) { deck ->
                     DeckRow(
                         deck = deck,
+                        dueCount = dueByDeck[deck.id]?.dueIn(direction) ?: 0,
                         onOpen = { onOpenDeck(deck.id) },
                         onRename = { renaming = deck },
                         onDelete = { deleting = deck },
@@ -220,6 +265,8 @@ fun FlashcardsScreen(
 @Composable
 private fun DeckRow(
     deck: DeckWithCount,
+    /** Due in the direction currently chosen, so the numbers agree with the panel. */
+    dueCount: Int,
     onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -263,11 +310,16 @@ private fun DeckRow(
                 text = if (deck.cardCount == 0) {
                     stringResource(R.string.flashcards_deck_no_cards)
                 } else {
-                    pluralStringResource(
-                        R.plurals.flashcards_card_count,
-                        deck.cardCount,
-                        deck.cardCount,
-                    )
+                    listOfNotNull(
+                        pluralStringResource(
+                            R.plurals.flashcards_card_count,
+                            deck.cardCount,
+                            deck.cardCount,
+                        ),
+                        dueCount.takeIf { it > 0 }?.let {
+                            pluralStringResource(R.plurals.flashcards_due_count, it, it)
+                        },
+                    ).joinToString(" · ")
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -350,3 +402,101 @@ private fun DeckNameDialog(
 
 /** Clears the extended button: its 56dp, and the 16dp it floats above the bar. */
 private val BottomClearance = 88.dp
+
+/** How many of the deck's cards are due in [direction]. */
+private fun DeckDue.dueIn(direction: StudyDirection): Int = when (direction) {
+    StudyDirection.CATALAN_TO_ROMANIAN -> forwardDue
+    StudyDirection.ROMANIAN_TO_CATALAN -> reverseDue
+}
+
+/**
+ * What to study, chosen in the open.
+ *
+ * Deck and direction are two rows of choices with the current one lit, rather
+ * than a menu or a dialog in front of the session: which deck and which way
+ * round are the two facts a session is made of, and the reader should be able
+ * to see both before pressing the button, not find out after.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StudyPanel(
+    decks: List<DeckWithCount>,
+    chosenDeck: Long?,
+    direction: StudyDirection,
+    dueCount: Int,
+    onChooseDeck: (Long?) -> Unit,
+    onChooseDirection: (StudyDirection) -> Unit,
+    onStudy: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .padding(bottom = Space.lg)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(vertical = Space.lg),
+    ) {
+        Text(
+            text = stringResource(R.string.flashcards_study_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = Space.lg),
+        )
+
+        // Decks scroll sideways rather than wrapping, so a long list of decks
+        // costs one row of height rather than five.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Space.sm),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = Space.lg)
+                .padding(top = Space.md),
+        ) {
+            FilterChip(
+                selected = chosenDeck == null,
+                onClick = { onChooseDeck(null) },
+                label = { Text(stringResource(R.string.flashcards_all_decks)) },
+            )
+            decks.forEach { deck ->
+                FilterChip(
+                    selected = chosenDeck == deck.id,
+                    onClick = { onChooseDeck(deck.id) },
+                    label = { Text(deck.name, maxLines = 1) },
+                )
+            }
+        }
+
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Space.lg)
+                .padding(top = Space.sm),
+        ) {
+            StudyDirection.entries.forEachIndexed { index, entry ->
+                SegmentedButton(
+                    selected = entry == direction,
+                    onClick = { onChooseDirection(entry) },
+                    shape = SegmentedButtonDefaults.itemShape(index, StudyDirection.entries.size),
+                    label = { Text(stringResource(directionLabel(entry)), maxLines = 1) },
+                )
+            }
+        }
+
+        Button(
+            onClick = onStudy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Space.lg)
+                .padding(top = Space.lg),
+        ) {
+            Text(
+                if (dueCount > 0) {
+                    pluralStringResource(R.plurals.flashcards_study_cards, dueCount, dueCount)
+                } else {
+                    stringResource(R.string.flashcards_study_start)
+                },
+            )
+        }
+    }
+}

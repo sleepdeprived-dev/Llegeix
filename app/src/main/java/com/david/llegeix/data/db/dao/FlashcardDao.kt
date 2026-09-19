@@ -15,6 +15,13 @@ data class DeckWithCount(
     val cardCount: Int,
 )
 
+/** How many of a deck's cards are due in each direction of study. */
+data class DeckDue(
+    val deckId: Long,
+    val forwardDue: Int,
+    val reverseDue: Int,
+)
+
 @Dao
 interface FlashcardDao {
 
@@ -84,6 +91,52 @@ interface FlashcardDao {
 
     @Query("DELETE FROM flashcards WHERE id = :id")
     suspend fun deleteCard(id: Long)
+
+    /** Every card in a deck, for dealing a study session from. */
+    @Query("SELECT * FROM flashcards WHERE deckId = :deckId")
+    suspend fun cardsInDeck(deckId: Long): List<FlashcardEntity>
+
+    @Query("SELECT * FROM flashcards")
+    suspend fun allCards(): List<FlashcardEntity>
+
+    /**
+     * How many cards in each deck are due, in each direction.
+     *
+     * One row per deck that has cards; a deck missing from the answer has
+     * nothing in it to be due.
+     */
+    @Query(
+        """
+        SELECT deckId AS deckId,
+               SUM(CASE WHEN dueAt <= :now THEN 1 ELSE 0 END) AS forwardDue,
+               SUM(CASE WHEN reverseDueAt <= :now THEN 1 ELSE 0 END) AS reverseDue
+        FROM flashcards
+        GROUP BY deckId
+        """,
+    )
+    fun observeDueCounts(now: Long): Flow<List<DeckDue>>
+
+    /** Record an answer Catalan → Romanian, leaving the other direction alone. */
+    @Query(
+        """
+        UPDATE flashcards
+        SET box = :box, dueAt = :dueAt, reviewCount = reviewCount + 1,
+            lastReviewedAt = :reviewedAt
+        WHERE id = :id
+        """,
+    )
+    suspend fun recordForward(id: Long, box: Int, dueAt: Long, reviewedAt: Long)
+
+    /** Record an answer Romanian → Catalan, leaving the other direction alone. */
+    @Query(
+        """
+        UPDATE flashcards
+        SET reverseBox = :box, reverseDueAt = :dueAt,
+            reverseReviewCount = reverseReviewCount + 1, reverseLastReviewedAt = :reviewedAt
+        WHERE id = :id
+        """,
+    )
+    suspend fun recordReverse(id: Long, box: Int, dueAt: Long, reviewedAt: Long)
 
     /** Every picture any card points at, for the sweep of stray files. */
     @Query("SELECT imagePath FROM flashcards WHERE imagePath IS NOT NULL")

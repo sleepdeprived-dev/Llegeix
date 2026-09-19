@@ -33,6 +33,8 @@ import com.david.llegeix.ui.dictionary.DictionaryScreen
 import com.david.llegeix.ui.flashcards.CardEditorScreen
 import com.david.llegeix.ui.flashcards.DeckScreen
 import com.david.llegeix.ui.flashcards.FlashcardsScreen
+import com.david.llegeix.ui.flashcards.StudyScreen
+import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.folders.FolderDetailScreen
 import com.david.llegeix.ui.library.LibraryScreen
 import com.david.llegeix.ui.practice.PracticeScreen
@@ -57,7 +59,13 @@ private object Routes {
      */
     const val CARD_EDITOR = "flashcards/card?deckId={deckId}&cardId={cardId}"
 
+    /** A study session. `deckId` is -1 for every deck at once. */
+    const val FLASHCARD_STUDY = "flashcards/study?deckId={deckId}&direction={direction}"
+
     fun flashcardDeck(deckId: Long): String = "flashcards/deck/$deckId"
+
+    fun flashcardStudy(deckId: Long?, direction: StudyDirection): String =
+        "flashcards/study?deckId=${deckId ?: -1}&direction=${direction.name}"
 
     fun cardEditor(deckId: Long, cardId: Long? = null): String =
         "flashcards/card?deckId=$deckId&cardId=${cardId ?: -1}"
@@ -259,6 +267,26 @@ fun AppNavigation(modifier: Modifier = Modifier) {
             composable(Routes.FLASHCARDS) {
                 FlashcardsScreen(
                     onOpenDeck = { deckId -> navController.navigate(Routes.flashcardDeck(deckId)) },
+                    onStudy = { deckId, direction ->
+                        navController.navigate(Routes.flashcardStudy(deckId, direction))
+                    },
+                )
+            }
+
+            composable(
+                route = Routes.FLASHCARD_STUDY,
+                arguments = listOf(
+                    navArgument("deckId") { type = NavType.LongType; defaultValue = -1L },
+                    navArgument("direction") {
+                        type = NavType.StringType
+                        defaultValue = StudyDirection.Default.name
+                    },
+                ),
+            ) { entry ->
+                StudyScreen(
+                    deckId = entry.arguments?.getLong("deckId")?.takeIf { it >= 0 },
+                    direction = StudyDirection.fromName(entry.arguments?.getString("direction")),
+                    onBack = { navController.popBackStack() },
                 )
             }
 

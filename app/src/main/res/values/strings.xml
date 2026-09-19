@@ -661,4 +661,21 @@
     <string name="flashcards_discard_body">What you have typed on this card will be lost.</string>
     <string name="flashcards_discard">Discard</string>
     <string name="flashcards_keep_editing">Keep editing</string>
+    <string name="flashcards_study_title">Practice</string>
+    <string name="flashcards_study_start">Start</string>
+    <plurals name="flashcards_study_cards">
+        <item quantity="one">Practise %1$d card</item>
+        <item quantity="other">Practise %1$d cards</item>
+    </plurals>
+    <plurals name="flashcards_due_count">
+        <item quantity="one">%1$d to practise</item>
+        <item quantity="other">%1$d to practise</item>
+    </plurals>
+    <string name="flashcards_all_decks">All decks</string>
+    <string name="flashcards_direction_ca_ro">Catalan → Romanian</string>
+    <string name="flashcards_direction_ro_ca">Romanian → Catalan</string>
+    <string name="flashcards_study_no_cards_title">No cards to practise</string>
+    <string name="flashcards_study_no_cards_body">Add some cards to this deck first.</string>
+    <string name="flashcards_study_nothing_due_title">Nothing due</string>
+    <string name="flashcards_study_nothing_due_body">Every card has been practised recently this way round. They come back on their own schedule: the better you know one, the longer it waits.</string>
 </resources>
