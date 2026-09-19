@@ -18,6 +18,7 @@ import com.david.llegeix.data.db.MIGRATION_10_11
 import com.david.llegeix.data.db.MIGRATION_11_12
 import com.david.llegeix.data.db.MIGRATION_12_13
 import com.david.llegeix.data.db.MIGRATION_13_14
+import com.david.llegeix.data.db.MIGRATION_14_15
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -778,16 +779,91 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Flashcards arrive as two empty tables, and nothing already there moves.
+     *
+     * Checked against a saved word in particular, because the cards look like
+     * saved words — a box, a due date, a count — and a migration that mixed the
+     * two up would be the worst kind of quiet.
+     */
+    @Test
+    fun migrate14To15_addsEmptyFlashcardTablesAndKeepsSavedWords() {
+        helper.createDatabase(TEST_DB, 14).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO word_bookmarks
+                    (id, word, translation, ipa, context, documentUri, displayName,
+                     pageIndex, lineNumber, createdAt, box, dueAt, reviewCount,
+                     lastReviewedAt)
+                VALUES (1, 'enrenou', 'commotion', 'ənrəˈnɔw', 'quin enrenou', NULL,
+                        NULL, 3, 7, 500, 2, 900, 4, 800)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 15, true, MIGRATION_14_15)
+
+        db.query("SELECT word, box, dueAt, lastReviewedAt FROM word_bookmarks").use { cursor ->
+            assertTrue("saved word survived", cursor.moveToFirst())
+            assertEquals("enrenou", cursor.getString(0))
+            assertEquals(2, cursor.getInt(1))
+            assertEquals(900L, cursor.getLong(2))
+            assertEquals(800L, cursor.getLong(3))
+        }
+        db.query("SELECT COUNT(*) FROM flashcard_decks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("no decks are invented", 0, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM flashcards").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("and no cards", 0, cursor.getInt(0))
+        }
+    }
+
+    /** A deck owns its cards: deleting it takes them, and leaves other decks alone. */
+    @Test
+    fun deletingADeckDeletesItsCards() {
+        helper.createDatabase(TEST_DB, 14).close()
+        val db = helper.runMigrationsAndValidate(TEST_DB, 15, true, MIGRATION_14_15)
+        db.execSQL("PRAGMA foreign_keys=ON")
+        db.execSQL("INSERT INTO flashcard_decks (id, name, createdAt) VALUES (1, 'Menjar', 1)")
+        db.execSQL("INSERT INTO flashcard_decks (id, name, createdAt) VALUES (2, 'Verbs', 1)")
+        for ((deck, catalan, romanian) in listOf(
+            Triple(1, "pa", "pâine"),
+            Triple(1, "aigua", "apă"),
+            Triple(2, "menjar", "a mânca"),
+        )) {
+            db.execSQL(
+                """
+                INSERT INTO flashcards
+                    (deckId, catalan, romanian, ipa, ipaApproximate, imagePath, createdAt,
+                     box, dueAt, reviewCount, lastReviewedAt,
+                     reverseBox, reverseDueAt, reverseReviewCount, reverseLastReviewedAt)
+                VALUES ($deck, '$catalan', '$romanian', NULL, 0, NULL, 1,
+                        0, 0, 0, NULL, 0, 0, 0, NULL)
+                """.trimIndent(),
+            )
+        }
+
+        db.execSQL("DELETE FROM flashcard_decks WHERE id = 1")
+
+        db.query("SELECT catalan FROM flashcards").use { cursor ->
+            assertEquals("only the other deck's card is left", 1, cursor.count)
+            assertTrue(cursor.moveToFirst())
+            assertEquals("menjar", cursor.getString(0))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To14_runsEveryStepInSequence() {
+    fun migrate1To15_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            14,
+            15,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -802,6 +878,7 @@ class MigrationTest {
             MIGRATION_11_12,
             MIGRATION_12_13,
             MIGRATION_13_14,
+            MIGRATION_14_15,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

@@ -30,6 +30,7 @@ import androidx.navigation.navArgument
 import com.david.llegeix.ui.bookmarks.BookmarkedCollectionScreen
 import com.david.llegeix.ui.bookmarks.ReadLaterCollectionScreen
 import com.david.llegeix.ui.dictionary.DictionaryScreen
+import com.david.llegeix.ui.flashcards.FlashcardsScreen
 import com.david.llegeix.ui.folders.FolderDetailScreen
 import com.david.llegeix.ui.library.LibraryScreen
 import com.david.llegeix.ui.practice.PracticeScreen
@@ -45,6 +46,7 @@ private object Routes {
     const val SAVED = "saved"
     const val SETTINGS = "settings"
     const val PRACTICE = "practice"
+    const val FLASHCARDS = "flashcards"
 
     /**
      * The three derived collections, which are not real folder rows.
@@ -99,17 +101,25 @@ private data class TopLevelDestination(
  * and Folders became the one Saved tab, because they were two names for setting
  * something aside and between them listed the starred PDFs twice.
  *
- * Exams was the fourth and is gone in v4.1, feature and all. Nothing has been
- * promoted into the space it leaves, and that is the point: the bar is not a
+ * Exams was the fourth and is gone in v4.1, feature and all. Nothing was
+ * promoted into the space it left, and that was the point: the bar is not a
  * shelf with four slots to keep filled, it is the list of things this app is
- * for. Three of them are the books, the language, and what has been set aside.
- * Practice and the reading history are reached from the Saved tab, where
+ * for. Practice and the reading history are reached from the Saved tab, where
  * somebody looking for what they have put by is already standing.
+ *
+ * Flashcards is the fourth now, and it passes that test rather than filling
+ * the slot. It is not another cut of the documents, nor of what was set aside
+ * while reading: it is vocabulary written by hand, a place where things are
+ * made, and one of the main reasons to open the app at all. It goes last
+ * because the first three are still the order a reader meets them in. Four is
+ * also the ceiling. Anything that wants a tab after this has to take one over
+ * by merging, not add a fifth.
  */
 private val topLevelDestinations = listOf(
     TopLevelDestination(Routes.LIBRARY, R.string.nav_library, R.drawable.ic_library),
     TopLevelDestination(Routes.DICTIONARY, R.string.nav_dictionary, R.drawable.ic_dictionary),
     TopLevelDestination(Routes.SAVED, R.string.nav_saved, R.drawable.ic_bookmark),
+    TopLevelDestination(Routes.FLASHCARDS, R.string.nav_flashcards, R.drawable.ic_flashcards),
 )
 
 @Composable
@@ -230,6 +240,10 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     onOpenRecent = { navController.navigate(Routes.RECENT) },
                     onPractise = { navController.navigate(Routes.PRACTICE) },
                 )
+            }
+
+            composable(Routes.FLASHCARDS) {
+                FlashcardsScreen()
             }
 
             composable(Routes.PRACTICE) {

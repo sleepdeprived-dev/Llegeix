@@ -13,6 +13,7 @@
     <string name="nav_dictionary">Diccionari</string>
     <string name="nav_collections">Col·leccions</string>
     <string name="nav_saved">Desat</string>
+    <string name="nav_flashcards">Targetes</string>
 
     <!-- Accions compartides -->
     <string name="action_cancel">Cancel·la</string>
@@ -587,4 +588,27 @@
     <string name="words_today_title">Paraules que he après avui</string>
     <string name="words_today_hint">Toca\'n una per veure què volia dir</string>
     <string name="words_today_more">+%1$d més</string>
+
+    <!-- Targetes -->
+    <string name="flashcards_new_deck">Baralla nova</string>
+    <string name="flashcards_empty_title">Encara no hi ha baralles</string>
+    <string name="flashcards_empty_body">Una baralla és un joc de targetes sobre un tema: menjar, verbs, viatges. Fes-ne una i omple-la de paraules, amb el català a una cara i el romanès a l\'altra.</string>
+    <string name="flashcards_rename_deck_title">Canvia el nom de la baralla</string>
+    <string name="flashcards_deck_name_label">Nom de la baralla</string>
+    <string name="flashcards_deck_name_hint">p. ex. Menjar</string>
+    <string name="flashcards_deck_exists">Ja hi ha una baralla que es diu «%1$s»</string>
+    <string name="flashcards_deck_deleted">S\'ha suprimit «%1$s»</string>
+    <string name="flashcards_delete_deck_title">Vols suprimir «%1$s»?</string>
+    <string name="flashcards_delete_deck_body_empty">La baralla encara no té cap targeta. No es pot desfer.</string>
+    <plurals name="flashcards_delete_deck_body">
+        <item quantity="one">També se suprimeix l\'única targeta que conté, amb la imatge. No es pot desfer.</item>
+        <item quantity="many">També se suprimeixen les %1$d targetes que conté, amb les imatges. No es pot desfer.</item>
+        <item quantity="other">També se suprimeixen les %1$d targetes que conté, amb les imatges. No es pot desfer.</item>
+    </plurals>
+    <string name="flashcards_deck_no_cards">Encara no té targetes</string>
+    <plurals name="flashcards_card_count">
+        <item quantity="one">%1$d targeta</item>
+        <item quantity="many">%1$d targetes</item>
+        <item quantity="other">%1$d targetes</item>
+    </plurals>
 </resources>

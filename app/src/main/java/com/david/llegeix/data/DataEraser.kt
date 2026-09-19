@@ -3,6 +3,7 @@ package com.david.llegeix.data
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.source.LibraryDataRepository
@@ -38,6 +39,7 @@ import kotlin.coroutines.resumeWithException
 class DataEraser(
     private val context: Context,
     private val libraryData: LibraryDataRepository,
+    private val flashcards: FlashcardRepository,
     private val settings: SettingsRepository,
     private val searchHistory: SearchHistoryRepository,
     private val thumbnails: PdfThumbnails,
@@ -54,6 +56,10 @@ class DataEraser(
         releaseAllUriPermissions()
         runCatching { deleteTranslationModels() }
         runCatching { libraryData.eraseEverything() }
+        // The decks, the cards and the pictures copied in for them. The
+        // pictures are the one thing besides the thumbnails that this app keeps
+        // as files, and a wipe that emptied the tables would leave them behind.
+        runCatching { flashcards.eraseEverything() }
         thumbnails.clear()
         searchHistory.clear()
         runCatching { context.cacheDir.deleteRecursively() }

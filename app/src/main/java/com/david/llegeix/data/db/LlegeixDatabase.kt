@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.david.llegeix.data.db.dao.BookmarkDao
 import com.david.llegeix.data.db.dao.DocumentDao
+import com.david.llegeix.data.db.dao.FlashcardDao
 import com.david.llegeix.data.db.dao.FolderDao
 import com.david.llegeix.data.db.dao.RecentlyViewedDao
 import com.david.llegeix.data.db.dao.FolderRuleDao
@@ -13,6 +14,8 @@ import com.david.llegeix.data.db.dao.TagDao
 import com.david.llegeix.data.db.dao.WordBookmarkDao
 import com.david.llegeix.data.db.entity.BookmarkEntity
 import com.david.llegeix.data.db.entity.DocumentEntity
+import com.david.llegeix.data.db.entity.FlashcardDeckEntity
+import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.db.entity.FolderEntity
 import com.david.llegeix.data.db.entity.RecentlyViewedEntity
 import com.david.llegeix.data.db.entity.DocumentTagEntity
@@ -30,8 +33,10 @@ import com.david.llegeix.data.db.entity.WordBookmarkEntity
         TagEntity::class,
         DocumentTagEntity::class,
         FolderRuleEntity::class,
+        FlashcardDeckEntity::class,
+        FlashcardEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 abstract class LlegeixDatabase : RoomDatabase() {
@@ -43,6 +48,7 @@ abstract class LlegeixDatabase : RoomDatabase() {
     abstract fun wordBookmarkDao(): WordBookmarkDao
     abstract fun tagDao(): TagDao
     abstract fun folderRuleDao(): FolderRuleDao
+    abstract fun flashcardDao(): FlashcardDao
 
     companion object {
         fun build(context: Context): LlegeixDatabase =
@@ -53,7 +59,7 @@ abstract class LlegeixDatabase : RoomDatabase() {
             ).addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
                 MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
+                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
             )
                 .build()
     }

@@ -10,6 +10,7 @@ import com.david.llegeix.lang.Speech
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
 import com.david.llegeix.data.DataEraser
+import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.pdf.PdfThumbnails
 import com.david.llegeix.update.UpdateRepository
 import kotlinx.coroutines.CoroutineScope
@@ -78,6 +79,11 @@ class LlegeixApp : Application() {
         LibraryDataRepository(database)
     }
 
+    /** The reader's own decks of vocabulary cards, and their pictures. */
+    val flashcardRepository: FlashcardRepository by lazy {
+        FlashcardRepository(database, filesDir)
+    }
+
     /** First-page covers for the library, shared so the cache outlives a screen. */
     val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(this) }
 
@@ -86,6 +92,7 @@ class LlegeixApp : Application() {
         DataEraser(
             this,
             libraryDataRepository,
+            flashcardRepository,
             settingsRepository,
             searchHistoryRepository,
             pdfThumbnails,

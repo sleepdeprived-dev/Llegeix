@@ -18,6 +18,7 @@
     <string name="nav_dictionary">Dictionary</string>
     <string name="nav_collections">Collections</string>
     <string name="nav_saved">Saved</string>
+    <string name="nav_flashcards">Flashcards</string>
 
     <!-- Shared actions -->
     <string name="action_cancel">Cancel</string>
@@ -608,4 +609,25 @@
     <string name="words_today_title">Words I have learned today</string>
     <string name="words_today_hint">Press one to see what it meant</string>
     <string name="words_today_more">+%1$d more</string>
+
+    <!-- Flashcards -->
+    <string name="flashcards_new_deck">New deck</string>
+    <string name="flashcards_empty_title">No decks yet</string>
+    <string name="flashcards_empty_body">A deck is a set of cards on one topic: food, verbs, travel. Make one, then fill it with words, the Catalan on one side and the Romanian on the other.</string>
+    <string name="flashcards_rename_deck_title">Rename deck</string>
+    <string name="flashcards_deck_name_label">Deck name</string>
+    <string name="flashcards_deck_name_hint">e.g. Food</string>
+    <string name="flashcards_deck_exists">A deck called \"%1$s\" already exists</string>
+    <string name="flashcards_deck_deleted">Deleted \"%1$s\"</string>
+    <string name="flashcards_delete_deck_title">Delete \"%1$s\"?</string>
+    <string name="flashcards_delete_deck_body_empty">The deck has no cards yet. This cannot be undone.</string>
+    <plurals name="flashcards_delete_deck_body">
+        <item quantity="one">Its one card goes with it, picture included. This cannot be undone.</item>
+        <item quantity="other">All %1$d cards in it go with it, pictures included. This cannot be undone.</item>
+    </plurals>
+    <string name="flashcards_deck_no_cards">No cards yet</string>
+    <plurals name="flashcards_card_count">
+        <item quantity="one">%1$d card</item>
+        <item quantity="other">%1$d cards</item>
+    </plurals>
 </resources>

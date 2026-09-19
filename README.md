@@ -324,8 +324,15 @@ lists go, which is the better half of the trade.
 Exam mode was the fourth tab, and in v4.1 it is gone — the feature, its five
 tables, and the copies of the papers it kept on disk. Doing a practice paper on
 a phone turned out to be worse than doing it on paper, which is what it was
-imitating. Nothing has been promoted into the space it leaves: the bar is not a
-shelf with four slots to keep filled, it is the list of things this app is for.
+imitating. Nothing was promoted into the space it left: the bar is not a shelf
+with four slots to keep filled, it is the list of things this app is for.
+
+Flashcards is the fourth tab now, and it earns the place rather than filling
+it. It is not another view of the documents or of what was set aside while
+reading: it is vocabulary written by hand, in decks you make, and one of the
+main reasons to open the app. It sits last, after the three a reader meets
+first. Four is the ceiling: anything wanting a tab after this has to merge into
+one that exists.
 
 ## Language
 

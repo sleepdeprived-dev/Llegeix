@@ -1,0 +1,68 @@
+package com.david.llegeix.data.db.entity
+
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+
+/**
+ * One hand-made card: a Catalan word and what it means in Romanian.
+ *
+ * ### Two schedules, one per direction
+ *
+ * Recognising *pa* and producing *pa* from *pâine* are different skills, and
+ * the first is always the easier. A card with one schedule would be pushed back
+ * a week by a right answer in the easy direction while the hard one had never
+ * been asked. So each direction keeps its own Leitner box and its own due date,
+ * and both are moved by the same [com.david.llegeix.data.practice.Leitner]. The
+ * fields mean exactly what they mean on [WordBookmarkEntity].
+ *
+ * ### The deck owns its cards
+ *
+ * Deleting a deck deletes its cards, by cascade. The pictures are files, which
+ * SQLite cannot delete, so whoever deletes a deck collects [imagePath] first.
+ */
+@Entity(
+    tableName = "flashcards",
+    foreignKeys = [
+        ForeignKey(
+            entity = FlashcardDeckEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["deckId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("deckId")],
+)
+data class FlashcardEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val deckId: Long,
+    val catalan: String,
+    val romanian: String,
+    /** Central Catalan IPA, generated from the spelling and then the reader's. */
+    val ipa: String? = null,
+    /**
+     * True while [ipa] is still the transcriber's guess at an unmarked e or o.
+     *
+     * Cleared the moment the reader edits the pronunciation: from then on it is
+     * their transcription rather than the app's guess, and calling it
+     * approximate would be the app doubting them.
+     */
+    val ipaApproximate: Boolean = false,
+    /** Relative to the app's files directory, e.g. `flashcards/3f2a.jpg`. */
+    val imagePath: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+
+    // Catalan → Romanian: seeing the word and knowing what it means.
+    val box: Int = 0,
+    /** Zero is "as soon as possible", which is what a card just made should be. */
+    val dueAt: Long = 0,
+    val reviewCount: Int = 0,
+    val lastReviewedAt: Long? = null,
+
+    // Romanian → Catalan: having the meaning and producing the word.
+    val reverseBox: Int = 0,
+    val reverseDueAt: Long = 0,
+    val reverseReviewCount: Int = 0,
+    val reverseLastReviewedAt: Long? = null,
+)

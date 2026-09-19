@@ -448,3 +448,57 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
         db.execSQL("ALTER TABLE word_bookmarks ADD COLUMN lastReviewedAt INTEGER")
     }
 }
+
+/**
+ * Flashcards: decks the reader makes, and the cards in them.
+ *
+ * Two new tables and nothing else touched. The cards are not saved words and
+ * do not share their table: a saved word is a note about something read, tied
+ * to a page, and a card is vocabulary written by hand.
+ *
+ * Every column a card has is created here, including the ones later stages of
+ * the feature fill in — the picture, the pronunciation, and a schedule for each
+ * direction of study — so the feature costs one migration rather than one per
+ * stage. The statements are Room's own `createSql` from `schemas/15.json`, so
+ * a database that arrives here matches one built fresh at version 15 exactly.
+ */
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `flashcard_decks` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `flashcards` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `deckId` INTEGER NOT NULL,
+                `catalan` TEXT NOT NULL,
+                `romanian` TEXT NOT NULL,
+                `ipa` TEXT,
+                `ipaApproximate` INTEGER NOT NULL,
+                `imagePath` TEXT,
+                `createdAt` INTEGER NOT NULL,
+                `box` INTEGER NOT NULL,
+                `dueAt` INTEGER NOT NULL,
+                `reviewCount` INTEGER NOT NULL,
+                `lastReviewedAt` INTEGER,
+                `reverseBox` INTEGER NOT NULL,
+                `reverseDueAt` INTEGER NOT NULL,
+                `reverseReviewCount` INTEGER NOT NULL,
+                `reverseLastReviewedAt` INTEGER,
+                FOREIGN KEY(`deckId`) REFERENCES `flashcard_decks`(`id`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_flashcards_deckId` ON `flashcards` (`deckId`)",
+        )
+    }
+}
