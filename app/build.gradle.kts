@@ -30,8 +30,8 @@ android {
         applicationId = "com.david.llegeix"
         minSdk = 31
         targetSdk = 37
-        versionCode = 41
-        versionName = "4.1.4"
+        versionCode = 42
+        versionName = "4.1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

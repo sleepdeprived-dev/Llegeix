@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.ImageSizing
+import com.david.llegeix.data.flashcards.NextDue
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.IpaLine
@@ -148,27 +150,21 @@ fun StudyScreen(
             when {
                 state.isLoading -> CircularProgressIndicator()
 
-                state.isEmpty -> EmptyState(
-                    title = stringResource(
-                        if (state.cardsInScope == 0) {
-                            R.string.flashcards_study_no_cards_title
-                        } else {
-                            R.string.flashcards_study_nothing_due_title
-                        },
-                    ),
-                    body = stringResource(
-                        if (state.cardsInScope == 0) {
-                            R.string.flashcards_study_no_cards_body
-                        } else {
-                            R.string.flashcards_study_nothing_due_body
-                        },
-                    ),
+                state.isEmpty && state.cardsInScope == 0 -> EmptyState(
+                    title = stringResource(R.string.flashcards_study_no_cards_title),
+                    body = stringResource(R.string.flashcards_study_no_cards_body),
                     icon = painterResource(R.drawable.ic_flashcards),
                     primaryAction = {
                         OutlinedButton(onClick = onBack) {
                             Text(stringResource(R.string.practice_done))
                         }
                     },
+                )
+
+                state.isEmpty -> NothingDue(
+                    state = state,
+                    onSwitchDirection = viewModel::onSwitchDirection,
+                    onBack = onBack,
                 )
 
                 state.isFinished -> EmptyState(
@@ -203,6 +199,73 @@ fun StudyScreen(
             }
         }
     }
+}
+
+/**
+ * Nothing is due this way round.
+ *
+ * Said with the two facts that make it useful rather than a dead end: when
+ * the next card comes back, so "nothing due" is a time rather than a verdict,
+ * and — when there is any — the work waiting the other way round, one press
+ * away, because somebody who sat down to practise did not sit down to be told
+ * to go away.
+ */
+@Composable
+private fun NothingDue(
+    state: StudyUiState,
+    onSwitchDirection: () -> Unit,
+    onBack: () -> Unit,
+) {
+    val nextDue = state.nextDueAt?.let { dueAt ->
+        val wait = NextDue.waitUntil(dueAt, System.currentTimeMillis())
+        pluralStringResource(
+            when (wait.unit) {
+                NextDue.Unit.MINUTES -> R.plurals.flashcards_next_due_minutes
+                NextDue.Unit.HOURS -> R.plurals.flashcards_next_due_hours
+                NextDue.Unit.DAYS -> R.plurals.flashcards_next_due_days
+            },
+            wait.amount,
+            wait.amount,
+        )
+    }
+    val canSwitch = state.otherDirectionDue > 0
+
+    EmptyState(
+        title = stringResource(R.string.flashcards_study_nothing_due_title),
+        body = listOfNotNull(
+            stringResource(R.string.flashcards_study_nothing_due_body),
+            nextDue,
+        ).joinToString(" "),
+        icon = painterResource(R.drawable.ic_check_circle),
+        primaryAction = if (canSwitch) {
+            {
+                Button(onClick = onSwitchDirection) {
+                    Text(
+                        stringResource(
+                            R.string.flashcards_study_switch,
+                            stringResource(directionLabel(state.otherDirection)),
+                            state.otherDirectionDue,
+                        ),
+                    )
+                }
+            }
+        } else {
+            {
+                OutlinedButton(onClick = onBack) {
+                    Text(stringResource(R.string.practice_done))
+                }
+            }
+        },
+        secondaryAction = if (canSwitch) {
+            {
+                OutlinedButton(onClick = onBack) {
+                    Text(stringResource(R.string.practice_done))
+                }
+            }
+        } else {
+            null
+        },
+    )
 }
 
 /** How a direction is named wherever it is chosen or shown. */

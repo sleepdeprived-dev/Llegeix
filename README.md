@@ -238,6 +238,26 @@ does both after bumping the version in `app/build.gradle.kts`.
   box and comes back later; wrong and it comes back in ten minutes. Everything
   is on the device and the schedule is derived from one stored number, so the
   intervals can be tuned without migrating anything.
+- **Flashcards** — a tab of vocabulary written by hand, in decks you make:
+  the Catalan on one side of a card and the Romanian on the other, with a
+  picture if one helps. Writing a card fills in what the app can and says that
+  it did: the pronunciation is worked out from the spelling as you type, marked
+  *approx.* where the spelling cannot settle a vowel, and the translator on the
+  phone suggests a meaning — both follow the word until you type in the field,
+  and are yours from then on. Pictures come through Android's photo picker, so
+  the app is never given the gallery, and are copied in shrunk and upright so a
+  card keeps its picture after the photo is gone. A deck is searched with its
+  accents ignored, because the word you half remember is typed on whichever
+  keyboard is up.
+
+  Practice asks one way round at a time, and each way keeps its own schedule:
+  recognising *pa* says nothing about producing it from *pâine*, so a right
+  answer in the easy direction never pushes back the hard one. The speaker and
+  the pronunciation go with the Catalan side and the picture with the meaning,
+  so nothing on the question side gives the answer away. It is the saved words'
+  scheduler, not a second one. When nothing is due, the screen says when the
+  next card comes back and offers the other direction if anything is waiting
+  there.
 - **Search** — one field, in the library, in the dictionary, in the saved words
   and in the reader's find bar, so searching looks and behaves the same wherever
   you do it. Each offers back what was searched for last, under the field while

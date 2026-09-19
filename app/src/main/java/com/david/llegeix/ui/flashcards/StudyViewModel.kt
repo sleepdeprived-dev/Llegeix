@@ -36,7 +36,13 @@ data class StudyUiState(
     val correct: Int = 0,
     /** How many cards there are to study at all, for when none are due. */
     val cardsInScope: Int = 0,
+    /** When the next card comes back this way round, for when none are due now. */
+    val nextDueAt: Long? = null,
+    /** How many are waiting the other way round, which is somewhere to go instead. */
+    val otherDirectionDue: Int = 0,
 ) {
+    val otherDirection: StudyDirection get() = direction.other()
+
     val current: FlashcardEntity? get() = cards.getOrNull(index)
 
     val isFinished: Boolean get() = !isLoading && cards.isNotEmpty() && index >= cards.size
@@ -74,7 +80,9 @@ class StudyViewModel(
         _uiState.update { it.copy(isLoading = true) }
         val deckName = deckId?.let { flashcards.observeDeck(it).first()?.name }
         val all = flashcards.cardsToStudy(deckId)
-        val due = FlashcardSession.deal(all, _uiState.value.direction, System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        val direction = _uiState.value.direction
+        val due = FlashcardSession.deal(all, direction, now)
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -84,8 +92,19 @@ class StudyViewModel(
                 isRevealed = false,
                 correct = 0,
                 cardsInScope = all.size,
+                nextDueAt = FlashcardSession.nextDueAt(all, direction, now),
+                otherDirectionDue = all.count { card -> direction.other().isDue(card, now) },
             )
         }
+    }
+
+    /**
+     * Nothing is due this way round but something is the other way: turn the
+     * session round rather than send the reader back to choose it.
+     */
+    fun onSwitchDirection() {
+        _uiState.update { it.copy(direction = it.direction.other()) }
+        deal()
     }
 
     fun onReveal() {

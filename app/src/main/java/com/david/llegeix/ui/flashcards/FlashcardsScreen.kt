@@ -231,16 +231,33 @@ fun FlashcardsScreen(
             title = {
                 Text(stringResource(R.string.flashcards_delete_deck_title, deck.name))
             },
+            // Says exactly what goes, in numbers: a deck is hand-made work, and
+            // "delete this deck?" alone does not tell anybody it is sixty cards
+            // and twelve photographs they chose one by one.
             text = {
                 Text(
                     if (deck.cardCount == 0) {
                         stringResource(R.string.flashcards_delete_deck_body_empty)
                     } else {
-                        pluralStringResource(
-                            R.plurals.flashcards_delete_deck_body,
-                            deck.cardCount,
-                            deck.cardCount,
-                        )
+                        listOfNotNull(
+                            pluralStringResource(
+                                R.plurals.flashcards_delete_deck_body,
+                                deck.cardCount,
+                                deck.cardCount,
+                            ),
+                            when {
+                                deck.imageCount == 0 -> null
+                                // "One of them" when there is only one reads as a slip.
+                                deck.cardCount == 1 ->
+                                    stringResource(R.string.flashcards_delete_deck_only_picture)
+                                else -> pluralStringResource(
+                                    R.plurals.flashcards_delete_deck_pictures,
+                                    deck.imageCount,
+                                    deck.imageCount,
+                                )
+                            },
+                            stringResource(R.string.flashcards_cannot_undo),
+                        ).joinToString(" ")
                     },
                 )
             },

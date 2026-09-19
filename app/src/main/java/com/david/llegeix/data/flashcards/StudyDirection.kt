@@ -30,6 +30,12 @@ enum class StudyDirection {
 
     fun isDue(card: FlashcardEntity, now: Long): Boolean = dueAtOf(card) <= now
 
+    /** The same card, the other way round. */
+    fun other(): StudyDirection = when (this) {
+        CATALAN_TO_ROMANIAN -> ROMANIAN_TO_CATALAN
+        ROMANIAN_TO_CATALAN -> CATALAN_TO_ROMANIAN
+    }
+
     /** Where the card lands in this direction after an answer, by the one scheduler the app has. */
     fun answer(card: FlashcardEntity, correct: Boolean, now: Long): Leitner.Next =
         Leitner.answer(boxOf(card), correct, now)

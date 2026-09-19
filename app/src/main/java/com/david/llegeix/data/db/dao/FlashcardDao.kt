@@ -13,6 +13,8 @@ data class DeckWithCount(
     val name: String,
     val createdAt: Long,
     val cardCount: Int,
+    /** How many of its cards carry a picture, which deleting the deck also deletes. */
+    val imageCount: Int,
 )
 
 /** How many of a deck's cards are due in each direction of study. */
@@ -29,7 +31,7 @@ interface FlashcardDao {
     @Query(
         """
         SELECT d.id AS id, d.name AS name, d.createdAt AS createdAt,
-               COUNT(c.id) AS cardCount
+               COUNT(c.id) AS cardCount, COUNT(c.imagePath) AS imageCount
         FROM flashcard_decks d
         LEFT JOIN flashcards c ON c.deckId = d.id
         GROUP BY d.id

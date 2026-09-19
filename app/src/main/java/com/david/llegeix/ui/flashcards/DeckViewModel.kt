@@ -9,12 +9,14 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
+import com.david.llegeix.data.flashcards.CardSearch
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -30,6 +32,24 @@ class DeckViewModel(
     /** Null until the first answer, so an empty deck is not flashed on the way in. */
     val cards: StateFlow<List<FlashcardEntity>?> = flashcards.observeCards(deckId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query.asStateFlow()
+
+    /**
+     * The cards the search finds, or all of them when there is no search.
+     *
+     * Filtered here rather than in the database, because the match ignores
+     * accents and SQLite's `LIKE` cannot; a deck is small enough that this is
+     * the cheaper of the two anyway.
+     */
+    val shown: StateFlow<List<FlashcardEntity>?> = combine(cards, _query) { all, query ->
+        all?.let { CardSearch.filter(it, query) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun onQueryChange(query: String) {
+        _query.value = query
+    }
 
     private val _message = MutableStateFlow<UiText?>(null)
     val message: StateFlow<UiText?> = _message.asStateFlow()

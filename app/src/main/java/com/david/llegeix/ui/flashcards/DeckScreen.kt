@@ -54,6 +54,7 @@ import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuIcon
+import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 
@@ -77,6 +78,8 @@ fun DeckScreen(
 ) {
     val deck by viewModel.deck.collectAsStateWithLifecycle()
     val cards by viewModel.cards.collectAsStateWithLifecycle()
+    val shown by viewModel.shown.collectAsStateWithLifecycle()
+    val query by viewModel.query.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var deleting by remember { mutableStateOf<FlashcardEntity?>(null) }
@@ -132,18 +135,43 @@ fun DeckScreen(
                 modifier = Modifier.padding(innerPadding),
             )
 
-            else -> LazyColumn(
+            else -> Column(
                 modifier = Modifier
                     .padding(innerPadding)
                     .fillMaxSize(),
-                contentPadding = PaddingValues(top = Space.sm, bottom = CardListBottomClearance),
             ) {
-                items(list, key = { it.id }) { card ->
-                    CardRow(
-                        card = card,
-                        onOpen = { onEditCard(card.id) },
-                        onDelete = { deleting = card },
+                // Above the list rather than in it, so it stays put while the
+                // cards scroll under it: a deck is searched while looking
+                // through it, not before.
+                SearchField(
+                    query = query,
+                    placeholder = stringResource(R.string.flashcards_search_deck),
+                    onQueryChange = viewModel::onQueryChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Space.screen)
+                        .padding(top = Space.sm),
+                )
+                val found = shown.orEmpty()
+                if (found.isEmpty() && query.isNotBlank()) {
+                    Text(
+                        text = stringResource(R.string.flashcards_search_none, query.trim()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = Space.screen, vertical = Space.xl),
                     )
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = Space.sm, bottom = CardListBottomClearance),
+                ) {
+                    items(found, key = { it.id }) { card ->
+                        CardRow(
+                            card = card,
+                            onOpen = { onEditCard(card.id) },
+                            onDelete = { deleting = card },
+                        )
+                    }
                 }
             }
         }
