@@ -110,10 +110,6 @@ class FlashcardsViewModel(
         return DeckNames.check(name, others)
     }
 
-    fun createDeck(name: String) = viewModelScope.launch {
-        report(flashcards.createDeck(name))
-    }
-
     fun renameDeck(id: Long, name: String) = viewModelScope.launch {
         report(flashcards.renameDeck(id, name))
     }

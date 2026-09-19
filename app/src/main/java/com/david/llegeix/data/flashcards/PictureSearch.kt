@@ -69,39 +69,51 @@ class PictureSearch(context: Context) {
         )
     }
 
-    /** A word's meanings as ARASAAC's people wrote them; either may be missing. */
-    data class Meanings(val romanian: String?, val english: String?)
+    /**
+     * One word in the three languages a card holds, as ARASAAC's people wrote
+     * them; any of the three may be missing.
+     */
+    data class Labels(val catalan: String?, val romanian: String?, val english: String?)
 
-    /** Looked up once per word per run, since both meaning fields ask. */
-    private val meanings = LruCache<String, Meanings>(200)
+    /** Looked up once per word per run, since several fields ask. */
+    private val labels = LruCache<String, Labels>(300)
 
     /**
-     * The Romanian and English labels of the pictogram labelled with exactly
-     * [word] in Catalan, or null when there is none or ARASAAC cannot be
-     * reached — in which case the caller asks the translator instead.
+     * The labels of the pictogram labelled with exactly [word] in [from] —
+     * "ca", "ro" or "en" — or null when there is none or ARASAAC cannot be
+     * reached, in which case the caller asks the translator instead.
      */
-    suspend fun meanings(word: String): Meanings? {
-        val key = word.trim().lowercase()
-        if (key.isEmpty()) return null
-        meanings.get(key)?.let { return it }
+    suspend fun labels(word: String, from: String): Labels? {
+        val trimmed = word.trim().lowercase()
+        if (trimmed.isEmpty()) return null
+        val key = "$from:$trimmed"
+        labels.get(key)?.let { return it }
         return withContext(Dispatchers.IO) {
             val id = runCatching {
                 ArasaacWords.firstExactId(
-                    fetch(ArasaacWords.exactSearchUrl(key), MAX_ANSWER_BYTES, acceptEmpty = true)
+                    fetch(ArasaacWords.exactSearchUrl(trimmed, from), MAX_ANSWER_BYTES, acceptEmpty = true)
                         .toString(Charsets.UTF_8),
-                    key,
+                    trimmed,
                 )
             }.getOrNull() ?: return@withContext null
-            fun label(language: String): String? = runCatching {
-                ArasaacWords.firstKeyword(
-                    fetch(ArasaacWords.pictogramUrl(language, id), MAX_ANSWER_BYTES).toString(Charsets.UTF_8),
-                )
-            }.getOrNull()
-            Meanings(romanian = label("ro"), english = label("en"))
-                .takeIf { it.romanian != null || it.english != null }
-                ?.also { meanings.put(key, it) }
+            fun label(language: String): String? = if (language == from) {
+                word.trim()
+            } else {
+                runCatching {
+                    ArasaacWords.firstKeyword(
+                        fetch(ArasaacWords.pictogramUrl(language, id), MAX_ANSWER_BYTES)
+                            .toString(Charsets.UTF_8),
+                    )
+                }.getOrNull()
+            }
+            Labels(catalan = label("ca"), romanian = label("ro"), english = label("en"))
+                .takeIf { listOfNotNull(it.catalan, it.romanian, it.english).size > 1 }
+                ?.also { labels.put(key, it) }
         }
     }
+
+    /** The Romanian and English of a Catalan word; see [labels]. */
+    suspend fun meanings(word: String): Labels? = labels(word, from = "ca")
 
     /** A thumbnail, or null if it could not be fetched; the row leaves a blank tile. */
     suspend fun thumbnail(url: String): Bitmap? {

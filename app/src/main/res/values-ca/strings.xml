@@ -740,4 +740,5 @@
     <string name="flashcards_study_no_english_title">Encara no tenen significat en anglès</string>
     <string name="flashcards_study_no_english_body">Aquestes targetes només tenen el significat en romanès. Omple l\'anglès des de la baralla, o repassa en romanès amb la bandera de dalt de la pestanya.</string>
     <string name="flashcards_meaning_from_dictionary">Del diccionari d\'ARASAAC, escrit per persones per a aquesta paraula. Canvia\'l si vols dir una altra cosa.</string>
+    <string name="flashcards_catalan_suggested">Deduït del significat. Canvia-ho si vols dir una altra paraula.</string>
 </resources>

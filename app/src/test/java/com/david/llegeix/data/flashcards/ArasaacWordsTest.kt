@@ -17,6 +17,11 @@ class ArasaacWordsTest {
             ArasaacWords.exactSearchUrl("cafe amb llet"),
         )
         assertEquals("https://api.arasaac.org/v1/pictograms/ro/2619", ArasaacWords.pictogramUrl("ro", 2619))
+        assertEquals(
+            "a meaning is searched in its own language",
+            "https://api.arasaac.org/v1/pictograms/ro/bestsearch/p%C3%A2ine",
+            ArasaacWords.exactSearchUrl("pâine", language = "ro"),
+        )
     }
 
     @Test

@@ -265,6 +265,11 @@ fun CardEditorScreen(
                     textStyle = MaterialTheme.typography.headlineSmall,
                     singleLine = true,
                     leadingIcon = { LanguageFlag(R.drawable.ic_flag_ca) },
+                    supportingText = if (state.catalanIsSuggestion && state.catalan.isNotBlank()) {
+                        { Text(stringResource(R.string.flashcards_catalan_suggested)) }
+                    } else {
+                        null
+                    },
                     // Hearing it is the check the transcription cannot give.
                     // The button only speaks on a press, like everywhere else.
                     trailingIcon = if (state.catalan.isNotBlank()) {

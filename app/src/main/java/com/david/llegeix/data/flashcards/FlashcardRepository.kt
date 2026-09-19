@@ -48,10 +48,20 @@ class FlashcardRepository(
      * The check and the insert share a transaction, so two presses in quick
      * succession cannot both find the name free and both take it.
      */
-    suspend fun createDeck(name: String): DeckNames.Check = database.withTransaction {
+    suspend fun createDeck(
+        name: String,
+        coverPath: String? = null,
+        coverCredit: String? = null,
+    ): DeckNames.Check = database.withTransaction {
         val check = DeckNames.check(name, dao.decks().map { it.name })
         if (check is DeckNames.Check.Ok) {
-            dao.insertDeck(FlashcardDeckEntity(name = check.name))
+            dao.insertDeck(
+                FlashcardDeckEntity(
+                    name = check.name,
+                    coverPath = coverPath,
+                    coverCredit = coverCredit.takeIf { coverPath != null },
+                ),
+            )
         }
         check
     }
@@ -194,7 +204,8 @@ class FlashcardRepository(
     /** Copy a picked photo in, shrunk. Returns its stored path. */
     suspend fun importImage(uri: Uri): String = images.import(uri)
 
-    suspend fun loadImage(path: String, maxEdge: Int): Bitmap? = images.load(path, maxEdge)
+    suspend fun loadImage(path: String, maxEdge: Int, cutPaper: Boolean = false): Bitmap? =
+        images.load(path, maxEdge, cutPaper)
 
     suspend fun deleteImage(path: String) = images.delete(listOf(path))
 

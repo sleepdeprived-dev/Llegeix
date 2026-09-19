@@ -1,6 +1,8 @@
 package com.david.llegeix.ui.flashcards
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material3.Button
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -59,12 +61,15 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -146,6 +151,7 @@ fun FlashcardsScreen(
     }
 
     var creating by remember { mutableStateOf(false) }
+    var newDeckCount by remember { mutableIntStateOf(0) }
     var renaming by remember { mutableStateOf<DeckWithCount?>(null) }
     var deleting by remember { mutableStateOf<DeckWithCount?>(null) }
     var picturing by remember { mutableStateOf<DeckWithCount?>(null) }
@@ -184,7 +190,7 @@ fun FlashcardsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { creating = true }) {
+            FloatingActionButton(onClick = { newDeckCount++; creating = true }) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.flashcards_new_deck))
             }
         },
@@ -270,16 +276,9 @@ fun FlashcardsScreen(
     }
 
     if (creating) {
-        DeckNameDialog(
-            title = stringResource(R.string.flashcards_new_deck),
-            confirmLabel = stringResource(R.string.action_create),
-            check = { viewModel.checkName(it) },
-            onDismiss = { creating = false },
-            onConfirm = { name ->
-                viewModel.createDeck(name)
-                creating = false
-            },
-        )
+        // A fresh sheet each time it is opened, so the last attempt's name and
+        // picture are not waiting in it.
+        NewDeckSheet(key = newDeckCount, onDismiss = { creating = false })
     }
 
     renaming?.let { deck ->
@@ -642,6 +641,127 @@ private fun DeckCover(deck: DeckWithCount) {
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
+        }
+    }
+}
+
+/**
+ * A new deck: its name, and a picture for it chosen while the name is typed.
+ *
+ * A sheet rather than the small dialog it used to be, because the picture is
+ * part of making the deck now and a dialog has no room for a grid of them.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
+    val viewModel: NewDeckViewModel = viewModel(key = "new-deck-$key", factory = NewDeckViewModel.Factory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val suggestions by viewModel.pictures.state.collectAsStateWithLifecycle()
+    val source by viewModel.pictures.source.collectAsStateWithLifecycle()
+    val created by viewModel.created.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val pickOwn = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let(viewModel::onPickOwn)
+    }
+    val close = {
+        viewModel.onCancel()
+        onDismiss()
+    }
+    LaunchedEffect(created) { if (created) onDismiss() }
+    // The name is the first thing asked, so the keyboard is already up for it.
+    val nameFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { nameFocus.requestFocus() } }
+
+    ModalBottomSheet(
+        onDismissRequest = close,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Space.screen)
+                .padding(bottom = Space.xl)
+                .navigationBarsPadding()
+                .imePadding(),
+        ) {
+            Text(
+                text = stringResource(R.string.flashcards_new_deck),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            val taken = state.check as? DeckNames.Check.Taken
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = viewModel::onNameChange,
+                label = { Text(stringResource(R.string.flashcards_deck_name_label)) },
+                placeholder = { Text(stringResource(R.string.flashcards_deck_name_hint)) },
+                singleLine = true,
+                isError = taken != null,
+                supportingText = taken?.let {
+                    { Text(stringResource(R.string.flashcards_deck_exists, it.existing)) }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Space.md)
+                    .focusRequester(nameFocus),
+            )
+
+            Text(
+                text = stringResource(R.string.flashcards_picture),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = Space.md, bottom = Space.sm),
+            )
+            val cover = state.coverPath
+            if (cover != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CardImage(
+                        path = cover,
+                        maxEdge = 384,
+                        contentDescription = stringResource(R.string.flashcards_picture),
+                        pictogram = PictureResults.isPictogram(state.coverCredit),
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(RoundedCornerShape(20.dp)),
+                    )
+                    TextButton(
+                        onClick = viewModel::onRemoveCover,
+                        modifier = Modifier.padding(start = Space.md),
+                    ) { Text(stringResource(R.string.flashcards_picture_other)) }
+                }
+            } else {
+                PictureGrid(
+                    suggestions = suggestions,
+                    source = source,
+                    onSourceChange = viewModel::onSourceChange,
+                    onPick = viewModel::onPick,
+                    onPickOwn = {
+                        pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onRetry = viewModel::onRetry,
+                )
+            }
+            message?.resolved()?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = Space.sm),
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Space.sm),
+                modifier = Modifier.padding(top = Space.lg),
+            ) {
+                OutlinedButton(onClick = close, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+                Button(
+                    onClick = viewModel::onCreate,
+                    enabled = state.check is DeckNames.Check.Ok && !state.isBusy,
+                    modifier = Modifier.weight(1f),
+                ) { Text(stringResource(R.string.action_create)) }
+            }
         }
     }
 }

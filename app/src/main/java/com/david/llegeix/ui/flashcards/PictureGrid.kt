@@ -220,10 +220,12 @@ private fun SuggestionTile(
     // A pictogram on the accent-tinted paper every pictogram in the app sits
     // on (see CardImage); a photo fills its square.
     val isPictogram = hit.source == PictureSource.PICTOGRAMS
-    val style = pictogramStyle()
+    // ARASAAC serves its pictograms with a transparent background already, so
+    // the paper they sit on is simply the colour drawn behind them.
+    val paper = pictogramPaper()
     Box(
         modifier = modifier
-            .background(if (isPictogram) style.paper else MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(if (isPictogram) paper else MaterialTheme.colorScheme.surfaceContainerHighest)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -232,7 +234,6 @@ private fun SuggestionTile(
                 bitmap = it,
                 contentDescription = stringResource(R.string.flashcards_picture_use),
                 contentScale = if (isPictogram) ContentScale.Fit else ContentScale.Crop,
-                colorFilter = if (isPictogram) style.filter else null,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(if (isPictogram) Space.sm else 0.dp),

@@ -140,8 +140,8 @@ class FlashcardImages(context: Context) {
      * The picture at [path], decoded to about [maxEdge] across, or null if it
      * is missing or unreadable — a card still works without its picture.
      */
-    suspend fun load(path: String, maxEdge: Int): Bitmap? {
-        val key = "$path@$maxEdge"
+    suspend fun load(path: String, maxEdge: Int, cutPaper: Boolean = false): Bitmap? {
+        val key = "$path@$maxEdge" + if (cutPaper) "#paper" else ""
         cache.get(key)?.let { return it }
         return withContext(Dispatchers.IO) {
             val file = fileOf(path)
@@ -150,9 +150,29 @@ class FlashcardImages(context: Context) {
             if (bounds.outWidth <= 0) return@withContext null
             val options = BitmapFactory.Options().apply {
                 inSampleSize = ImageSizing.sampleSize(bounds.outWidth, bounds.outHeight, maxEdge)
+                // Mutable, so a pictogram's paper can be taken out in place.
+                inMutable = cutPaper
             }
-            BitmapFactory.decodeFile(file.path, options)?.also { cache.put(key, it) }
+            val decoded = BitmapFactory.decodeFile(file.path, options) ?: return@withContext null
+            val shown = if (cutPaper) withoutPaper(decoded) else decoded
+            shown.also { cache.put(key, it) }
         }
+    }
+
+    /** A pictogram with its white paper made transparent; see [PictogramMatte]. */
+    private fun withoutPaper(bitmap: Bitmap): Bitmap {
+        val argb = if (bitmap.config == Bitmap.Config.ARGB_8888 && bitmap.isMutable) {
+            bitmap
+        } else {
+            bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        }
+        argb.setHasAlpha(true)
+        val w = argb.width
+        val h = argb.height
+        val pixels = IntArray(w * h)
+        argb.getPixels(pixels, 0, w, 0, 0, w, h)
+        argb.setPixels(PictogramMatte.cutPaper(pixels, w, h), 0, w, 0, 0, w, h)
+        return argb
     }
 
     suspend fun delete(paths: Collection<String>) = withContext(Dispatchers.IO) {

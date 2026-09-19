@@ -20,9 +20,9 @@ import java.net.URLEncoder
  */
 object ArasaacWords {
 
-    /** Pictograms labelled with exactly [word] in Catalan, best first. */
-    fun exactSearchUrl(word: String): String =
-        "https://api.arasaac.org/v1/pictograms/ca/bestsearch/" +
+    /** Pictograms labelled with exactly [word] in [language], best first. */
+    fun exactSearchUrl(word: String, language: String = "ca"): String =
+        "https://api.arasaac.org/v1/pictograms/$language/bestsearch/" +
             URLEncoder.encode(word.trim(), "UTF-8").replace("+", "%20")
 
     /** One pictogram, labelled in [language]. */

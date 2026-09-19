@@ -56,6 +56,12 @@ data class CardEditorUiState(
     /** False when editing a card that already exists. */
     val isNew: Boolean = true,
     val catalan: String = "",
+    /**
+     * The Catalan was filled in by the app, from a meaning the reader typed
+     * first, rather than typed by them. It follows that meaning until the
+     * reader writes in the Catalan field themselves, like any other suggestion.
+     */
+    val catalanIsSuggestion: Boolean = false,
     val romanian: Suggested = Suggested(),
     /** Optional: the meaning for practising against English. */
     val english: Suggested = Suggested(),
@@ -145,9 +151,13 @@ class CardEditorViewModel(
     private val toRomanian = Translator("ro")
     private val toEnglish = Translator("en")
     private val romanianToEnglish = Translator("en", source = "ro")
+    private val romanianToCatalan = Translator("ca", source = "ro")
+    private val englishToCatalan = Translator("ca", source = "en")
+    private val englishToRomanian = Translator("ro", source = "en")
 
     private var romanianJob: Job? = null
     private var englishJob: Job? = null
+    private var fromMeaningJob: Job? = null
 
     val pictures = PictureSuggester(
         scope = viewModelScope,
@@ -215,10 +225,14 @@ class CardEditorViewModel(
     // ---- Typing ------------------------------------------------------------
 
     fun onCatalanChange(text: String) {
+        // Typed, so the Catalan is the reader's from here on, and the meanings
+        // follow it rather than the other way round.
+        fromMeaningJob?.cancel()
         val pronunciation = CatalanIpa.transcribe(text)
         updateForm {
             it.copy(
                 catalan = text,
+                catalanIsSuggestion = false,
                 ipa = it.ipa.offer(pronunciation.ipa, pronunciation.isApproximate),
                 // The word the last meanings were suggested for has gone.
                 romanian = if (text.isBlank()) it.romanian.offer("") else it.romanian,
@@ -239,10 +253,12 @@ class CardEditorViewModel(
 
     fun onRomanianChange(text: String) {
         updateForm { it.copy(romanian = it.romanian.typed(text)) }
+        suggestFromMeaning(text.trim(), from = "ro")
     }
 
     fun onEnglishChange(text: String) {
         updateForm { it.copy(english = it.english.typed(text)) }
+        suggestFromMeaning(text.trim(), from = "en")
     }
 
     fun onIpaChange(text: String) {
@@ -254,34 +270,83 @@ class CardEditorViewModel(
      * has just corrected is the moment to search again — once they stop.
      */
     fun onMeaningEditingDone() {
-        suggestEnglishFromRomanian()
         if (pictures.source.value == PictureSource.PHOTOS) suggestPictures(pause = false)
     }
 
     /**
-     * A Romanian meaning the reader has written is a better thing to translate
-     * than the Catalan was: when the English field is still waiting for a
-     * suggestion, offer it one from there.
+     * The card written the other way round: a meaning typed first fills in the
+     * Catalan — and with it the pronunciation and the pictures — and the other
+     * meaning, the same way typing the Catalan fills in the meanings.
+     *
+     * Only into fields that are still waiting for a suggestion: an empty
+     * Catalan, or one the app filled in itself; never one the reader typed.
+     * ARASAAC's people are asked first, from the language the meaning is in,
+     * and the translator only for words they have not labelled.
      */
-    private fun suggestEnglishFromRomanian() {
+    private fun suggestFromMeaning(word: String, from: String) {
+        fromMeaningJob?.cancel()
         val state = _uiState.value
-        val romanian = state.romanian.text.trim()
-        if (romanian.isEmpty() || state.romanian.isSuggestion || !state.english.acceptsSuggestions) return
-        val word = state.catalan.trim()
-        englishJob?.cancel()
-        englishJob = viewModelScope.launch {
-            val english = romanianToEnglish.translate(romanian)
-                ?.takeIf { !it.equals(romanian, ignoreCase = true) }
-                ?.let { matchLeadingCase(word, it) }
-                ?: return@launch
-            updateForm {
-                if (it.catalan.trim() == word) {
-                    it.copy(english = it.english.offer(english), englishSource = MeaningSource.TRANSLATOR)
-                } else {
-                    it
+        val catalanOpen = state.catalan.isBlank() || state.catalanIsSuggestion
+        if (!catalanOpen) return
+        if (word.isEmpty()) {
+            // The meaning it came from has gone, so the suggested Catalan goes too.
+            if (state.catalanIsSuggestion) applyCatalanSuggestion("")
+            return
+        }
+        fromMeaningJob = viewModelScope.launch {
+            delay(SUGGEST_DELAY_MS)
+            val stillTyped = { current: CardEditorUiState ->
+                when (from) {
+                    "ro" -> current.romanian.text.trim() == word
+                    else -> current.english.text.trim() == word
+                }
+            }
+            val labelled = pictureSearch.labels(word, from)
+            val catalan = labelled?.catalan
+                ?: when (from) {
+                    "ro" -> romanianToCatalan.translate(word)
+                    else -> englishToCatalan.translate(word)
+                }?.takeIf { !it.equals(word, ignoreCase = true) }
+            if (catalan != null && stillTyped(_uiState.value)) {
+                applyCatalanSuggestion(matchLeadingCase(word, catalan))
+            }
+            // And the other meaning, while the reader is still on this word.
+            if (from == "ro" && _uiState.value.english.acceptsSuggestions) {
+                val english = labelled?.english?.let { it to MeaningSource.DICTIONARY }
+                    ?: romanianToEnglish.translate(word)
+                        ?.takeIf { !it.equals(word, ignoreCase = true) }
+                        ?.let { matchLeadingCase(word, it) to MeaningSource.TRANSLATOR }
+                if (english != null && stillTyped(_uiState.value)) {
+                    updateForm { it.copy(english = it.english.offer(english.first), englishSource = english.second) }
+                }
+            }
+            if (from == "en" && _uiState.value.romanian.acceptsSuggestions) {
+                val romanian = labelled?.romanian?.let { it to MeaningSource.DICTIONARY }
+                    ?: englishToRomanian.translate(word)
+                        ?.takeIf { !it.equals(word, ignoreCase = true) }
+                        ?.let { matchLeadingCase(word, it) to MeaningSource.TRANSLATOR }
+                if (romanian != null && stillTyped(_uiState.value)) {
+                    updateForm { it.copy(romanian = it.romanian.offer(romanian.first), romanianSource = romanian.second) }
                 }
             }
         }
+    }
+
+    /**
+     * Put a suggested Catalan in its field, with the pronunciation that goes
+     * with it and pictures of it, without asking for meanings back: they are
+     * what it was worked out from.
+     */
+    private fun applyCatalanSuggestion(catalan: String) {
+        val pronunciation = CatalanIpa.transcribe(catalan)
+        updateForm {
+            it.copy(
+                catalan = catalan,
+                catalanIsSuggestion = catalan.isNotEmpty(),
+                ipa = it.ipa.offer(pronunciation.ipa, pronunciation.isApproximate),
+            )
+        }
+        suggestPictures()
     }
 
     /**
@@ -504,6 +569,9 @@ class CardEditorViewModel(
         toRomanian.close()
         toEnglish.close()
         romanianToEnglish.close()
+        romanianToCatalan.close()
+        englishToCatalan.close()
+        englishToRomanian.close()
     }
 
     /**

@@ -254,7 +254,12 @@ does both after bumping the version in `app/build.gradle.kts`.
   A meaning is taken first from ARASAAC, whose pictograms are labelled by people
   in every language they cover — *poma* is *măr* there, where a translator
   handed the one word says "apple" — and from the translator only for words
-  ARASAAC has not labelled. The field says which of the two it came from.
+  ARASAAC has not labelled. The field says which of the two it came from. It
+  works the other way round too: a card can be started from its Romanian or its
+  English, and the Catalan, its pronunciation and the other meaning are filled
+  in from there. A pictogram's white paper is cut away and replaced with a
+  colour of the theme — dark at night — while the drawing itself is left
+  exactly as it was drawn.
   Pictures are offered as the word is typed, as a grid: ARASAAC pictograms,
   searched in Catalan, or openly licensed photos from Openverse, searched with
   the card's English meaning — the lone Catalan word is too thin a thing to
