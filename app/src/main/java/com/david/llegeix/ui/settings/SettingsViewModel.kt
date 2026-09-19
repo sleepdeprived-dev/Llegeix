@@ -9,7 +9,6 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.DataEraser
 import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.AppLanguage
-import com.david.llegeix.data.settings.ContinueShelf
 import com.david.llegeix.data.settings.AppSettings
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.ThemeMode
@@ -80,8 +79,6 @@ class SettingsViewModel(
      * somewhere, and a shelf that is no longer on the screen cannot offer the
      * button that brings it back.
      */
-    fun onContinueShelfChange(shelf: ContinueShelf) =
-        settingsRepository.setContinueShelf(shelf)
 
     /** Applies the mixed colour and selects it in one step. */
     fun onCustomAccentChange(argb: Int) = settingsRepository.setCustomAccent(argb)

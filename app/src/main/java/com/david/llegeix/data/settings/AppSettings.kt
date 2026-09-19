@@ -159,53 +159,41 @@ enum class LibraryLayout(val key: String) {
 }
 
 /**
- * How much of the Continue reading shelf the library draws.
+ * Whether the Continue reading shelf is open or folded.
  *
- * Three states rather than a switch, because "I do not want this" and "I do not
- * want this *right now*" are different wishes and the shelf is the sort of thing
- * people change their mind about. [COLLAPSED] keeps the heading and folds the
- * cards away, so the shelf is one tap from being back and the reader can still
- * see that the app knows where they were; [HIDDEN] takes the whole thing off the
- * library.
+ * Two states, toggled by a tap on the shelf's own heading. There used to be a
+ * third, which took the shelf off the library altogether; it went, because a
+ * shelf that is not on the screen cannot carry the way back to itself, and that
+ * way back had to live in Configuració instead. Folded is as far as it goes:
+ * the heading stays, says how many books are on the shelf, and opens again
+ * where the reader is looking.
  *
  * Nothing is forgotten in either state. The reading history is untouched, it is
  * still listed under Saved as *Recently viewed*, and every book keeps the page
  * it was left on — this is a decision about one shelf on one screen, not about
  * what the app remembers.
  */
-enum class ContinueShelf(
-    val key: String,
-    @param:StringRes val labelRes: Int,
-    /**
-     * One line saying what the state does, for the dialog raised by holding the
-     * shelf's heading. "Folded away" and "hidden" are near enough in ordinary
-     * speech that three bare words would be a guess.
-     */
-    @param:StringRes val summaryRes: Int,
-) {
-    SHOWN(
-        "shown",
-        R.string.library_continue_shown,
-        R.string.library_continue_shown_summary,
-    ),
-    COLLAPSED(
-        "collapsed",
-        R.string.library_continue_collapsed,
-        R.string.library_continue_collapsed_summary,
-    ),
-    HIDDEN(
-        "hidden",
-        R.string.library_continue_hidden,
-        R.string.library_continue_hidden_summary,
-    ),
+enum class ContinueShelf(val key: String) {
+    SHOWN("shown"),
+    COLLAPSED("collapsed"),
     ;
 
-    /** The state the chevron on the shelf's own heading leads to. */
+    /** The state a tap on the shelf's heading leads to. */
     fun toggled(): ContinueShelf = if (this == COLLAPSED) SHOWN else COLLAPSED
 
     companion object {
-        fun fromKey(key: String?): ContinueShelf =
-            entries.firstOrNull { it.key == key } ?: SHOWN
+        /**
+         * The stored state, with the retired "hidden" read as folded: somebody
+         * who had taken the shelf away gets its heading back, closed, rather
+         * than the whole shelf open again unasked — and the heading is the way
+         * to open it.
+         */
+        fun fromKey(key: String?): ContinueShelf = when (key) {
+            HIDDEN_KEY -> COLLAPSED
+            else -> entries.firstOrNull { it.key == key } ?: SHOWN
+        }
+
+        private const val HIDDEN_KEY = "hidden"
     }
 }
 

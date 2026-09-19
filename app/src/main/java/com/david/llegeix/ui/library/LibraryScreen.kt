@@ -156,7 +156,6 @@ fun LibraryScreen(
     var sourcesSheetFor by remember { mutableStateOf<String?>(null) }
     var showAddDocuments by remember { mutableStateOf(false) }
     var showSort by remember { mutableStateOf(false) }
-    var showContinueOptions by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<PdfDocument?>(null) }
     var hidingFolder by remember { mutableStateOf<LibraryFolder?>(null) }
     var choosingFlag by remember { mutableStateOf(false) }
@@ -209,7 +208,6 @@ fun LibraryScreen(
 
     val recentRemoved = stringResource(R.string.recent_removed)
     val undoLabel = stringResource(R.string.action_undo)
-    val continueHidden = stringResource(R.string.library_continue_hidden_message)
 
     val errorMessage = state.errorMessage?.resolved()
     LaunchedEffect(errorMessage) {
@@ -348,22 +346,6 @@ fun LibraryScreen(
                 onForgetRecent = { recent -> forgettingRecent = recent },
                 onSeeHistory = onOpenHistory,
                 onToggleContinue = viewModel::onToggleContinueShelf,
-                onContinueOptions = { showContinueOptions = true },
-                onHideContinue = {
-                    viewModel.onHideContinueShelf()
-                    // Undone from here, and findable in Configuració afterwards:
-                    // a shelf that vanished with no way back would be a setting
-                    // the reader had no way of knowing they had changed.
-                    scope.launch {
-                        val result = snackbarHostState.showSnackbar(
-                            message = continueHidden,
-                            actionLabel = undoLabel,
-                        )
-                        if (result == SnackbarResult.ActionPerformed) {
-                            viewModel.onContinueShelfChange(ContinueShelf.SHOWN)
-                        }
-                    }
-                },
                 onOpenFolder = viewModel::onOpenFolder,
                 onHideFolder = { hidingFolder = it },
                 onEditTags = { tagsFor = it },
@@ -446,17 +428,6 @@ fun LibraryScreen(
                 showAddDocuments = false
                 openAllFilesSettings()
             },
-        )
-    }
-
-    if (showContinueOptions) {
-        ContinueShelfDialog(
-            current = continueShelf,
-            onChoose = {
-                viewModel.onContinueShelfChange(it)
-                showContinueOptions = false
-            },
-            onDismiss = { showContinueOptions = false },
         )
     }
 
@@ -627,67 +598,6 @@ private fun LibraryControlsRow(
             },
         )
     }
-}
-
-/**
- * All three states of the Continue reading shelf, from holding its heading.
- *
- * The heading's tap folds the shelf and the button on it hides the shelf, and
- * between them they cover what most people want without a dialog ever opening.
- * This is for the rest: somebody who wants it gone should not have to fold it
- * first to be offered that, and somebody who has hidden it and is now looking at
- * a library without it should not have to remember that Configuració is where it
- * lives. A hold is the gesture every other list in this app answers with its
- * options, so it is the gesture this one answers with too.
- *
- * Each state carries a line saying what it does, because "folded away" and
- * "hidden" are near enough in ordinary speech that three bare words would be a
- * guess.
- */
-@Composable
-private fun ContinueShelfDialog(
-    current: ContinueShelf,
-    onChoose: (ContinueShelf) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.library_continue_title)) },
-        text = {
-            Column {
-                ContinueShelf.entries.forEach { shelf ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .selectable(
-                                selected = shelf == current,
-                                role = Role.RadioButton,
-                                onClick = { onChoose(shelf) },
-                            )
-                            .padding(vertical = Space.sm, horizontal = Space.xs),
-                    ) {
-                        RadioButton(selected = shelf == current, onClick = null)
-                        Column(modifier = Modifier.padding(start = Space.md)) {
-                            Text(
-                                text = stringResource(shelf.labelRes),
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                text = stringResource(shelf.summaryRes),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
-        },
-    )
 }
 
 /**
@@ -1074,8 +984,6 @@ private fun LibraryBody(
     onForgetRecent: (RecentDocument) -> Unit,
     onSeeHistory: () -> Unit,
     onToggleContinue: () -> Unit,
-    onHideContinue: () -> Unit,
-    onContinueOptions: () -> Unit,
     onOpenFolder: (String) -> Unit,
     onHideFolder: (LibraryFolder) -> Unit,
     onEditTags: (PdfDocument) -> Unit,
@@ -1133,8 +1041,6 @@ private fun LibraryBody(
                 onForgetRecent = onForgetRecent,
                 onSeeHistory = onSeeHistory,
                 onToggleContinue = onToggleContinue,
-                onHideContinue = onHideContinue,
-                onContinueOptions = onContinueOptions,
                 onOpenSort = onOpenSort,
             )
             EmptyState(
@@ -1168,8 +1074,6 @@ private fun LibraryBody(
                 onForgetRecent = onForgetRecent,
                 onSeeHistory = onSeeHistory,
                 onToggleContinue = onToggleContinue,
-                onHideContinue = onHideContinue,
-                onContinueOptions = onContinueOptions,
                 onOpenSort = onOpenSort,
             )
             EmptyState(
@@ -1212,8 +1116,6 @@ private fun LibraryBody(
                     onForgetRecent = onForgetRecent,
                     onSeeHistory = onSeeHistory,
                     onToggleContinue = onToggleContinue,
-                    onHideContinue = onHideContinue,
-                    onContinueOptions = onContinueOptions,
                     onOpenSort = onOpenSort,
                 )
             }
@@ -1276,8 +1178,6 @@ private fun LibraryBody(
                     onForgetRecent = onForgetRecent,
                     onSeeHistory = onSeeHistory,
                     onToggleContinue = onToggleContinue,
-                    onHideContinue = onHideContinue,
-                    onContinueOptions = onContinueOptions,
                     onOpenSort = onOpenSort,
                 )
             }
@@ -1345,13 +1245,10 @@ private fun LibraryShelves(
     onForgetRecent: (RecentDocument) -> Unit,
     onSeeHistory: () -> Unit,
     onToggleContinue: () -> Unit,
-    onHideContinue: () -> Unit,
-    onContinueOptions: () -> Unit,
 ) {
     val showsContinue = continueReading.isNotEmpty() &&
         state.path == null &&
-        state.query.isBlank() &&
-        shelf != ContinueShelf.HIDDEN
+        state.query.isBlank()
     val showsControls = state.totalFound > 0
     // Nothing to say, and therefore no height taken. Without this the header is
     // a bare gap above the first document on every screen that has none of the
@@ -1368,8 +1265,6 @@ private fun LibraryShelves(
                 onForget = onForgetRecent,
                 onSeeAll = onSeeHistory,
                 onToggleCollapsed = onToggleContinue,
-                onHide = onHideContinue,
-                onShowOptions = onContinueOptions,
                 modifier = Modifier.padding(top = Space.md),
             )
         }

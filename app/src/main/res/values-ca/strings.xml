@@ -526,20 +526,13 @@
     -->
     <string name="library_continue_collapse">Plega aquest prestatge</string>
     <string name="library_continue_expand">Desplega aquest prestatge</string>
-    <string name="library_continue_hide">Amaga</string>
-    <string name="library_continue_hidden_message">Prestatge amagat. El pots recuperar a Configuració.</string>
     <plurals name="library_continue_count">
         <item quantity="one">%1$d llibre a mitges</item>
         <item quantity="many">%1$d de llibres a mitges</item>
         <item quantity="other">%1$d llibres a mitges</item>
     </plurals>
-    <string name="library_continue_shown">Visible</string>
-    <string name="library_continue_collapsed">Plegat</string>
-    <string name="library_continue_hidden">Amagat</string>
 
     <!-- Les mateixes tres opcions, a Configuració, que és el camí de tornada. -->
-    <string name="settings_library">Biblioteca</string>
-    <string name="settings_continue_shelf_summary">El prestatge de llibres a mitges, a dalt de la biblioteca.</string>
 
     <!--
         L'ordenació, fora del menú de tres punts i dins de la biblioteca.
@@ -575,9 +568,6 @@
         alhora, i per això cada un porta una línia que diu què fa: «plegat» i
         «amagat» s\'assemblen prou perquè tres paraules soles fossin una endevinalla.
     -->
-    <string name="library_continue_shown_summary">El prestatge i els seus llibres</string>
-    <string name="library_continue_collapsed_summary">Només el títol, a un toc d\'obrir-se</string>
-    <string name="library_continue_hidden_summary">Res a dalt de la biblioteca</string>
 
     <!--
         Les paraules del dia, dins de les paraules desades.

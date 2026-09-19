@@ -44,7 +44,7 @@ class SettingsRepository(context: Context) {
         _settings.value = current.copy(libraryLayout = layout)
     }
 
-    /** Shown, folded shut, or off the library altogether. See [ContinueShelf]. */
+    /** Open or folded shut. See [ContinueShelf]. */
     fun setContinueShelf(shelf: ContinueShelf) {
         prefs.edit { putString(KEY_CONTINUE_SHELF, shelf.key) }
         _settings.value = current.copy(continueShelf = shelf)

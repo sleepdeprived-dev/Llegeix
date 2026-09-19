@@ -168,27 +168,20 @@ fun SourcesRow(
  * first page: a shelf of things to resume should hold only things there is
  * something to resume.
  *
- * ### Folding it away, and taking it off the screen
+ * ### Folding it away
  *
- * Not everybody wants it. Somebody who reads one book at a time has a shelf of
- * one, and somebody who browses their library more than they resume it has a
- * shelf that is simply in the way — so the heading is a control rather than a
- * label, and the chevron on it folds the cards away. Collapsed, the heading
- * stays and says how many books are on the shelf, which is the point: the state
- * is visible, so it is one tap from being undone, and nobody has to remember
- * that they turned something off.
+ * Not everybody wants it open. Somebody who reads one book at a time has a
+ * shelf of one, and somebody who browses their library more than they resume
+ * it has a shelf that is simply in the way — so the heading is a control rather
+ * than a label, and a tap on it folds the cards away or brings them back.
+ * Folded, the heading stays and says how many books are on the shelf.
  *
- * *Hide* is offered only once the shelf is collapsed, and that is deliberate.
- * The two are one escalation apart — fold it away, and then, if it is still not
- * wanted, take it off the library — so the stronger of the two is not sitting on
- * a shelf that most people are happy with, waiting to be pressed by mistake.
- *
- * Holding the heading opens all three states at once. The tap is the thing you
- * do without thinking and the hold is the thing you do when you have a view
- * about it, which is the same division every list row in this app already makes,
- * and it means somebody who wants the shelf gone does not have to fold it first
- * to be offered that. Neither route is a menu on the app bar: this is a decision
- * about the thing being looked at, made on the thing being looked at.
+ * That is the only thing it does, on purpose. The shelf used to be hideable
+ * too, from a button on the folded heading, a dialog behind a hold, and a
+ * section in Configuració: three places to manage one shelf, one of them on
+ * another screen, and a state in which the shelf was gone with nothing on the
+ * library to say it had ever been there. Folded is as far as it goes now, so
+ * the way back is always the heading itself, where the reader is looking.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -200,8 +193,6 @@ fun ContinueReadingRow(
     onForget: (RecentDocument) -> Unit,
     onSeeAll: () -> Unit,
     onToggleCollapsed: () -> Unit,
-    onHide: () -> Unit,
-    onShowOptions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -219,10 +210,7 @@ fun ContinueReadingRow(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .combinedClickable(
-                        onClick = onToggleCollapsed,
-                        onLongClick = onShowOptions,
-                    )
+                    .clickable(onClick = onToggleCollapsed)
                     .padding(vertical = Space.xs),
             ) {
                 // One arrow turned rather than two icons swapped, so the fold
@@ -267,17 +255,10 @@ fun ContinueReadingRow(
                     }
                 }
             }
-            // One trailing action per state, and each is the one that state
-            // makes sense of. Open, the useful offer is the rest of the
-            // history; folded, it is getting rid of the shelf for good.
-            if (collapsed) {
-                TextButton(onClick = onHide) {
-                    Text(stringResource(R.string.library_continue_hide))
-                }
-            } else {
-                TextButton(onClick = onSeeAll) {
-                    Text(stringResource(R.string.library_continue_history))
-                }
+            // The rest of the history, open or folded: the shelf is only the
+            // books part-read, and the full list is one press further.
+            TextButton(onClick = onSeeAll) {
+                Text(stringResource(R.string.library_continue_history))
             }
         }
         AnimatedVisibility(visible = !collapsed) {

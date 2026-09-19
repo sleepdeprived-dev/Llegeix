@@ -32,18 +32,16 @@ does both after bumping the version in `app/build.gradle.kts`.
   with what I was reading" one tap away from the screen that appears on launch;
   the full history is still there, one press of the shelf's own button away.
 
-  Not everybody wants it, so the heading is a control rather than a label. The
-  chevron on it folds the cards away and leaves a line saying how many books are
-  on the shelf — the state is visible, so it is one tap from being undone. Only
-  once it is folded does the shelf offer to be hidden altogether, because the
-  two are one escalation apart and the stronger of them has no business sitting
-  on a shelf most people are happy with; holding the heading offers all three
-  states at once, with a line each saying what they do, which is the same
-  division between tap and hold that every list row in this app already makes.
-  Hiding is undone from the message that follows it and, later, from
-  Configuració, which is the only honest place to put the way back to something
-  that is no longer on the screen. Nothing is forgotten in either state: the
-  reading history is untouched, and every book keeps the page it was left on.
+  Not everybody wants it open, so the heading is a control rather than a label:
+  a tap folds the cards away and leaves a line saying how many books are on the
+  shelf, and another tap brings them back. That is all it does. It could once
+  be hidden altogether too, from the folded heading, from a dialog behind a hold
+  and from Configuració — three places to manage one shelf, one of them on
+  another screen, and a state in which it was gone with nothing on the library
+  to say it had been there. Folded is as far as it goes now, so the way back is
+  always the heading, where the reader is looking. Nothing is forgotten either
+  way: the reading history is untouched, and every book keeps the page it was
+  left on.
 - **Reading progress** — how long a document is, learned the first time it is
   opened, so every cover in the app carries a bar along its foot and every list
   row says how far in you are. A shelf of two hundred PDFs answers "which of

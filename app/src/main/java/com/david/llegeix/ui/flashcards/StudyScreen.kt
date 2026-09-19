@@ -370,20 +370,24 @@ private fun StudyCard(
             } else {
                 // Drawn turned round once more, so the back reads the right way.
                 Face(modifier = Modifier.graphicsLayer { rotationY = 180f }) {
-                    Text(
-                        text = when (direction) {
-                            StudyDirection.CATALAN_TO_MEANING -> card.catalan
-                            StudyDirection.MEANING_TO_CATALAN -> meaning
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier
-                            .padding(vertical = Space.lg)
-                            .fillMaxWidth(0.3f),
-                    )
+                    // The question again, small, in a pill of its own above the
+                    // answer — so the answer is read with what it answers. When
+                    // the question was the Catalan it keeps its pronunciation and
+                    // its speaker: turning the card over is exactly when hearing
+                    // the word once more is worth a press.
+                    QuestionEcho {
+                        when (direction) {
+                            StudyDirection.CATALAN_TO_MEANING -> CatalanEcho(card)
+                            StudyDirection.MEANING_TO_CATALAN -> Text(
+                                text = meaning,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = Space.sm, horizontal = Space.sm),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(Space.xl))
                     when (direction) {
                         StudyDirection.CATALAN_TO_MEANING -> MeaningSide(card, meaning, asAnswer = true)
                         StudyDirection.MEANING_TO_CATALAN -> CatalanSide(card, asAnswer = true)
@@ -540,6 +544,38 @@ private fun Finished(state: StudyUiState, onRepeat: () -> Unit, onDone: () -> Un
     }
 }
 
+/** A soft pill holding the question, on the back of the card. */
+@Composable
+private fun QuestionEcho(content: @Composable () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(start = Space.lg, end = Space.xs),
+    ) { content() }
+}
+
+/** The Catalan asked about, with its pronunciation under it and its speaker beside it. */
+@Composable
+private fun CatalanEcho(card: FlashcardEntity) {
+    Column(modifier = Modifier.padding(vertical = Space.sm)) {
+        Text(
+            text = card.catalan,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        card.ipa?.takeIf { it.isNotBlank() }?.let { ipa ->
+            Text(
+                text = "[$ipa]" + if (card.ipaApproximate) "  " + stringResource(R.string.lookup_ipa_approximate) else "",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    PronounceButton(text = card.catalan)
+}
+
 /**
  * The Catalan, with how it sounds.
  *
@@ -552,7 +588,7 @@ private fun CatalanSide(card: FlashcardEntity, asAnswer: Boolean) {
     Text(
         text = card.catalan,
         style = if (asAnswer) {
-            MaterialTheme.typography.headlineSmall
+            MaterialTheme.typography.headlineMedium
         } else {
             MaterialTheme.typography.headlineLarge
         },
@@ -593,7 +629,7 @@ private fun MeaningSide(card: FlashcardEntity, meaning: String, asAnswer: Boolea
     Text(
         text = meaning,
         style = if (asAnswer) {
-            MaterialTheme.typography.headlineSmall
+            MaterialTheme.typography.headlineMedium
         } else {
             MaterialTheme.typography.headlineLarge
         },

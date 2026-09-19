@@ -544,19 +544,12 @@
     -->
     <string name="library_continue_collapse">Fold this shelf away</string>
     <string name="library_continue_expand">Open this shelf</string>
-    <string name="library_continue_hide">Hide</string>
-    <string name="library_continue_hidden_message">Shelf hidden. You can bring it back in Settings.</string>
     <plurals name="library_continue_count">
         <item quantity="one">%1$d book on the go</item>
         <item quantity="other">%1$d books on the go</item>
     </plurals>
-    <string name="library_continue_shown">Shown</string>
-    <string name="library_continue_collapsed">Folded away</string>
-    <string name="library_continue_hidden">Hidden</string>
 
     <!-- The same three choices, in Configuració, which is the way back from Hidden. -->
-    <string name="settings_library">Library</string>
-    <string name="settings_continue_shelf_summary">The shelf of part-read books at the top of the library.</string>
 
     <!--
         Sorting, out of the overflow menu and onto the library.
@@ -594,9 +587,6 @@
         each needs a line saying what it does: "folded away" and "hidden" are
         near enough in ordinary speech that three bare words would be a guess.
     -->
-    <string name="library_continue_shown_summary">The shelf and its books</string>
-    <string name="library_continue_collapsed_summary">Just the heading, one tap from opening</string>
-    <string name="library_continue_hidden_summary">Nothing at the top of the library</string>
 
     <!--
         The day\'s words, in the Saved words list.

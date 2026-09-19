@@ -178,11 +178,6 @@ class LibraryViewModel(
     fun onToggleContinueShelf() =
         settings.setContinueShelf(continueShelf.value.toggled())
 
-    /** Take the shelf off the library. Undone from the snackbar, or in Configuració. */
-    fun onHideContinueShelf() = settings.setContinueShelf(ContinueShelf.HIDDEN)
-
-    fun onContinueShelfChange(shelf: ContinueShelf) = settings.setContinueShelf(shelf)
-
     /**
      * How far through each opened document the reader got.
      *

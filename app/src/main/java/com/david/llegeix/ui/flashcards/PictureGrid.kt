@@ -32,9 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -222,10 +220,10 @@ private fun SuggestionTile(
     // A pictogram on the accent-tinted paper every pictogram in the app sits
     // on (see CardImage); a photo fills its square.
     val isPictogram = hit.source == PictureSource.PICTOGRAMS
-    val tint = pictogramTint()
+    val style = pictogramStyle()
     Box(
         modifier = modifier
-            .background(if (isPictogram) tint else MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(if (isPictogram) style.paper else MaterialTheme.colorScheme.surfaceContainerHighest)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -234,7 +232,7 @@ private fun SuggestionTile(
                 bitmap = it,
                 contentDescription = stringResource(R.string.flashcards_picture_use),
                 contentScale = if (isPictogram) ContentScale.Fit else ContentScale.Crop,
-                colorFilter = if (isPictogram) ColorFilter.tint(tint, BlendMode.Multiply) else null,
+                colorFilter = if (isPictogram) style.filter else null,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(if (isPictogram) Space.sm else 0.dp),
