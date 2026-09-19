@@ -699,4 +699,29 @@
         <item quantity="one">The next card comes back in %1$d day.</item>
         <item quantity="other">The next card comes back in %1$d days.</item>
     </plurals>
+    <string name="flashcards_backup_title">Backup</string>
+    <string name="flashcards_backup_body">Your cards are on this phone and nowhere else: uninstalling the app or losing the phone loses them. Save a copy to a file now and then, and keep it somewhere safe.</string>
+    <string name="flashcards_backup_save">Save a copy</string>
+    <string name="flashcards_backup_restore">Restore from a copy</string>
+    <string name="flashcards_backup_filename">Llegeix flashcards %1$s.zip</string>
+    <plurals name="flashcards_backup_saved">
+        <item quantity="one">Copy saved, with %1$d card.</item>
+        <item quantity="other">Copy saved, with %1$d cards.</item>
+    </plurals>
+    <string name="flashcards_backup_nothing_new">Nothing new to add.</string>
+    <plurals name="flashcards_backup_added">
+        <item quantity="one">%1$d card added.</item>
+        <item quantity="other">%1$d cards added.</item>
+    </plurals>
+    <plurals name="flashcards_backup_skipped">
+        <item quantity="one">%1$d was already here.</item>
+        <item quantity="other">%1$d were already here.</item>
+    </plurals>
+    <plurals name="flashcards_backup_pictures_lost">
+        <item quantity="one">%1$d picture could not be read.</item>
+        <item quantity="other">%1$d pictures could not be read.</item>
+    </plurals>
+    <string name="flashcards_backup_not_a_copy">That file is not a copy of Llegeix flashcards.</string>
+    <string name="flashcards_backup_too_new">That copy was made by a newer version of Llegeix. Update the app, then try again.</string>
+    <string name="flashcards_backup_failed">The copy could not be read or written. Nothing was changed.</string>
 </resources>

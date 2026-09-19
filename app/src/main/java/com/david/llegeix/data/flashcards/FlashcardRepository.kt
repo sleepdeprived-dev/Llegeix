@@ -8,8 +8,13 @@ import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
+import com.david.llegeix.data.flashcards.FlashcardBackup.toBackup
+import com.david.llegeix.data.flashcards.FlashcardBackup.toEntity
+import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.io.File
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -22,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class FlashcardRepository(
     private val database: LlegeixDatabase,
     private val images: FlashcardImages,
+    private val backupFiles: FlashcardBackupFiles,
 ) {
 
     private val dao = database.flashcardDao()
@@ -161,6 +167,100 @@ class FlashcardRepository(
     suspend fun sweepImagesOnce() {
         if (!swept.compareAndSet(false, true)) return
         runCatching { images.sweep(dao.allImagePaths().toSet()) }
+    }
+
+    // ---- Backup ------------------------------------------------------------
+
+    /**
+     * Write every deck, card and picture to [uri] as one copy.
+     *
+     * Returns how many cards went into it. Pictures are copied as they are
+     * stored, under their own file names, since those are already names this
+     * app made up.
+     */
+    suspend fun exportTo(uri: Uri, now: Long = System.currentTimeMillis()): Int {
+        val cardsByDeck = dao.allCards().groupBy { it.deckId }
+        val pictures = LinkedHashMap<String, File>()
+        val decks = dao.decks()
+            .sortedBy { it.name.lowercase(Locale.ROOT) }
+            .map { deck ->
+                FlashcardBackup.Deck(
+                    name = deck.name,
+                    createdAt = deck.createdAt,
+                    cards = CardOrder.sorted(cardsByDeck[deck.id].orEmpty()).map { card ->
+                        val entry = card.imagePath?.let { path ->
+                            (FlashcardBackup.IMAGE_FOLDER + File(path).name).also {
+                                pictures[it] = images.fileOf(path)
+                            }
+                        }
+                        card.toBackup(entry)
+                    },
+                )
+            }
+        backupFiles.write(uri, FlashcardBackup.encode(decks, now), pictures)
+        return decks.sumOf { it.cards.size }
+    }
+
+    /** What a restore did, for the message afterwards. */
+    data class RestoreResult(val added: Int, val skipped: Int, val picturesLost: Int)
+
+    /**
+     * Add what is in the copy at [uri] to what is already here.
+     *
+     * Only ever adds; see [FlashcardBackup] for the rules. The pictures are
+     * brought in first, each through the same path as a picked photo, and the
+     * rows are written afterwards in one transaction — so a copy that fails
+     * part-way adds nothing rather than half a deck, and the pictures already
+     * brought in for it are deleted again.
+     *
+     * Throws [FlashcardBackup.UnreadableException] for a file that is not a
+     * copy this version understands.
+     */
+    suspend fun restoreFrom(uri: Uri, now: Long = System.currentTimeMillis()): RestoreResult {
+        val unpacked = backupFiles.read(uri)
+        try {
+            val incoming = FlashcardBackup.decode(unpacked.json)
+            val existing = dao.decks().map { deck ->
+                FlashcardBackup.ExistingDeck(deck.id, deck.name, dao.cardsInDeck(deck.id))
+            }
+            val plan = FlashcardBackup.plan(incoming, existing)
+
+            var picturesLost = 0
+            val broughtIn = mutableListOf<String>()
+            val prepared = plan.decks.map { deck ->
+                deck to deck.cards.map { card ->
+                    val source = card.image?.let { unpacked.images[it] }
+                    val stored = source?.let { file ->
+                        runCatchingCancellable { images.import(Uri.fromFile(file)) }.getOrNull()
+                    }
+                    // Named in the copy but missing from it, or not a picture:
+                    // the card still comes back, without it, and the count says so.
+                    if (card.image != null && stored == null) picturesLost++
+                    stored?.let(broughtIn::add)
+                    card to stored
+                }
+            }
+
+            try {
+                database.withTransaction {
+                    for ((deck, cards) in prepared) {
+                        val deckId = deck.existingId ?: dao.insertDeck(
+                            FlashcardDeckEntity(
+                                name = deck.name,
+                                createdAt = deck.createdAt.takeIf { it > 0 } ?: now,
+                            ),
+                        )
+                        for ((card, picture) in cards) dao.insertCard(card.toEntity(deckId, picture))
+                    }
+                }
+            } catch (error: Throwable) {
+                images.delete(broughtIn)
+                throw error
+            }
+            return RestoreResult(plan.cardCount, plan.skipped, picturesLost)
+        } finally {
+            backupFiles.discard(unpacked)
+        }
     }
 
     /** Every deck, card and picture, for the wipe in Configuració. */

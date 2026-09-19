@@ -1,5 +1,7 @@
 package com.david.llegeix.ui.flashcards
 
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -10,12 +12,14 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.DeckNames
+import com.david.llegeix.data.flashcards.FlashcardBackup
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -121,11 +125,81 @@ class FlashcardsViewModel(
         }
     }
 
+    // ---- Backup ------------------------------------------------------------
+
+    /** A copy is being written or read; the buttons wait for it. */
+    private val _backupBusy = MutableStateFlow(false)
+    val backupBusy: StateFlow<Boolean> = _backupBusy.asStateFlow()
+
+    fun onExport(uri: Uri) = backup {
+        val cards = flashcards.exportTo(uri)
+        UiText.ofPlural(R.plurals.flashcards_backup_saved, cards)
+    }
+
+    fun onRestore(uri: Uri) = backup {
+        val result = flashcards.restoreFrom(uri)
+        if (result.added == 0) {
+            UiText.Joined(
+                listOfNotNull(
+                    UiText.of(R.string.flashcards_backup_nothing_new),
+                    result.skipped.takeIf { it > 0 }
+                        ?.let { UiText.ofPlural(R.plurals.flashcards_backup_skipped, it) },
+                ),
+            )
+        } else {
+            UiText.Joined(
+                listOfNotNull(
+                    UiText.ofPlural(R.plurals.flashcards_backup_added, result.added),
+                    result.skipped.takeIf { it > 0 }
+                        ?.let { UiText.ofPlural(R.plurals.flashcards_backup_skipped, it) },
+                    result.picturesLost.takeIf { it > 0 }
+                        ?.let { UiText.ofPlural(R.plurals.flashcards_backup_pictures_lost, it) },
+                ),
+            )
+        }
+    }
+
+    /**
+     * Run one backup job, one at a time, and say how it went.
+     *
+     * Failures are told apart only as far as the reader can act on them: not a
+     * copy at all, a copy from a newer version of the app, or a file that
+     * could not be read or written.
+     */
+    private fun backup(job: suspend () -> UiText) {
+        if (_backupBusy.value) return
+        _backupBusy.value = true
+        viewModelScope.launch {
+            _message.value = try {
+                job()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: FlashcardBackup.UnreadableException) {
+                UiText.of(
+                    when (error.reason) {
+                        FlashcardBackup.UnreadableException.Reason.NOT_A_BACKUP ->
+                            R.string.flashcards_backup_not_a_copy
+
+                        FlashcardBackup.UnreadableException.Reason.TOO_NEW ->
+                            R.string.flashcards_backup_too_new
+                    },
+                )
+            } catch (error: Exception) {
+                Log.w(TAG, "Backup failed", error)
+                UiText.of(R.string.flashcards_backup_failed)
+            } finally {
+                _backupBusy.value = false
+            }
+        }
+    }
+
     fun onMessageShown() {
         _message.value = null
     }
 
     companion object {
+        private const val TAG = "Flashcards"
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]

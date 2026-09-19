@@ -686,4 +686,33 @@
         <item quantity="many">La propera targeta torna d\'aquí a %1$d dies.</item>
         <item quantity="other">La propera targeta torna d\'aquí a %1$d dies.</item>
     </plurals>
+    <string name="flashcards_backup_title">Còpia de seguretat</string>
+    <string name="flashcards_backup_body">Les targetes són en aquest telèfon i enlloc més: si desinstal·les l\'aplicació o perds el telèfon, es perden. Desa\'n una còpia en un fitxer de tant en tant i guarda-la en un lloc segur.</string>
+    <string name="flashcards_backup_save">Desa\'n una còpia</string>
+    <string name="flashcards_backup_restore">Recupera d\'una còpia</string>
+    <string name="flashcards_backup_filename">Llegeix targetes %1$s.zip</string>
+    <plurals name="flashcards_backup_saved">
+        <item quantity="one">Còpia desada, amb %1$d targeta.</item>
+        <item quantity="many">Còpia desada, amb %1$d targetes.</item>
+        <item quantity="other">Còpia desada, amb %1$d targetes.</item>
+    </plurals>
+    <string name="flashcards_backup_nothing_new">No hi havia res de nou per afegir.</string>
+    <plurals name="flashcards_backup_added">
+        <item quantity="one">S\'ha afegit %1$d targeta.</item>
+        <item quantity="many">S\'han afegit %1$d targetes.</item>
+        <item quantity="other">S\'han afegit %1$d targetes.</item>
+    </plurals>
+    <plurals name="flashcards_backup_skipped">
+        <item quantity="one">%1$d ja hi era.</item>
+        <item quantity="many">%1$d ja hi eren.</item>
+        <item quantity="other">%1$d ja hi eren.</item>
+    </plurals>
+    <plurals name="flashcards_backup_pictures_lost">
+        <item quantity="one">No s\'ha pogut llegir %1$d imatge.</item>
+        <item quantity="many">No s\'han pogut llegir %1$d imatges.</item>
+        <item quantity="other">No s\'han pogut llegir %1$d imatges.</item>
+    </plurals>
+    <string name="flashcards_backup_not_a_copy">Aquest fitxer no és una còpia de targetes de Llegeix.</string>
+    <string name="flashcards_backup_too_new">Aquesta còpia l\'ha feta una versió més nova de Llegeix. Actualitza l\'aplicació i torna-ho a provar.</string>
+    <string name="flashcards_backup_failed">No s\'ha pogut llegir o escriure la còpia. No s\'ha canviat res.</string>
 </resources>

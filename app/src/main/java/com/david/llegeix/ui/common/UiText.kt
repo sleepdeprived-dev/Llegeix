@@ -38,6 +38,15 @@ sealed interface UiText {
 
     data class Raw(val value: String) : UiText
 
+    /**
+     * Several messages read as one, a space between each.
+     *
+     * For a report made of counts — "12 cards added. 3 were already here." —
+     * where each sentence needs its own plural: one plural resource cannot
+     * agree with two numbers at once.
+     */
+    data class Joined(val parts: List<UiText>) : UiText
+
     fun resolve(context: Context): String = when (this) {
         is Raw -> value
         is Res -> if (args.isEmpty()) {
@@ -47,6 +56,8 @@ sealed interface UiText {
         }
 
         is Plural -> context.resources.getQuantityString(id, count, *args.toTypedArray())
+
+        is Joined -> parts.joinToString(" ") { it.resolve(context) }
     }
 
     companion object {

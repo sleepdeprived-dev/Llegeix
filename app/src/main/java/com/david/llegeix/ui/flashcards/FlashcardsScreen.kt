@@ -1,5 +1,11 @@
 package com.david.llegeix.ui.flashcards
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -98,6 +104,23 @@ fun FlashcardsScreen(
     val dueByDeck by viewModel.dueByDeck.collectAsStateWithLifecycle()
     val studyDeck by viewModel.studyDeck.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
+    val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
+
+    // The system's own file screens, so the copy goes wherever the reader
+    // keeps things — Downloads, a memory card, a cloud drive they chose — and
+    // the app is never given more than the one file.
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(BACKUP_MIME_TYPE),
+    ) { uri -> uri?.let(viewModel::onExport) }
+    val restoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(viewModel::onRestore) }
+    val backupName = stringResource(
+        R.string.flashcards_backup_filename,
+        LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+    )
+    val onExport = { exportLauncher.launch(backupName) }
+    val onRestore = { restoreLauncher.launch(BACKUP_OPEN_TYPES) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LifecycleResumeEffect(Unit) {
@@ -152,6 +175,14 @@ fun FlashcardsScreen(
                 body = stringResource(R.string.flashcards_empty_body),
                 icon = painterResource(R.drawable.ic_flashcards),
                 modifier = Modifier.padding(innerPadding),
+                // A new phone, or the app put back after an uninstall, starts
+                // here — which is exactly when a saved copy is wanted, so the
+                // way to bring one back cannot wait for a deck to exist.
+                secondaryAction = {
+                    TextButton(onClick = onRestore, enabled = !backupBusy) {
+                        Text(stringResource(R.string.flashcards_backup_restore))
+                    }
+                },
             )
 
             else -> LazyColumn(
@@ -193,6 +224,9 @@ fun FlashcardsScreen(
                         onRename = { renaming = deck },
                         onDelete = { deleting = deck },
                     )
+                }
+                item(key = "backup") {
+                    BackupPanel(isBusy = backupBusy, onExport = onExport, onRestore = onRestore)
                 }
             }
         }
@@ -517,3 +551,66 @@ private fun StudyPanel(
         }
     }
 }
+
+/**
+ * Saving a copy of the cards, and bringing one back.
+ *
+ * At the foot of the decks, in the open, with a line saying why it matters:
+ * the cards are on this phone and nowhere else, which is a fact nobody would
+ * guess from the rest of the screen and the one that decides whether a copy
+ * is worth making.
+ */
+@Composable
+private fun BackupPanel(isBusy: Boolean, onExport: () -> Unit, onRestore: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .padding(top = Space.xl)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(Space.lg),
+    ) {
+        Text(
+            text = stringResource(R.string.flashcards_backup_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = stringResource(R.string.flashcards_backup_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Space.xs),
+        )
+        if (isBusy) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Space.md),
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Space.sm),
+            modifier = Modifier.padding(top = Space.md),
+        ) {
+            OutlinedButton(onClick = onExport, enabled = !isBusy) {
+                Text(stringResource(R.string.flashcards_backup_save))
+            }
+            TextButton(onClick = onRestore, enabled = !isBusy) {
+                Text(stringResource(R.string.flashcards_backup_restore))
+            }
+        }
+    }
+}
+
+private const val BACKUP_MIME_TYPE = "application/zip"
+
+/**
+ * What the restore picker offers. Zip goes by several names depending on the
+ * app that saved or downloaded it, and a copy that cannot be picked because a
+ * file manager called it by another one is a copy that is lost.
+ */
+private val BACKUP_OPEN_TYPES = arrayOf(
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/octet-stream",
+)

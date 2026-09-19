@@ -10,6 +10,7 @@ import com.david.llegeix.lang.Speech
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
 import com.david.llegeix.data.DataEraser
+import com.david.llegeix.data.flashcards.FlashcardBackupFiles
 import com.david.llegeix.data.flashcards.FlashcardImages
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.pdf.PdfThumbnails
@@ -82,7 +83,7 @@ class LlegeixApp : Application() {
 
     /** The reader's own decks of vocabulary cards, and their pictures. */
     val flashcardRepository: FlashcardRepository by lazy {
-        FlashcardRepository(database, FlashcardImages(this))
+        FlashcardRepository(database, FlashcardImages(this), FlashcardBackupFiles(this))
     }
 
     /** First-page covers for the library, shared so the cache outlives a screen. */

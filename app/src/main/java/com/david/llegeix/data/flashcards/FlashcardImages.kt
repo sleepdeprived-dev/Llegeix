@@ -194,7 +194,8 @@ class FlashcardImages(context: Context) {
         runCatching { directory.deleteRecursively() }
     }
 
-    private fun fileOf(path: String): File = File(appContext.filesDir, path)
+    /** Where a stored picture is on disk, for copying it into a backup. */
+    fun fileOf(path: String): File = File(appContext.filesDir, path)
 
     private fun Matrix.applyOrientation(orientation: Int) {
         when (orientation) {

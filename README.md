@@ -258,6 +258,17 @@ does both after bumping the version in `app/build.gradle.kts`.
   scheduler, not a second one. When nothing is due, the screen says when the
   next card comes back and offers the other direction if anything is waiting
   there.
+
+  The cards are the one thing in this app that cannot be found again: the
+  app's data is kept out of Google's cloud on purpose, so an uninstall or a lost
+  phone would take them. The foot of the tab says so, and saves a copy — one zip
+  file, a plain JSON of every deck with both schedules and the pictures beside
+  it — wherever the reader chooses. Bringing one back only ever adds: a deck of
+  the same name is filled rather than duplicated, a card already in it is
+  skipped, and restoring the same copy twice changes nothing. A copy is a file
+  from outside the app, so it is read narrowly: nothing inside it is used as a
+  path, every entry has a size limit, and each picture goes through the same
+  shrinking as one from the photo picker.
 - **Search** — one field, in the library, in the dictionary, in the saved words
   and in the reader's find bar, so searching looks and behaves the same wherever
   you do it. Each offers back what was searched for last, under the field while
