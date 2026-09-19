@@ -1,13 +1,15 @@
 package com.david.llegeix.data.flashcards
 
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.room.withTransaction
 import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
-import kotlinx.coroutines.Dispatchers
+import com.david.llegeix.data.db.entity.FlashcardEntity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
-import java.io.File
+import kotlinx.coroutines.flow.map
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The reader's decks and cards, and the pictures that go with them.
@@ -15,19 +17,21 @@ import java.io.File
  * Its own repository rather than more methods on the library's: nothing here
  * touches a document, and keeping the two apart means the flashcards can be
  * changed without reading a line of the code that looks after PDFs.
- *
- * @param filesDir the app's private files directory. Card pictures live in
- *   [IMAGE_DIRECTORY] under it, and the database stores paths relative to it,
- *   so nothing breaks if Android ever moves the app's storage.
  */
 class FlashcardRepository(
     private val database: LlegeixDatabase,
-    private val filesDir: File,
+    private val images: FlashcardImages,
 ) {
 
     private val dao = database.flashcardDao()
 
+    private val swept = AtomicBoolean(false)
+
+    // ---- Decks -------------------------------------------------------------
+
     fun observeDecks(): Flow<List<DeckWithCount>> = dao.observeDecks()
+
+    fun observeDeck(id: Long): Flow<FlashcardDeckEntity?> = dao.observeDeck(id)
 
     /**
      * Make a deck, or say why not.
@@ -64,7 +68,65 @@ class FlashcardRepository(
             dao.deleteDeck(id)
             paths
         }
-        deleteImages(paths)
+        images.delete(paths)
+    }
+
+    // ---- Cards -------------------------------------------------------------
+
+    /** A deck's cards in Catalan alphabetical order. */
+    fun observeCards(deckId: Long): Flow<List<FlashcardEntity>> =
+        dao.observeCards(deckId).map(CardOrder::sorted)
+
+    suspend fun card(id: Long): FlashcardEntity? = dao.card(id)
+
+    /**
+     * Save what a card says: a new card if [card] has no id yet, otherwise
+     * the words and picture of an existing one, leaving its schedule as it is.
+     *
+     * Returns the card's id.
+     */
+    suspend fun saveCard(card: FlashcardEntity): Long =
+        if (card.id == 0L) {
+            dao.insertCard(card)
+        } else {
+            dao.updateCardContent(
+                id = card.id,
+                catalan = card.catalan,
+                romanian = card.romanian,
+                ipa = card.ipa,
+                ipaApproximate = card.ipaApproximate,
+                imagePath = card.imagePath,
+            )
+            card.id
+        }
+
+    /** Delete a card, then its picture, in that order for the reason [deleteDeck] gives. */
+    suspend fun deleteCard(card: FlashcardEntity) {
+        dao.deleteCard(card.id)
+        card.imagePath?.let { images.delete(listOf(it)) }
+    }
+
+    // ---- Pictures ----------------------------------------------------------
+
+    /** Copy a picked photo in, shrunk. Returns its stored path. */
+    suspend fun importImage(uri: Uri): String = images.import(uri)
+
+    suspend fun loadImage(path: String, maxEdge: Int): Bitmap? = images.load(path, maxEdge)
+
+    suspend fun deleteImage(path: String) = images.delete(listOf(path))
+
+    /** For a form going away with a picture it never saved. */
+    fun deleteImageNow(path: String) = images.deleteNow(path)
+
+    /**
+     * Clear out pictures no card points at, once per run of the app.
+     *
+     * Called when the Flashcards tab first opens rather than at launch, so an
+     * app opened only to read never touches the database or the folder for it.
+     */
+    suspend fun sweepImagesOnce() {
+        if (!swept.compareAndSet(false, true)) return
+        runCatching { images.sweep(dao.allImagePaths().toSet()) }
     }
 
     /** Every deck, card and picture, for the wipe in Configuració. */
@@ -73,19 +135,6 @@ class FlashcardRepository(
             dao.clearCards()
             dao.clearDecks()
         }
-        withContext(Dispatchers.IO) {
-            runCatching { File(filesDir, IMAGE_DIRECTORY).deleteRecursively() }
-        }
-    }
-
-    private suspend fun deleteImages(paths: List<String>) = withContext(Dispatchers.IO) {
-        for (path in paths) {
-            runCatching { File(filesDir, path).delete() }
-        }
-    }
-
-    companion object {
-        /** Where card pictures are kept, under the app's files directory. */
-        const val IMAGE_DIRECTORY = "flashcards"
+        images.deleteAll()
     }
 }

@@ -30,6 +30,8 @@ import androidx.navigation.navArgument
 import com.david.llegeix.ui.bookmarks.BookmarkedCollectionScreen
 import com.david.llegeix.ui.bookmarks.ReadLaterCollectionScreen
 import com.david.llegeix.ui.dictionary.DictionaryScreen
+import com.david.llegeix.ui.flashcards.CardEditorScreen
+import com.david.llegeix.ui.flashcards.DeckScreen
 import com.david.llegeix.ui.flashcards.FlashcardsScreen
 import com.david.llegeix.ui.folders.FolderDetailScreen
 import com.david.llegeix.ui.library.LibraryScreen
@@ -47,6 +49,18 @@ private object Routes {
     const val SETTINGS = "settings"
     const val PRACTICE = "practice"
     const val FLASHCARDS = "flashcards"
+    const val FLASHCARD_DECK = "flashcards/deck/{deckId}"
+
+    /**
+     * A card to write. `cardId` is -1 for a new card, since NavType.LongType
+     * cannot express null — the same convention as the reader's page.
+     */
+    const val CARD_EDITOR = "flashcards/card?deckId={deckId}&cardId={cardId}"
+
+    fun flashcardDeck(deckId: Long): String = "flashcards/deck/$deckId"
+
+    fun cardEditor(deckId: Long, cardId: Long? = null): String =
+        "flashcards/card?deckId=$deckId&cardId=${cardId ?: -1}"
 
     /**
      * The three derived collections, which are not real folder rows.
@@ -243,7 +257,38 @@ fun AppNavigation(modifier: Modifier = Modifier) {
             }
 
             composable(Routes.FLASHCARDS) {
-                FlashcardsScreen()
+                FlashcardsScreen(
+                    onOpenDeck = { deckId -> navController.navigate(Routes.flashcardDeck(deckId)) },
+                )
+            }
+
+            composable(
+                route = Routes.FLASHCARD_DECK,
+                arguments = listOf(navArgument("deckId") { type = NavType.LongType }),
+            ) { entry ->
+                val deckId = entry.arguments?.getLong("deckId") ?: 0L
+                DeckScreen(
+                    deckId = deckId,
+                    onBack = { navController.popBackStack() },
+                    onAddCard = { navController.navigate(Routes.cardEditor(deckId)) },
+                    onEditCard = { cardId ->
+                        navController.navigate(Routes.cardEditor(deckId, cardId))
+                    },
+                )
+            }
+
+            composable(
+                route = Routes.CARD_EDITOR,
+                arguments = listOf(
+                    navArgument("deckId") { type = NavType.LongType },
+                    navArgument("cardId") { type = NavType.LongType; defaultValue = -1L },
+                ),
+            ) { entry ->
+                CardEditorScreen(
+                    deckId = entry.arguments?.getLong("deckId") ?: 0L,
+                    cardId = entry.arguments?.getLong("cardId")?.takeIf { it >= 0 },
+                    onBack = { navController.popBackStack() },
+                )
             }
 
             composable(Routes.PRACTICE) {

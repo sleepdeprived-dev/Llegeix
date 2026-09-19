@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
+import com.david.llegeix.data.db.entity.FlashcardEntity
 import kotlinx.coroutines.flow.Flow
 
 /** A deck with how many cards are in it, for the list of decks. */
@@ -42,6 +43,51 @@ interface FlashcardDao {
     /** Its cards go with it, by cascade; their pictures do not, see [imagePathsInDeck]. */
     @Query("DELETE FROM flashcard_decks WHERE id = :id")
     suspend fun deleteDeck(id: Long)
+
+    @Query("SELECT * FROM flashcard_decks WHERE id = :id")
+    fun observeDeck(id: Long): Flow<FlashcardDeckEntity?>
+
+    /** Unordered: the list is sorted as Catalan, which SQLite cannot do. */
+    @Query("SELECT * FROM flashcards WHERE deckId = :deckId")
+    fun observeCards(deckId: Long): Flow<List<FlashcardEntity>>
+
+    @Query("SELECT * FROM flashcards WHERE id = :id")
+    suspend fun card(id: Long): FlashcardEntity?
+
+    @Insert
+    suspend fun insertCard(card: FlashcardEntity): Long
+
+    /**
+     * Change what a card says, and leave its schedule alone.
+     *
+     * Not an `@Update` of the whole row: the form only knows the words, and
+     * writing back a copy it loaded earlier would undo any answer given in the
+     * meantime. Correcting a typo is not a reason to forget how well the word
+     * is known.
+     */
+    @Query(
+        """
+        UPDATE flashcards
+        SET catalan = :catalan, romanian = :romanian, ipa = :ipa,
+            ipaApproximate = :ipaApproximate, imagePath = :imagePath
+        WHERE id = :id
+        """,
+    )
+    suspend fun updateCardContent(
+        id: Long,
+        catalan: String,
+        romanian: String,
+        ipa: String?,
+        ipaApproximate: Boolean,
+        imagePath: String?,
+    )
+
+    @Query("DELETE FROM flashcards WHERE id = :id")
+    suspend fun deleteCard(id: Long)
+
+    /** Every picture any card points at, for the sweep of stray files. */
+    @Query("SELECT imagePath FROM flashcards WHERE imagePath IS NOT NULL")
+    suspend fun allImagePaths(): List<String>
 
     /** The picture files a deck's cards point at, to delete alongside it. */
     @Query("SELECT imagePath FROM flashcards WHERE deckId = :deckId AND imagePath IS NOT NULL")

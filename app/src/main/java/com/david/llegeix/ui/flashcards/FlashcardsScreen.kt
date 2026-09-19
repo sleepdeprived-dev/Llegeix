@@ -76,6 +76,7 @@ import com.david.llegeix.ui.common.resolved
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlashcardsScreen(
+    onOpenDeck: (deckId: Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FlashcardsViewModel = viewModel(factory = FlashcardsViewModel.Factory),
 ) {
@@ -143,6 +144,7 @@ fun FlashcardsScreen(
                 items(list, key = { it.id }) { deck ->
                     DeckRow(
                         deck = deck,
+                        onOpen = { onOpenDeck(deck.id) },
                         onRename = { renaming = deck },
                         onDelete = { deleting = deck },
                     )
@@ -218,6 +220,7 @@ fun FlashcardsScreen(
 @Composable
 private fun DeckRow(
     deck: DeckWithCount,
+    onOpen: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -226,9 +229,7 @@ private fun DeckRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            // Opening a deck arrives with the cards; until then a press does
-            // what a hold does, rather than nothing.
-            .combinedClickable(onClick = { menuOpen = true }, onLongClick = { menuOpen = true })
+            .combinedClickable(onClick = onOpen, onLongClick = { menuOpen = true })
             .padding(start = Space.screen, top = Space.row, bottom = Space.row),
         verticalAlignment = Alignment.CenterVertically,
     ) {

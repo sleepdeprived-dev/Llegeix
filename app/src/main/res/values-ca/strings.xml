@@ -611,4 +611,35 @@
         <item quantity="many">%1$d targetes</item>
         <item quantity="other">%1$d targetes</item>
     </plurals>
+    <string name="flashcards_add_card">Afegeix una targeta</string>
+    <string name="flashcards_deck_empty_title">Aquesta baralla encara no té targetes</string>
+    <string name="flashcards_deck_empty_body">Afegeix una paraula catalana i què vol dir en romanès. La pronúncia i un significat suggerit s\'omplen sols mentre escrius.</string>
+    <string name="flashcards_edit_card">Edita…</string>
+    <string name="flashcards_new_card">Targeta nova</string>
+    <string name="flashcards_edit_card_title">Edita la targeta</string>
+    <string name="flashcards_card_deleted">S\'ha suprimit «%1$s»</string>
+    <string name="flashcards_card_saved">S\'ha desat «%1$s»</string>
+    <string name="flashcards_delete_card_title">Vols suprimir «%1$s»?</string>
+    <string name="flashcards_delete_card_body">No es pot desfer.</string>
+    <string name="flashcards_delete_card_body_picture">La imatge també se suprimeix. No es pot desfer.</string>
+    <string name="flashcards_field_catalan">Català</string>
+    <string name="flashcards_field_ipa">Pronúncia (AFI)</string>
+    <string name="flashcards_field_romanian">Romanès</string>
+    <string name="flashcards_ipa_generated">Deduïda de l\'ortografia. Canvia-la si en saps més.</string>
+    <string name="flashcards_ipa_approximate">aprox.: l\'ortografia no indica si la e o la o tòniques són obertes o tancades. Val la pena comprovar-ho.</string>
+    <string name="flashcards_meaning_suggested">Suggeriment del traductor del telèfon. Canvia\'l si no és correcte.</string>
+    <string name="flashcards_meaning_downloading">Baixant el model de romanès, una sola vegada, per Wi-Fi…</string>
+    <string name="flashcards_meaning_needs_model">Encara no hi ha suggeriment: el model de romanès es baixa una sola vegada, per Wi-Fi.</string>
+    <string name="flashcards_picture">Imatge</string>
+    <string name="flashcards_picture_optional">Opcional. Una imatge del que vol dir la paraula ajuda a recordar-la.</string>
+    <string name="flashcards_add_picture">Afegeix una imatge</string>
+    <string name="flashcards_change_picture">Canvia</string>
+    <string name="flashcards_remove_picture">Treu</string>
+    <string name="flashcards_image_failed">No s\'ha pogut llegir aquesta imatge. Prova\'n una altra.</string>
+    <string name="flashcards_save">Desa</string>
+    <string name="flashcards_save_and_add">Desa i afegeix-ne una altra</string>
+    <string name="flashcards_discard_title">Vols descartar els canvis?</string>
+    <string name="flashcards_discard_body">Es perdrà el que has escrit en aquesta targeta.</string>
+    <string name="flashcards_discard">Descarta</string>
+    <string name="flashcards_keep_editing">Continua editant</string>
 </resources>

@@ -630,4 +630,35 @@
         <item quantity="one">%1$d card</item>
         <item quantity="other">%1$d cards</item>
     </plurals>
+    <string name="flashcards_add_card">Add card</string>
+    <string name="flashcards_deck_empty_title">No cards in this deck yet</string>
+    <string name="flashcards_deck_empty_body">Add a Catalan word and what it means in Romanian. The pronunciation and a suggested meaning are filled in for you as you type.</string>
+    <string name="flashcards_edit_card">Edit…</string>
+    <string name="flashcards_new_card">New card</string>
+    <string name="flashcards_edit_card_title">Edit card</string>
+    <string name="flashcards_card_deleted">Deleted \"%1$s\"</string>
+    <string name="flashcards_card_saved">Saved \"%1$s\"</string>
+    <string name="flashcards_delete_card_title">Delete \"%1$s\"?</string>
+    <string name="flashcards_delete_card_body">This cannot be undone.</string>
+    <string name="flashcards_delete_card_body_picture">Its picture goes with it. This cannot be undone.</string>
+    <string name="flashcards_field_catalan">Catalan</string>
+    <string name="flashcards_field_ipa">Pronunciation (IPA)</string>
+    <string name="flashcards_field_romanian">Romanian</string>
+    <string name="flashcards_ipa_generated">Worked out from the spelling. Change it if you know better.</string>
+    <string name="flashcards_ipa_approximate">approx.: the spelling does not show whether the stressed e or o is open or closed. Worth checking.</string>
+    <string name="flashcards_meaning_suggested">Suggested by the translator on your phone. Change it if it is wrong.</string>
+    <string name="flashcards_meaning_downloading">Downloading the Romanian language model, once, over Wi-Fi…</string>
+    <string name="flashcards_meaning_needs_model">No suggestion yet: the Romanian language model downloads once, over Wi-Fi.</string>
+    <string name="flashcards_picture">Picture</string>
+    <string name="flashcards_picture_optional">Optional. A picture of what the word means helps it stick.</string>
+    <string name="flashcards_add_picture">Add a picture</string>
+    <string name="flashcards_change_picture">Change</string>
+    <string name="flashcards_remove_picture">Remove</string>
+    <string name="flashcards_image_failed">That picture could not be read. Try another one.</string>
+    <string name="flashcards_save">Save</string>
+    <string name="flashcards_save_and_add">Save and add another</string>
+    <string name="flashcards_discard_title">Discard changes?</string>
+    <string name="flashcards_discard_body">What you have typed on this card will be lost.</string>
+    <string name="flashcards_discard">Discard</string>
+    <string name="flashcards_keep_editing">Keep editing</string>
 </resources>

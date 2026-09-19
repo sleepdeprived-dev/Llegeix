@@ -37,6 +37,10 @@ class FlashcardsViewModel(
     private val _message = MutableStateFlow<UiText?>(null)
     val message: StateFlow<UiText?> = _message.asStateFlow()
 
+    init {
+        viewModelScope.launch { flashcards.sweepImagesOnce() }
+    }
+
     /**
      * Whether [name] could be used, asked on every keystroke by the dialog.
      *
