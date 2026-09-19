@@ -83,6 +83,7 @@ import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.MeaningLanguage
+import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.practice.Leitner
 import com.david.llegeix.ui.common.AppSnackbarHost
@@ -623,6 +624,7 @@ private fun DeckCover(deck: DeckWithCount) {
             path = cover,
             maxEdge = 192,
             contentDescription = null,
+            pictogram = PictureResults.isPictogram(deck.coverCredit),
             modifier = Modifier
                 .size(CoverSize)
                 .clip(shape),

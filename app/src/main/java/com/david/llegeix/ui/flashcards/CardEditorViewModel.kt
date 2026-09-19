@@ -41,6 +41,15 @@ enum class MeaningSuggestion {
     NEEDS_MODEL,
 }
 
+/** Where a suggested meaning came from, so the field can say how far to trust it. */
+enum class MeaningSource {
+    /** ARASAAC's labels, written by people for this very word. */
+    DICTIONARY,
+
+    /** The on-device translator, handed one word with no sentence around it. */
+    TRANSLATOR,
+}
+
 data class CardEditorUiState(
     val isLoading: Boolean = true,
     val deckName: String = "",
@@ -59,6 +68,8 @@ data class CardEditorUiState(
     val isSaving: Boolean = false,
     val romanianSuggestion: MeaningSuggestion = MeaningSuggestion.IDLE,
     val englishSuggestion: MeaningSuggestion = MeaningSuggestion.IDLE,
+    val romanianSource: MeaningSource = MeaningSource.TRANSLATOR,
+    val englishSource: MeaningSource = MeaningSource.TRANSLATOR,
     /** Anything differs from what was loaded, so leaving should ask first. */
     val isDirty: Boolean = false,
 ) {
@@ -96,7 +107,7 @@ data class CardEditorUiState(
  */
 class CardEditorViewModel(
     private val flashcards: FlashcardRepository,
-    pictureSearch: PictureSearch,
+    private val pictureSearch: PictureSearch,
     private val deckId: Long,
     private val cardId: Long?,
 ) : ViewModel() {
@@ -264,7 +275,11 @@ class CardEditorViewModel(
                 ?.let { matchLeadingCase(word, it) }
                 ?: return@launch
             updateForm {
-                if (it.catalan.trim() == word) it.copy(english = it.english.offer(english)) else it
+                if (it.catalan.trim() == word) {
+                    it.copy(english = it.english.offer(english), englishSource = MeaningSource.TRANSLATOR)
+                } else {
+                    it
+                }
             }
         }
     }
@@ -281,11 +296,18 @@ class CardEditorViewModel(
         if (word.isEmpty() || !_uiState.value.romanian.acceptsSuggestions) return
         romanianJob = viewModelScope.launch {
             delay(SUGGEST_DELAY_MS)
-            val meaning = toRomanian.suggest(word) { status ->
+            // People's words first; the translator only for what they have not labelled.
+            val labelled = pictureSearch.meanings(word)?.romanian
+            val meaning = labelled ?: toRomanian.suggest(word) { status ->
                 _uiState.update { it.copy(romanianSuggestion = status) }
             } ?: return@launch
+            val source = if (labelled != null) MeaningSource.DICTIONARY else MeaningSource.TRANSLATOR
             updateForm {
-                if (it.catalan.trim() == word) it.copy(romanian = it.romanian.offer(meaning)) else it
+                if (it.catalan.trim() == word) {
+                    it.copy(romanian = it.romanian.offer(matchLeadingCase(word, meaning)), romanianSource = source)
+                } else {
+                    it
+                }
             }
         }
     }
@@ -300,6 +322,17 @@ class CardEditorViewModel(
         if (word.isEmpty() || !_uiState.value.english.acceptsSuggestions) return
         englishJob = viewModelScope.launch {
             if (pause) delay(SUGGEST_DELAY_MS)
+            val labelled = pictureSearch.meanings(word)?.english?.let { matchLeadingCase(word, it) }
+            if (labelled != null) {
+                updateForm {
+                    if (it.catalan.trim() == word) {
+                        it.copy(english = it.english.offer(labelled), englishSource = MeaningSource.DICTIONARY)
+                    } else {
+                        it
+                    }
+                }
+                return@launch
+            }
             val meaning = toEnglish.suggest(word) { status ->
                 _uiState.update { it.copy(englishSuggestion = status) }
             } ?: _uiState.value.romanian.text.trim().takeIf { it.isNotEmpty() }?.let { romanian ->
@@ -308,7 +341,11 @@ class CardEditorViewModel(
                     ?.let { matchLeadingCase(word, it) }
             } ?: return@launch
             updateForm {
-                if (it.catalan.trim() == word) it.copy(english = it.english.offer(meaning)) else it
+                if (it.catalan.trim() == word) {
+                    it.copy(english = it.english.offer(meaning), englishSource = MeaningSource.TRANSLATOR)
+                } else {
+                    it
+                }
             }
         }
     }

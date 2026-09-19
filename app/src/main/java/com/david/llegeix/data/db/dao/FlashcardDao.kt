@@ -25,6 +25,8 @@ data class DeckWithCount(
     val coverImage: String?,
     /** Only the chosen picture, so the menu knows whether there is one to remove. */
     val chosenCover: String?,
+    /** Who made [coverImage], which also says whether it is a pictogram. */
+    val coverCredit: String?,
     /** The Leitner boxes of its cards added up, one sum per direction, for how well it is known. */
     val boxTotal: Int,
     val reverseBoxTotal: Int,
@@ -51,6 +53,10 @@ interface FlashcardDao {
                 WHERE deckId = d.id AND imagePath IS NOT NULL
                 ORDER BY createdAt, id LIMIT 1)) AS coverImage,
                d.coverPath AS chosenCover,
+               CASE WHEN d.coverPath IS NOT NULL THEN d.coverCredit
+                    ELSE (SELECT imageCredit FROM flashcards
+                          WHERE deckId = d.id AND imagePath IS NOT NULL
+                          ORDER BY createdAt, id LIMIT 1) END AS coverCredit,
                COALESCE(SUM(c.box), 0) AS boxTotal,
                COALESCE(SUM(c.reverseBox), 0) AS reverseBoxTotal
         FROM flashcard_decks d

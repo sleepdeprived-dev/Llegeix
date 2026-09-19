@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import com.david.llegeix.data.flashcards.MeaningLanguage
+import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.flow.map
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 /** One deck's cards. */
 class DeckViewModel(
     private val flashcards: FlashcardRepository,
+    private val pictureSearch: PictureSearch,
     private val deckId: Long,
 ) : ViewModel() {
 
@@ -86,7 +88,8 @@ class DeckViewModel(
                     return@launch
                 }
                 val filled = flashcards.fillEnglish(deckId) { word ->
-                    runCatchingCancellable { translator.translate(word) }.getOrNull()
+                    pictureSearch.meanings(word)?.english
+                        ?: runCatchingCancellable { translator.translate(word) }.getOrNull()
                 }
                 _message.value = UiText.ofPlural(R.plurals.flashcards_english_filled, filled)
             } finally {
@@ -113,7 +116,7 @@ class DeckViewModel(
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                     as LlegeixApp
-                DeckViewModel(app.flashcardRepository, deckId)
+                DeckViewModel(app.flashcardRepository, app.pictureSearch, deckId)
             }
         }
     }

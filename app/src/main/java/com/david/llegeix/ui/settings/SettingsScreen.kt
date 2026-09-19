@@ -1,5 +1,12 @@
 package com.david.llegeix.ui.settings
 
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.shadow
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.Image
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -608,20 +615,89 @@ private fun ContinueShelfPicker(current: ContinueShelf, onChoose: (ContinueShelf
     }
 }
 
+/**
+ * The app's language, as two cards: a flag and the language's own name.
+ *
+ * A flag is recognised before a word is read, and each name is written in its
+ * own language, so the choice can be made whichever language the screen is in —
+ * which matters most to somebody who has just switched to the one they do not
+ * read. The chosen card is outlined and lit in the accent with a tick in its
+ * corner, so which is in force is seen rather than worked out.
+ */
 @Composable
 private fun LanguagePicker(current: AppLanguage, onChoose: (AppLanguage) -> Unit) {
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        AppLanguage.entries.forEachIndexed { index, language ->
-            SegmentedButton(
-                selected = language == current,
-                onClick = { onChoose(language) },
-                shape = SegmentedButtonDefaults.itemShape(index, AppLanguage.entries.size),
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Space.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectableGroup(),
+    ) {
+        AppLanguage.entries.forEach { language ->
+            val selected = language == current
+            val shape = RoundedCornerShape(18.dp)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(shape)
+                    .background(
+                        if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+                        },
+                    )
+                    .border(
+                        width = if (selected) 2.dp else 1.dp,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        shape = shape,
+                    )
+                    .selectable(selected = selected, role = Role.RadioButton) { onChoose(language) }
+                    .padding(vertical = Space.lg, horizontal = Space.md),
             ) {
-                Text(stringResource(language.labelRes))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Image(
+                        painter = painterResource(language.flagRes),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(width = 42.dp, height = 28.dp)
+                            .shadow(2.dp, RoundedCornerShape(5.dp))
+                            .clip(RoundedCornerShape(5.dp)),
+                    )
+                    Text(
+                        text = stringResource(language.labelRes),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                        modifier = Modifier.padding(top = Space.md),
+                    )
+                }
+                if (selected) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(20.dp),
+                    )
+                }
             }
         }
     }
 }
+
+/** The flag a language is known by: the Senyera for Catalan, the Union flag for English. */
+private val AppLanguage.flagRes: Int
+    get() = when (this) {
+        AppLanguage.CATALAN -> R.drawable.ic_flag_ca
+        AppLanguage.ENGLISH -> R.drawable.ic_flag_uk
+    }
 
 @Composable
 private fun AccentPicker(

@@ -5,6 +5,7 @@ import com.david.llegeix.data.flashcards.Suggested
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FilledTonalButton
+import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.LlegeixApp
@@ -314,7 +315,7 @@ fun CardEditorScreen(
                     textStyle = MaterialTheme.typography.titleLarge,
                     singleLine = true,
                     leadingIcon = { LanguageFlag(R.drawable.ic_flag_ro) },
-                    supportingText = meaningNote(state.romanian, state.romanianSuggestion)?.let { { Text(it) } },
+                    supportingText = meaningNote(state.romanian, state.romanianSuggestion, state.romanianSource)?.let { { Text(it) } },
                     keyboardOptions = WordKeyboard,
                     shape = FieldShape,
                     modifier = Modifier
@@ -327,7 +328,7 @@ fun CardEditorScreen(
                     label = { Text(stringResource(R.string.flashcards_field_english)) },
                     singleLine = true,
                     leadingIcon = { LanguageFlag(R.drawable.ic_flag_uk) },
-                    supportingText = meaningNote(state.english, state.englishSuggestion)?.let { { Text(it) } },
+                    supportingText = meaningNote(state.english, state.englishSuggestion, state.englishSource)?.let { { Text(it) } },
                     keyboardOptions = WordKeyboard.copy(imeAction = ImeAction.Done),
                     shape = FieldShape,
                     modifier = Modifier
@@ -402,7 +403,9 @@ fun CardEditorScreen(
 
 /** What to say under a meaning's field, if anything. */
 @Composable
-private fun meaningNote(field: Suggested, status: MeaningSuggestion): String? = when {
+private fun meaningNote(field: Suggested, status: MeaningSuggestion, source: MeaningSource): String? = when {
+    field.isSuggestion && field.text.isNotBlank() && source == MeaningSource.DICTIONARY ->
+        stringResource(R.string.flashcards_meaning_from_dictionary)
     status == MeaningSuggestion.DOWNLOADING -> stringResource(R.string.flashcards_meaning_downloading)
     field.isSuggestion && field.text.isNotBlank() -> stringResource(R.string.flashcards_meaning_suggested)
     status == MeaningSuggestion.NEEDS_MODEL && field.text.isBlank() ->
@@ -454,15 +457,14 @@ private fun LanguageFlag(@DrawableRes res: Int) {
 @Composable
 private fun ChosenPicture(path: String, credit: String?, onChange: () -> Unit) {
     Box {
-        CardImage(
+        FramedPicture(
             path = path,
-            maxEdge = ImageSizing.MAX_EDGE,
             contentDescription = stringResource(R.string.flashcards_picture),
-            contentScale = ContentScale.Fit,
+            pictogram = PictureResults.isPictogram(credit),
+            maxEdge = ImageSizing.MAX_EDGE,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(4f / 3f)
-                .clip(RoundedCornerShape(18.dp)),
+                .aspectRatio(4f / 3f),
         )
         FilledTonalButton(
             onClick = onChange,

@@ -171,8 +171,9 @@ does both after bumping the version in `app/build.gradle.kts`.
   Android's direct device-to-device transfer still carries it to a new one.
 
   One feature talks to the internet without a button press, and only while a
-  flashcard is open to be written: picture suggestions. After a pause in the
-  typing, the word goes to ARASAAC (in Catalan) or, on the Photos tab, its
+  flashcard is open to be written: suggestions. After a pause in the typing,
+  the word goes to ARASAAC (in Catalan), for its pictograms and for the
+  Romanian and English its pictograms are labelled with, or, on the Photos tab, its
   English meaning goes to Openverse — the word and nothing else, with no
   identifier. Both are free public services that need no account or key. With
   no card open, nothing is sent.
@@ -252,6 +253,10 @@ does both after bumping the version in `app/build.gradle.kts`.
   *approx.* where the spelling cannot settle a vowel, and the translator on the
   phone suggests a meaning, in Romanian and, optionally, in English — each
   follows the word until you type in the field, and is yours from then on.
+  A meaning is taken first from ARASAAC, whose pictograms are labelled by people
+  in every language they cover — *poma* is *măr* there, where a translator
+  handed the one word says "apple" — and from the translator only for words
+  ARASAAC has not labelled. The field says which of the two it came from.
   Pictures are offered as the word is typed, as a grid: ARASAAC pictograms,
   searched in Catalan, or openly licensed photos from Openverse, searched with
   the card's English meaning — the lone Catalan word is too thin a thing to

@@ -3,6 +3,7 @@ package com.david.llegeix.ui.flashcards
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.LinearProgressIndicator
+import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.practice.Leitner
 import androidx.compose.foundation.Image
@@ -239,6 +240,7 @@ private fun CardRow(
                 path = path,
                 maxEdge = ThumbnailPixels,
                 contentDescription = null,
+                pictogram = PictureResults.isPictogram(card.imageCredit),
                 modifier = thumbnail,
             )
         } else {

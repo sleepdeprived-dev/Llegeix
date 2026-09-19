@@ -69,6 +69,40 @@ class PictureSearch(context: Context) {
         )
     }
 
+    /** A word's meanings as ARASAAC's people wrote them; either may be missing. */
+    data class Meanings(val romanian: String?, val english: String?)
+
+    /** Looked up once per word per run, since both meaning fields ask. */
+    private val meanings = LruCache<String, Meanings>(200)
+
+    /**
+     * The Romanian and English labels of the pictogram labelled with exactly
+     * [word] in Catalan, or null when there is none or ARASAAC cannot be
+     * reached — in which case the caller asks the translator instead.
+     */
+    suspend fun meanings(word: String): Meanings? {
+        val key = word.trim().lowercase()
+        if (key.isEmpty()) return null
+        meanings.get(key)?.let { return it }
+        return withContext(Dispatchers.IO) {
+            val id = runCatching {
+                ArasaacWords.firstExactId(
+                    fetch(ArasaacWords.exactSearchUrl(key), MAX_ANSWER_BYTES, acceptEmpty = true)
+                        .toString(Charsets.UTF_8),
+                    key,
+                )
+            }.getOrNull() ?: return@withContext null
+            fun label(language: String): String? = runCatching {
+                ArasaacWords.firstKeyword(
+                    fetch(ArasaacWords.pictogramUrl(language, id), MAX_ANSWER_BYTES).toString(Charsets.UTF_8),
+                )
+            }.getOrNull()
+            Meanings(romanian = label("ro"), english = label("en"))
+                .takeIf { it.romanian != null || it.english != null }
+                ?.also { meanings.put(key, it) }
+        }
+    }
+
     /** A thumbnail, or null if it could not be fetched; the row leaves a blank tile. */
     suspend fun thumbnail(url: String): Bitmap? {
         thumbnails.get(url)?.let { return it }

@@ -52,6 +52,12 @@ object PictureResults {
 
     const val ARASAAC_CREDIT = "Sergio Palao · ARASAAC · CC BY-NC-SA"
 
+    /**
+     * Whether a picture with this credit is an ARASAAC pictogram, and so drawn
+     * as one: black lines on paper that the app recolours to fit its theme.
+     */
+    fun isPictogram(credit: String?): Boolean = credit?.contains("ARASAAC") == true
+
     fun arasaacSearchUrl(word: String): String =
         "https://api.arasaac.org/v1/pictograms/ca/search/" + encodePath(word.trim())
 

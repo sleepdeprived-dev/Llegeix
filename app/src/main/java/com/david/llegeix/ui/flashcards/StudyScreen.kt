@@ -64,6 +64,7 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.ImageSizing
 import com.david.llegeix.data.flashcards.NextDue
+import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.IpaLine
@@ -579,15 +580,13 @@ private fun CatalanSide(card: FlashcardEntity, asAnswer: Boolean) {
 @Composable
 private fun MeaningSide(card: FlashcardEntity, meaning: String, asAnswer: Boolean) {
     card.imagePath?.let { path ->
-        CardImage(
+        FramedPicture(
             path = path,
-            maxEdge = ImageSizing.MAX_EDGE,
             contentDescription = null,
-            contentScale = ContentScale.Fit,
+            pictogram = PictureResults.isPictogram(card.imageCredit),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(PictureHeight)
-                .clip(RoundedCornerShape(16.dp)),
+                .height(PictureHeight),
         )
         Spacer(modifier = Modifier.height(Space.lg))
     }

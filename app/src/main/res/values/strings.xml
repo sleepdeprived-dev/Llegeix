@@ -757,4 +757,5 @@
     </plurals>
     <string name="flashcards_study_no_english_title">No English meanings yet</string>
     <string name="flashcards_study_no_english_body">These cards have only their Romanian meaning. Fill in the English from the deck, or practise in Romanian with the flag at the top of the tab.</string>
+    <string name="flashcards_meaning_from_dictionary">From ARASAAC\'s dictionary, written by people for this word. Change it if you mean something else.</string>
 </resources>
