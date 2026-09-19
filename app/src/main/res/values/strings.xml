@@ -650,10 +650,6 @@
     <string name="flashcards_meaning_downloading">Downloading the Romanian language model, once, over Wi-Fi…</string>
     <string name="flashcards_meaning_needs_model">No suggestion yet: the Romanian language model downloads once, over Wi-Fi.</string>
     <string name="flashcards_picture">Picture</string>
-    <string name="flashcards_picture_optional">Optional. A picture of what the word means helps it stick.</string>
-    <string name="flashcards_add_picture">Add a picture</string>
-    <string name="flashcards_change_picture">Change</string>
-    <string name="flashcards_remove_picture">Remove</string>
     <string name="flashcards_image_failed">That picture could not be read. Try another one.</string>
     <string name="flashcards_save">Save</string>
     <string name="flashcards_save_and_add">Save and add another</string>
@@ -663,14 +659,6 @@
     <string name="flashcards_keep_editing">Keep editing</string>
     <string name="flashcards_study_title">Practice</string>
     <string name="flashcards_study_start">Start</string>
-    <plurals name="flashcards_study_cards">
-        <item quantity="one">Practise %1$d card</item>
-        <item quantity="other">Practise %1$d cards</item>
-    </plurals>
-    <plurals name="flashcards_due_count">
-        <item quantity="one">%1$d to practise</item>
-        <item quantity="other">%1$d to practise</item>
-    </plurals>
     <string name="flashcards_all_decks">All decks</string>
     <string name="flashcards_direction_ca_ro">Catalan → Romanian</string>
     <string name="flashcards_direction_ro_ca">Romanian → Catalan</string>
@@ -724,4 +712,27 @@
     <string name="flashcards_backup_not_a_copy">That file is not a copy of Llegeix flashcards.</string>
     <string name="flashcards_backup_too_new">That copy was made by a newer version of Llegeix. Update the app, then try again.</string>
     <string name="flashcards_backup_failed">The copy could not be read or written. Nothing was changed.</string>
+    <string name="flashcards_pictures_pictograms">Pictograms</string>
+    <string name="flashcards_pictures_photos">Photos</string>
+    <string name="flashcards_pictures_waiting">Type the word and pictures of it will appear here.</string>
+    <string name="flashcards_pictures_none_pictograms">No pictograms for \"%1$s\". Try Photos.</string>
+    <string name="flashcards_pictures_none_photos">No photos for \"%1$s\". Try Pictograms.</string>
+    <string name="flashcards_pictures_offline">No connection, so no pictures to suggest.</string>
+    <string name="flashcards_pictures_retry">Try again</string>
+    <string name="flashcards_pictures_needs_english">Photos are searched in English, and the English language model is not on this phone yet. It downloads once, over Wi-Fi.</string>
+    <string name="flashcards_pictures_credit_pictograms">Pictograms by Sergio Palao for ARASAAC, CC BY-NC-SA.</string>
+    <string name="flashcards_pictures_credit_photos">Photos from Openverse, each under its own open licence.</string>
+    <string name="flashcards_picture_use">Use this picture</string>
+    <string name="flashcards_picture_other">Choose another</string>
+    <string name="flashcards_picture_from_gallery">From your photos</string>
+    <string name="flashcards_picture_fetch_failed">That picture could not be downloaded. Try another one.</string>
+    <plurals name="flashcards_panel_due">
+        <item quantity="one">card to practise</item>
+        <item quantity="other">cards to practise</item>
+    </plurals>
+    <string name="flashcards_panel_all_done">All caught up</string>
+    <string name="flashcards_panel_start">Practise</string>
+    <string name="flashcards_practise_deck">Practise %1$s (%2$d)</string>
+    <string name="flashcards_study_missed">Worth another look</string>
+    <string name="flashcards_study_perfect">Every one right.</string>
 </resources>

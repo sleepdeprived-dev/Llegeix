@@ -6,6 +6,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import com.david.llegeix.data.practice.Leitner
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -102,7 +110,6 @@ fun FlashcardsScreen(
     val decks by viewModel.decks.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dueByDeck by viewModel.dueByDeck.collectAsStateWithLifecycle()
-    val studyDeck by viewModel.studyDeck.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
     val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
 
@@ -193,34 +200,25 @@ fun FlashcardsScreen(
                 // scrolled clear of it.
                 contentPadding = PaddingValues(top = Space.sm, bottom = BottomClearance),
             ) {
-                // Only once there is something to study: a panel of choices
-                // over decks with nothing in them is a question with no answer.
-                val studyable = list.filter { it.cardCount > 0 }
-                if (studyable.isNotEmpty()) {
+                // Only once there is something to practise: a panel over decks
+                // with nothing in them is a question with no answer.
+                if (list.any { it.cardCount > 0 }) {
                     item(key = "study") {
-                        // A deck that has since been deleted or emptied quietly
-                        // falls back to all of them.
-                        val chosen = studyDeck?.takeIf { id -> studyable.any { it.id == id } }
-                        StudyPanel(
-                            decks = studyable,
-                            chosenDeck = chosen,
+                        PracticePanel(
                             direction = direction,
-                            dueCount = if (chosen == null) {
-                                dueByDeck.values.sumOf { it.dueIn(direction) }
-                            } else {
-                                dueByDeck[chosen]?.dueIn(direction) ?: 0
-                            },
-                            onChooseDeck = viewModel::onChooseStudyDeck,
+                            dueCount = dueByDeck.values.sumOf { it.dueIn(direction) },
                             onChooseDirection = viewModel::onChooseDirection,
-                            onStudy = { onStudy(chosen, direction) },
+                            onStudy = { onStudy(null, direction) },
                         )
                     }
                 }
                 items(list, key = { it.id }) { deck ->
-                    DeckRow(
+                    DeckCard(
                         deck = deck,
+                        direction = direction,
                         dueCount = dueByDeck[deck.id]?.dueIn(direction) ?: 0,
                         onOpen = { onOpenDeck(deck.id) },
+                        onPractise = { onStudy(deck.id, direction) },
                         onRename = { renaming = deck },
                         onDelete = { deleting = deck },
                     )
@@ -312,13 +310,26 @@ fun FlashcardsScreen(
     }
 }
 
+/**
+ * One deck, as a card of its own.
+ *
+ * Its cover is the first picture in it, so a deck of food looks like food; one
+ * without pictures shows its initial. Under the name, how well the deck is
+ * known this way round, as a bar rather than a number — how far through a deck
+ * you are is the same kind of fact as how far through a book, and the library
+ * already answers that with a bar. On the right, the deck's own way into
+ * practice, carrying how many are waiting: the deck is the choice, so the
+ * button is on it rather than in a list of decks somewhere else.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DeckRow(
+private fun DeckCard(
     deck: DeckWithCount,
+    direction: StudyDirection,
     /** Due in the direction currently chosen, so the numbers agree with the panel. */
     dueCount: Int,
     onOpen: () -> Unit,
+    onPractise: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -327,24 +338,14 @@ private fun DeckRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = Space.screen, vertical = 6.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .combinedClickable(onClick = onOpen, onLongClick = { menuOpen = true })
-            .padding(start = Space.screen, top = Space.row, bottom = Space.row),
+            .padding(Space.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_flashcards),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp),
-            )
-        }
+        DeckCover(deck)
 
         Column(
             modifier = Modifier
@@ -353,7 +354,7 @@ private fun DeckRow(
         ) {
             Text(
                 text = deck.name,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -361,21 +362,49 @@ private fun DeckRow(
                 text = if (deck.cardCount == 0) {
                     stringResource(R.string.flashcards_deck_no_cards)
                 } else {
-                    listOfNotNull(
-                        pluralStringResource(
-                            R.plurals.flashcards_card_count,
-                            deck.cardCount,
-                            deck.cardCount,
-                        ),
-                        dueCount.takeIf { it > 0 }?.let {
-                            pluralStringResource(R.plurals.flashcards_due_count, it, it)
-                        },
-                    ).joinToString(" · ")
+                    pluralStringResource(R.plurals.flashcards_card_count, deck.cardCount, deck.cardCount)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp),
             )
+            if (deck.cardCount > 0) {
+                LinearProgressIndicator(
+                    progress = { deck.knownIn(direction) },
+                    drawStopIndicator = {},
+                    modifier = Modifier
+                        .padding(top = Space.sm)
+                        .fillMaxWidth(0.8f)
+                        .height(6.dp),
+                )
+            }
+        }
+
+        if (dueCount > 0) {
+            // A play mark and a number read at a glance; said out loud they
+            // need the words.
+            val practiseLabel = stringResource(R.string.flashcards_practise_deck, deck.name, dueCount)
+            FilledTonalButton(
+                onClick = onPractise,
+                contentPadding = PaddingValues(horizontal = Space.md),
+                modifier = Modifier
+                    .padding(start = Space.sm)
+                    .clearAndSetSemantics {
+                        contentDescription = practiseLabel
+                        role = Role.Button
+                    },
+            ) {
+                Icon(
+                    Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = "$dueCount",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(start = Space.xs),
+                )
+            }
         }
 
         Box {
@@ -402,6 +431,53 @@ private fun DeckRow(
         }
     }
 }
+
+/** The first picture in the deck, or its initial on a tinted tile. */
+@Composable
+private fun DeckCover(deck: DeckWithCount) {
+    val shape = RoundedCornerShape(16.dp)
+    val cover = deck.coverImage
+    if (cover != null) {
+        CardImage(
+            path = cover,
+            maxEdge = 192,
+            contentDescription = null,
+            modifier = Modifier
+                .size(CoverSize)
+                .clip(shape),
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .size(CoverSize)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = deck.name.trim().take(1).uppercase(),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+    }
+}
+
+/**
+ * How well a deck is known this way round, 0..1: its cards' Leitner boxes
+ * against every card being in the last one. The same measure the saved words'
+ * progress uses, taken over the deck.
+ */
+private fun DeckWithCount.knownIn(direction: StudyDirection): Float {
+    if (cardCount == 0) return 0f
+    val total = when (direction) {
+        StudyDirection.CATALAN_TO_ROMANIAN -> boxTotal
+        StudyDirection.ROMANIAN_TO_CATALAN -> reverseBoxTotal
+    }
+    return (total.toFloat() / (cardCount * Leitner.LAST_BOX)).coerceIn(0f, 1f)
+}
+
+private val CoverSize = 64.dp
 
 /**
  * Name a deck, new or existing.
@@ -461,21 +537,17 @@ private fun DeckDue.dueIn(direction: StudyDirection): Int = when (direction) {
 }
 
 /**
- * What to study, chosen in the open.
+ * Practice over every deck, and which way round.
  *
- * Deck and direction are two rows of choices with the current one lit, rather
- * than a menu or a dialog in front of the session: which deck and which way
- * round are the two facts a session is made of, and the reader should be able
- * to see both before pressing the button, not find out after.
+ * The one place on the tab that is about the whole collection rather than one
+ * deck, so it is the one thing with colour behind it. The number is the point:
+ * how many cards are waiting, large enough to read from across a room. The
+ * direction is two flags a thumb can tell apart without reading anything.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StudyPanel(
-    decks: List<DeckWithCount>,
-    chosenDeck: Long?,
+private fun PracticePanel(
     direction: StudyDirection,
     dueCount: Int,
-    onChooseDeck: (Long?) -> Unit,
     onChooseDirection: (StudyDirection) -> Unit,
     onStudy: () -> Unit,
 ) {
@@ -483,37 +555,44 @@ private fun StudyPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Space.screen)
-            .padding(bottom = Space.lg)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(vertical = Space.lg),
+            .padding(top = Space.sm, bottom = Space.md)
+            .clip(RoundedCornerShape(28.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(Space.xl),
     ) {
+        val onPanel = MaterialTheme.colorScheme.onPrimaryContainer
         Text(
             text = stringResource(R.string.flashcards_study_title),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = Space.lg),
+            style = MaterialTheme.typography.labelLarge,
+            color = onPanel.copy(alpha = 0.8f),
         )
-
-        // Decks scroll sideways rather than wrapping, so a long list of decks
-        // costs one row of height rather than five.
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Space.sm),
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = Space.lg)
-                .padding(top = Space.md),
-        ) {
-            FilterChip(
-                selected = chosenDeck == null,
-                onClick = { onChooseDeck(null) },
-                label = { Text(stringResource(R.string.flashcards_all_decks)) },
-            )
-            decks.forEach { deck ->
-                FilterChip(
-                    selected = chosenDeck == deck.id,
-                    onClick = { onChooseDeck(deck.id) },
-                    label = { Text(deck.name, maxLines = 1) },
+        if (dueCount > 0) {
+            Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = Space.xs)) {
+                Text(
+                    text = "$dueCount",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = onPanel,
+                )
+                Text(
+                    text = pluralStringResource(R.plurals.flashcards_panel_due, dueCount),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = onPanel,
+                    modifier = Modifier.padding(start = Space.sm, bottom = Space.sm),
+                )
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = Space.sm)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_check_circle),
+                    contentDescription = null,
+                    tint = onPanel,
+                    modifier = Modifier.size(28.dp),
+                )
+                Text(
+                    text = stringResource(R.string.flashcards_panel_all_done),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = onPanel,
+                    modifier = Modifier.padding(start = Space.sm),
                 )
             }
         }
@@ -521,15 +600,23 @@ private fun StudyPanel(
         SingleChoiceSegmentedButtonRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Space.lg)
-                .padding(top = Space.sm),
+                .padding(top = Space.lg),
         ) {
             StudyDirection.entries.forEachIndexed { index, entry ->
                 SegmentedButton(
                     selected = entry == direction,
                     onClick = { onChooseDirection(entry) },
                     shape = SegmentedButtonDefaults.itemShape(index, StudyDirection.entries.size),
-                    label = { Text(stringResource(directionLabel(entry)), maxLines = 1) },
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.surface,
+                        inactiveContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        activeBorderColor = onPanel.copy(alpha = 0.4f),
+                        inactiveBorderColor = onPanel.copy(alpha = 0.4f),
+                    ),
+                    // The flags say which is chosen as well as any tick would,
+                    // and a tick beside them would crowd two flags and an arrow.
+                    icon = {},
+                    label = { DirectionFlags(entry) },
                 )
             }
         }
@@ -538,15 +625,16 @@ private fun StudyPanel(
             onClick = onStudy,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Space.lg)
-                .padding(top = Space.lg),
+                .padding(top = Space.md)
+                .height(52.dp),
         ) {
+            Icon(Icons.Default.PlayArrow, contentDescription = null)
             Text(
-                if (dueCount > 0) {
-                    pluralStringResource(R.plurals.flashcards_study_cards, dueCount, dueCount)
-                } else {
-                    stringResource(R.string.flashcards_study_start)
-                },
+                text = stringResource(
+                    if (dueCount > 0) R.string.flashcards_panel_start else R.string.flashcards_study_start,
+                ),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(start = Space.sm),
             )
         }
     }

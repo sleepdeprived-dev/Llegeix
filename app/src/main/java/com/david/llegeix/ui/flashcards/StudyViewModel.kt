@@ -34,6 +34,8 @@ data class StudyUiState(
     val index: Int = 0,
     val isRevealed: Boolean = false,
     val correct: Int = 0,
+    /** The cards answered "not yet" this session, to name at the end. */
+    val missed: List<FlashcardEntity> = emptyList(),
     /** How many cards there are to study at all, for when none are due. */
     val cardsInScope: Int = 0,
     /** When the next card comes back this way round, for when none are due now. */
@@ -91,6 +93,7 @@ class StudyViewModel(
                 index = 0,
                 isRevealed = false,
                 correct = 0,
+                missed = emptyList(),
                 cardsInScope = all.size,
                 nextDueAt = FlashcardSession.nextDueAt(all, direction, now),
                 otherDirectionDue = all.count { card -> direction.other().isDue(card, now) },
@@ -128,6 +131,7 @@ class StudyViewModel(
                 index = it.index + 1,
                 isRevealed = false,
                 correct = it.correct + if (correct) 1 else 0,
+                missed = if (correct) it.missed else it.missed + card,
             )
         }
     }

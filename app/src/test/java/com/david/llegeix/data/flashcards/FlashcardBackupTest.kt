@@ -17,6 +17,7 @@ class FlashcardBackupTest {
         romanian = "pâine",
         ipa = "ˈpa",
         image = "images/pa.jpg",
+        imageCredit = "Sergio Palao · ARASAAC · CC BY-NC-SA",
         createdAt = 100,
         box = 3,
         dueAt = 5_000,

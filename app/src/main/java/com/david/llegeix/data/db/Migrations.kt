@@ -502,3 +502,18 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
         )
     }
 }
+
+/**
+ * Where a card's picture came from.
+ *
+ * Pictures can now be picked from a search — ARASAAC's pictograms and
+ * Openverse's openly licensed photos — and both licences ask for the maker to
+ * be credited alongside the picture. Nullable with no default: every card that
+ * exists before this has either no picture or one of the reader's own, and
+ * neither has anybody to credit.
+ */
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE flashcards ADD COLUMN imageCredit TEXT")
+    }
+}

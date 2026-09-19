@@ -631,10 +631,6 @@
     <string name="flashcards_meaning_downloading">Baixant el model de romanès, una sola vegada, per Wi-Fi…</string>
     <string name="flashcards_meaning_needs_model">Encara no hi ha suggeriment: el model de romanès es baixa una sola vegada, per Wi-Fi.</string>
     <string name="flashcards_picture">Imatge</string>
-    <string name="flashcards_picture_optional">Opcional. Una imatge del que vol dir la paraula ajuda a recordar-la.</string>
-    <string name="flashcards_add_picture">Afegeix una imatge</string>
-    <string name="flashcards_change_picture">Canvia</string>
-    <string name="flashcards_remove_picture">Treu</string>
     <string name="flashcards_image_failed">No s\'ha pogut llegir aquesta imatge. Prova\'n una altra.</string>
     <string name="flashcards_save">Desa</string>
     <string name="flashcards_save_and_add">Desa i afegeix-ne una altra</string>
@@ -644,16 +640,6 @@
     <string name="flashcards_keep_editing">Continua editant</string>
     <string name="flashcards_study_title">Repàs</string>
     <string name="flashcards_study_start">Comença</string>
-    <plurals name="flashcards_study_cards">
-        <item quantity="one">Repassa %1$d targeta</item>
-        <item quantity="many">Repassa %1$d targetes</item>
-        <item quantity="other">Repassa %1$d targetes</item>
-    </plurals>
-    <plurals name="flashcards_due_count">
-        <item quantity="one">%1$d per repassar</item>
-        <item quantity="many">%1$d per repassar</item>
-        <item quantity="other">%1$d per repassar</item>
-    </plurals>
     <string name="flashcards_all_decks">Totes les baralles</string>
     <string name="flashcards_direction_ca_ro">Català → Romanès</string>
     <string name="flashcards_direction_ro_ca">Romanès → Català</string>
@@ -715,4 +701,28 @@
     <string name="flashcards_backup_not_a_copy">Aquest fitxer no és una còpia de targetes de Llegeix.</string>
     <string name="flashcards_backup_too_new">Aquesta còpia l\'ha feta una versió més nova de Llegeix. Actualitza l\'aplicació i torna-ho a provar.</string>
     <string name="flashcards_backup_failed">No s\'ha pogut llegir o escriure la còpia. No s\'ha canviat res.</string>
+    <string name="flashcards_pictures_pictograms">Pictogrames</string>
+    <string name="flashcards_pictures_photos">Fotos</string>
+    <string name="flashcards_pictures_waiting">Escriu la paraula i n\'apareixeran imatges aquí.</string>
+    <string name="flashcards_pictures_none_pictograms">No hi ha pictogrames per a «%1$s». Prova amb Fotos.</string>
+    <string name="flashcards_pictures_none_photos">No hi ha fotos per a «%1$s». Prova amb Pictogrames.</string>
+    <string name="flashcards_pictures_offline">Sense connexió, no es poden suggerir imatges.</string>
+    <string name="flashcards_pictures_retry">Torna-ho a provar</string>
+    <string name="flashcards_pictures_needs_english">Les fotos es cerquen en anglès, i el model d\'anglès encara no és al telèfon. Es baixa una sola vegada, per Wi-Fi.</string>
+    <string name="flashcards_pictures_credit_pictograms">Pictogrames de Sergio Palao per a ARASAAC, CC BY-NC-SA.</string>
+    <string name="flashcards_pictures_credit_photos">Fotos d\'Openverse, cadascuna amb la seva llicència lliure.</string>
+    <string name="flashcards_picture_use">Fes servir aquesta imatge</string>
+    <string name="flashcards_picture_other">Tria\'n una altra</string>
+    <string name="flashcards_picture_from_gallery">De les teves fotos</string>
+    <string name="flashcards_picture_fetch_failed">No s\'ha pogut baixar aquesta imatge. Prova\'n una altra.</string>
+    <plurals name="flashcards_panel_due">
+        <item quantity="one">targeta per repassar</item>
+        <item quantity="many">targetes per repassar</item>
+        <item quantity="other">targetes per repassar</item>
+    </plurals>
+    <string name="flashcards_panel_all_done">Tot al dia</string>
+    <string name="flashcards_panel_start">Repassa</string>
+    <string name="flashcards_practise_deck">Repassa %1$s (%2$d)</string>
+    <string name="flashcards_study_missed">Per tornar-hi</string>
+    <string name="flashcards_study_perfect">Totes encertades.</string>
 </resources>

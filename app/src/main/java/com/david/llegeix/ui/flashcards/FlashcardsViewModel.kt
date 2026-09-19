@@ -48,10 +48,6 @@ class FlashcardsViewModel(
 
     // ---- What to study -----------------------------------------------------
 
-    /** The deck chosen to study, or null for all of them. */
-    private val _studyDeck = MutableStateFlow<Long?>(null)
-    val studyDeck: StateFlow<Long?> = _studyDeck.asStateFlow()
-
     private val _direction = MutableStateFlow(StudyDirection.Default)
     val direction: StateFlow<StudyDirection> = _direction.asStateFlow()
 
@@ -71,10 +67,6 @@ class FlashcardsViewModel(
         .flatMapLatest { flashcards.observeDueCounts(it) }
         .map { rows -> rows.associateBy { it.deckId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
-
-    fun onChooseStudyDeck(deckId: Long?) {
-        _studyDeck.value = deckId
-    }
 
     fun onChooseDirection(direction: StudyDirection) {
         _direction.value = direction

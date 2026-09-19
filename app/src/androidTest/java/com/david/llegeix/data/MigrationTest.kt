@@ -19,6 +19,7 @@ import com.david.llegeix.data.db.MIGRATION_11_12
 import com.david.llegeix.data.db.MIGRATION_12_13
 import com.david.llegeix.data.db.MIGRATION_13_14
 import com.david.llegeix.data.db.MIGRATION_14_15
+import com.david.llegeix.data.db.MIGRATION_15_16
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -854,16 +855,48 @@ class MigrationTest {
         }
     }
 
+    /** Cards gain a picture credit, and every card already there keeps everything. */
+    @Test
+    fun migrate15To16_addsImageCreditAndLeavesCardsAlone() {
+        helper.createDatabase(TEST_DB, 15).use { db ->
+            db.execSQL("INSERT INTO flashcard_decks (id, name, createdAt) VALUES (1, 'Menjar', 1)")
+            db.execSQL(
+                """
+                INSERT INTO flashcards
+                    (id, deckId, catalan, romanian, ipa, ipaApproximate, imagePath, createdAt,
+                     box, dueAt, reviewCount, lastReviewedAt,
+                     reverseBox, reverseDueAt, reverseReviewCount, reverseLastReviewedAt)
+                VALUES (1, 1, 'pa', 'pâine', 'ˈpa', 0, 'flashcards/pa.jpg', 5,
+                        3, 900, 7, 800, 1, 950, 2, NULL)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 16, true, MIGRATION_15_16)
+
+        db.query(
+            "SELECT catalan, imagePath, box, dueAt, reverseBox, imageCredit FROM flashcards",
+        ).use { cursor ->
+            assertTrue("card survived", cursor.moveToFirst())
+            assertEquals("pa", cursor.getString(0))
+            assertEquals("its picture survived", "flashcards/pa.jpg", cursor.getString(1))
+            assertEquals("and its schedule", 3, cursor.getInt(2))
+            assertEquals(900L, cursor.getLong(3))
+            assertEquals(1, cursor.getInt(4))
+            assertTrue("a picture from before has nobody to credit", cursor.isNull(5))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To15_runsEveryStepInSequence() {
+    fun migrate1To16_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            15,
+            16,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -879,6 +912,7 @@ class MigrationTest {
             MIGRATION_12_13,
             MIGRATION_13_14,
             MIGRATION_14_15,
+            MIGRATION_15_16,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

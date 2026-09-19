@@ -11,6 +11,9 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.FlashcardRepository
+import com.david.llegeix.data.flashcards.PictureHit
+import com.david.llegeix.data.flashcards.PictureSearch
+import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.data.flashcards.Suggested
 import com.david.llegeix.data.flashcards.matchLeadingCase
 import com.david.llegeix.data.flashcards.tidyIpa
@@ -39,6 +42,29 @@ enum class MeaningSuggestion {
     NEEDS_MODEL,
 }
 
+/** How the row of suggested pictures stands. */
+enum class PictureStatus {
+    /** No word yet, so nothing to look for. */
+    WAITING,
+    SEARCHING,
+    FOUND,
+    NONE_FOUND,
+
+    /** No network, or the service did not answer. */
+    OFFLINE,
+
+    /** Photos are searched in English, and the English model is not on the phone. */
+    NEEDS_ENGLISH,
+}
+
+data class PictureSuggestions(
+    val status: PictureStatus = PictureStatus.WAITING,
+    val hits: List<PictureHit> = emptyList(),
+    /** The word these are for, so a stale row is never offered for a new word. */
+    val word: String = "",
+    val source: PictureSource = PictureSource.PICTOGRAMS,
+)
+
 data class CardEditorUiState(
     val isLoading: Boolean = true,
     val deckName: String = "",
@@ -48,7 +74,14 @@ data class CardEditorUiState(
     val romanian: Suggested = Suggested(),
     val ipa: Suggested = Suggested(),
     val imagePath: String? = null,
+    /** Who made the picture, when it came from a search; null for the reader's own. */
+    val imageCredit: String? = null,
     val isImporting: Boolean = false,
+    /** Which source the row of suggestions is showing. Pictograms first. */
+    val pictureSource: PictureSource = PictureSource.PICTOGRAMS,
+    val pictures: PictureSuggestions = PictureSuggestions(),
+    /** The suggestion being fetched after a tap, so its tile can say so. */
+    val fetchingPicture: String? = null,
     /** A save is being written; a second press must not make a second card. */
     val isSaving: Boolean = false,
     val meaningSuggestion: MeaningSuggestion = MeaningSuggestion.IDLE,
@@ -89,6 +122,7 @@ data class CardEditorUiState(
  */
 class CardEditorViewModel(
     private val flashcards: FlashcardRepository,
+    private val pictureSearch: PictureSearch,
     private val deckId: Long,
     private val cardId: Long?,
 ) : ViewModel() {
@@ -123,6 +157,10 @@ class CardEditorViewModel(
     private val translator = WordTranslator(TranslationTarget.ROMANIAN.code)
     private var suggestJob: Job? = null
 
+    /** Catalan to English, only for asking Openverse, whose photos are tagged in English. */
+    private var english: WordTranslator? = null
+    private var pictureJob: Job? = null
+
     init {
         viewModelScope.launch {
             val deck = flashcards.observeDeck(deckId).first()
@@ -140,9 +178,13 @@ class CardEditorViewModel(
                         romanian = Suggested.owned(card.romanian),
                         ipa = savedPronunciation(card),
                         imagePath = card.imagePath,
+                        imageCredit = card.imageCredit,
                     )
                 }
             }
+            // A card opened without a picture is offered some straight away;
+            // one that has a picture is not asked about until it is removed.
+            if (card != null && card.imagePath == null) suggestPictures(card.catalan, pause = false)
             baseline = Baseline(
                 catalan = card?.catalan.orEmpty(),
                 romanian = card?.romanian.orEmpty(),
@@ -180,6 +222,7 @@ class CardEditorViewModel(
             )
         }
         suggestMeaning(text.trim())
+        suggestPictures(text)
     }
 
     /*
@@ -235,13 +278,112 @@ class CardEditorViewModel(
 
     // ---- The picture -------------------------------------------------------
 
+    /**
+     * Look for pictures of [word], after a pause in the typing.
+     *
+     * Only while the card has no picture: the row is only on screen then, and
+     * a search whose answer nobody will see is a word sent to a server for
+     * nothing. Removing the picture asks again.
+     */
+    private fun suggestPictures(word: String, pause: Boolean = true) {
+        pictureJob?.cancel()
+        val trimmed = word.trim()
+        val source = _uiState.value.pictureSource
+        if (trimmed.isEmpty()) {
+            _uiState.update { it.copy(pictures = PictureSuggestions(source = source)) }
+            return
+        }
+        if (_uiState.value.imagePath != null) return
+        pictureJob = viewModelScope.launch {
+            if (pause) delay(PICTURE_DELAY_MS)
+            _uiState.update {
+                it.copy(
+                    pictures = PictureSuggestions(PictureStatus.SEARCHING, word = trimmed, source = source),
+                )
+            }
+            val query = when (source) {
+                PictureSource.PICTOGRAMS -> trimmed
+                PictureSource.PHOTOS -> englishFor(trimmed) ?: run {
+                    _uiState.update {
+                        it.copy(pictures = PictureSuggestions(PictureStatus.NEEDS_ENGLISH, word = trimmed, source = source))
+                    }
+                    return@launch
+                }
+            }
+            val found = when (val outcome = pictureSearch.search(source, query)) {
+                PictureSearch.Outcome.Offline ->
+                    PictureSuggestions(PictureStatus.OFFLINE, word = trimmed, source = source)
+
+                is PictureSearch.Outcome.Found -> PictureSuggestions(
+                    status = if (outcome.hits.isEmpty()) PictureStatus.NONE_FOUND else PictureStatus.FOUND,
+                    hits = outcome.hits,
+                    word = trimmed,
+                    source = source,
+                )
+            }
+            // Thrown away if the word moved on while the answer was coming.
+            _uiState.update { if (it.catalan.trim() == trimmed) it.copy(pictures = found) else it }
+        }
+    }
+
+    /** The word in English, for Openverse; null when the model is not on the phone. */
+    private suspend fun englishFor(word: String): String? {
+        val english = english ?: WordTranslator(TranslationTarget.ENGLISH.code).also { english = it }
+        if (!english.isModelReady) {
+            runCatchingCancellable { english.ensureModel(requireWifi = true) }
+                .onFailure { return null }
+        }
+        return runCatchingCancellable { english.translate(word) }.getOrNull()
+            ?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    fun onPictureSourceChange(source: PictureSource) {
+        if (source == _uiState.value.pictureSource) return
+        _uiState.update { it.copy(pictureSource = source) }
+        suggestPictures(_uiState.value.catalan, pause = false)
+    }
+
+    /** Try the search again, after "no connection". */
+    fun onRetryPictures() = suggestPictures(_uiState.value.catalan, pause = false)
+
+    /**
+     * Put a suggested picture on the card.
+     *
+     * Downloaded, then brought in through exactly the same door as a photo from
+     * the phone — shrunk, turned upright, saved as a JPEG this app wrote — and
+     * the download deleted. The credit comes with it.
+     */
+    fun onPickSuggestion(hit: PictureHit) {
+        if (_uiState.value.fetchingPicture != null) return
+        _uiState.update { it.copy(fetchingPicture = hit.id) }
+        viewModelScope.launch {
+            val stored = runCatchingCancellable {
+                val file = pictureSearch.download(hit)
+                try {
+                    flashcards.importImage(Uri.fromFile(file))
+                } finally {
+                    file.delete()
+                }
+            }
+            stored.onSuccess { path ->
+                discardUnsavedImage()
+                updateForm { it.copy(imagePath = path, imageCredit = hit.credit, fetchingPicture = null) }
+            }.onFailure { error ->
+                Log.w(TAG, "Could not fetch picture ${hit.fullUrl}", error)
+                _uiState.update { it.copy(fetchingPicture = null) }
+                _message.value = UiText.of(R.string.flashcards_picture_fetch_failed)
+            }
+        }
+    }
+
     fun onImagePicked(uri: Uri) {
         _uiState.update { it.copy(isImporting = true) }
         viewModelScope.launch {
             val imported = runCatchingCancellable { flashcards.importImage(uri) }
             imported.onSuccess { path ->
                 discardUnsavedImage()
-                updateForm { it.copy(imagePath = path, isImporting = false) }
+                // The reader's own photo: nobody else to credit.
+                updateForm { it.copy(imagePath = path, imageCredit = null, isImporting = false) }
             }.onFailure { error ->
                 Log.w(TAG, "Could not import picture $uri", error)
                 _uiState.update { it.copy(isImporting = false) }
@@ -252,7 +394,12 @@ class CardEditorViewModel(
 
     fun onRemoveImage() {
         discardUnsavedImage()
-        updateForm { it.copy(imagePath = null) }
+        updateForm { it.copy(imagePath = null, imageCredit = null) }
+        // The row comes back; offer pictures for the word as it is now.
+        val state = _uiState.value
+        if (state.pictures.word != state.catalan.trim() || state.pictures.source != state.pictureSource) {
+            suggestPictures(state.catalan, pause = false)
+        }
     }
 
     /** Delete the picture on screen if it is the form's own rather than the card's. */
@@ -278,6 +425,7 @@ class CardEditorViewModel(
             ipa = ipa.ifEmpty { null },
             ipaApproximate = ipa.isNotEmpty() && state.ipa.isSuggestion && state.ipa.isApproximate,
             imagePath = state.imagePath,
+            imageCredit = state.imageCredit.takeIf { state.imagePath != null },
         )
         // Counted as the card's from here, before the write rather than after
         // it: leaving the form mid-save must not delete a picture the saved row
@@ -293,11 +441,19 @@ class CardEditorViewModel(
 
             if (addAnother) {
                 suggestJob?.cancel()
+                pictureJob?.cancel()
                 loaded = null
                 storedImage = null
                 baseline = Baseline()
                 _uiState.update {
-                    CardEditorUiState(isLoading = false, deckName = it.deckName)
+                    CardEditorUiState(
+                        isLoading = false,
+                        deckName = it.deckName,
+                        // The source is a preference about pictures, not about
+                        // the card just saved, so the next card keeps it.
+                        pictureSource = it.pictureSource,
+                        pictures = PictureSuggestions(source = it.pictureSource),
+                    )
                 }
                 _message.value = UiText.of(R.string.flashcards_card_saved, card.catalan)
                 _cleared.update { it + 1 }
@@ -343,6 +499,7 @@ class CardEditorViewModel(
         val current = _uiState.value.imagePath
         if (current != null && current != storedImage) flashcards.deleteImageNow(current)
         translator.close()
+        english?.close()
     }
 
     companion object {
@@ -351,11 +508,17 @@ class CardEditorViewModel(
         /** Long enough to be a pause, short enough to feel like an answer. */
         private const val SUGGEST_DELAY_MS = 500L
 
+        /**
+         * A little longer than the meaning's pause: this one goes to a server,
+         * so it waits until the word has plainly stopped changing.
+         */
+        private const val PICTURE_DELAY_MS = 700L
+
         fun factory(deckId: Long, cardId: Long?): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                     as LlegeixApp
-                CardEditorViewModel(app.flashcardRepository, deckId, cardId)
+                CardEditorViewModel(app.flashcardRepository, app.pictureSearch, deckId, cardId)
             }
         }
     }

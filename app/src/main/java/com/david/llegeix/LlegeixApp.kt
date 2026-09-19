@@ -13,6 +13,7 @@ import com.david.llegeix.data.DataEraser
 import com.david.llegeix.data.flashcards.FlashcardBackupFiles
 import com.david.llegeix.data.flashcards.FlashcardImages
 import com.david.llegeix.data.flashcards.FlashcardRepository
+import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.pdf.PdfThumbnails
 import com.david.llegeix.update.UpdateRepository
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +86,9 @@ class LlegeixApp : Application() {
     val flashcardRepository: FlashcardRepository by lazy {
         FlashcardRepository(database, FlashcardImages(this), FlashcardBackupFiles(this))
     }
+
+    /** Pictures for a flashcard, from ARASAAC and Openverse, only while a card is being written. */
+    val pictureSearch: PictureSearch by lazy { PictureSearch(this) }
 
     /** First-page covers for the library, shared so the cache outlives a screen. */
     val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(this) }

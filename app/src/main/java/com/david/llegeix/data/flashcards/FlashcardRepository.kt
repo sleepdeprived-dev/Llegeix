@@ -103,6 +103,7 @@ class FlashcardRepository(
                 ipa = card.ipa,
                 ipaApproximate = card.ipaApproximate,
                 imagePath = card.imagePath,
+                imageCredit = card.imageCredit,
             )
             card.id
         }

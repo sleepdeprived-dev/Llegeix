@@ -49,6 +49,8 @@ object FlashcardBackup {
         val ipaApproximate: Boolean = false,
         /** The picture's name inside the zip, e.g. `images/3f2a.jpg`. */
         val image: String? = null,
+        /** Who made the picture, when it came from a search. */
+        val imageCredit: String? = null,
         val createdAt: Long = 0,
         val box: Int = 0,
         val dueAt: Long = 0,
@@ -95,6 +97,7 @@ object FlashcardBackup {
         .putOpt("ipa", card.ipa)
         .put("ipaApproximate", card.ipaApproximate)
         .putOpt("image", card.image)
+        .putOpt("imageCredit", card.imageCredit)
         .put("createdAt", card.createdAt)
         .put("box", card.box)
         .put("dueAt", card.dueAt)
@@ -155,6 +158,7 @@ object FlashcardBackup {
             ipa = card.optStringOrNull("ipa"),
             ipaApproximate = card.optBoolean("ipaApproximate", false),
             image = card.optStringOrNull("image"),
+            imageCredit = card.optStringOrNull("imageCredit"),
             createdAt = card.optLong("createdAt", 0),
             box = card.optInt("box", 0).coerceAtLeast(0),
             dueAt = card.optLong("dueAt", 0),
@@ -250,6 +254,8 @@ object FlashcardBackup {
         ipa = ipa,
         ipaApproximate = ipaApproximate,
         imagePath = imagePath,
+        // A credit is only true of the picture it came with.
+        imageCredit = imageCredit.takeIf { imagePath != null },
         createdAt = createdAt.takeIf { it > 0 } ?: System.currentTimeMillis(),
         box = box,
         dueAt = dueAt,
@@ -267,6 +273,7 @@ object FlashcardBackup {
         ipa = ipa,
         ipaApproximate = ipaApproximate,
         image = image,
+        imageCredit = imageCredit.takeIf { image != null },
         createdAt = createdAt,
         box = box,
         dueAt = dueAt,

@@ -1,5 +1,10 @@
 package com.david.llegeix.ui.flashcards
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.LinearProgressIndicator
+import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.data.practice.Leitner
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -165,6 +170,9 @@ fun DeckScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(top = Space.sm, bottom = CardListBottomClearance),
                 ) {
+                    if (query.isBlank()) {
+                        item(key = "known") { HowWellKnown(list) }
+                    }
                     items(found, key = { it.id }) { card ->
                         CardRow(
                             card = card,
@@ -202,15 +210,18 @@ private fun CardRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = Space.screen, vertical = 4.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .combinedClickable(onClick = onOpen, onLongClick = { menuOpen = true })
-            .padding(start = Space.screen, top = Space.md, bottom = Space.md),
+            .padding(start = Space.md, top = Space.md, bottom = Space.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Every row keeps the square, picture or not, so the words line up
         // down the list instead of stepping in and out.
         val thumbnail = Modifier
             .size(ThumbnailSize)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
         val path = card.imagePath
         if (path != null) {
             CardImage(
@@ -240,7 +251,7 @@ private fun CardRow(
         ) {
             Text(
                 text = card.catalan,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -310,10 +321,43 @@ internal fun DeleteCardDialog(
     )
 }
 
-private val ThumbnailSize = 48.dp
+private val ThumbnailSize = 56.dp
 
 /** A 48dp square on a dense screen is about 144px; this leaves some headroom. */
 private const val ThumbnailPixels = 192
 
 /** Clears the extended button: its 56dp, and the 16dp it floats above the edge. */
 private val CardListBottomClearance = 88.dp
+
+/**
+ * How well the deck is known, each way round, as two bars under two pairs of
+ * flags. Each direction has its own schedule, so one bar for the deck would
+ * average a word known well one way with the same word not known at all the
+ * other, and say nothing true about either.
+ */
+@Composable
+private fun HowWellKnown(cards: List<FlashcardEntity>) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Space.lg),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .padding(top = Space.sm, bottom = Space.md),
+    ) {
+        StudyDirection.entries.forEach { direction ->
+            Column(modifier = Modifier.weight(1f)) {
+                DirectionFlags(direction = direction, flagWidth = 18.dp)
+                LinearProgressIndicator(
+                    progress = {
+                        cards.map { Leitner.progressOf(direction.boxOf(it)) }.average().toFloat()
+                    },
+                    drawStopIndicator = {},
+                    modifier = Modifier
+                        .padding(top = Space.sm)
+                        .fillMaxWidth()
+                        .height(6.dp),
+                )
+            }
+        }
+    }
+}

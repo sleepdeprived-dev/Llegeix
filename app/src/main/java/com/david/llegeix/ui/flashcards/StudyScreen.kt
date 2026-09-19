@@ -1,5 +1,16 @@
 package com.david.llegeix.ui.flashcards
 
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -105,11 +116,10 @@ fun StudyScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(
-                                text = stringResource(directionLabel(state.direction)),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
+                            DirectionFlags(
+                                direction = state.direction,
+                                flagWidth = 18.dp,
+                                modifier = Modifier.padding(top = 2.dp),
                             )
                         }
                     },
@@ -167,27 +177,16 @@ fun StudyScreen(
                     onBack = onBack,
                 )
 
-                state.isFinished -> EmptyState(
-                    title = stringResource(R.string.practice_finished_title),
-                    body = stringResource(
-                        R.string.practice_finished_body,
-                        state.correct,
-                        state.cards.size,
-                    ),
-                    icon = painterResource(R.drawable.ic_check_circle),
-                    primaryAction = {
-                        Button(onClick = { viewModel.deal() }) {
-                            Text(stringResource(R.string.practice_again))
-                        }
-                    },
-                    secondaryAction = {
-                        OutlinedButton(onClick = onBack) {
-                            Text(stringResource(R.string.practice_done))
-                        }
-                    },
+                state.isFinished -> Finished(
+                    state = state,
+                    onAgain = { viewModel.deal() },
+                    onDone = onBack,
                 )
 
-                else -> state.current?.let { card ->
+                // Keyed by the card, so each one arrives face up. Without it the
+                // next card would inherit the last one's turn and swing back
+                // round from its answer side — showing the new answer first.
+                else -> state.current?.let { card -> key(card.id) {
                     StudyCard(
                         card = card,
                         direction = state.direction,
@@ -195,7 +194,7 @@ fun StudyScreen(
                         onReveal = viewModel::onReveal,
                         onAnswer = viewModel::onAnswer,
                     )
-                }
+                } }
             }
         }
     }
@@ -275,11 +274,17 @@ internal fun directionLabel(direction: StudyDirection): Int = when (direction) {
 }
 
 /**
- * One card, asked.
+ * One card, asked — and turned over when the reader has had a go.
  *
- * The whole card is the reveal, as in the practice deck: the gesture is "I have
- * had my go" and should not need aiming. The answers arrive at the bottom where
- * a thumb is, into room that was kept for them, so nothing jumps.
+ * A real turn rather than the answer appearing underneath: a flashcard is a
+ * thing with two sides, and the moment of turning it over is the moment of
+ * finding out, so it should look like one. The back repeats the question
+ * small at the top, because an answer read without its question is a fact
+ * learned with nothing to hang it on.
+ *
+ * The whole card is the reveal, as in the practice deck: the gesture is "I
+ * have had my go" and should not need aiming. The answers arrive at the
+ * bottom, where a thumb is, into room kept for them so nothing jumps.
  */
 @Composable
 private fun StudyCard(
@@ -289,48 +294,66 @@ private fun StudyCard(
     onReveal: () -> Unit,
     onAnswer: (Boolean) -> Unit,
 ) {
+    val turn by animateFloatAsState(
+        targetValue = if (isRevealed) 180f else 0f,
+        animationSpec = tween(durationMillis = 420),
+        label = "cardTurn",
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = Space.screen)
             .padding(bottom = Space.xl),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(top = Space.xl)
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .clickable(enabled = !isRevealed, onClick = onReveal)
-                .verticalScroll(rememberScrollState())
-                .padding(Space.xl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+                .graphicsLayer {
+                    rotationY = turn
+                    cameraDistance = 14f * density
+                }
+                .shadow(elevation = 3.dp, shape = CardShape)
+                .clip(CardShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .clickable(enabled = !isRevealed, onClick = onReveal),
         ) {
-            when (direction) {
-                StudyDirection.CATALAN_TO_ROMANIAN -> {
-                    CatalanSide(card, asAnswer = false)
-                    Answer(isRevealed) {
-                        MeaningSide(card, asAnswer = true)
+            if (turn <= 90f) {
+                Face {
+                    when (direction) {
+                        StudyDirection.CATALAN_TO_ROMANIAN -> CatalanSide(card, asAnswer = false)
+                        StudyDirection.ROMANIAN_TO_CATALAN -> MeaningSide(card, asAnswer = false)
+                    }
+                    Text(
+                        text = stringResource(R.string.practice_tap_to_reveal),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Space.xxl),
+                    )
+                }
+            } else {
+                // Drawn turned round once more, so the back reads the right way.
+                Face(modifier = Modifier.graphicsLayer { rotationY = 180f }) {
+                    Text(
+                        text = when (direction) {
+                            StudyDirection.CATALAN_TO_ROMANIAN -> card.catalan
+                            StudyDirection.ROMANIAN_TO_CATALAN -> card.romanian
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .padding(vertical = Space.lg)
+                            .fillMaxWidth(0.3f),
+                    )
+                    when (direction) {
+                        StudyDirection.CATALAN_TO_ROMANIAN -> MeaningSide(card, asAnswer = true)
+                        StudyDirection.ROMANIAN_TO_CATALAN -> CatalanSide(card, asAnswer = true)
                     }
                 }
-
-                StudyDirection.ROMANIAN_TO_CATALAN -> {
-                    MeaningSide(card, asAnswer = false)
-                    Answer(isRevealed) {
-                        CatalanSide(card, asAnswer = true)
-                    }
-                }
-            }
-
-            if (!isRevealed) {
-                Text(
-                    text = stringResource(R.string.practice_tap_to_reveal),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Space.xxl),
-                )
             }
         }
 
@@ -344,15 +367,27 @@ private fun StudyCard(
                 ) {
                     OutlinedButton(
                         onClick = { onAnswer(false) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(AnswerButtonHeight),
                     ) {
-                        Text(stringResource(R.string.practice_again_soon))
+                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text(
+                            stringResource(R.string.practice_again_soon),
+                            modifier = Modifier.padding(start = Space.sm),
+                        )
                     }
                     Button(
                         onClick = { onAnswer(true) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(AnswerButtonHeight),
                     ) {
-                        Text(stringResource(R.string.practice_knew_it))
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text(
+                            stringResource(R.string.practice_knew_it),
+                            modifier = Modifier.padding(start = Space.sm),
+                        )
                     }
                 }
             }
@@ -360,14 +395,105 @@ private fun StudyCard(
     }
 }
 
-/** The second half of the card: kept back until asked for, then given room. */
+/** One side of the card: centred, and scrollable for a long answer on a small phone. */
 @Composable
-private fun Answer(isRevealed: Boolean, content: @Composable () -> Unit) {
-    AnimatedVisibility(visible = isRevealed, enter = fadeIn(), exit = fadeOut()) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(modifier = Modifier.height(Space.xl))
-            content()
+private fun Face(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(Space.xl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        content = content,
+    )
+}
+
+/**
+ * The end of a session: how it went, and which words to look at again.
+ *
+ * The score is the headline, as a fraction rather than a percentage — "4 of 5"
+ * is what the reader just did, "80%" is arithmetic done on it. The missed words
+ * are listed by name, because "you missed one" is the least useful sentence a
+ * study app can say and "you missed *cotxe*" is the most.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Finished(state: StudyUiState, onAgain: () -> Unit, onDone: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Space.xxl, vertical = Space.xl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.practice_finished_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.practice_position, state.correct, state.cards.size),
+            style = MaterialTheme.typography.displayLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = Space.sm),
+        )
+        Text(
+            text = stringResource(
+                R.string.practice_finished_body,
+                state.correct,
+                state.cards.size,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = Space.md),
+        )
+
+        if (state.missed.isEmpty()) {
+            Text(
+                text = stringResource(R.string.flashcards_study_perfect),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(top = Space.xl),
+            )
+        } else {
+            Text(
+                text = stringResource(R.string.flashcards_study_missed),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(top = Space.xl, bottom = Space.sm),
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(Space.sm),
+            ) {
+                state.missed.forEach { card ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(horizontal = Space.md, vertical = Space.sm),
+                    ) {
+                        Text(card.catalan, style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            card.romanian,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         }
+
+        Button(
+            onClick = onAgain,
+            modifier = Modifier.padding(top = Space.xxl),
+        ) { Text(stringResource(R.string.practice_again)) }
+        OutlinedButton(
+            onClick = onDone,
+            modifier = Modifier.padding(top = Space.sm),
+        ) { Text(stringResource(R.string.practice_done)) }
     }
 }
 
@@ -436,7 +562,11 @@ private fun MeaningSide(card: FlashcardEntity, asAnswer: Boolean) {
 }
 
 /** Room kept for the two answers whether or not they are showing, so nothing jumps. */
-private val AnswerRowHeight = 68.dp
+private val AnswerRowHeight = 72.dp
+
+private val AnswerButtonHeight = 56.dp
+
+private val CardShape = RoundedCornerShape(28.dp)
 
 /** Tall enough to read a photograph, short enough to leave the words on screen. */
 private val PictureHeight = 200.dp

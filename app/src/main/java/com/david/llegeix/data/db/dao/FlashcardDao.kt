@@ -15,6 +15,11 @@ data class DeckWithCount(
     val cardCount: Int,
     /** How many of its cards carry a picture, which deleting the deck also deletes. */
     val imageCount: Int,
+    /** The picture of its first illustrated card, to stand for the deck. */
+    val coverImage: String?,
+    /** The Leitner boxes of its cards added up, one sum per direction, for how well it is known. */
+    val boxTotal: Int,
+    val reverseBoxTotal: Int,
 )
 
 /** How many of a deck's cards are due in each direction of study. */
@@ -31,7 +36,12 @@ interface FlashcardDao {
     @Query(
         """
         SELECT d.id AS id, d.name AS name, d.createdAt AS createdAt,
-               COUNT(c.id) AS cardCount, COUNT(c.imagePath) AS imageCount
+               COUNT(c.id) AS cardCount, COUNT(c.imagePath) AS imageCount,
+               (SELECT imagePath FROM flashcards
+                WHERE deckId = d.id AND imagePath IS NOT NULL
+                ORDER BY createdAt, id LIMIT 1) AS coverImage,
+               COALESCE(SUM(c.box), 0) AS boxTotal,
+               COALESCE(SUM(c.reverseBox), 0) AS reverseBoxTotal
         FROM flashcard_decks d
         LEFT JOIN flashcards c ON c.deckId = d.id
         GROUP BY d.id
@@ -78,7 +88,8 @@ interface FlashcardDao {
         """
         UPDATE flashcards
         SET catalan = :catalan, romanian = :romanian, ipa = :ipa,
-            ipaApproximate = :ipaApproximate, imagePath = :imagePath
+            ipaApproximate = :ipaApproximate, imagePath = :imagePath,
+            imageCredit = :imageCredit
         WHERE id = :id
         """,
     )
@@ -89,6 +100,7 @@ interface FlashcardDao {
         ipa: String?,
         ipaApproximate: Boolean,
         imagePath: String?,
+        imageCredit: String?,
     )
 
     @Query("DELETE FROM flashcards WHERE id = :id")

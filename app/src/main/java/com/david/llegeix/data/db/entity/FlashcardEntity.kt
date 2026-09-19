@@ -51,6 +51,13 @@ data class FlashcardEntity(
     val ipaApproximate: Boolean = false,
     /** Relative to the app's files directory, e.g. `flashcards/3f2a.jpg`. */
     val imagePath: String? = null,
+    /**
+     * Who made the picture and under what licence, when it came from a search
+     * rather than the reader's own photos — "Sergio Palao · ARASAAC · CC
+     * BY-NC-SA". Those licences ask for the credit to travel with the picture,
+     * and the card is where the picture goes. Null for the reader's own.
+     */
+    val imageCredit: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 
     // Catalan → Romanian: seeing the word and knowing what it means.

@@ -170,6 +170,13 @@ does both after bumping the version in `app/build.gradle.kts`.
   a vocabulary list and the sentences behind it never leave the phone, while
   Android's direct device-to-device transfer still carries it to a new one.
 
+  One feature talks to the internet without a button press, and only while a
+  flashcard is open to be written: picture suggestions. After a pause in the
+  typing, the word goes to ARASAAC (in Catalan) or, on the Photos tab, its
+  English translation goes to Openverse — the word and nothing else, with no
+  identifier. Both are free public services that need no account or key. With
+  no card open, nothing is sent.
+
 - **Updates** — Llegeix is sideloaded rather than installed from a store, so
   nothing would ever update it. Configuració has a button that asks when it is
   pressed: it reads the newest release from a small public repository that
@@ -244,11 +251,22 @@ does both after bumping the version in `app/build.gradle.kts`.
   it did: the pronunciation is worked out from the spelling as you type, marked
   *approx.* where the spelling cannot settle a vowel, and the translator on the
   phone suggests a meaning — both follow the word until you type in the field,
-  and are yours from then on. Pictures come through Android's photo picker, so
-  the app is never given the gallery, and are copied in shrunk and upright so a
-  card keeps its picture after the photo is gone. A deck is searched with its
-  accents ignored, because the word you half remember is typed on whichever
-  keyboard is up.
+  and are yours from then on. Pictures are offered as the word is typed: a row
+  of ARASAAC pictograms, searched in Catalan, or openly licensed photos from
+  Openverse, searched with the word's English translation made on the phone.
+  They are offered and never placed — a picture of the wrong sense of *banc* is
+  worse than none — and the one chosen keeps its maker's credit on the card.
+  Your own photos come through Android's photo picker, so the app is never given
+  the gallery. Either way a picture is copied in shrunk and upright, so a card
+  keeps it after the original is gone. A deck is searched with its accents
+  ignored, because the word you half remember is typed on whichever keyboard is
+  up.
+
+  Each deck is a card of its own on the tab, with its first picture as a
+  cover, a bar for how well it is known and its own button into practice
+  carrying how many are waiting — the decks are the choice, so there is no
+  second list of them to choose from. Which way round is two flags, not two
+  language names: they are told apart at a glance.
 
   Practice asks one way round at a time, and each way keeps its own schedule:
   recognising *pa* says nothing about producing it from *pâine*, so a right
@@ -435,6 +453,15 @@ transcriber.
 
 The transcription is deliberately broad: no spirantisation of b/d/g between
 vowels, and no phrase-level assimilation.
+
+## Credits
+
+The pictograms offered for flashcards are the property of the Government of
+Aragón and were created by Sergio Palao for
+[ARASAAC](https://arasaac.org), which distributes them under the Creative
+Commons BY-NC-SA licence. Photos come from [Openverse](https://openverse.org),
+each under its own open licence; the credit for any picture taken from either
+is kept on the card it was put on.
 
 ## Downloads
 
