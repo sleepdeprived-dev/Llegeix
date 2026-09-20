@@ -470,13 +470,13 @@ private fun LanguageFlag(@DrawableRes res: Int) {
 @Composable
 private fun ChosenPicture(path: String, credit: String?, onChange: () -> Unit) {
     Box {
-        // The picture is the button.
+        // The picture is the button, and nothing is drawn on it to say so.
         //
-        // There was a filled *Choose another* sitting on the bottom corner of
-        // it, which is a lot of a small screen spent restating what the picture
-        // already offers — a picture on a form is the one thing everybody
-        // expects to be able to press. A small badge in the corner says it can
-        // be, and the words go to whoever is listening rather than looking.
+        // It had a filled *Choose another*, which became a small badge with a
+        // refresh mark in it, which is still something sitting on the corner of
+        // the picture explaining the picture. A picture on a form is the one
+        // thing everybody already expects to be able to press. The words are
+        // kept for whoever is listening rather than looking.
         FramedPicture(
             path = path,
             contentDescription = stringResource(R.string.flashcards_picture_other),
@@ -491,22 +491,6 @@ private fun ChosenPicture(path: String, credit: String?, onChange: () -> Unit) {
                     onClick = onChange,
                 ),
         )
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(Space.sm)
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Refresh,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(20.dp),
-            )
-        }
     }
     credit?.let {
         Text(

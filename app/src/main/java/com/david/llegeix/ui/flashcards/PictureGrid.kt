@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.PictureHit
+import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
@@ -77,7 +78,15 @@ fun PictureGrid(
         // answer arrives, and nothing jumps when it does.
         val tiles = buildList<@Composable (Modifier) -> Unit> {
             add { m -> OwnPhotoTile(onPickOwn, m) }
-            hits.take(8).forEach { hit ->
+            // Every picture the search came back with, not the first eight.
+            //
+            // Eight plus the reader's own photo was three rows, which is not
+            // enough of a choice to find the right picture of a word in — and
+            // the services were being asked for far more than that and then
+            // having most of it thrown away. The cap now lives in one place,
+            // PictureResults.LIMIT, so what is asked for and what is shown
+            // cannot drift apart again.
+            hits.take(PictureResults.LIMIT).forEach { hit ->
                 add { m ->
                     SuggestionTile(
                         hit = hit,

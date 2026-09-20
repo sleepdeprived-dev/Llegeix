@@ -311,12 +311,17 @@ does both after bumping the version in `app/build.gradle.kts`.
   in from there. A pictogram's white paper is cut away and replaced with a
   colour of the theme — dark at night — while the drawing itself is left
   exactly as it was drawn.
-  Pictures are offered as the word is typed, as a grid: ARASAAC pictograms,
-  searched in Catalan, or openly licensed photos from Openverse, searched with
-  the card's English meaning — the lone Catalan word is too thin a thing to
-  translate, and *pa* on its own comes back as Pennsylvania. Photos are held to
-  three safety checks: Openverse's own adult flag, a list of words never
-  searched for, and the same list read against every photo's title and tags.
+  Pictures are offered as the word is typed, as a grid of two dozen: pictograms
+  from ARASAAC and from Global Symbols — an index over three dozen other freely
+  licensed symbol sets — both searched in Catalan; or openly licensed
+  photographs from Wikimedia Commons and Openverse, searched with the card's
+  English meaning, since the lone Catalan word is too thin a thing to translate
+  and *pa* on its own comes back as Pennsylvania. Each pair is asked in parallel
+  and the answers interleaved, with the same picture never offered twice: the
+  shelves overlap, and a grid half made of pairs is half a grid. Photos are held
+  to three safety checks: the source's own adult flag or the file's categories,
+  a list of words never searched for, and the same list read against every
+  photo's title and tags.
   They are offered and never placed — a picture of the wrong sense of *banc* is
   worse than none — and the one chosen keeps its maker's credit on the card.
   Your own photos come through Android's photo picker, so the app is never given
@@ -565,12 +570,16 @@ vowels, and no phrase-level assimilation.
 
 ## Credits
 
-The pictograms offered for flashcards are the property of the Government of
-Aragón and were created by Sergio Palao for
-[ARASAAC](https://arasaac.org), which distributes them under the Creative
-Commons BY-NC-SA licence. Photos come from [Openverse](https://openverse.org),
-each under its own open licence; the credit for any picture taken from either
-is kept on the card it was put on.
+The pictograms offered for flashcards come from two places. Those from
+[ARASAAC](https://arasaac.org) are the property of the Government of Aragón and
+were created by Sergio Palao, under the Creative Commons BY-NC-SA licence; the
+rest come through [Global Symbols](https://globalsymbols.com), which indexes
+some three dozen freely licensed symbol sets — Mulberry, Sclera, Blissymbols and
+others — each under its own licence, which the app reads from the index and
+writes onto the card. Photographs come from
+[Wikimedia Commons](https://commons.wikimedia.org) and
+[Openverse](https://openverse.org), each under its own open licence. The credit
+for any picture, from any of the four, is kept on the card it was put on.
 
 ## Downloads
 

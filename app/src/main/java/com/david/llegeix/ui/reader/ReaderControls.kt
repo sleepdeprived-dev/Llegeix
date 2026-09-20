@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -245,20 +248,43 @@ fun OutlineSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val listState = rememberLazyListState()
 
+    /*
+     * Where the reader was when this opened, taken once and then left alone.
+     *
+     * This is the whole of the flicker fix, and the flicker was this.
+     *
+     * The page being read is live state, and it does not hold still just
+     * because a sheet is over it: the document behind carries on measuring
+     * itself as page bitmaps arrive and replace placeholders, which moves the
+     * topmost visible page, which moves `currentPage`. That was a key of the
+     * effect below — so every time it moved, the effect re-ran and scrolled the
+     * contents list back to the current chapter. Scrolling down through a long
+     * contents list meant being hauled back to where you started, repeatedly,
+     * which is exactly what it looked like.
+     *
+     * Remembered rather than keyed, so the contents is a still list from the
+     * moment it opens: it scrolls where it is pushed and stops when it runs
+     * out. The mark against the chapter you are in is taken from the same
+     * snapshot, for the same reason and because that is what it means anyway —
+     * the chapter you were in when you went looking.
+     */
+    val openedAt = remember { currentPage }
+    val hereIndex = remember(outline, openedAt) {
+        outline.indexOfLast { it.pageIndex <= openedAt }
+    }
+
     // Opened at where you are, not at the beginning. A contents that always
     // starts at chapter one is a contents you have to scroll through to find
     // out where you already were.
-    LaunchedEffect(outline, currentPage) {
-        val here = outline.indexOfLast { it.pageIndex <= currentPage }
-        if (here > 0) listState.scrollToItem(here)
+    LaunchedEffect(Unit) {
+        if (hereIndex > 0) listState.scrollToItem(hereIndex)
     }
 
     AppBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.9f)
-                .navigationBarsPadding(),
+                .fillMaxHeight(0.9f),
         ) {
             Text(
                 text = stringResource(R.string.reader_contents),
@@ -269,15 +295,30 @@ fun OutlineSheet(
             )
             LazyColumn(
                 state = listState,
-                contentPadding = PaddingValues(bottom = Space.xxl),
+                // The navigation bar is cleared from inside the list rather
+                // than by padding the column around it: an inset that animates
+                // — and in the reader they do, because the bars come and go —
+                // changes the height of a padded column on every frame of that
+                // animation, and a list re-laid-out under a moving finger is
+                // the other half of what made this sheet feel broken.
+                contentPadding = WindowInsets.navigationBars
+                    .asPaddingValues()
+                    .let {
+                        PaddingValues(bottom = it.calculateBottomPadding() + Space.xxl)
+                    },
             ) {
                 // Keyed by position. A contents list is free to say
                 // "Exercicis" three times at the same depth on the same page,
                 // and a lazy list handed the same key twice throws.
-                itemsIndexed(outline, key = { index, _ -> index }) { _, entry ->
+                itemsIndexed(outline, key = { index, _ -> index }) { index, entry ->
                     // The section you are in is marked, so the sheet answers
-                    // "where am I" as well as "where can I go".
-                    val isHere = entry == outline.lastOrNull { it.pageIndex <= currentPage }
+                    // "where am I" as well as "where can I go". Compared by
+                    // position against an index worked out once: doing it with
+                    // `lastOrNull` inside the row meant every visible row
+                    // scanned the whole contents on every frame of a fling,
+                    // which on a book with three hundred entries is real work
+                    // on the main thread for an answer that cannot change.
+                    val isHere = index == hereIndex
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier

@@ -41,14 +41,23 @@ data class PictureHit(
  */
 object PictureResults {
 
-    /** How many to offer: a small grid, not a gallery. */
-    const val LIMIT = 12
+    /**
+     * How many to offer.
+     *
+     * Twelve, which was two rows of the grid, and the complaint about it was
+     * fair: picking a picture for a word is a job you do by eye, and two rows
+     * is not enough to have found the right one in. Twenty-four is eight rows
+     * of three — enough to choose from, still a grid you can take in by
+     * scrolling rather than a gallery to be searched in its own right, and
+     * within what the thumbnail cache holds comfortably.
+     */
+    const val LIMIT = 24
 
     /**
-     * How many photos to ask for, more than are offered, so that the ones the
-     * safety check drops still leave a full grid.
+     * How many to ask each service for, more than are offered, so that the ones
+     * the safety check and the duplicate check drop still leave a full grid.
      */
-    const val FETCH = 20
+    const val FETCH = 30
 
     /** The width Commons is asked to make its thumbnails at, for the grid. */
     private const val COMMONS_THUMBNAIL_PX = 320
@@ -62,13 +71,114 @@ object PictureResults {
     const val ARASAAC_CREDIT = "Sergio Palao · ARASAAC · CC BY-NC-SA"
 
     /**
-     * Whether a picture with this credit is an ARASAAC pictogram, and so drawn
-     * as one: black lines on paper that the app recolours to fit its theme.
+     * Whether a picture with this credit is a pictogram, and so drawn as one:
+     * a line drawing on white paper that the app cuts away and replaces with a
+     * colour of its theme.
+     *
+     * By credit rather than by a flag on the card, because the credit is what a
+     * card keeps — the source a picture came from is not stored anywhere else,
+     * and cards made before Global Symbols existed carry only ARASAAC's.
      */
-    fun isPictogram(credit: String?): Boolean = credit?.contains("ARASAAC") == true
+    fun isPictogram(credit: String?): Boolean =
+        credit != null && (credit.contains("ARASAAC") || credit.contains(GLOBAL_SYMBOLS))
 
     fun arasaacSearchUrl(word: String): String =
         "https://api.arasaac.org/v1/pictograms/ca/search/" + encodePath(word.trim())
+
+    /**
+     * Global Symbols, asked for the same word in Catalan.
+     *
+     * A second shelf of pictograms beside ARASAAC's, and a deliberately
+     * different one: Global Symbols is an index over some three dozen freely
+     * licensed symbol sets — Mulberry, Sclera, Blissymbols, Tawasol and others
+     * — which between them draw in styles ARASAAC does not, and label words
+     * ARASAAC has not. It needs no key and no account, like everything else
+     * here, and it is asked in Catalan, so what comes back is what Catalan
+     * speakers labelled rather than a translation of an English label.
+     *
+     * ARASAAC is in the index too, so its pictograms can come back twice; the
+     * duplicate check in [PictureSearch] is what stops the grid showing the
+     * same drawing side by side.
+     */
+    fun globalSymbolsSearchUrl(word: String): String =
+        "https://globalsymbols.com/api/v1/labels/search?language=cat&limit=$FETCH&query=" +
+            URLEncoder.encode(word.trim(), "UTF-8")
+
+    /** The index of symbol sets, which is where a Global Symbols credit comes from. */
+    const val GLOBAL_SYMBOLS_SETS_URL = "https://globalsymbols.com/api/v1/symbolsets"
+
+    /**
+     * Global Symbols' answer: one entry per label, each carrying its drawing.
+     *
+     * Only the bitmaps. A fair number of the sets are drawn as SVG, which is
+     * the better format and one this app cannot decode: every picture here goes
+     * through the same shrink-and-store path a photograph from the reader's own
+     * gallery does, and that path reads bitmaps. Offering a thumbnail that
+     * cannot be drawn would be worse than offering one fewer.
+     *
+     * @param setNames symbol set id to its name and licence, from
+     *   [parseGlobalSymbolsSets]; the credit says "unknown" about neither, it
+     *   simply leaves out what it was not told.
+     */
+    fun parseGlobalSymbols(json: String, setNames: Map<Int, String> = emptyMap()): List<PictureHit> {
+        val array = try {
+            JSONArray(json)
+        } catch (error: JSONException) {
+            return emptyList()
+        }
+        return (0 until array.length()).asSequence()
+            .mapNotNull { array.optJSONObject(it) }
+            .mapNotNull { label ->
+                val picto = label.optJSONObject("picto") ?: return@mapNotNull null
+                val url = picto.optString("image_url").takeIf { it.startsWith("https://") }
+                    ?: return@mapNotNull null
+                if (!isDrawableImage(url)) return@mapNotNull null
+                val setId = picto.optInt("symbolset_id", -1)
+                PictureHit(
+                    source = PictureSource.PICTOGRAMS,
+                    id = "gs:" + picto.optInt("id", 0),
+                    thumbnailUrl = url,
+                    fullUrl = url,
+                    credit = globalSymbolsCredit(setNames[setId]),
+                )
+            }
+            .take(LIMIT)
+            .toList()
+    }
+
+    /** Whether the app's bitmap decoder stands a chance with this file. */
+    private fun isDrawableImage(url: String): Boolean {
+        val path = url.substringBefore('?').lowercase(Locale.ROOT)
+        return path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg") ||
+            path.endsWith(".webp")
+    }
+
+    /** "Mulberry Symbols · CC BY-SA 4.0 · Global Symbols". */
+    fun globalSymbolsCredit(setName: String?): String =
+        listOfNotNull(setName?.takeIf { it.isNotBlank() }, GLOBAL_SYMBOLS)
+            .joinToString(" · ")
+
+    /** Named once: it is both a credit and the mark that says "this is a pictogram". */
+    const val GLOBAL_SYMBOLS = "Global Symbols"
+
+    /** The symbol set index, flattened to what a credit needs: id to name and licence. */
+    fun parseGlobalSymbolsSets(json: String): Map<Int, String> {
+        val array = try {
+            JSONArray(json)
+        } catch (error: JSONException) {
+            return emptyMap()
+        }
+        return (0 until array.length()).asSequence()
+            .mapNotNull { array.optJSONObject(it) }
+            .mapNotNull { set ->
+                val id = set.optInt("id", -1).takeIf { it >= 0 } ?: return@mapNotNull null
+                val name = set.optString("name").takeIf { it.isNotBlank() }
+                    ?: return@mapNotNull null
+                val licence = set.optJSONObject("licence")?.optString("name")
+                id to listOfNotNull(name, licence?.takeIf { it.isNotBlank() }).joinToString(" · ")
+            }
+            .toMap()
+    }
 
     fun openverseSearchUrl(query: String): String =
         "https://api.openverse.org/v1/images/?q=" +

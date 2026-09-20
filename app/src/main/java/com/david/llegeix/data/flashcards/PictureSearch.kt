@@ -21,8 +21,9 @@ import java.util.UUID
  *
  * ### Free, and asked for nothing
  *
- * Every source is a public service with no account and no key: ARASAAC's
- * pictograms, published by the Government of Aragón, and for photos both
+ * Every source is a public service with no account and no key: for pictograms
+ * ARASAAC, published by the Government of Aragón, and Global Symbols, an index
+ * over three dozen other freely licensed symbol sets; for photographs both
  * Wikimedia Commons and Openverse, the openly licensed media index run by
  * WordPress. A key shipped inside a sideloaded APK is a key everybody holding
  * the APK has — the same reason the update check reads a public repository — so
@@ -61,13 +62,35 @@ class PictureSearch(context: Context) {
             }
         }
 
-    private suspend fun searchPictograms(query: String): Outcome {
-        val body = try {
-            fetch(PictureResults.arasaacSearchUrl(query), MAX_ANSWER_BYTES, acceptEmpty = true)
-        } catch (error: IOException) {
-            return Outcome.Offline
+    /**
+     * Pictograms from two shelves at once, ARASAAC's first.
+     *
+     * ARASAAC leads because it is the set this app was built around: it is
+     * labelled in Catalan by people, its drawings are consistent with one
+     * another, and its white paper is what the pictogram matting is written
+     * for. Global Symbols follows, and it is an index over some three dozen
+     * other freely licensed sets, which is worth having for exactly the words
+     * ARASAAC has not drawn.
+     *
+     * Asked in parallel and interleaved, like the photographs, and for the same
+     * reasons: two services cost one wait, and a grid of twenty-four should not
+     * be twenty-three from one shelf and one from the other.
+     */
+    private suspend fun searchPictograms(query: String): Outcome = coroutineScope {
+        val arasaac = async {
+            hitsFrom(PictureResults.arasaacSearchUrl(query), PictureResults::parseArasaac)
         }
-        return Outcome.Found(PictureResults.parseArasaac(body.toString(Charsets.UTF_8)))
+        val sets = async { globalSymbolSets() }
+        val global = async {
+            val names = sets.await()
+            hitsFrom(PictureResults.globalSymbolsSearchUrl(query)) {
+                PictureResults.parseGlobalSymbols(it, names)
+            }
+        }
+        val first = arasaac.await()
+        val second = global.await()
+        if (first == null && second == null) return@coroutineScope Outcome.Offline
+        Outcome.Found(merge(first.orEmpty(), second.orEmpty()))
     }
 
     /**
@@ -86,33 +109,78 @@ class PictureSearch(context: Context) {
      * unreachable is being offline.
      */
     private suspend fun searchPhotos(query: String): Outcome = coroutineScope {
-        val commons = async { photosFrom(PictureResults.commonsSearchUrl(query), PictureResults::parseCommons) }
+        val commons = async {
+            hitsFrom(PictureResults.commonsSearchUrl(query), PictureResults::parseCommons)
+        }
         val openverse = async {
-            photosFrom(PictureResults.openverseSearchUrl(query), PictureResults::parseOpenverse)
+            hitsFrom(PictureResults.openverseSearchUrl(query), PictureResults::parseOpenverse)
         }
         val first = commons.await()
         val second = openverse.await()
         if (first == null && second == null) return@coroutineScope Outcome.Offline
-        Outcome.Found(interleave(first.orEmpty(), second.orEmpty()).take(PictureResults.LIMIT))
+        Outcome.Found(merge(first.orEmpty(), second.orEmpty()))
     }
 
     /** Null when the service could not be reached at all, as against having nothing. */
-    private suspend fun photosFrom(url: String, parse: (String) -> List<PictureHit>): List<PictureHit>? =
+    private suspend fun hitsFrom(
+        url: String,
+        parse: (String) -> List<PictureHit>,
+    ): List<PictureHit>? =
         try {
             parse(fetch(url, MAX_ANSWER_BYTES, acceptEmpty = true).toString(Charsets.UTF_8))
         } catch (error: IOException) {
             null
         }
 
-    /** One from each in turn, then whatever is left of the longer one. */
-    private fun interleave(first: List<PictureHit>, second: List<PictureHit>): List<PictureHit> =
-        buildList {
+    /**
+     * One from each shelf in turn, then whatever is left of the longer one,
+     * with the same picture never offered twice.
+     *
+     * The duplicate check matters now that both pairs of sources overlap:
+     * Global Symbols indexes ARASAAC, and Openverse indexes Commons, so without
+     * it a grid could be half pairs of the same drawing.
+     */
+    private fun merge(first: List<PictureHit>, second: List<PictureHit>): List<PictureHit> {
+        val seen = HashSet<String>(PictureResults.LIMIT * 2)
+        return buildList {
             val rounds = maxOf(first.size, second.size)
             for (index in 0 until rounds) {
-                first.getOrNull(index)?.let(::add)
-                second.getOrNull(index)?.let(::add)
+                for (hit in listOfNotNull(first.getOrNull(index), second.getOrNull(index))) {
+                    if (size >= PictureResults.LIMIT) return@buildList
+                    if (seen.add(hit.fullUrl)) add(hit)
+                }
             }
         }
+    }
+
+    /**
+     * What each Global Symbols set is called and published under, fetched once
+     * per run of the app.
+     *
+     * A credit that named no set would be no credit at all — these are three
+     * dozen collections under half a dozen licences — and the search itself
+     * does not carry the names. It is one small request, it is shared by every
+     * pictogram search afterwards, and failing it costs the credit rather than
+     * the pictures.
+     */
+    private var symbolSets: Map<Int, String>? = null
+
+    private suspend fun globalSymbolSets(): Map<Int, String> {
+        symbolSets?.let { return it }
+        val fetched = try {
+            PictureResults.parseGlobalSymbolsSets(
+                fetch(PictureResults.GLOBAL_SYMBOLS_SETS_URL, MAX_ANSWER_BYTES, acceptEmpty = true)
+                    .toString(Charsets.UTF_8),
+            )
+        } catch (error: IOException) {
+            emptyMap()
+        }
+        // Only a real answer is kept, so a request that failed on a dead
+        // connection is tried again on the next search rather than leaving
+        // every pictogram uncredited for the rest of the run.
+        if (fetched.isNotEmpty()) symbolSets = fetched
+        return fetched
+    }
 
     /**
      * One word in the three languages a card holds, as ARASAAC's people wrote
@@ -242,6 +310,16 @@ class PictureSearch(context: Context) {
 
         /** A tile in the row is 88dp, about 260px on a dense screen. */
         const val THUMBNAIL_EDGE = 256
-        const val THUMBNAIL_CACHE_BYTES = 8 * 1024 * 1024
+        /**
+         * Room for both shelves of a full grid, twice over.
+         *
+         * Eight megabytes held about thirty thumbnails, which was comfortable
+         * when the grid showed eight and is not now that it shows
+         * twenty-four: flicking between Pictograms and Photos would evict the
+         * shelf being returned to, and every tile would reload — over the
+         * network — as the grid was scrolled back up. A cache that only exists
+         * while a card is open can afford the room.
+         */
+        const val THUMBNAIL_CACHE_BYTES = 24 * 1024 * 1024
     }
 }

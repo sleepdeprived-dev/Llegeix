@@ -33,7 +33,7 @@ class PictureResultsTest {
         // out most of the illustrations that are the clearest pictures of all.
         val url = PictureResults.openverseSearchUrl("apple tree")
         assertEquals(
-            "https://api.openverse.org/v1/images/?q=apple+tree&page_size=20&mature=false",
+            "https://api.openverse.org/v1/images/?q=apple+tree&page_size=30&mature=false",
             url,
         )
         assertTrue(PictureResults.openverseSearchUrl("a&b=c").contains("q=a%26b%3Dc&"))
@@ -83,9 +83,58 @@ class PictureResultsTest {
     }
 
     @Test
-    fun `no more than a row's worth is offered`() {
-        val json = (1..40).joinToString(",", "[", "]") { """{"_id": $it}""" }
+    fun `no more than a grid's worth is offered`() {
+        val json = (1..60).joinToString(",", "[", "]") { """{"_id": $it}""" }
         assertEquals(PictureResults.LIMIT, PictureResults.parseArasaac(json).size)
+    }
+
+    @Test
+    fun `Global Symbols is asked in Catalan`() {
+        val url = PictureResults.globalSymbolsSearchUrl(" pa ")
+        assertTrue("in Catalan, as ARASAAC is", url.contains("language=cat"))
+        assertTrue(url.contains("query=pa"))
+    }
+
+    @Test
+    fun `Global Symbols pictograms keep the set they came from`() {
+        val json = """[
+            {"text":"pa","picto":{"id":90177,"symbolset_id":17,
+             "image_url":"https://globalsymbols.com/u/17_90177.png"}},
+            {"text":"pa","picto":{"id":3363,"symbolset_id":13,
+             "image_url":"https://globalsymbols.com/u/13_3363.svg"}},
+            {"text":"pa","picto":{"id":9,"symbolset_id":99,
+             "image_url":"http://insecure.example/x.png"}}
+        ]"""
+        val hits = PictureResults.parseGlobalSymbols(json, mapOf(17 to "ARASAAC · CC BY-NC-SA 4.0"))
+        assertEquals("the SVG and the insecure one are left out", 1, hits.size)
+        assertEquals(PictureSource.PICTOGRAMS, hits.single().source)
+        assertEquals("ARASAAC · CC BY-NC-SA 4.0 · Global Symbols", hits.single().credit)
+    }
+
+    @Test
+    fun `a Global Symbols pictogram is matted like any other pictogram`() {
+        assertTrue(PictureResults.isPictogram("Mulberry Symbols · Global Symbols"))
+        assertTrue(PictureResults.isPictogram(PictureResults.ARASAAC_CREDIT))
+        assertTrue("a photograph is not", !PictureResults.isPictogram("Ana · Flickr · CC BY"))
+        assertTrue(!PictureResults.isPictogram(null))
+    }
+
+    @Test
+    fun `the symbol set index becomes credits, and a broken one becomes none`() {
+        val json = """[
+            {"id":13,"name":"Mulberry Symbols","licence":{"name":"Creative Commons BY SA 4.0"}},
+            {"id":99,"name":"Nameless"}
+        ]"""
+        val sets = PictureResults.parseGlobalSymbolsSets(json)
+        assertEquals("Mulberry Symbols · Creative Commons BY SA 4.0", sets[13])
+        assertEquals("Nameless", sets[99])
+        assertTrue(PictureResults.parseGlobalSymbolsSets("nope").isEmpty())
+    }
+
+    @Test
+    fun `an answer that is not an answer is no pictograms rather than a crash`() {
+        assertTrue(PictureResults.parseGlobalSymbols("<html>").isEmpty())
+        assertTrue(PictureResults.parseGlobalSymbols("""[{"text":"x"}]""").isEmpty())
     }
 
     @Test

@@ -574,24 +574,13 @@ private fun ShelfRow(
                 .padding(start = Space.lg),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = stringResource(
-                        if (isOpen) R.string.flashcards_hide_decks else R.string.flashcards_show_decks,
-                        shelf.collection.name,
-                    ),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .rotate(turn),
-                )
                 if (shelf.collection.isPinned) {
                     Icon(
                         painter = painterResource(R.drawable.ic_pin),
                         contentDescription = stringResource(R.string.folders_pinned),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
-                            .padding(start = Space.xs)
+                            .padding(end = Space.xs)
                             .size(16.dp),
                     )
                 }
@@ -600,25 +589,24 @@ private fun ShelfRow(
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = Space.xs),
                 )
             }
+            // How many cards are on the shelf, and only that.
+            //
+            // It said "3 decks · 124 cards", which is two numbers about the
+            // same pile — and the decks are about to be listed underneath, in
+            // full, so counting them was telling the reader something they
+            // were one tap from reading. The cards are the thing that cannot
+            // be seen by opening the row.
             Text(
-                text = listOf(
-                    pluralStringResource(
-                        R.plurals.flashcards_deck_count,
-                        shelf.decks.size,
-                        shelf.decks.size,
-                    ),
-                    pluralStringResource(
-                        R.plurals.flashcards_card_count,
-                        shelf.cardCount,
-                        shelf.cardCount,
-                    ),
-                ).joinToString(" · "),
+                text = pluralStringResource(
+                    R.plurals.flashcards_card_count,
+                    shelf.cardCount,
+                    shelf.cardCount,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 26.dp, top = 2.dp),
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
 
@@ -630,6 +618,38 @@ private fun ShelfRow(
                     shelf.collection.name,
                 ),
                 modifier = Modifier.padding(start = Space.sm),
+            )
+        }
+
+        // The chevron, as a thing you can aim at.
+        //
+        // It was a 20dp glyph tucked in front of the name, which made it look
+        // like a bullet rather than a control and gave it no target of its own
+        // — the whole row opened the shelf, so the mark was decoration. Here it
+        // is at the end, in a tinted disc, at the size of a button, and it
+        // turns to say which way the row went.
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .padding(start = Space.sm)
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .clickable(
+                    onClickLabel = stringResource(
+                        if (isOpen) R.string.flashcards_hide_decks else R.string.flashcards_show_decks,
+                        shelf.collection.name,
+                    ),
+                    onClick = onToggle,
+                ),
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(22.dp)
+                    .rotate(turn),
             )
         }
 
@@ -765,19 +785,17 @@ private fun DeckRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp),
             )
-            if (deck.cardCount > 0) {
-                LinearProgressIndicator(
-                    progress = { deck.knownIn(direction) },
-                    drawStopIndicator = {},
-                    gapSize = 0.dp,
-                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    modifier = Modifier
-                        .padding(top = Space.sm)
-                        .fillMaxWidth(0.85f)
-                        .height(5.dp)
-                        .clip(CircleShape),
-                )
-            }
+            // No bar under the name.
+            //
+            // It drew the deck's Leitner boxes as a fraction of every card
+            // being in the last one, which is a number with no unit and no
+            // moment at which it is finished: a deck of new cards reads as
+            // nothing done, and one answered right all week creeps a
+            // millimetre. What it actually measured was a schedule, and since
+            // pressing play goes through every card whatever the schedule says,
+            // the bar was reporting on something the reader no longer steers
+            // by. The count of cards is the honest line, and it is the line
+            // above it.
         }
 
         if (canPractise) {

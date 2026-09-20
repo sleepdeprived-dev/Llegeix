@@ -19,8 +19,9 @@
         ML Kit downloads its Catalan, Romanian and English translation models on
         first use; translation itself runs entirely on-device afterwards. The
         flashcard form looks for pictures of the word being written — ARASAAC
-        for pictograms, Wikimedia Commons and Openverse for photographs — and
-        only while a card is open and only after a pause in the typing. And
+        and Global Symbols for pictograms, Wikimedia Commons and Openverse for
+        photographs — and only while a card is open and only after a pause in
+        the typing. And
         Configuració's update check asks GitHub what the newest release is.
 
         None of the three carries an account, an identifier, or anything about
