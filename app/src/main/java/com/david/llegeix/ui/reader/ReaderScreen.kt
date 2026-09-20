@@ -131,6 +131,7 @@ import com.david.llegeix.ui.common.DictionaryStatus
 import com.david.llegeix.ui.common.IpaLine
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.TranslationTargetFlags
+import com.david.llegeix.ui.common.VerbDetails
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
@@ -1569,6 +1570,27 @@ private fun WordLookupSheet(
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(top = Space.xs),
+                    )
+                }
+            }
+
+            // ---- What part of the verb this is, when it is one ---------------
+            // Above the line it came from and below the answer, which is where
+            // it belongs: the translation says what these letters mean, the
+            // line says what was being said with them, and this says what the
+            // word *is* — the one of the three a learner is least able to work
+            // out on their own. The Dictionary tab shows exactly this, in the
+            // same words: the same word should not be explained two ways
+            // depending on how it was reached.
+            lookup.verb?.let { verb ->
+                DetailCard(
+                    title = stringResource(R.string.dictionary_verb_title),
+                    modifier = Modifier.padding(top = Space.lg),
+                ) {
+                    VerbDetails(
+                        verb = verb,
+                        infinitiveMeaning = lookup.verbInfinitiveMeaning,
+                        definition = lookup.verbDefinition,
                     )
                 }
             }

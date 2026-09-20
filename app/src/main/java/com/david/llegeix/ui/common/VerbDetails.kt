@@ -1,4 +1,4 @@
-package com.david.llegeix.ui.dictionary
+package com.david.llegeix.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,7 +27,6 @@ import com.david.llegeix.lang.Person
 import com.david.llegeix.lang.Tense
 import com.david.llegeix.lang.VerbForm
 import com.david.llegeix.lang.VerbReading
-import com.david.llegeix.ui.common.Space
 
 /**
  * What a verb form is, spelled out.
@@ -36,36 +35,33 @@ import com.david.llegeix.ui.common.Space
  * translation and, if the inflected-forms file happened to have it, a
  * definition quietly filed under a different word. The three facts they needed
  * were all missing: that it is a verb, which verb, and which part of it. This
- * card is those three facts, in that order, plus what the verb means — because
- * "it is the imperfect subjunctive of *cantar*" is only half an answer to
- * somebody who does not yet know what *cantar* is.
+ * is those three facts, in that order, plus what the verb means — because "it
+ * is the imperfect subjunctive of *cantar*" is only half an answer to somebody
+ * who does not yet know what *cantar* is.
  *
- * The infinitive is a row you can press, which looks it up properly. That is
- * very often the next thing wanted, and it is the difference between the card
- * telling the reader where to go and taking them there.
+ * Bare content with no background of its own, because it has to sit inside two
+ * quite different containers: the dictionary's own card, and the reader's
+ * lookup sheet, where every supporting section is a [DetailCard] and one panel
+ * drawn to its own taste would stand out as a mistake. Both get the same words
+ * in the same order, which is the point — a word tapped on a page and the same
+ * word typed into the dictionary must not look like two different words.
+ *
+ * @param onOpenInfinitive makes the infinitive a row you can press, which looks
+ *   it up properly. Null where there is nowhere to go, as in the reader, where
+ *   the dictionary is another tab and another document away — and a row that
+ *   looks pressable and is not is worse than one that never offered.
  */
 @Composable
-fun VerbFormCard(
+fun VerbDetails(
     verb: VerbForm,
-    /** The infinitive translated, when the form the reader typed was not it. */
+    /** The infinitive translated, when the form the reader met was not it. */
     infinitiveMeaning: String?,
     /** The Viccionari's own definition of the verb, in Catalan. */
     definition: String?,
-    onOpenInfinitive: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenInfinitive: ((String) -> Unit)? = null,
 ) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(Space.lg),
-    ) {
-        Text(
-            text = stringResource(R.string.dictionary_verb_title),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
-
+    Column(modifier = modifier) {
         // What the written form is. The leading reading is the one a reader is
         // most likely to have met; the rest follow on one line, because
         // "canta" really is both the present and an order and hiding either
@@ -75,7 +71,6 @@ fun VerbFormCard(
             Text(
                 text = readings.first(),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = Space.xs),
             )
             if (readings.size > 1) {
                 Text(
@@ -96,7 +91,6 @@ fun VerbFormCard(
                 text = stringResource(R.string.dictionary_verb_unplaced),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Space.xs),
             )
         }
 
@@ -112,7 +106,13 @@ fun VerbFormCard(
             modifier = Modifier
                 .padding(top = Space.md)
                 .clip(RoundedCornerShape(14.dp))
-                .clickable { onOpenInfinitive(verb.infinitive) }
+                .then(
+                    if (onOpenInfinitive == null) {
+                        Modifier
+                    } else {
+                        Modifier.clickable { onOpenInfinitive(verb.infinitive) }
+                    },
+                )
                 .padding(vertical = Space.sm),
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -135,15 +135,17 @@ fun VerbFormCard(
                     )
                 }
             }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = stringResource(
-                    R.string.dictionary_verb_look_up,
-                    verb.infinitive,
-                ),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
+            if (onOpenInfinitive != null) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(
+                        R.string.dictionary_verb_look_up,
+                        verb.infinitive,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
 
         definition?.let {

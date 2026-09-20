@@ -168,23 +168,32 @@ does both after bumping the version in `app/build.gradle.kts`.
   pressed while reading should not look like two different words. The star keeps
   it with everything else you have saved.
 
-  A conjugated verb is also read back as one. Looking up *cantéssim* used to
-  answer with a translation and, if the inflected-forms file happened to have
-  it, a definition quietly filed under a different word; what was missing was
-  the part a learner needs — that it is a verb, that the verb is *cantar*, that
-  it is the first conjugation, and that this is the imperfect subjunctive, first
-  person plural. That card is there now, with the verb's own meaning under it
-  and the infinitive as a row you can press to look it up properly. The
-  infinitive is not guessed: it is read from the bundled table of inflected
+  A conjugated verb is also read back as one — here and, in the same words,
+  in the reader's own panel when a word is pressed on a page. Looking up
+  *cantéssim* used to answer with a translation and, if the inflected-forms file
+  happened to have it, a definition quietly filed under a different word; what
+  was missing was the part a learner needs — that it is a verb, that the verb is
+  *cantar*, that it is the first conjugation, and that this is the imperfect
+  subjunctive, first person plural. That is there now, with the verb's own
+  meaning under it, and in the Dictionary the infinitive is a row you can press
+  to look it up properly.
+
+  The infinitive is not guessed: it is read from the bundled table of inflected
   forms, which records it outright, irregulars and all. Which *form* it is comes
   from `CatalanVerbs`, which tries the six verbs no rule describes — *ser*,
   *estar*, *haver*, *anar*, *fer*, *tenir* — then the regular paradigm generated
   from the infinitive and compared with the accents off, since Catalan moves its
   stress around a paradigm and changes nothing else, and only then the ending on
-  its own. Where none of the three is sure, the card names the verb and says it
-  could not place the form, because a learner told that *corria* is a
-  conditional has been taught something false about their own reading and will
-  not find out.
+  its own. Where none of the three is sure, it names the verb and says it could
+  not place the form, because a learner told that *corria* is a conditional has
+  been taught something false about their own reading and will not find out.
+
+  None of it needs the network, so it is also the one part of the panel that
+  still answers when the translation model has not been downloaded: the grammar
+  comes off files already on the phone. It is worked out after the translation
+  is on screen, like the rest of the breakdown, so nothing holds up the line the
+  sheet was opened for, and it is skipped for a dragged phrase — which part of
+  the verb *a boca de canó* is has no answer.
 - **Privacy** — nothing is collected, and the manifest is made to say so as
   well as the policy: the app's data is excluded from Google's cloud backup, so
   a vocabulary list and the sentences behind it never leave the phone, while

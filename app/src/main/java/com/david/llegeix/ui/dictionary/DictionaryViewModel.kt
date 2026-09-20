@@ -15,9 +15,9 @@ import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.lang.CatalanIpa
-import com.david.llegeix.lang.CatalanVerbs
 import com.david.llegeix.lang.CatalanWordBank
 import com.david.llegeix.lang.VerbForm
+import com.david.llegeix.lang.verbEntry
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.DictionaryState
 import com.david.llegeix.ui.common.DictionaryStatus
@@ -222,7 +222,9 @@ class DictionaryViewModel(
             // either way; every lookup after that it is two binary searches,
             // and having the answer in hand is what lets the infinitive be
             // translated straight afterwards without a second round of waiting.
-            val found = withContext(Dispatchers.IO) { readVerb(word) }
+            val found = withContext(Dispatchers.IO) {
+                CatalanWordBank.get(application).verbEntry(word)
+            }
             if (found != null) {
                 updateEntry { it.copy(verb = found.form, verbDefinition = found.definition) }
             }
@@ -245,32 +247,6 @@ class DictionaryViewModel(
         }
     }
 
-    /** A verb form and what the dictionary says the verb itself means. */
-    private data class VerbLookup(val form: VerbForm, val definition: String?)
-
-    /**
-     * Whether [word] is a verb form, and if so which one.
-     *
-     * Three questions, and all three have to answer yes. The inflected-forms
-     * table has to know a base form for it — or the word has to be its own, as
-     * when somebody types *cantar* outright. That base form has to look like an
-     * infinitive. And the Viccionari has to file it as a verb, which is the
-     * check that keeps a noun with a verb's shape from being conjugated at the
-     * reader. Only then is the form itself worked out.
-     */
-    private fun readVerb(word: String): VerbLookup? {
-        val bank = CatalanWordBank.get(application)
-        val key = CatalanVerbs.normalise(word)
-        if (key.isEmpty()) return null
-        val lemma = bank.lemmaOf(key) ?: key
-        if (CatalanVerbs.conjugationOf(lemma) == null) return null
-        val definition = bank.lookup(lemma)
-            ?.definitions
-            ?.firstOrNull { it.partOfSpeech == VERB_PART_OF_SPEECH }
-        if (definition == null && !CatalanVerbs.isKnownIrregular(lemma)) return null
-        val form = CatalanVerbs.analyse(key, lemma) ?: return null
-        return VerbLookup(form, definition?.meanings?.firstOrNull())
-    }
 
     private suspend fun loadReference(word: String) {
         val found = withContext(Dispatchers.IO) {
@@ -403,9 +379,6 @@ class DictionaryViewModel(
          * toggle rather than a duplicate.
          */
         private const val DICTIONARY_PAGE = 0
-
-        /** How the Viccionari labels a verb entry. */
-        private const val VERB_PART_OF_SPEECH = "verb"
 
         /** Words of a typed phrase looked up in the references. */
         private const val MAX_PHRASE_WORDS = 4

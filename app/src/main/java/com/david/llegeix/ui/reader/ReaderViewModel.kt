@@ -23,6 +23,8 @@ import android.graphics.RectF
 import com.david.llegeix.lang.CatalanContext
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.CatalanWordBank
+import com.david.llegeix.lang.VerbForm
+import com.david.llegeix.lang.verbEntry
 import com.david.llegeix.pdf.MATCH_LIMIT
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
@@ -163,6 +165,21 @@ data class WordLookup(
     val canRetryOnAnyNetwork: Boolean = false,
     /** Definitions, synonyms and antonyms, once the reader has asked. */
     val dictionary: DictionaryState = DictionaryState(),
+    /**
+     * What the word turns out to be, when it turns out to be a verb.
+     *
+     * The same three facts the Dictionary tab gives — which verb, which part
+     * of it, which conjugation — because a word met on a page and the same
+     * word typed into the dictionary are the same word. Null for everything
+     * else, for a dragged phrase, and for a verb form the app cannot place;
+     * see [com.david.llegeix.lang.CatalanVerbs], which would rather say
+     * nothing than guess a tense.
+     */
+    val verb: VerbForm? = null,
+    /** The infinitive translated, which is the meaning a conjugated form hides. */
+    val verbInfinitiveMeaning: String? = null,
+    /** The Viccionari's own first definition of the infinitive, in Catalan. */
+    val verbDefinition: String? = null,
 ) {
     val isPhrase: Boolean get() = words.size > 1
 }
@@ -355,6 +372,10 @@ class ReaderViewModel(
                                 contextTranslation = null,
                                 here = null,
                                 error = null,
+                                // The grammar is the same in either language,
+                                // so the verb card stays; only the infinitive's
+                                // meaning was in the old one.
+                                verbInfinitiveMeaning = null,
                                 words = it.words.map { gloss -> gloss.copy(translation = null) },
                             )
                         }
@@ -1040,16 +1061,21 @@ class ReaderViewModel(
                         ),
                     )
                 }
+                // Still worth saying what the word is. Which part of which verb
+                // it is comes off files already on the phone and owes the
+                // network nothing, so a reader on a train with no model
+                // downloaded is not told nothing at all.
+                explainVerb()
                 return
             }
         }
 
-        runCatchingCancellable { translator.translate(word) }
+        val result = runCatchingCancellable { translator.translate(word) }
+        result
             .onSuccess { translation ->
                 updateLookup {
                     it.copy(status = LookupStatus.READY, translation = translation)
                 }
-                glossParts()
             }
             .onFailure { error ->
                 updateLookup {
@@ -1059,6 +1085,48 @@ class ReaderViewModel(
                     )
                 }
             }
+        // Before the rest of the breakdown rather than inside the success
+        // branch: the grammar holds whether or not the translator answered.
+        explainVerb()
+        if (result.isSuccess) glossParts()
+    }
+
+    /**
+     * Say what the word is, when what it is happens to be a verb.
+     *
+     * Runs after the translation is already on screen, like every other part
+     * of the breakdown and for the same reason: it opens the reference files,
+     * which on the first lookup of a run is a sixteen-megabyte read, and
+     * nothing is allowed to hold up the one line the sheet was opened for. It
+     * also warms those files for [findPhrase] and for the dictionary button
+     * below, both of which want them a moment later.
+     *
+     * Only for a single word. Which part of the verb *a boca de canó* is has no
+     * answer, and picking one of its words to answer about would be the sheet
+     * deciding which word the reader meant after they had already said.
+     */
+    private suspend fun explainVerb() {
+        val lookup = _uiState.value.lookup ?: return
+        if (lookup.isPhrase) return
+        val found = withContext(Dispatchers.IO) {
+            runCatchingCancellable {
+                CatalanWordBank.get(application).verbEntry(lookup.text)
+            }.getOrNull()
+        } ?: return
+        updateLookup { it.copy(verb = found.form, verbDefinition = found.definition) }
+
+        // The infinitive's meaning, which for a conjugated form is the thing
+        // actually wanted — "cantéssim is the imperfect subjunctive of cantar"
+        // says nothing at all to somebody who does not know cantar. Skipped
+        // when the word already is the infinitive, since the sheet has just
+        // translated it.
+        if (found.form.isInfinitive || !translator.isModelReady) return
+        val meaning = runCatchingCancellable { translator.translate(found.form.infinitive) }
+            .getOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: return
+        updateLookup { it.copy(verbInfinitiveMeaning = meaning) }
     }
 
     /**

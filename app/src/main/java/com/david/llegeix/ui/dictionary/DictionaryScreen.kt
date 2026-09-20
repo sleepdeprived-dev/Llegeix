@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -56,6 +57,7 @@ import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.TranslationTargetFlags
+import com.david.llegeix.ui.common.VerbDetails
 import com.david.llegeix.ui.common.resolved
 
 /**
@@ -352,15 +354,27 @@ private fun WordEntry(
         // what the word *is* — which is the one of the three a learner is least
         // able to work out for themselves.
         entry.verb?.let { verb ->
-            VerbFormCard(
-                verb = verb,
-                infinitiveMeaning = entry.verbInfinitiveMeaning,
-                definition = entry.verbDefinition,
-                onOpenInfinitive = onOpenWord,
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = Space.lg),
-            )
+                    .padding(top = Space.lg)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(Space.lg),
+            ) {
+                Text(
+                    text = stringResource(R.string.dictionary_verb_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = Space.xs),
+                )
+                VerbDetails(
+                    verb = verb,
+                    infinitiveMeaning = entry.verbInfinitiveMeaning,
+                    definition = entry.verbDefinition,
+                    onOpenInfinitive = onOpenWord,
+                )
+            }
         }
 
         DictionaryCard(
