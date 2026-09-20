@@ -1,0 +1,21 @@
+<!-- One sheet running past the top and bottom edges: a continuous strip. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/white"
+        android:fillType="evenOdd"
+        android:pathData="M6,2 h12 v20 h-12 z M8,4 v16 h8 v-16 z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M9.5,7.5 h5 v1.6 h-5 z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M9.5,11.2 h5 v1.6 h-5 z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M9.5,14.9 h5 v1.6 h-5 z" />
+</vector>

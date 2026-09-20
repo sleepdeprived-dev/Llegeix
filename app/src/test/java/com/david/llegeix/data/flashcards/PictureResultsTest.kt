@@ -28,12 +28,24 @@ class PictureResultsTest {
 
     @Test
     fun `Openverse is asked for a page of safe results`() {
+        // No category filter any more: it restricted the answer to what
+        // Openverse files as a photograph, which for a vocabulary card ruled
+        // out most of the illustrations that are the clearest pictures of all.
         val url = PictureResults.openverseSearchUrl("apple tree")
         assertEquals(
-            "https://api.openverse.org/v1/images/?q=apple+tree&page_size=20&mature=false&category=photograph",
+            "https://api.openverse.org/v1/images/?q=apple+tree&page_size=20&mature=false",
             url,
         )
         assertTrue(PictureResults.openverseSearchUrl("a&b=c").contains("q=a%26b%3Dc&"))
+    }
+
+    @Test
+    fun `Commons is asked for bitmaps, with the categories that let them be checked`() {
+        val url = PictureResults.commonsSearchUrl("apple tree")
+        assertTrue("only real pictures", url.contains("filetype%3Abitmap+apple+tree"))
+        assertTrue("files, not articles", url.contains("gsrnamespace=6"))
+        assertTrue("with a thumbnail already made", url.contains("iiurlwidth=320"))
+        assertTrue("and what it is filed under", url.contains("categories"))
     }
 
     @Test

@@ -32,7 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -64,10 +63,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.data.source.SourceFolder
+import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.allFilesAccessIntents
-
-private const val PDF_MIME_TYPE = "application/pdf"
 
 /**
  * Where the library's documents come from, and which parts of it count.
@@ -121,15 +119,7 @@ fun SourcesSheet(
         }
     }
 
-    val folderPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree(),
-    ) { uri -> uri?.let(viewModel::onFolderPicked) }
-
-    val filePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments(),
-    ) { uris -> if (uris.isNotEmpty()) viewModel.onFilesPicked(uris) }
-
-    ModalBottomSheet(
+    AppBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         modifier = modifier,
@@ -254,11 +244,22 @@ fun SourcesSheet(
                 }
             }
 
-            item(key = "add") {
-                AddSourceCard(
-                    onAddFolder = { folderPicker.launch(null) },
-                    onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
-                    modifier = Modifier.padding(top = Space.xl),
+            // Where new sources come from, said rather than offered.
+            //
+            // This card used to carry the two buttons that add one — a folder,
+            // and single files — and they were the same two the + in the
+            // library opens. Two controls for one decision, on two screens, one
+            // of which is a *settings* sheet: pressing Fonts to add a source is
+            // the kind of thing a reader learns once and then cannot unlearn,
+            // and it made this sheet about two jobs at once. It is about one
+            // now — which of the places you have given the app actually count —
+            // and the + is about the other.
+            item(key = "add-hint") {
+                Text(
+                    text = stringResource(R.string.sources_add_elsewhere),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Space.lg),
                 )
             }
         }
@@ -612,47 +613,6 @@ private fun DeviceScanCard(
     }
 }
 
-/**
- * The two ways to bring in something new.
- *
- * They were a pair of text buttons at the foot of the list, which read as an
- * afterthought and sat wherever the last source happened to end. As a card with
- * a heading they are the one thing on this screen that is clearly an action
- * rather than a setting, and each says what it is actually for — "a folder and
- * everything inside it" against "single PDFs" is the distinction people get
- * wrong, and it costs one line to answer it in advance.
- */
-@Composable
-private fun AddSourceCard(
-    onAddFolder: () -> Unit,
-    onAddFiles: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        SectionLabel(stringResource(R.string.sources_add_title))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(vertical = Space.sm),
-        ) {
-            AddSourceRow(
-                icon = painterResource(R.drawable.ic_folder),
-                title = stringResource(R.string.action_add_folder),
-                body = stringResource(R.string.sources_add_folder_body),
-                onClick = onAddFolder,
-            )
-            AddSourceRow(
-                icon = painterResource(R.drawable.ic_file),
-                title = stringResource(R.string.library_add_files),
-                body = stringResource(R.string.sources_add_files_body),
-                onClick = onAddFiles,
-            )
-        }
-    }
-}
-
 /** The quiet heading that says what the cards below it are. */
 @Composable
 private fun SectionLabel(text: String) {
@@ -662,53 +622,4 @@ private fun SectionLabel(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = Space.xs, top = Space.sm, bottom = Space.xs),
     )
-}
-
-/**
- * One way to bring in another source, drawn the way the library's own *Add
- * documents* sheet draws them.
- *
- * The tinted disc rather than a bare glyph, and the same two lines in the same
- * order, because these are literally the same two choices reached from a
- * different door — and two dialogues offering the same pair of options in two
- * different shapes is how an app stops looking like one app.
- */
-@Composable
-private fun AddSourceRow(
-    icon: Painter,
-    title: String,
-    body: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = Space.lg, vertical = Space.md),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-        Column(modifier = Modifier.padding(start = Space.lg)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-    }
 }

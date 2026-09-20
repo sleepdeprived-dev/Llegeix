@@ -152,6 +152,13 @@ does both after bumping the version in `app/build.gradle.kts`.
   file's own name back. The name is one fact, held in one place and asked for by
   every screen that draws a title — including the search, so a book renamed can
   be found by the name it was given.
+- **Trimmed margins do not move the words** — with *Crop margins* on, the page
+  is re-rendered as the ink alone, and for a long time the text layer went on
+  being asked about it as though nothing had moved: pressing a word selected the
+  one a line or two below it, because the top margin was exactly the part that
+  had been cut. Every conversion between a bitmap pixel and a point in the PDF
+  now goes through the same box the page was drawn inside — `PageGeometry`,
+  which is pure arithmetic and tested as such.
 - **Translation** — press and hold a word to translate it with ML Kit's on-device
   models; keep holding and drag to take a whole phrase, which comes back
   translated, broken down word by word, and set in the line it came from. The
@@ -171,6 +178,15 @@ does both after bumping the version in `app/build.gradle.kts`.
   synonyms and the antonyms — because a word checked here and the same word
   pressed while reading should not look like two different words. The star keeps
   it with everything else you have saved.
+
+  Sheets do not bounce at the end. Android's stretch overscroll takes a whole
+  list into a render effect and squashes it while a finger keeps pulling, which
+  inside a bottom sheet is a second thing deforming at the same moment as the
+  sheet's own drag handling is deciding whose gesture it is — and the two fight,
+  visibly, as judder. Every sheet in the app goes through one `AppBottomSheet`
+  that turns it off, so reaching the bottom of a list in a sheet does nothing at
+  all. The page itself keeps its stretch, where it is the only thing that says a
+  document has ended.
 
   A conjugated verb is also read back as one — here and, in the same words,
   in the reader's own panel when a word is pressed on a page. Looking up

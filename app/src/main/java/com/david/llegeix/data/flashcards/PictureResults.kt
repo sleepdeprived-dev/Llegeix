@@ -50,6 +50,15 @@ object PictureResults {
      */
     const val FETCH = 20
 
+    /** The width Commons is asked to make its thumbnails at, for the grid. */
+    private const val COMMONS_THUMBNAIL_PX = 320
+
+    /** And the width the one chosen picture is fetched at. */
+    private const val COMMONS_FULL_PX = 800
+
+    private val HTML_TAG = Regex("<[^>]*>")
+    private val WHITESPACE = Regex("\\s+")
+
     const val ARASAAC_CREDIT = "Sergio Palao · ARASAAC · CC BY-NC-SA"
 
     /**
@@ -64,7 +73,106 @@ object PictureResults {
     fun openverseSearchUrl(query: String): String =
         "https://api.openverse.org/v1/images/?q=" +
             URLEncoder.encode(query.trim(), "UTF-8") +
-            "&page_size=$FETCH&mature=false&category=photograph"
+            "&page_size=$FETCH&mature=false"
+
+    /**
+     * Wikimedia Commons, asked for the same word.
+     *
+     * Added because Openverse on its own was thin: "bread" comes back from it
+     * with a couple of hundred candidates, most of them somebody's photograph
+     * of a loaf on a table at a wedding, and for an ordinary noun in a
+     * vocabulary deck that is not enough to find one good picture in. Commons
+     * is the largest freely licensed media collection there is, it is keyless
+     * and accountless like everything else this app talks to, and its files are
+     * categorised by people — which is both why the results are better and how
+     * they can be checked.
+     *
+     * `filetype:bitmap` keeps out the SVG diagrams and the PDFs; the categories
+     * come back with the search so every candidate can be read against the
+     * same blocklist Openverse's tags are.
+     */
+    fun commonsSearchUrl(query: String): String =
+        "https://commons.wikimedia.org/w/api.php?action=query&format=json" +
+            "&formatversion=2&generator=search&gsrnamespace=6&gsrlimit=$FETCH" +
+            "&gsrsearch=" + URLEncoder.encode("filetype:bitmap " + query.trim(), "UTF-8") +
+            "&prop=imageinfo%7Ccategories&cllimit=20&iiprop=url%7Cextmetadata" +
+            "&iiurlwidth=$COMMONS_THUMBNAIL_PX"
+
+    /**
+     * Commons' answer: one page per file, each with a thumbnail already made
+     * at the size asked for.
+     *
+     * The thumbnail matters: the originals on Commons are frequently twenty
+     * megapixels, and a grid of twelve of them would be a hundred megabytes
+     * over somebody's mobile data. The full-size link is only followed for the
+     * one picture actually chosen, and even that is asked for at a width the
+     * card can use.
+     */
+    fun parseCommons(json: String): List<PictureHit> {
+        val pages = try {
+            JSONObject(json).optJSONObject("query")?.optJSONArray("pages") ?: return emptyList()
+        } catch (error: JSONException) {
+            return emptyList()
+        }
+        return (0 until pages.length()).asSequence()
+            .mapNotNull { pages.optJSONObject(it) }
+            .filterNot { page ->
+                PictureSafety.isBlockedPhoto(page.optString("title"), categoriesOf(page))
+            }
+            .mapNotNull { page ->
+                val info = page.optJSONArray("imageinfo")?.optJSONObject(0)
+                    ?: return@mapNotNull null
+                val thumbnail = info.optString("thumburl").takeIf { it.startsWith("https://") }
+                    ?: return@mapNotNull null
+                val full = info.optString("url").takeIf { it.startsWith("https://") } ?: thumbnail
+                val meta = info.optJSONObject("extmetadata")
+                PictureHit(
+                    source = PictureSource.PHOTOS,
+                    id = "commons:" + page.optString("title"),
+                    thumbnailUrl = thumbnail,
+                    // Commons will make a copy at any width; asking for one the
+                    // card can actually use saves pulling down the original.
+                    fullUrl = thumbnail.replace(
+                        "/${COMMONS_THUMBNAIL_PX}px-",
+                        "/${COMMONS_FULL_PX}px-",
+                    ),
+                    credit = commonsCredit(
+                        creator = stripMarkup(meta?.optJSONObject("Artist")?.optString("value")),
+                        license = meta?.optJSONObject("LicenseShortName")?.optString("value")
+                            .orEmpty(),
+                    ),
+                )
+            }
+            .take(LIMIT)
+            .toList()
+    }
+
+    private fun categoriesOf(page: JSONObject): List<String> {
+        val categories = page.optJSONArray("categories") ?: return emptyList()
+        return (0 until categories.length()).mapNotNull {
+            categories.optJSONObject(it)?.optString("title")?.removePrefix("Category:")
+        }
+    }
+
+    /**
+     * Commons writes its credits as a fragment of HTML, since they are meant
+     * for a web page. A card is not one, so the tags come out and the entities
+     * that matter come back.
+     */
+    fun stripMarkup(html: String?): String = html.orEmpty()
+        .replace(HTML_TAG, "")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&#039;", "'")
+        .replace("&nbsp;", " ")
+        .replace(WHITESPACE, " ")
+        .trim()
+
+    /** "Evan-Amos · Wikimedia Commons · CC0", leaving out what is unknown. */
+    fun commonsCredit(creator: String, license: String): String =
+        listOf(creator.takeIf { it.isNotBlank() }, "Wikimedia Commons", license.takeIf { it.isNotBlank() })
+            .filterNotNull()
+            .joinToString(" · ")
 
     /**
      * ARASAAC's answer: an array of pictograms.

@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.LruCache
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -19,12 +21,13 @@ import java.util.UUID
  *
  * ### Free, and asked for nothing
  *
- * Both sources are public services with no account and no key: ARASAAC's
- * pictograms, published by the Government of Aragón, and Openverse, the
- * openly licensed media index run by WordPress. A key shipped inside a
- * sideloaded APK is a key everybody holding the APK has — the same reason the
- * update check reads a public repository — so a service that needed one was
- * never an option.
+ * Every source is a public service with no account and no key: ARASAAC's
+ * pictograms, published by the Government of Aragón, and for photos both
+ * Wikimedia Commons and Openverse, the openly licensed media index run by
+ * WordPress. A key shipped inside a sideloaded APK is a key everybody holding
+ * the APK has — the same reason the update check reads a public repository — so
+ * a service that needed one was never an option, and none of the three is
+ * given anything to identify anybody by.
  *
  * ### What leaves the phone
  *
@@ -50,24 +53,66 @@ class PictureSearch(context: Context) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
 
-    suspend fun search(source: PictureSource, query: String): Outcome = withContext(Dispatchers.IO) {
-        val url = when (source) {
-            PictureSource.PICTOGRAMS -> PictureResults.arasaacSearchUrl(query)
-            PictureSource.PHOTOS -> PictureResults.openverseSearchUrl(query)
-        }
-        val body = try {
-            fetch(url, MAX_ANSWER_BYTES, acceptEmpty = true)
-        } catch (error: IOException) {
-            return@withContext Outcome.Offline
-        }
-        val text = body.toString(Charsets.UTF_8)
-        Outcome.Found(
+    suspend fun search(source: PictureSource, query: String): Outcome =
+        withContext(Dispatchers.IO) {
             when (source) {
-                PictureSource.PICTOGRAMS -> PictureResults.parseArasaac(text)
-                PictureSource.PHOTOS -> PictureResults.parseOpenverse(text)
-            },
-        )
+                PictureSource.PICTOGRAMS -> searchPictograms(query)
+                PictureSource.PHOTOS -> searchPhotos(query)
+            }
+        }
+
+    private suspend fun searchPictograms(query: String): Outcome {
+        val body = try {
+            fetch(PictureResults.arasaacSearchUrl(query), MAX_ANSWER_BYTES, acceptEmpty = true)
+        } catch (error: IOException) {
+            return Outcome.Offline
+        }
+        return Outcome.Found(PictureResults.parseArasaac(body.toString(Charsets.UTF_8)))
     }
+
+    /**
+     * Photos from two collections at once, Commons first.
+     *
+     * Openverse alone was too thin to be much use: an ordinary noun comes back
+     * from it with a couple of hundred candidates, and once the safety check
+     * has had them the grid is often three photographs, none of them of the
+     * thing. Commons is the larger collection by a wide margin and its files
+     * are categorised by people, so it leads; Openverse follows, because it
+     * indexes Flickr and others that Commons does not have at all.
+     *
+     * Interleaved rather than concatenated, so a grid of twelve is not eleven
+     * from one and one from the other — and asked in parallel, so two services
+     * cost one wait. Either failing is not a failure: only both being
+     * unreachable is being offline.
+     */
+    private suspend fun searchPhotos(query: String): Outcome = coroutineScope {
+        val commons = async { photosFrom(PictureResults.commonsSearchUrl(query), PictureResults::parseCommons) }
+        val openverse = async {
+            photosFrom(PictureResults.openverseSearchUrl(query), PictureResults::parseOpenverse)
+        }
+        val first = commons.await()
+        val second = openverse.await()
+        if (first == null && second == null) return@coroutineScope Outcome.Offline
+        Outcome.Found(interleave(first.orEmpty(), second.orEmpty()).take(PictureResults.LIMIT))
+    }
+
+    /** Null when the service could not be reached at all, as against having nothing. */
+    private suspend fun photosFrom(url: String, parse: (String) -> List<PictureHit>): List<PictureHit>? =
+        try {
+            parse(fetch(url, MAX_ANSWER_BYTES, acceptEmpty = true).toString(Charsets.UTF_8))
+        } catch (error: IOException) {
+            null
+        }
+
+    /** One from each in turn, then whatever is left of the longer one. */
+    private fun interleave(first: List<PictureHit>, second: List<PictureHit>): List<PictureHit> =
+        buildList {
+            val rounds = maxOf(first.size, second.size)
+            for (index in 0 until rounds) {
+                first.getOrNull(index)?.let(::add)
+                second.getOrNull(index)?.let(::add)
+            }
+        }
 
     /**
      * One word in the three languages a card holds, as ARASAAC's people wrote

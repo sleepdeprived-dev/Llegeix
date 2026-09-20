@@ -87,8 +87,8 @@ class PdfiumPageRenderer private constructor(
         targetWidthPx: Int,
         crop: Boolean,
     ): Bitmap = withContext(Dispatchers.IO) {
-        val box = if (crop) marginsOf(index) else ContentBox.Whole
-        if (!crop || !box.isWorthCropping) {
+        val box = boxFor(index, crop)
+        if (box == ContentBox.Whole) {
             renderWhole(index, targetWidthPx)
         } else {
             renderCropped(index, targetWidthPx, box)
@@ -156,6 +156,28 @@ class PdfiumPageRenderer private constructor(
                 bitmap
             }
         }
+    }
+
+    /**
+     * The box the page is actually drawn inside at these settings.
+     *
+     * The single source of truth for "what part of the page is on screen", and
+     * the reason this exists: every conversion between a touch on the bitmap
+     * and a point in the PDF has to agree with what was rendered, and while
+     * [renderPage] worked that out privately they did not. Cropping trims the
+     * margins and redraws the rest at the same width, so with it on a bitmap
+     * pixel is a different point of the page — and the text layer went on being
+     * asked as though nothing had moved. A press landed one or two lines below
+     * the word under the finger, because the top margin was the part that had
+     * been taken away.
+     *
+     * Resolved before the lock is taken, never inside it: [marginsOf] takes the
+     * same lock to read its cache, and this mutex is not reentrant.
+     */
+    private suspend fun boxFor(index: Int, crop: Boolean): ContentBox {
+        if (!crop) return ContentBox.Whole
+        val box = marginsOf(index)
+        return if (box.isWorthCropping) box else ContentBox.Whole
     }
 
     /**
@@ -248,14 +270,16 @@ class PdfiumPageRenderer private constructor(
         yPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        crop: Boolean,
     ): PdfWord? = withContext(Dispatchers.IO) {
         if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext null
+        val shown = boxFor(pageIndex, crop)
         mutex.withLock {
             if (closed) return@withLock null
             // A page that will not open simply has no word at that point.
             document.openPage(pageIndex)?.use { page ->
                 page.openTextPage().use { textPage ->
-                    findWord(page, textPage, xPx, yPx, renderedWidthPx, renderedHeightPx)
+                    findWord(page, textPage, xPx, yPx, renderedWidthPx, renderedHeightPx, shown)
                 }
             }
         }
@@ -274,15 +298,14 @@ class PdfiumPageRenderer private constructor(
         yPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        shown: ContentBox,
     ): PdfWord? {
         val widthPt = page.getPageWidthPoint().toDouble()
         val heightPt = page.getPageHeightPoint().toDouble()
         if (widthPt <= 0.0 || heightPt <= 0.0) return null
 
-        // Bitmap pixels run top-left down; PDF user space runs bottom-left up,
-        // so the vertical axis has to be flipped, not merely scaled.
-        val xPt = xPx * widthPt / renderedWidthPx
-        val yPt = heightPt - (yPx * heightPt / renderedHeightPx)
+        val xPt = PageGeometry.xPoint(xPx, renderedWidthPx, widthPt, shown)
+        val yPt = PageGeometry.yPoint(yPx, renderedHeightPx, heightPt, shown)
         val tolerance = widthPt * TOUCH_TOLERANCE_FRACTION
 
         val hitIndex = textPage.textPageGetCharIndexAtPos(xPt, yPt, tolerance, tolerance)
@@ -303,7 +326,7 @@ class PdfiumPageRenderer private constructor(
         if (text.isEmpty()) return null
 
         val bounds = wordBoundsPx(
-            textPage, start, end, widthPt, heightPt, renderedWidthPx, renderedHeightPx,
+            textPage, start, end, widthPt, heightPt, renderedWidthPx, renderedHeightPx, shown,
         ) ?: return null
 
         return PdfWord(text = text, boundsPx = bounds)
@@ -318,10 +341,8 @@ class PdfiumPageRenderer private constructor(
         heightPt: Double,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        shown: ContentBox,
     ): RectF? {
-        val scaleX = renderedWidthPx / widthPt
-        val scaleY = renderedHeightPx / heightPt
-
         var left = Double.MAX_VALUE
         var top = Double.MAX_VALUE
         var right = -Double.MAX_VALUE
@@ -338,10 +359,10 @@ class PdfiumPageRenderer private constructor(
             val boxUpper = maxOf(box.top, box.bottom).toDouble()
             val boxLower = minOf(box.top, box.bottom).toDouble()
 
-            left = minOf(left, boxLeft * scaleX)
-            right = maxOf(right, boxRight * scaleX)
-            top = minOf(top, (heightPt - boxUpper) * scaleY)
-            bottom = maxOf(bottom, (heightPt - boxLower) * scaleY)
+            left = minOf(left, PageGeometry.xPixel(boxLeft, renderedWidthPx, widthPt, shown))
+            right = maxOf(right, PageGeometry.xPixel(boxRight, renderedWidthPx, widthPt, shown))
+            top = minOf(top, PageGeometry.yPixel(boxUpper, renderedHeightPx, heightPt, shown))
+            bottom = maxOf(bottom, PageGeometry.yPixel(boxLower, renderedHeightPx, heightPt, shown))
         }
 
         return if (any) {
@@ -359,8 +380,10 @@ class PdfiumPageRenderer private constructor(
         endYPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        crop: Boolean,
     ): PdfSelection? = withContext(Dispatchers.IO) {
         if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext null
+        val shown = boxFor(pageIndex, crop)
         mutex.withLock {
             if (closed) return@withLock null
             document.openPage(pageIndex)?.use { page ->
@@ -368,7 +391,7 @@ class PdfiumPageRenderer private constructor(
                     buildSelection(
                         page, textPage,
                         startXPx, startYPx, endXPx, endYPx,
-                        renderedWidthPx, renderedHeightPx,
+                        renderedWidthPx, renderedHeightPx, shown,
                     )
                 }
             }
@@ -384,6 +407,7 @@ class PdfiumPageRenderer private constructor(
         endYPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        shown: ContentBox,
     ): PdfSelection? {
         val widthPt = page.getPageWidthPoint().toDouble()
         val heightPt = page.getPageHeightPoint().toDouble()
@@ -394,8 +418,8 @@ class PdfiumPageRenderer private constructor(
         val tolerance = widthPt * TOUCH_TOLERANCE_FRACTION
 
         fun charAt(xPx: Float, yPx: Float): Int {
-            val xPt = xPx * widthPt / renderedWidthPx
-            val yPt = heightPt - (yPx * heightPt / renderedHeightPx)
+            val xPt = PageGeometry.xPoint(xPx, renderedWidthPx, widthPt, shown)
+            val yPt = PageGeometry.yPoint(yPx, renderedHeightPx, heightPt, shown)
             return textPage.textPageGetCharIndexAtPos(xPt, yPt, tolerance, tolerance)
         }
 
@@ -440,7 +464,7 @@ class PdfiumPageRenderer private constructor(
         val rectCount = textPage.textPageCountRects(from, to - from + 1)
         val bounds = (0 until rectCount).mapNotNull { i ->
             textPage.textPageGetRect(i)?.let { box ->
-                toBitmapRect(box, widthPt, heightPt, renderedWidthPx, renderedHeightPx)
+                toBitmapRect(box, widthPt, heightPt, renderedWidthPx, renderedHeightPx, shown)
             }
         }
 
@@ -542,10 +566,12 @@ class PdfiumPageRenderer private constructor(
         words: Set<String>,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        crop: Boolean,
     ): List<RectF> = withContext(Dispatchers.IO) {
         if (words.isEmpty() || renderedWidthPx <= 0 || renderedHeightPx <= 0) {
             return@withContext emptyList()
         }
+        val shown = boxFor(pageIndex, crop)
         mutex.withLock {
             if (closed) return@withLock emptyList()
             document.openPage(pageIndex)?.use { page ->
@@ -580,6 +606,7 @@ class PdfiumPageRenderer private constructor(
                                                 heightPt,
                                                 renderedWidthPx,
                                                 renderedHeightPx,
+                                                shown,
                                             ),
                                         )
                                     }
@@ -597,8 +624,10 @@ class PdfiumPageRenderer private constructor(
         match: PdfMatch,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        crop: Boolean,
     ): List<RectF> = withContext(Dispatchers.IO) {
         if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext emptyList()
+        val shown = boxFor(match.pageIndex, crop)
         mutex.withLock {
             if (closed) return@withLock emptyList()
             document.openPage(match.pageIndex)?.use { page ->
@@ -611,7 +640,14 @@ class PdfiumPageRenderer private constructor(
                     val rectCount = textPage.textPageCountRects(match.charIndex, match.charCount)
                     (0 until rectCount).mapNotNull { i ->
                         textPage.textPageGetRect(i)?.let { box ->
-                            toBitmapRect(box, widthPt, heightPt, renderedWidthPx, renderedHeightPx)
+                            toBitmapRect(
+                                box,
+                                widthPt,
+                                heightPt,
+                                renderedWidthPx,
+                                renderedHeightPx,
+                                shown,
+                            )
                         }
                     }
                 }
@@ -626,13 +662,13 @@ class PdfiumPageRenderer private constructor(
         heightPt: Double,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        shown: ContentBox,
     ): RectF {
-        val scaleX = renderedWidthPx / widthPt
-        val scaleY = renderedHeightPx / heightPt
-        val left = minOf(box.left, box.right).toDouble() * scaleX
-        val right = maxOf(box.left, box.right).toDouble() * scaleX
-        val top = (heightPt - maxOf(box.top, box.bottom).toDouble()) * scaleY
-        val bottom = (heightPt - minOf(box.top, box.bottom).toDouble()) * scaleY
+        val left = PageGeometry.xPixel(minOf(box.left, box.right).toDouble(), renderedWidthPx, widthPt, shown)
+        val right = PageGeometry.xPixel(maxOf(box.left, box.right).toDouble(), renderedWidthPx, widthPt, shown)
+        val top = PageGeometry.yPixel(maxOf(box.top, box.bottom).toDouble(), renderedHeightPx, heightPt, shown)
+        val bottom =
+            PageGeometry.yPixel(minOf(box.top, box.bottom).toDouble(), renderedHeightPx, heightPt, shown)
         return RectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
     }
 

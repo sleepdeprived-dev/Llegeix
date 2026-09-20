@@ -48,7 +48,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -86,6 +85,7 @@ import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.data.practice.Leitner
+import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuIcon
@@ -327,7 +327,7 @@ fun FlashcardsScreen(
     }
 
     if (showingBackup) {
-        ModalBottomSheet(
+        AppBottomSheet(
             onDismissRequest = { showingBackup = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
@@ -896,7 +896,7 @@ private fun MoveToShelfSheet(
     onDismiss: () -> Unit,
     onMove: (collectionId: Long?) -> Unit,
 ) {
-    ModalBottomSheet(
+    AppBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
@@ -1008,7 +1008,7 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
 
     val isDeck = state.kind == NewDeckKind.DECK
 
-    ModalBottomSheet(
+    AppBottomSheet(
         onDismissRequest = close,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
@@ -1096,21 +1096,24 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
                 )
                 val cover = state.coverPath
                 if (cover != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CardImage(
-                            path = cover,
-                            maxEdge = 384,
-                            contentDescription = stringResource(R.string.flashcards_picture),
-                            pictogram = PictureResults.isPictogram(state.coverCredit),
-                            modifier = Modifier
-                                .size(96.dp)
-                                .clip(RoundedCornerShape(20.dp)),
-                        )
-                        TextButton(
-                            onClick = viewModel::onRemoveCover,
-                            modifier = Modifier.padding(start = Space.md),
-                        ) { Text(stringResource(R.string.flashcards_picture_other)) }
-                    }
+                    // Pressing the picture goes back to the grid, the way it
+                    // does on a card: a picture on a form is a thing everybody
+                    // expects to be able to press, and a button beside it
+                    // saying so is a button spending a third of the row on
+                    // something the picture already said.
+                    CardImage(
+                        path = cover,
+                        maxEdge = 384,
+                        contentDescription = stringResource(R.string.flashcards_picture_other),
+                        pictogram = PictureResults.isPictogram(state.coverCredit),
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .clickable(
+                                onClickLabel = stringResource(R.string.flashcards_picture_other),
+                                onClick = viewModel::onRemoveCover,
+                            ),
+                    )
                 } else {
                     PictureGrid(
                         suggestions = suggestions,
@@ -1170,7 +1173,7 @@ private fun DeckPictureSheet(deck: DeckWithCount, onDismiss: () -> Unit) {
     }
     LaunchedEffect(done) { if (done) onDismiss() }
 
-    ModalBottomSheet(
+    AppBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
@@ -1235,7 +1238,7 @@ private fun CollectionPictureSheet(shelf: DeckShelf, onDismiss: () -> Unit) {
     }
     LaunchedEffect(done) { if (done) onDismiss() }
 
-    ModalBottomSheet(
+    AppBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {

@@ -124,6 +124,11 @@ interface PdfPageRenderer : AutoCloseable {
      *
      * The point and the rendered size are both in bitmap pixels, so callers work
      * entirely in the coordinate space they already drew in.
+     *
+     * [crop] must be whatever was passed to [renderPage] for the bitmap being
+     * touched. Cropping changes which part of the page a pixel stands for, and
+     * a lookup that assumed otherwise answered with the word a line or two
+     * further down.
      */
     suspend fun wordAt(
         pageIndex: Int,
@@ -131,6 +136,7 @@ interface PdfPageRenderer : AutoCloseable {
         yPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        crop: Boolean = false,
     ): PdfWord?
 
     /**
@@ -138,7 +144,8 @@ interface PdfPageRenderer : AutoCloseable {
      *
      * Both points are in rendered-bitmap pixels. Passing the same point twice
      * selects the single word under it, so the press-and-drag gesture and the
-     * plain long press are the same call.
+     * plain long press are the same call. [crop] must match the render, as
+     * [wordAt] explains.
      */
     suspend fun selectionBetween(
         pageIndex: Int,
@@ -148,6 +155,7 @@ interface PdfPageRenderer : AutoCloseable {
         endYPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        crop: Boolean = false,
     ): PdfSelection?
 
     /**
@@ -178,6 +186,7 @@ interface PdfPageRenderer : AutoCloseable {
         words: Set<String>,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        crop: Boolean = false,
     ): List<RectF>
 
     /**
@@ -189,6 +198,7 @@ interface PdfPageRenderer : AutoCloseable {
         match: PdfMatch,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
+        crop: Boolean = false,
     ): List<RectF>
 }
 

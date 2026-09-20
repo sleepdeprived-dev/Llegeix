@@ -229,20 +229,56 @@ class CardEditorViewModel(
         // follow it rather than the other way round.
         fromMeaningJob?.cancel()
         val pronunciation = CatalanIpa.transcribe(text)
+        val movedOn = text.trim() != loaded?.catalan?.trim().orEmpty()
         updateForm {
             it.copy(
                 catalan = text,
                 catalanIsSuggestion = false,
                 ipa = it.ipa.offer(pronunciation.ipa, pronunciation.isApproximate),
                 // The word the last meanings were suggested for has gone.
-                romanian = if (text.isBlank()) it.romanian.offer("") else it.romanian,
-                english = if (text.isBlank()) it.english.offer("") else it.english,
+                romanian = when {
+                    text.isBlank() -> it.romanian.offer("")
+                    movedOn -> releaseStale(it.romanian, loaded?.romanian)
+                    else -> it.romanian
+                },
+                english = when {
+                    text.isBlank() -> it.english.offer("")
+                    movedOn -> releaseStale(it.english, loaded?.english)
+                    else -> it.english
+                },
             )
         }
         suggestRomanian(text.trim())
         suggestEnglish(text.trim())
         suggestPictures()
     }
+
+    /**
+     * A meaning of the word that used to be here is not a meaning of the one
+     * that is here now.
+     *
+     * Opening a saved card marks every field as the reader's, which is right
+     * for what it protects — nobody's hand-written meaning should be quietly
+     * overwritten — and was wrong about one case that turned out to be the
+     * common one. Change *pa* to *llet* on a card you wrote last week and the
+     * Romanian went on saying *pâine*: the form only ever filled the meanings
+     * in on a card's first draft, because after a save they were all "theirs".
+     *
+     * So a field that still holds exactly what was saved in it is handed back
+     * the moment the Catalan moves off the word it was saved for. One the
+     * reader has touched this time round does not match what was saved, so it
+     * stays theirs; and what replaces a released field arrives marked as the
+     * app's suggestion, to be typed over like any other.
+     *
+     * The same rule the pronunciation has always followed — see
+     * [savedPronunciation] — applied to the meanings.
+     */
+    private fun releaseStale(field: Suggested, saved: String?): Suggested =
+        if (!field.isSuggestion && field.text == saved.orEmpty() && field.text.isNotBlank()) {
+            field.copy(isSuggestion = true)
+        } else {
+            field
+        }
 
     /*
      * Clearing a field leaves it empty rather than refilling it on the spot:
@@ -286,7 +322,11 @@ class CardEditorViewModel(
     private fun suggestFromMeaning(word: String, from: String) {
         fromMeaningJob?.cancel()
         val state = _uiState.value
-        val catalanOpen = state.catalan.isBlank() || state.catalanIsSuggestion
+        // And the same the other way round: a Catalan still exactly as it was
+        // saved is a Catalan for the meaning that was saved with it, so
+        // changing that meaning releases it. See [releaseStale].
+        val untouchedSince = state.catalan == loaded?.catalan && word != savedMeaning(from)
+        val catalanOpen = state.catalan.isBlank() || state.catalanIsSuggestion || untouchedSince
         if (!catalanOpen) return
         if (word.isEmpty()) {
             // The meaning it came from has gone, so the suggested Catalan goes too.
@@ -331,6 +371,13 @@ class CardEditorViewModel(
             }
         }
     }
+
+    /** What the card was saved with in the language a meaning was typed in. */
+    private fun savedMeaning(from: String): String =
+        when (from) {
+            "ro" -> loaded?.romanian
+            else -> loaded?.english
+        }?.trim().orEmpty()
 
     /**
      * Put a suggested Catalan in its field, with the pronunciation that goes

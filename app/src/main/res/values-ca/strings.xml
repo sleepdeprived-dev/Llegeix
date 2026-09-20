@@ -48,7 +48,6 @@
     <string name="sources_show_folders">Mostra les carpetes de %1$s</string>
     <string name="sources_hide_folders">Amaga les carpetes de %1$s</string>
     <string name="sources_include">Mostra %1$s a la biblioteca</string>
-    <string name="sources_add_title">Afegeix una altra font</string>
     <string name="sources_found_by_scan">Carpetes que ha trobat l\'escaneig</string>
     <string name="sources_add_folder_body">Vigila una carpeta i tot el que hi ha dins</string>
     <string name="sources_add_files_body">Tria PDF concrets, també els del núvol</string>
@@ -277,8 +276,26 @@
     <string name="settings_privacy_open">Política de privadesa</string>
     <string name="settings_privacy_summary">Llegeix no recull res.</string>
     <string name="privacy_title">Política de privadesa</string>
-    <string name="privacy_body">Llegeix no recull cap dada teva. Cap ni una.\n\nNo hi ha analítica, ni informes d\'error, ni publicitat, ni comptes. Res del que fas a l\'aplicació s\'envia enlloc, i no hi ha cap servidor seu on enviar-ho.\n\nTot el que l\'aplicació recorda — les col·leccions, les etiquetes, els marcadors, les paraules desades, per on vas llegint i la configuració — es desa només en aquest dispositiu, a l\'emmagatzematge privat de l\'aplicació. Si la desinstal·les, tot això s\'esborra, i no se\'n fa mai cap còpia de seguretat al núvol. Si canvies de telèfon amb la transferència directa d\'Android, s\'ho endú amb tu: del telèfon vell al nou, sense passar pel servidor de ningú.\n\nEls teus PDF es llegeixen d\'allà on ja són al dispositiu. No es copien mai, ni es pugen enlloc, ni els obre res més que aquesta aplicació.\n\nL\'aplicació fa servir internet per a dues coses, i cap de les dues no va sobre tu.\n\nLa primera és baixar els models de traducció d\'ML Kit de Google, un cop per idioma, perquè tocar una paraula la pugui traduir. Aquesta petició va a Google i està subjecta a la política de privadesa de Google; l\'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot fora de línia.\n\nLa segona és comprovar si hi ha una versió nova de l\'aplicació: un cop al dia com a molt, en obrir la biblioteca, i sempre que prems el botó de Configuració. Serveix per posar un punt vermell a l\'engranatge quan n\'hi ha una de nova; no hi ha cap servei en segon pla ni cap notificació. Pregunta a GitHub quina és la versió més nova i, si tries instal·lar-la, la baixa d\'allà. La petició no porta cap compte, cap identificador ni res dels teus documents — és la mateixa petició anònima que pot fer qualsevol d\'una pàgina pública — tot i que GitHub, com qualsevol lloc web, pot veure des de quina adreça et connectes.\n\nL\'aplicació demana permís per llegir fitxers per poder trobar els teus PDF, accés a la xarxa per a aquestes dues coses, i permís per passar una actualització a l\'instal·lador d\'Android, que és qui la instal·la de debò i abans t\'ho pregunta.</string>
-    <string name="privacy_updated">Darrera actualització: 4 de setembre de 2026</string>
+    <string name="privacy_body">Llegeix no recull cap dada teva. Cap ni una.
+
+No hi ha analítiques, ni informes d\'errors, ni publicitat, ni compte. Res del que fas en aquesta aplicació s\'envia enlloc, i no hi ha cap servidor seu on enviar-ho.
+
+Tot el que l\'aplicació recorda — les col·leccions, les etiquetes, els marcadors, les paraules desades, les targetes, per on vas llegint i la configuració — es desa només en aquest dispositiu, a l\'emmagatzematge privat de l\'aplicació. Desinstal·lar-la ho esborra tot, i res no es copia mai a cap còpia de seguretat al núvol. Si canvies de telèfon amb la transferència directa d\'Android, ho tens al nou: del telèfon vell al nou, sense passar pel servidor de ningú.
+
+Els teus PDF es llegeixen allà on ja són al dispositiu. No es copien mai, no es pugen enlloc i no els obre res més que aquesta aplicació.
+
+L\'aplicació fa servir internet per a tres coses. Cap no porta cap compte, cap identificador ni res sobre tu.
+
+La primera és baixar els models de traducció d\'ML Kit de Google, un cop per llengua, perquè en tocar una paraula es pugui traduir. Aquesta petició va a Google i es regeix per la política de privadesa de Google; l\'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents no surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot sense connexió.
+
+La segona és trobar imatges per a una targeta, i és l\'única que envia mai una paraula que hagis escrit. Només passa mentre tens una targeta oberta per escriure-la: després d\'una pausa en l\'escriptura, aquella paraula —i res més— es demana a l\'ARASAAC, per als seus pictogrames, i a Wikimedia Commons i a Openverse, per a les fotografies. Per a les fotografies és la traducció anglesa de la paraula, feta abans en aquest telèfon. Aquests serveis veuen la paraula i l\'adreça des d\'on et connectes, com qualsevol lloc web; no se\'ls dona cap compte, cap identificador ni res sobre els teus documents. Les imatges només es baixen per a la graella que estàs mirant, i només se\'n queda una quan la toques.
+
+La tercera és comprovar si hi ha una versió nova de l\'aplicació: com a molt un cop al dia, en obrir la biblioteca, i sempre que premis el botó de Configuració. És el que posa un punt vermell a la roda dentada quan n\'hi ha una de nova; no hi ha cap servei en segon pla ni cap notificació. Pregunta a GitHub quina és la darrera versió i, si tries instal·lar-la, la baixa d\'allà. La petició no porta cap compte, cap identificador ni res sobre els teus documents —és la mateixa petició anònima que pot fer qualsevol a una pàgina pública— tot i que GitHub, com qualsevol lloc web, pot veure l\'adreça des d\'on et connectes.
+
+Si no escrius mai cap targeta, l\'aplicació no envia mai cap paraula enlloc.
+
+L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés a la xarxa per a aquestes tres coses, i permís per passar una actualització a l\'instal·lador d\'Android, que és el que la instal·la de debò i t\'ho demana abans.</string>
+    <string name="privacy_updated">Darrera actualització: 20 de setembre de 2026</string>
 
     <!-- Vistos recentment -->
 
@@ -615,7 +632,6 @@
     <string name="flashcards_field_ipa">Pronúncia (AFI)</string>
     <string name="flashcards_field_romanian">Romanès</string>
     <string name="flashcards_ipa_generated">Deduïda de l\'ortografia. Canvia-la si en saps més.</string>
-    <string name="flashcards_ipa_approximate">aprox.: l\'ortografia no indica si la e o la o tòniques són obertes o tancades. Val la pena comprovar-ho.</string>
     <string name="flashcards_meaning_suggested">Suggeriment del traductor del telèfon. Canvia\'l si no és correcte.</string>
     <string name="flashcards_meaning_downloading">Baixant el model de romanès, una sola vegada, per Wi-Fi…</string>
     <string name="flashcards_meaning_needs_model">Encara no hi ha suggeriment: el model de romanès es baixa una sola vegada, per Wi-Fi.</string>
@@ -769,4 +785,6 @@
     <string name="flashcards_practise_all">Repassa-les totes</string>
     <string name="flashcards_practise_name">Repassa %1$s</string>
     <string name="flashcards_collection_picture_remove">Fes servir la imatge de la primera baralla</string>
+    <string name="reader_tint_warm_dark">Càlid fosc</string>
+    <string name="sources_add_elsewhere">Per afegir una altra carpeta o fitxer, fes servir el botó + de la biblioteca.</string>
 </resources>

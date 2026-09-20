@@ -11,18 +11,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,6 +34,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,6 +42,8 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSource
+import com.david.llegeix.ui.common.Pill
+import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
 
 /**
@@ -124,27 +124,40 @@ fun PictureGrid(
  * Pictograms or photos, as one control across the width with the one in use
  * lit in the accent — not two loose chips that read as two separate filters.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SourceSwitch(selected: PictureSource, onSelect: (PictureSource) -> Unit) {
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        PictureSource.entries.forEachIndexed { index, source ->
-            SegmentedButton(
-                selected = source == selected,
-                onClick = { onSelect(source) },
-                shape = SegmentedButtonDefaults.itemShape(index, PictureSource.entries.size),
-                colors = brightSegmentColors(),
-                label = {
-                    Text(
-                        stringResource(
-                            when (source) {
-                                PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_pictograms
-                                PictureSource.PHOTOS -> R.string.flashcards_pictures_photos
-                            },
-                        ),
-                    )
+    PillGroup(modifier = Modifier.fillMaxWidth()) {
+        PictureSource.entries.forEach { source ->
+            val name = stringResource(
+                when (source) {
+                    PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_pictograms
+                    PictureSource.PHOTOS -> R.string.flashcards_pictures_photos
                 },
             )
+            Pill(
+                selected = source == selected,
+                onClick = { onSelect(source) },
+                label = name,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = Space.sm, vertical = Space.sm),
+            ) {
+                Icon(
+                    painter = painterResource(
+                        when (source) {
+                            PictureSource.PICTOGRAMS -> R.drawable.ic_pictogram
+                            PictureSource.PHOTOS -> R.drawable.ic_photo
+                        },
+                    ),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = Space.sm),
+                )
+            }
         }
     }
 }
@@ -251,21 +264,6 @@ private fun SuggestionTile(
         }
     }
 }
-
-/**
- * The accent for the chosen segment, with the label in the colour meant for
- * it — bright and plainly "on", in the dark theme as much as the light, where
- * the chosen segment used to be the darkest thing on the panel.
- */
-@Composable
-fun brightSegmentColors() = SegmentedButtonDefaults.colors(
-    activeContainerColor = MaterialTheme.colorScheme.primary,
-    activeContentColor = MaterialTheme.colorScheme.onPrimary,
-    activeBorderColor = MaterialTheme.colorScheme.primary,
-    inactiveContainerColor = Color.Transparent,
-    inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant,
-)
 
 private const val COLUMNS = 3
 

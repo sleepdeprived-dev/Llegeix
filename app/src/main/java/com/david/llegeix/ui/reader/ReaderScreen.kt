@@ -63,7 +63,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -121,6 +120,7 @@ import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.pdf.DEFAULT_PAGE_ASPECT_RATIO
 import com.david.llegeix.pdf.PdfMatch
+import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.SearchField
@@ -174,7 +174,33 @@ private val SepiaFilter = ColorFilter.colorMatrix(
 private fun filterFor(tint: PageTint): ColorFilter? = when (tint) {
     PageTint.NONE, PageTint.INVERT -> null
     PageTint.SEPIA -> SepiaFilter
+    // The inversion has already happened to the pixels by the time this is
+    // asked, so warming the result is the same operation as warming a page —
+    // only now the white it takes the glare off is the type rather than the
+    // paper.
+    PageTint.WARM_DARK -> WarmDarkFilter
 }
+
+/**
+ * The same warming as [SepiaFilter], over a page that has already been turned
+ * light-on-dark.
+ *
+ * Gentler than sepia's, because it is being applied to type rather than to
+ * paper: the values that matter here are the bright ones, and pulled as far as
+ * a sepia page pulls them the text comes out orange rather than cream. The
+ * offsets are small and positive on red and green so that the near-black
+ * ground warms a little too instead of staying a flat neutral.
+ */
+private val WarmDarkFilter = ColorFilter.colorMatrix(
+    ColorMatrix(
+        floatArrayOf(
+            1f, 0f, 0f, 0f, 6f,
+            0f, 0.93f, 0f, 0f, 2f,
+            0f, 0f, 0.80f, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    ),
+)
 
 /** The gutter colour around an inverted page. */
 private val InvertedSurround = Color(0xFF0E0E0E)
@@ -1178,7 +1204,7 @@ private fun PdfPage(
                         // paper on a black desk has no edge at all, and a page
                         // pushed around while magnified has nothing to push.
                         .then(
-                            if (tint == PageTint.INVERT) {
+                            if (tint.invertsPage) {
                                 Modifier.border(1.dp, InvertedPageEdge)
                             } else {
                                 Modifier
@@ -1427,7 +1453,7 @@ private fun WordLookupSheet(
     // pronunciation, the translation and the star, and everything after that is
     // there for anyone who drags it up.
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    AppBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

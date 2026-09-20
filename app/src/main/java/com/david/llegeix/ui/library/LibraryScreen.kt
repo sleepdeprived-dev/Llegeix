@@ -50,7 +50,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -91,6 +90,7 @@ import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.data.settings.ContinueShelf
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.model.PdfDocument
+import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.RecentSearches
@@ -580,11 +580,19 @@ private fun LibraryControlsRow(
             )
         }
         Box(modifier = Modifier.weight(1f))
+        // "Sort by" rather than the order's own name.
+        //
+        // It carried the name of the order in force — "Recent", "Name" — which
+        // is genuinely useful and was read as something else entirely: sitting
+        // at the end of a row of filter chips, a chip saying *Recents* looks
+        // like a filter that has been switched on, not like the button that
+        // chooses an order. The name of the control wins over the value of it,
+        // and which order is in force is ticked in the sheet a tap away.
         AssistChip(
             onClick = onOpenSort,
             label = {
                 Text(
-                    text = stringResource(sort.shortLabelRes),
+                    text = stringResource(R.string.library_sort_by),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -617,7 +625,7 @@ private fun SortSheet(
     onChoose: (LibrarySort) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AppBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1335,7 +1343,7 @@ private fun AddDocumentsSheet(
     onAddFiles: () -> Unit,
     onScanDevice: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AppBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

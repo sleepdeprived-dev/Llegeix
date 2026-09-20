@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.ui.common.Space
 
 /**
  * A direction of study as two flags and an arrow: the side you are shown, then
@@ -151,11 +152,42 @@ fun StudyPairMenu(
             for (meaning in MeaningLanguage.entries) {
                 for (way in StudyDirection.entries) {
                     val chosen = way == direction && meaning == language
+                    // Flag, the two names with the arrow between them, flag.
+                    //
+                    // The flags used to sit together in the leading slot as a
+                    // pair with an arrow of their own, which meant the row read
+                    // as two flags and then, separately, as two words — the
+                    // same fact stated twice with nothing tying the halves
+                    // together. Put one at each end the row reads as one
+                    // sentence, and which flag belongs to which language is
+                    // answered by where it is.
                     DropdownMenuItem(
                         leadingIcon = {
-                            DirectionFlags(direction = way, language = meaning, flagWidth = 20.dp)
+                            Flag(
+                                if (way == StudyDirection.CATALAN_TO_MEANING) {
+                                    R.drawable.ic_flag_ca
+                                } else {
+                                    meaning.flagRes
+                                },
+                                20.dp,
+                            )
                         },
-                        text = { Text(directionName(way, meaning)) },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = directionName(way, meaning),
+                                    modifier = Modifier.padding(end = Space.md),
+                                )
+                                Flag(
+                                    if (way == StudyDirection.CATALAN_TO_MEANING) {
+                                        meaning.flagRes
+                                    } else {
+                                        R.drawable.ic_flag_ca
+                                    },
+                                    20.dp,
+                                )
+                            }
+                        },
                         trailingIcon = {
                             if (chosen) {
                                 Icon(

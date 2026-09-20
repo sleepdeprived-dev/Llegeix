@@ -212,7 +212,28 @@ enum class PageTint(val key: String, @param:StringRes val labelRes: Int) {
     NONE("none", R.string.reader_tint_none),
     SEPIA("sepia", R.string.reader_tint_sepia),
     INVERT("invert", R.string.reader_tint_invert),
+
+    /**
+     * Inverted and then warmed: cream type on a near-black page.
+     *
+     * The one that was missing. Warm was a daylight setting and dark was a
+     * night one, which left the commonest way of reading in bed — the lights
+     * off and the screen at its least blue — with nothing to pick. It is the
+     * same pass over the pixels that [INVERT] uses, so photographs are still
+     * found and left alone, with [SEPIA]'s own warming laid over the result.
+     */
+    WARM_DARK("warm-dark", R.string.reader_tint_warm_dark),
     ;
+
+    /**
+     * Whether the page is turned light-on-dark before anything else is done to
+     * it.
+     *
+     * Not a filter: see [com.david.llegeix.pdf.PageInvert]. This is what tells
+     * the reader that a page has to be re-rendered rather than merely re-drawn,
+     * and what tells the screen around it to go dark too.
+     */
+    val invertsPage: Boolean get() = this == INVERT || this == WARM_DARK
 
     companion object {
         fun fromKey(key: String?): PageTint =
@@ -228,9 +249,14 @@ enum class PageTint(val key: String, @param:StringRes val labelRes: Int) {
  * running across a page break, or anything read in short bursts is easier as
  * one continuous strip.
  */
-enum class ReadingMode(val key: String, @param:StringRes val labelRes: Int) {
-    PAGED("paged", R.string.reader_mode_paged),
-    SCROLL("scroll", R.string.reader_mode_scroll),
+enum class ReadingMode(
+    val key: String,
+    @param:StringRes val labelRes: Int,
+    /** A mark beside the word, since "Turn" and "Scroll" are near-synonyms read quickly. */
+    @param:DrawableRes val iconRes: Int,
+) {
+    PAGED("paged", R.string.reader_mode_paged, R.drawable.ic_page_turn),
+    SCROLL("scroll", R.string.reader_mode_scroll, R.drawable.ic_page_scroll),
     ;
 
     companion object {

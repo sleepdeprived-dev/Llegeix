@@ -14,13 +14,19 @@
         tools:ignore="ScopedStorage" />
 
     <!--
-        Two things, and no more.
+        Three things, and no more.
 
-        ML Kit downloads its Catalan and English translation models on first
-        use; translation itself runs entirely on-device afterwards. And
-        Configuració's update button asks GitHub what the newest release is,
-        when it is pressed and never otherwise. Neither request carries anything
-        about the reader or their documents.
+        ML Kit downloads its Catalan, Romanian and English translation models on
+        first use; translation itself runs entirely on-device afterwards. The
+        flashcard form looks for pictures of the word being written — ARASAAC
+        for pictograms, Wikimedia Commons and Openverse for photographs — and
+        only while a card is open and only after a pause in the typing. And
+        Configuració's update check asks GitHub what the newest release is.
+
+        None of the three carries an account, an identifier, or anything about
+        the reader or their documents; the picture search is the only one that
+        sends a word, and it is the word being typed onto the card. All of it is
+        set out in the privacy policy the app shows in Configuració.
     -->
     <uses-permission android:name="android.permission.INTERNET" />
 

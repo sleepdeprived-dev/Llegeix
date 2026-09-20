@@ -20,7 +20,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -44,6 +43,7 @@ import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PdfCover
@@ -247,7 +247,7 @@ fun AddToCollectionSheet(
     val chosenCount by viewModel.chosenCount.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
+    AppBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         modifier = modifier,

@@ -267,7 +267,7 @@ data class ReaderUiState(
     val isZoomed: Boolean get() = zoom > 1.01f
 
     /** True while the page is drawn light-on-dark, which the gutter follows. */
-    val isInverted: Boolean get() = pageTint == PageTint.INVERT
+    val isInverted: Boolean get() = pageTint.invertsPage
 
     /** Worth offering a way into: a document that actually has a contents. */
     val hasOutline: Boolean get() = outline.isNotEmpty()
@@ -573,7 +573,9 @@ class ReaderViewModel(
         val match = _uiState.value.search.current ?: return emptyList()
         if (match.pageIndex != pageIndex) return emptyList()
         return runCatchingCancellable {
-            active.matchBoundsPx(match, widthPx, heightPx)
+            // The same crop the page was drawn with, or the highlight lands on
+            // the wrong line: see PdfPageRenderer.wordAt.
+            active.matchBoundsPx(match, widthPx, heightPx, _uiState.value.cropMargins)
         }.getOrDefault(emptyList())
     }
 
@@ -669,7 +671,7 @@ class ReaderViewModel(
     suspend fun renderPage(index: Int, widthPx: Int): Bitmap? {
         val active = renderer ?: return null
         val crop = _uiState.value.cropMargins
-        val invert = _uiState.value.pageTint == PageTint.INVERT
+        val invert = _uiState.value.pageTint.invertsPage
         // The crop is part of the key as well as being flushed on the toggle:
         // a page rendered during the change would otherwise be filed under the
         // key of the other setting. The same goes for the inversion, which is
@@ -709,7 +711,13 @@ class ReaderViewModel(
         if (!state.markSavedWords || state.savedWords.isEmpty()) return emptyList()
         val active = renderer ?: return emptyList()
         return runCatchingCancellable {
-            active.savedWordBounds(pageIndex, state.savedWords, widthPx, heightPx)
+            active.savedWordBounds(
+                pageIndex,
+                state.savedWords,
+                widthPx,
+                heightPx,
+                state.cropMargins,
+            )
         }.getOrDefault(emptyList())
     }
 
@@ -903,6 +911,7 @@ class ReaderViewModel(
             active.selectionBetween(
                 pageIndex, startXPx, startYPx, endXPx, endYPx,
                 renderedWidthPx, renderedHeightPx,
+                crop = _uiState.value.cropMargins,
             )
         }.getOrNull()
         if (fromPage != null) return fromPage

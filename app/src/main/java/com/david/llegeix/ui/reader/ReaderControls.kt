@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -21,16 +22,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -49,7 +48,11 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,6 +60,9 @@ import com.david.llegeix.R
 import com.david.llegeix.data.settings.PageTint
 import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.pdf.PdfOutlineEntry
+import com.david.llegeix.ui.common.AppBottomSheet
+import com.david.llegeix.ui.common.Pill
+import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
 
 /**
@@ -247,7 +253,7 @@ fun OutlineSheet(
         if (here > 0) listState.scrollToItem(here)
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    AppBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -265,7 +271,10 @@ fun OutlineSheet(
                 state = listState,
                 contentPadding = PaddingValues(bottom = Space.xxl),
             ) {
-                items(outline, key = { it.title + "@" + it.pageIndex + "#" + it.depth }) { entry ->
+                // Keyed by position. A contents list is free to say
+                // "Exercicis" three times at the same depth on the same page,
+                // and a lazy list handed the same key twice throws.
+                itemsIndexed(outline, key = { index, _ -> index }) { _, entry ->
                     // The section you are in is marked, so the sheet answers
                     // "where am I" as well as "where can I go".
                     val isHere = entry == outline.lastOrNull { it.pageIndex <= currentPage }
@@ -340,7 +349,7 @@ fun DisplaySheet(
     onZoomChosen: (Float) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AppBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -354,19 +363,28 @@ fun DisplaySheet(
                 modifier = Modifier.padding(bottom = Space.lg),
             )
 
+            // Swatches rather than a segmented row of words.
+            //
+            // Four tints will not fit across a phone as four labels — in
+            // Catalan "Càlid fosc" alone is wider than a quarter of the screen,
+            // and Material's segmented buttons give every item the same width
+            // and then clip what does not fit, so the row came out as "Pape…",
+            // "Càli…", "Fosc", "Càli…" with two of them indistinguishable. And
+            // a colour is the one thing that does not need a word: the swatch
+            // *is* the setting, shown at the size of a page corner, and the
+            // name sits under it with room to be read.
             SheetLabel(stringResource(R.string.reader_tint))
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                PageTint.entries.forEachIndexed { index, candidate ->
-                    SegmentedButton(
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Space.sm),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                PageTint.entries.forEach { candidate ->
+                    TintSwatch(
+                        tint = candidate,
                         selected = candidate == tint,
                         onClick = { onTintChosen(candidate) },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = PageTint.entries.size,
-                        ),
-                    ) {
-                        Text(stringResource(candidate.labelRes))
-                    }
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
 
@@ -374,17 +392,30 @@ fun DisplaySheet(
                 text = stringResource(R.string.reader_mode),
                 modifier = Modifier.padding(top = Space.xl),
             )
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                ReadingMode.entries.forEachIndexed { index, candidate ->
-                    SegmentedButton(
+            PillGroup(modifier = Modifier.fillMaxWidth()) {
+                ReadingMode.entries.forEach { candidate ->
+                    val name = stringResource(candidate.labelRes)
+                    Pill(
                         selected = candidate == readingMode,
                         onClick = { onReadingModeChosen(candidate) },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = ReadingMode.entries.size,
+                        label = name,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(
+                            horizontal = Space.sm,
+                            vertical = Space.sm,
                         ),
                     ) {
-                        Text(stringResource(candidate.labelRes))
+                        Icon(
+                            painter = painterResource(candidate.iconRes),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            modifier = Modifier.padding(start = Space.sm),
+                        )
                     }
                 }
             }
@@ -422,6 +453,91 @@ fun DisplaySheet(
         }
     }
 }
+
+/**
+ * One page tint, as a corner of the page it would give you.
+ *
+ * Paper over ink, at the two tones that actually distinguish the four options,
+ * with the name underneath. The tick is drawn on the swatch rather than beside
+ * the name because the swatch is the thing being chosen.
+ */
+@Composable
+private fun TintSwatch(
+    tint: PageTint,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val name = stringResource(tint.labelRes)
+    val paper = tintPaper(tint)
+    val ink = tintInk(tint)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(vertical = Space.sm),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(SwatchSize)
+                .clip(RoundedCornerShape(12.dp))
+                .background(paper)
+                .border(
+                    width = if (selected) 2.dp else 1.dp,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                ),
+        ) {
+            // Two short rules standing in for type, so a swatch reads as a
+            // page rather than as a colour chip.
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(3) { line ->
+                    Box(
+                        modifier = Modifier
+                            .height(2.dp)
+                            .fillMaxWidth(if (line == 2) 0.5f else 0.8f)
+                            .background(ink),
+                    )
+                }
+            }
+        }
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = Space.sm),
+        )
+    }
+}
+
+/** What a page looks like under each tint, near enough for a swatch. */
+private fun tintPaper(tint: PageTint): Color = when (tint) {
+    PageTint.NONE -> Color(0xFFFFFFFF)
+    PageTint.SEPIA -> Color(0xFFF4E8D0)
+    PageTint.INVERT -> Color(0xFF121212)
+    PageTint.WARM_DARK -> Color(0xFF1A1206)
+}
+
+private fun tintInk(tint: PageTint): Color = when (tint) {
+    PageTint.NONE -> Color(0xFF1A1A1A)
+    PageTint.SEPIA -> Color(0xFF3B3125)
+    PageTint.INVERT -> Color(0xFFE6E6E6)
+    PageTint.WARM_DARK -> Color(0xFFEBD9B4)
+}
+
+private val SwatchSize = 56.dp
 
 /** The zoom levels the sheet offers, matching the reader's own steps. */
 private val ZoomSteps = listOf(1f, 1.5f, 2f, 3f)

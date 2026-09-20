@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -290,12 +291,19 @@ fun CardEditorScreen(
                     singleLine = true,
                     prefix = { Text("[") },
                     suffix = { Text("]") },
+                    // No "approx." here any more.
+                    //
+                    // It said that the spelling does not settle whether a
+                    // stressed e or o is open or closed, which is true, and on
+                    // a card being written it was a paragraph of phonology in
+                    // answer to a question nobody had asked. The line that
+                    // remains already says the transcription was worked out by
+                    // the app and can be changed, which is the whole of what
+                    // somebody writing a card needs to know about it. The
+                    // dictionary still marks it, where a reader has gone
+                    // looking for the pronunciation itself.
                     supportingText = when {
                         state.ipa.text.isBlank() -> null
-                        state.ipa.isSuggestion && state.ipa.isApproximate -> {
-                            { Text(stringResource(R.string.flashcards_ipa_approximate)) }
-                        }
-
                         state.ipa.isSuggestion -> {
                             { Text(stringResource(R.string.flashcards_ipa_generated)) }
                         }
@@ -462,25 +470,41 @@ private fun LanguageFlag(@DrawableRes res: Int) {
 @Composable
 private fun ChosenPicture(path: String, credit: String?, onChange: () -> Unit) {
     Box {
+        // The picture is the button.
+        //
+        // There was a filled *Choose another* sitting on the bottom corner of
+        // it, which is a lot of a small screen spent restating what the picture
+        // already offers — a picture on a form is the one thing everybody
+        // expects to be able to press. A small badge in the corner says it can
+        // be, and the words go to whoever is listening rather than looking.
         FramedPicture(
             path = path,
-            contentDescription = stringResource(R.string.flashcards_picture),
+            contentDescription = stringResource(R.string.flashcards_picture_other),
             pictogram = PictureResults.isPictogram(credit),
             maxEdge = ImageSizing.MAX_EDGE,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(4f / 3f),
+                .aspectRatio(4f / 3f)
+                .clip(FieldShape)
+                .clickable(
+                    onClickLabel = stringResource(R.string.flashcards_picture_other),
+                    onClick = onChange,
+                ),
         )
-        FilledTonalButton(
-            onClick = onChange,
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(Space.sm),
+                .padding(Space.sm)
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer),
         ) {
-            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(
-                stringResource(R.string.flashcards_picture_other),
-                modifier = Modifier.padding(start = Space.xs),
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
