@@ -16,6 +16,14 @@ the artwork is one colour from edge to edge except where the book covers it, so
 the row's colour can be read from the margin beside the book and painted across
 the whole row. Anything that differs from its own row's colour by more than a
 little is the book.
+
+The background is not that reading pasted back down, though. The artwork lays
+its nine bands across the whole picture, and an adaptive icon only ever shows
+the middle two thirds of itself — which cut the flag down to three stripes and
+left something that was merely striped red and gold. So the bands are measured
+and then re-laid at the size that puts all nine of them inside the 72dp a
+launcher shows, and carried on past the edges of the canvas so there is no
+ground anywhere behind them.
 """
 
 from pathlib import Path
@@ -31,10 +39,18 @@ OUT = HERE.parent.parent / "app/src/main/res"
 # The 108dp canvas, drawn at 12px per dp and reduced from there.
 DP = 12
 CANVAS = 108 * DP
-# How wide the book stands on that canvas. The middle 72dp is all a launcher
-# promises to show and a circle mask cuts to less; 54dp leaves the book whole
-# through any of them.
-BOOK_DP = 54
+# What a launcher shows of the 108dp canvas: the middle 72dp, cut to a circle
+# or a squircle out of that. Everything that has to be seen has to be in here.
+SHOWN_DP = 72
+# The Senyera is nine bands — five gold and the four red bars — and they are
+# laid to fill exactly the part that is shown, so no mask can cut the flag down
+# to fewer bars than it has. The pattern carries on outside that, which is what
+# fills the rest of the canvas.
+BANDS = 9
+# How wide the book stands. Narrower than the 54dp it had while the stripes ran
+# the whole canvas: the flag is what is behind it now, and a book that leaves
+# only a finger's width of it either side hides the thing it is standing on.
+BOOK_DP = 48
 # The rounded square's own bevel, as a fraction of the artwork. Dropped from
 # the background so the top and bottom of the icon are stripe rather than the
 # dark edge the artwork was drawn with.
@@ -107,21 +123,78 @@ def book_mask(rgb, art, colours):
     return ndimage.binary_erosion(book, np.ones((3, 3)), iterations=SHADOW_PX)
 
 
+def band_profiles(colours, art):
+    """One gold band and one red band, as the artwork paints them.
+
+    A band is not a flat colour: it is satin, lit along its middle and turning
+    down at both of its edges, and it is that which keeps the icon from looking
+    like a chart. Taking a whole band rather than an average of one keeps the
+    light; taking the median-sized band of each colour keeps clear of the two
+    at the ends of the artwork, which the rounded corner cuts short.
+    """
+    rows = np.where(art.any(1))[0]
+    top, bottom = rows.min(), rows.max()
+    bevel = int((bottom - top + 1) * BEVEL)
+    strip = colours[top + bevel:bottom - bevel + 1]
+
+    # Red and gold are far enough apart that nothing subtler than this is
+    # needed: gold has a great deal of green in it and red has almost none.
+    is_red = strip[:, 0] - strip[:, 1] > 90
+    runs, start = [], 0
+    for y in range(1, len(is_red)):
+        if is_red[y] != is_red[y - 1]:
+            runs.append((start, y, bool(is_red[start])))
+            start = y
+    runs.append((start, len(is_red), bool(is_red[start])))
+
+    typical = np.median([b - a for a, b, _ in runs])
+    profiles = {}
+    for red in (False, True):
+        whole = [(a, b) for a, b, r in runs[1:-1] if r == red and b - a > typical / 2]
+        a, b = sorted(whole, key=lambda run: run[1] - run[0])[len(whole) // 2]
+        profiles[red] = strip[a:b]
+    return profiles
+
+
+def senyera(colours, art):
+    """The flag, laid so that all four red bars are inside what is shown."""
+    profiles = band_profiles(colours, art)
+    depth = round(SHOWN_DP * DP / BANDS)
+    resized = {
+        red: np.asarray(
+            Image.fromarray(np.clip(profile, 0, 255).astype("uint8")[:, None, :])
+            .resize((1, depth), Image.LANCZOS)
+        )[:, 0]
+        for red, profile in profiles.items()
+    }
+
+    # The middle band of the nine is centred on the canvas, which puts the
+    # other eight symmetrically either side of it and the outermost two exactly
+    # at the edge of what is shown. Bands are then carried on outwards until
+    # the canvas is covered, so the corners are flag and not ground.
+    rows = np.zeros((CANVAS, 3))
+    first = (CANVAS - depth) // 2
+    index = 0
+    while first - index * depth > -depth:
+        index += 1
+    for step in range(-index, index + 1):
+        band = resized[step % 2 != 0]
+        y = first + step * depth
+        lo, hi = max(y, 0), min(y + depth, CANVAS)
+        if lo < hi:
+            rows[lo:hi] = band[lo - y:hi - y]
+    return Image.fromarray(
+        np.clip(np.repeat(rows[:, None, :], CANVAS, axis=1), 0, 255).astype("uint8")
+    )
+
+
 def main():
     rgb = np.asarray(Image.open(SRC).convert("RGB")).astype(float)
     art = artwork_mask(rgb)
     colours = stripe_colours(rgb, art)
     book = book_mask(rgb, art, colours)
 
-    rows = np.where(art.any(1))[0]
-    top, bottom = rows.min(), rows.max()
-    bevel = int((bottom - top + 1) * BEVEL)
-
-    # --- background: the stripes, full bleed ------------------------------
-    band = colours[top + bevel:bottom - bevel + 1]
-    background = Image.fromarray(
-        np.clip(np.repeat(band[:, None, :], 8, axis=1), 0, 255).astype("uint8")
-    ).resize((CANVAS, CANVAS), Image.LANCZOS)
+    background = senyera(colours, art)
 
     # --- foreground: the book, with a shadow of its own -------------------
     ys, xs = np.where(book)

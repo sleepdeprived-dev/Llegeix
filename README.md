@@ -556,6 +556,16 @@ painted across the whole row, and anything that differs from its own row is the
 book. The artwork lives in the tree beside the script because a release once
 went out without a new icon for want of the file it was to be cut from.
 
+The background is not that reading pasted back down. A launcher shows the
+middle 72dp of the 108dp canvas and cuts a circle or a squircle out of even
+that, so the flag is measured off the artwork and then re-laid at the size that
+puts all nine of its bands — five gold and the four red bars — inside the part
+that is shown. Laid across the whole canvas, as it was at first, every mask cut
+it to three bars and left something merely striped red and gold. The pattern
+carries on outside what is shown until the canvas is covered, so no mask finds
+ground at a corner, and each band keeps the artwork's own satin light rather
+than becoming a flat swatch.
+
 ```sh
 ./gradlew assembleRelease
 ```

@@ -3,17 +3,21 @@
     <!--
         Two layers, so the launcher's own shape is filled edge to edge.
 
-        The background is the Senyera, as horizontal bars that run past every
-        edge of the 108dp canvas: whatever shape the launcher cuts — Samsung's
-        squircle, a Pixel's circle — it cuts it out of stripes, with no ground
-        colour showing at the corners. The satin light across them is the
-        artwork's own, read row by row from the margin beside the book.
+        The background is the Senyera, and it is laid to be seen: all nine bands
+        — five gold and the four red bars — fall inside the middle 72dp, which
+        is the most of this canvas any launcher shows. Laid across the whole
+        108dp instead, as it was at first, every mask cut it down to three bars
+        and left something that was merely striped red and gold rather than the
+        flag. The pattern carries on past the edge of what is shown until the
+        canvas is covered, so whatever shape is cut — Samsung's squircle, a
+        Pixel's circle — it is cut out of flag, with no ground at the corners.
+        The satin light along each band is the artwork's own.
 
-        The foreground is the open book and its rose, cut out of the artwork and
-        standing 54dp wide in the middle 72dp a launcher shows: whole through a
-        circle, with stripes all round it, rather than filling the icon to its
-        edges. A soft shadow of its own sits under it, because the one painted
-        into the artwork fell on stripes that are not in this layer any more.
+        The foreground is the open book and its rose, standing 48dp wide in the
+        middle: whole through a circle, with the flag readable either side of it
+        rather than a finger's width of stripe. A soft shadow of its own sits
+        under it, because the one painted into the artwork fell on stripes that
+        are not in this layer any more.
 
         Both layers are built from tools/icon/artwork.png by tools/icon/build.py
         rather than cut by hand, so the next time the artwork changes this is one

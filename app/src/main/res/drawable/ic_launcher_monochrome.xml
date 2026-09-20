@@ -12,15 +12,19 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!--
-        Framed like the raster layer: 56dp tall and centred on the canvas, so
-        the themed icon and the full-colour one sit at the same size in the
-        same launcher and a round mask crops neither.
+        Framed like the raster layer, and inside the circle with it. At the size
+        this was drawn the book stood 51 by 56dp, which puts its corners 38dp
+        from the middle of the canvas — outside the 36dp circle a round mask
+        leaves, so the very corners of the cover were being shaved off. Scaled
+        to bring them to 34dp, which is inside it with a little to spare, and
+        which leaves the themed icon and the full-colour one at much the same
+        size in the same launcher.
     -->
     <group
         android:pivotX="51.5"
         android:pivotY="54"
-        android:scaleX="0.9333"
-        android:scaleY="0.9333"
+        android:scaleX="0.84"
+        android:scaleY="0.84"
         android:translateX="2.5">
         <path
             android:fillColor="#FFFFFF"
