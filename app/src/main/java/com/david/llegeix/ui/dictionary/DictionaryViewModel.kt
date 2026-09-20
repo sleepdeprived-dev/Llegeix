@@ -15,7 +15,9 @@ import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.lang.CatalanIpa
+import com.david.llegeix.lang.CatalanVerbs
 import com.david.llegeix.lang.CatalanWordBank
+import com.david.llegeix.lang.VerbForm
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.DictionaryState
 import com.david.llegeix.ui.common.DictionaryStatus
@@ -56,6 +58,18 @@ data class DictionaryEntry(
     /** Definitions, synonyms and antonyms. Opened straight away on this screen. */
     val reference: DictionaryState = DictionaryState(DictionaryStatus.LOADING),
     val isSaved: Boolean = false,
+    /**
+     * What the word turns out to be, when it turns out to be a verb.
+     *
+     * Null for everything else, and null for a verb form the app cannot place
+     * — see [com.david.llegeix.lang.CatalanVerbs], which would rather say
+     * nothing than guess a tense.
+     */
+    val verb: VerbForm? = null,
+    /** The infinitive translated, which is the meaning somebody wanted. */
+    val verbInfinitiveMeaning: String? = null,
+    /** The Viccionari's own first definition of the infinitive, in Catalan. */
+    val verbDefinition: String? = null,
 )
 
 data class DictionaryUiState(
@@ -202,9 +216,60 @@ class DictionaryViewModel(
             val saved = libraryData.findWordBookmark(word, null, DICTIONARY_PAGE) != null
             updateEntry { it.copy(isSaved = saved) }
 
+            // Asked before the references and the translation rather than
+            // beside them. It reads the same three files the references do, so
+            // on the first lookup of a run it is the sixteen-megabyte read
+            // either way; every lookup after that it is two binary searches,
+            // and having the answer in hand is what lets the infinitive be
+            // translated straight afterwards without a second round of waiting.
+            val found = withContext(Dispatchers.IO) { readVerb(word) }
+            if (found != null) {
+                updateEntry { it.copy(verb = found.form, verbDefinition = found.definition) }
+            }
+
             launch { loadReference(word) }
             translate(word)
+
+            // The meaning of the infinitive, which for a conjugated form is
+            // the thing actually being looked up. Only once the model has
+            // already answered for the written form: if it could not, a second
+            // failed request would say nothing new.
+            val form = found?.form
+            if (form != null && !form.isInfinitive && translator.isModelReady) {
+                runCatchingCancellable { translator.translate(form.infinitive) }
+                    .getOrNull()
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { meaning -> updateEntry { it.copy(verbInfinitiveMeaning = meaning) } }
+            }
         }
+    }
+
+    /** A verb form and what the dictionary says the verb itself means. */
+    private data class VerbLookup(val form: VerbForm, val definition: String?)
+
+    /**
+     * Whether [word] is a verb form, and if so which one.
+     *
+     * Three questions, and all three have to answer yes. The inflected-forms
+     * table has to know a base form for it — or the word has to be its own, as
+     * when somebody types *cantar* outright. That base form has to look like an
+     * infinitive. And the Viccionari has to file it as a verb, which is the
+     * check that keeps a noun with a verb's shape from being conjugated at the
+     * reader. Only then is the form itself worked out.
+     */
+    private fun readVerb(word: String): VerbLookup? {
+        val bank = CatalanWordBank.get(application)
+        val key = CatalanVerbs.normalise(word)
+        if (key.isEmpty()) return null
+        val lemma = bank.lemmaOf(key) ?: key
+        if (CatalanVerbs.conjugationOf(lemma) == null) return null
+        val definition = bank.lookup(lemma)
+            ?.definitions
+            ?.firstOrNull { it.partOfSpeech == VERB_PART_OF_SPEECH }
+        if (definition == null && !CatalanVerbs.isKnownIrregular(lemma)) return null
+        val form = CatalanVerbs.analyse(key, lemma) ?: return null
+        return VerbLookup(form, definition?.meanings?.firstOrNull())
     }
 
     private suspend fun loadReference(word: String) {
@@ -338,6 +403,9 @@ class DictionaryViewModel(
          * toggle rather than a duplicate.
          */
         private const val DICTIONARY_PAGE = 0
+
+        /** How the Viccionari labels a verb entry. */
+        private const val VERB_PART_OF_SPEECH = "verb"
 
         /** Words of a typed phrase looked up in the references. */
         private const val MAX_PHRASE_WORDS = 4

@@ -6,6 +6,7 @@ import androidx.room.withTransaction
 import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
+import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.FlashcardBackup.toBackup
@@ -35,6 +36,52 @@ class FlashcardRepository(
     private val dao = database.flashcardDao()
 
     private val swept = AtomicBoolean(false)
+
+    // ---- Collections -------------------------------------------------------
+
+    fun observeCollections(): Flow<List<FlashcardCollectionEntity>> = dao.observeCollections()
+
+    suspend fun collection(id: Long): FlashcardCollectionEntity? = dao.collection(id)
+
+    /**
+     * Make a shelf, or say why not.
+     *
+     * Checked and written in one transaction for the reason [createDeck] gives,
+     * and against the other collections only: a shelf called *Food* and a deck
+     * called *Food* are never in the same list, so they are not in each other's
+     * way.
+     */
+    suspend fun createCollection(name: String): DeckNames.Check = database.withTransaction {
+        val check = DeckNames.check(name, dao.collections().map { it.name })
+        if (check is DeckNames.Check.Ok) {
+            dao.insertCollection(FlashcardCollectionEntity(name = check.name))
+        }
+        check
+    }
+
+    suspend fun renameCollection(id: Long, name: String): DeckNames.Check =
+        database.withTransaction {
+            val others = dao.collections().filter { it.id != id }.map { it.name }
+            val check = DeckNames.check(name, others)
+            if (check is DeckNames.Check.Ok) dao.renameCollection(id, check.name)
+            check
+        }
+
+    suspend fun setCollectionPinned(id: Long, pinned: Boolean) =
+        dao.setCollectionPinned(id, pinned)
+
+    /**
+     * Take a shelf away, and leave every deck that was on it alone.
+     *
+     * No pictures are deleted and no cards are touched: a collection owns
+     * nothing except the fact that some decks were grouped, and that is the
+     * only thing this loses.
+     */
+    suspend fun deleteCollection(id: Long) = dao.deleteCollection(id)
+
+    /** Put a deck on a shelf, or take it off one with null. */
+    suspend fun setDeckCollection(deckId: Long, collectionId: Long?) =
+        dao.setDeckCollection(deckId, collectionId)
 
     // ---- Decks -------------------------------------------------------------
 
@@ -171,9 +218,12 @@ class FlashcardRepository(
     fun observeDueCounts(now: Long, language: MeaningLanguage): Flow<List<DeckDue>> =
         dao.observeDueCounts(now, englishOnly = language == MeaningLanguage.ENGLISH)
 
-    /** Every card a session could be dealt from: one deck's, or all of them for null. */
-    suspend fun cardsToStudy(deckId: Long?): List<FlashcardEntity> =
-        if (deckId == null) dao.allCards() else dao.cardsInDeck(deckId)
+    /** Every card a session could be dealt from, for whatever it is over. */
+    suspend fun cardsToStudy(scope: StudyScope): List<FlashcardEntity> = when (scope) {
+        StudyScope.Everything -> dao.allCards()
+        is StudyScope.Deck -> dao.cardsInDeck(scope.id)
+        is StudyScope.Collection -> dao.cardsInCollection(scope.id)
+    }
 
     /**
      * Record an answer in [direction], and only there.
@@ -234,6 +284,7 @@ class FlashcardRepository(
      */
     suspend fun exportTo(uri: Uri, now: Long = System.currentTimeMillis()): Int {
         val cardsByDeck = dao.allCards().groupBy { it.deckId }
+        val collectionNames = dao.collections().associate { it.id to it.name }
         val pictures = LinkedHashMap<String, File>()
         val decks = dao.decks()
             .sortedBy { it.name.lowercase(Locale.ROOT) }
@@ -249,6 +300,7 @@ class FlashcardRepository(
                     isPinned = deck.isPinned,
                     cover = coverEntry,
                     coverCredit = deck.coverCredit.takeIf { coverEntry != null },
+                    collection = deck.collectionId?.let(collectionNames::get),
                     cards = CardOrder.sorted(cardsByDeck[deck.id].orEmpty()).map { card ->
                         val entry = card.imagePath?.let { path ->
                             (FlashcardBackup.IMAGE_FOLDER + File(path).name).also {
@@ -314,6 +366,21 @@ class FlashcardRepository(
 
             try {
                 database.withTransaction {
+                    // Shelves named by the copy, found or made once each, and
+                    // keyed the way deck names are compared so a copy saying
+                    // "Menjar" joins the "menjar" already here.
+                    val shelves = dao.collections()
+                        .associateByTo(HashMap()) {
+                            DeckNames.tidy(it.name).lowercase(Locale.ROOT)
+                        }
+                    suspend fun shelfFor(name: String): Long {
+                        val key = DeckNames.tidy(name).lowercase(Locale.ROOT)
+                        shelves[key]?.let { return it.id }
+                        val made = FlashcardCollectionEntity(name = DeckNames.tidy(name))
+                        val id = dao.insertCollection(made)
+                        shelves[key] = made.copy(id = id)
+                        return id
+                    }
                     for ((deck, cards) in prepared) {
                         val deckId = deck.existingId ?: dao.insertDeck(
                             FlashcardDeckEntity(
@@ -322,6 +389,7 @@ class FlashcardRepository(
                                 isPinned = deck.isPinned,
                                 coverPath = covers[deck.name],
                                 coverCredit = deck.coverCredit.takeIf { covers[deck.name] != null },
+                                collectionId = deck.collection?.let { shelfFor(it) },
                             ),
                         )
                         for ((card, picture) in cards) dao.insertCard(card.toEntity(deckId, picture))
@@ -342,6 +410,7 @@ class FlashcardRepository(
         database.withTransaction {
             dao.clearCards()
             dao.clearDecks()
+            dao.clearCollections()
         }
         images.deleteAll()
         prefs.clear()

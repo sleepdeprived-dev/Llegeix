@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -54,7 +53,6 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
-import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.MenuIcon
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.res.painterResource
@@ -91,7 +89,6 @@ fun PagesPane(
     viewModel: BookmarksViewModel = viewModel(factory = BookmarksViewModel.Factory),
 ) {
     val pages by viewModel.pageBookmarks.collectAsStateWithLifecycle()
-    val tagsByDocument by viewModel.tagsByDocument.collectAsStateWithLifecycle()
     val names by viewModel.names.collectAsStateWithLifecycle()
 
     if (pages.isEmpty()) {
@@ -107,9 +104,21 @@ fun PagesPane(
             contentPadding = PaddingValues(bottom = Space.lg),
         ) {
             items(pages, key = { it.id }) { bookmark ->
+                // No colour on these rows, neither the highlighter's swatch nor
+                // the document's tags.
+                //
+                // Both were saying something true and neither was answering a
+                // question anybody asks here. The swatch was the colour the
+                // page was marked in, which defaults to yellow, so a list of
+                // marked pages arrived as a column of identical yellow dots
+                // that looked like a status nobody had set. The tags belong to
+                // the *document*, not to the page, so the same three chips
+                // repeated down every row of a book read twice — and tags are
+                // how collections are sorted through, which is where they have
+                // work to do. A marked page is a title, a page number and a
+                // date; that is the whole of it.
                 BookmarkRow(
                     documentUri = bookmark.documentUri,
-                    tags = tagsByDocument[bookmark.documentUri].orEmpty(),
                     title = names.titleFor(bookmark.documentUri, bookmark.displayName),
                     subtitle = stringResource(
                         R.string.bookmarks_page_detail,
@@ -122,7 +131,6 @@ fun PagesPane(
                         } ?: stringResource(R.string.recent_page, bookmark.pageIndex + 1),
                         formatModified(bookmark.createdAt),
                     ),
-                    swatchColor = bookmark.highlightColor,
                     onClick = {
                         onOpenDocument(
                             bookmark.documentUri,
@@ -764,7 +772,6 @@ internal fun BookmarkRow(
     onRemove: () -> Unit,
     documentUri: String? = null,
     tags: List<DocumentTag> = emptyList(),
-    swatchColor: Int? = null,
     onEditTags: (() -> Unit)? = null,
     onRename: (() -> Unit)? = null,
     /** What the menu's "remove" says, since it differs by collection. */
@@ -798,24 +805,10 @@ internal fun BookmarkRow(
                     .aspectRatio(CoverAspectRatio),
             )
         }
-        if (swatchColor != null) {
-            Box(
-                modifier = Modifier
-                    .padding(start = if (documentUri != null) Space.md else 0.dp)
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(HighlightColors.compose(swatchColor)),
-            )
-        }
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(
-                    start = when {
-                        documentUri != null || swatchColor != null -> Space.lg
-                        else -> 0.dp
-                    },
-                ),
+                .padding(start = if (documentUri != null) Space.lg else 0.dp),
         ) {
             Text(
                 text = title,

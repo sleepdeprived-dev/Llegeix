@@ -628,7 +628,6 @@
     <string name="flashcards_discard_body">Es perdrà el que has escrit en aquesta targeta.</string>
     <string name="flashcards_discard">Descarta</string>
     <string name="flashcards_keep_editing">Continua editant</string>
-    <string name="flashcards_study_title">Repàs</string>
     <string name="flashcards_all_decks">Totes les baralles</string>
     <string name="flashcards_study_no_cards_title">No hi ha targetes per repassar</string>
     <string name="flashcards_study_no_cards_body">Primer afegeix alguna targeta a aquesta baralla.</string>
@@ -701,12 +700,6 @@
     <string name="flashcards_picture_other">Tria\'n una altra</string>
     <string name="flashcards_picture_from_gallery">De les teves fotos</string>
     <string name="flashcards_picture_fetch_failed">No s\'ha pogut baixar aquesta imatge. Prova\'n una altra.</string>
-    <plurals name="flashcards_panel_due">
-        <item quantity="one">targeta per repassar</item>
-        <item quantity="many">targetes per repassar</item>
-        <item quantity="other">targetes per repassar</item>
-    </plurals>
-    <string name="flashcards_panel_all_done">Tot al dia</string>
     <string name="flashcards_panel_start">Repassa</string>
     <string name="flashcards_practise_deck">Repassa %1$s (%2$d)</string>
     <string name="flashcards_study_missed">Per tornar-hi</string>
@@ -715,7 +708,6 @@
     <string name="flashcards_field_english">Anglès (opcional)</string>
     <string name="flashcards_direction_from_catalan">Català → %1$s</string>
     <string name="flashcards_direction_to_catalan">%1$s → català</string>
-    <string name="flashcards_practise_again">Repassa-les de nou</string>
     <string name="flashcards_practise_deck_again">Repassa %1$s de nou</string>
     <string name="flashcards_practise_anyway">Repassa-les igualment</string>
     <string name="flashcards_repeat_these">Repeteix-les</string>
@@ -741,4 +733,58 @@
     <string name="flashcards_study_no_english_body">Aquestes targetes només tenen el significat en romanès. Omple l\'anglès des de la baralla, o repassa en romanès amb la bandera de dalt de la pestanya.</string>
     <string name="flashcards_meaning_from_dictionary">Del diccionari d\'ARASAAC, escrit per persones per a aquesta paraula. Canvia\'l si vols dir una altra cosa.</string>
     <string name="flashcards_catalan_suggested">Deduït del significat. Canvia-ho si vols dir una altra paraula.</string>
+    <string name="flashcards_meanings_in">Significats en</string>
+    <string name="flashcards_kind_deck">Baralla</string>
+    <string name="flashcards_kind_collection">Col·lecció</string>
+    <string name="flashcards_collection_name_label">Nom de la col·lecció</string>
+    <string name="flashcards_collection_name_hint">p. ex. Menjar</string>
+    <string name="flashcards_collection_exists">Ja hi ha una col·lecció que es diu «%1$s»</string>
+    <string name="flashcards_rename_collection_title">Canvia el nom de la col·lecció</string>
+    <string name="flashcards_collection_deleted">S\'ha esborrat «%1$s». Les seves baralles continuen aquí.</string>
+    <string name="flashcards_delete_collection_title">Vols esborrar «%1$s»?</string>
+    <string name="flashcards_delete_collection_body_empty">No hi ha cap baralla, així que no canvia res més.</string>
+    <plurals name="flashcards_delete_collection_body">
+        <item quantity="one">La baralla que hi ha es queda on és, sense col·lecció. No s\'esborra cap targeta.</item>
+        <item quantity="many">Les %1$d baralles que hi ha es queden on són, sense col·lecció. No s\'esborra cap targeta.</item>
+        <item quantity="other">Les %1$d baralles que hi ha es queden on són, sense col·lecció. No s\'esborra cap targeta.</item>
+    </plurals>
+    <string name="flashcards_collection_empty">Encara no hi ha cap baralla en aquesta col·lecció. Posa-n\'hi una des del menú d\'una baralla.</string>
+    <string name="flashcards_move_to_collection">Col·lecció…</string>
+    <string name="flashcards_move_title">On va «%1$s»?</string>
+    <string name="flashcards_move_none">Sense col·lecció</string>
+    <string name="flashcards_no_collections">Encara no has fet cap col·lecció. El botó + en fa una.</string>
+    <string name="flashcards_show_decks">Mostra les baralles de %1$s</string>
+    <string name="flashcards_hide_decks">Amaga les baralles de %1$s</string>
+    <plurals name="flashcards_deck_count">
+        <item quantity="one">%1$d baralla</item>
+        <item quantity="many">%1$d baralles</item>
+        <item quantity="other">%1$d baralles</item>
+    </plurals>
+    <string name="dictionary_verb_title">Forma verbal</string>
+    <string name="dictionary_verb_infinitive">Infinitiu</string>
+    <string name="dictionary_verb_look_up">Cerca %1$s</string>
+    <string name="dictionary_verb_also">també %1$s</string>
+    <string name="dictionary_verb_reading">%1$s · %2$s</string>
+    <string name="dictionary_verb_unplaced">És una forma irregular. No s\'ha pogut establir quina part del verb és.</string>
+    <string name="verb_conjugation_first">1a conjugació (-ar)</string>
+    <string name="verb_conjugation_second">2a conjugació (-re, -er)</string>
+    <string name="verb_conjugation_third">3a conjugació (-ir)</string>
+    <string name="verb_mood_indicative">Indicatiu</string>
+    <string name="verb_mood_imperative">Imperatiu</string>
+    <string name="verb_tense_present_indicative">Present d\'indicatiu</string>
+    <string name="verb_tense_imperfect_indicative">Imperfet d\'indicatiu</string>
+    <string name="verb_tense_past">Passat simple</string>
+    <string name="verb_tense_future">Futur</string>
+    <string name="verb_tense_conditional">Condicional</string>
+    <string name="verb_tense_present_subjunctive">Present de subjuntiu</string>
+    <string name="verb_tense_imperfect_subjunctive">Imperfet de subjuntiu</string>
+    <string name="verb_person_1s">1a persona del singular</string>
+    <string name="verb_person_2s">2a persona del singular</string>
+    <string name="verb_person_3s">3a persona del singular</string>
+    <string name="verb_person_1p">1a persona del plural</string>
+    <string name="verb_person_2p">2a persona del plural</string>
+    <string name="verb_person_3p">3a persona del plural</string>
+    <string name="verb_form_infinitive">Infinitiu</string>
+    <string name="verb_form_gerund">Gerundi</string>
+    <string name="verb_form_participle">Participi</string>
 </resources>

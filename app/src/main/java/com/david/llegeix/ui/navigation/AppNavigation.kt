@@ -36,6 +36,7 @@ import com.david.llegeix.ui.flashcards.FlashcardsScreen
 import com.david.llegeix.ui.flashcards.StudyScreen
 import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.ui.folders.FolderDetailScreen
 import com.david.llegeix.ui.library.LibraryScreen
 import com.david.llegeix.ui.practice.PracticeScreen
@@ -61,21 +62,27 @@ private object Routes {
     const val CARD_EDITOR = "flashcards/card?deckId={deckId}&cardId={cardId}"
 
     /**
-     * A study session. `deckId` is -1 for every deck at once; `extra` is a
-     * round of practice off the schedule.
+     * A study session over a deck, a collection or everything.
+     *
+     * Two ids rather than one, because a route can only carry numbers and the
+     * session is over one of three things: `deckId` and `collectionId` are each
+     * -1 when they are not the answer, and [StudyScope] is what the two ends
+     * actually deal in. `extra` is a round of practice off the schedule.
      */
     const val FLASHCARD_STUDY =
-        "flashcards/study?deckId={deckId}&direction={direction}&language={language}&extra={extra}"
+        "flashcards/study?deckId={deckId}&collectionId={collectionId}" +
+            "&direction={direction}&language={language}&extra={extra}"
 
     fun flashcardDeck(deckId: Long): String = "flashcards/deck/$deckId"
 
     fun flashcardStudy(
-        deckId: Long?,
+        scope: StudyScope,
         direction: StudyDirection,
         language: MeaningLanguage,
         extra: Boolean,
-    ): String = "flashcards/study?deckId=${deckId ?: -1}&direction=${direction.name}" +
-        "&language=${language.name}&extra=$extra"
+    ): String = "flashcards/study?deckId=${scope.deckArgument}" +
+        "&collectionId=${scope.collectionArgument}" +
+        "&direction=${direction.name}&language=${language.name}&extra=$extra"
 
     fun cardEditor(deckId: Long, cardId: Long? = null): String =
         "flashcards/card?deckId=$deckId&cardId=${cardId ?: -1}"
@@ -277,8 +284,8 @@ fun AppNavigation(modifier: Modifier = Modifier) {
             composable(Routes.FLASHCARDS) {
                 FlashcardsScreen(
                     onOpenDeck = { deckId -> navController.navigate(Routes.flashcardDeck(deckId)) },
-                    onStudy = { deckId, direction, language, extra ->
-                        navController.navigate(Routes.flashcardStudy(deckId, direction, language, extra))
+                    onStudy = { scope, direction, language, extra ->
+                        navController.navigate(Routes.flashcardStudy(scope, direction, language, extra))
                     },
                 )
             }
@@ -287,6 +294,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                 route = Routes.FLASHCARD_STUDY,
                 arguments = listOf(
                     navArgument("deckId") { type = NavType.LongType; defaultValue = -1L },
+                    navArgument("collectionId") { type = NavType.LongType; defaultValue = -1L },
                     navArgument("direction") {
                         type = NavType.StringType
                         defaultValue = StudyDirection.Default.name
@@ -299,7 +307,10 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                 ),
             ) { entry ->
                 StudyScreen(
-                    deckId = entry.arguments?.getLong("deckId")?.takeIf { it >= 0 },
+                    scope = StudyScope.fromRoute(
+                        deckId = entry.arguments?.getLong("deckId") ?: StudyScope.NONE,
+                        collectionId = entry.arguments?.getLong("collectionId") ?: StudyScope.NONE,
+                    ),
                     direction = StudyDirection.fromName(entry.arguments?.getString("direction")),
                     language = MeaningLanguage.fromName(entry.arguments?.getString("language")),
                     extra = entry.arguments?.getBoolean("extra") == true,

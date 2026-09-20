@@ -130,6 +130,10 @@ fun DictionaryScreen(
                     onToggleSaved = viewModel::onToggleSaved,
                     onToggleTarget = viewModel::onToggleTranslationTarget,
                     onRetryOnAnyNetwork = viewModel::onRetryOnAnyNetwork,
+                    onOpenWord = { word ->
+                        keyboard?.hide()
+                        viewModel.onPickSuggestion(word)
+                    },
                 )
 
                 state.query.isBlank() -> Column {
@@ -234,6 +238,8 @@ private fun WordEntry(
     onToggleSaved: () -> Unit,
     onToggleTarget: () -> Unit,
     onRetryOnAnyNetwork: () -> Unit,
+    /** Look up another word, which the verb card's infinitive row asks for. */
+    onOpenWord: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -338,6 +344,23 @@ private fun WordEntry(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+        }
+
+        // Between the translation and the references, because it answers a
+        // question that sits between theirs: the translation says what these
+        // letters mean, the references say what the word means, and this says
+        // what the word *is* — which is the one of the three a learner is least
+        // able to work out for themselves.
+        entry.verb?.let { verb ->
+            VerbFormCard(
+                verb = verb,
+                infinitiveMeaning = entry.verbInfinitiveMeaning,
+                definition = entry.verbDefinition,
+                onOpenInfinitive = onOpenWord,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Space.lg),
+            )
         }
 
         DictionaryCard(

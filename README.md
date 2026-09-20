@@ -126,7 +126,11 @@ does both after bumping the version in `app/build.gradle.kts`.
   one walks straight into it with a picker already up: everything you own, in
   one list, with a tick beside each and a note saying which collection a
   document is in already. Filling a collection used to be four taps a book,
-  through a menu and a dialog, with the collection never once on screen.
+  through a menu and a dialog, with the collection never once on screen. A tick
+  only ticks: the list is ordered by what was in the collection when the picker
+  opened and does not rearrange itself while you work down it, because ticking a
+  book used to sort it to the top and take it out from under the finger that had
+  just tapped it, so a mistap could not be undone.
 - **Organisation** — collections, tags with a colour and a name you can change
   at any time and sort by, reading history, and bookmarks, persisted in a Room
   database. A collection's colour is a disc behind its icon rather than a tint on
@@ -163,6 +167,24 @@ does both after bumping the version in `app/build.gradle.kts`.
   synonyms and the antonyms — because a word checked here and the same word
   pressed while reading should not look like two different words. The star keeps
   it with everything else you have saved.
+
+  A conjugated verb is also read back as one. Looking up *cantéssim* used to
+  answer with a translation and, if the inflected-forms file happened to have
+  it, a definition quietly filed under a different word; what was missing was
+  the part a learner needs — that it is a verb, that the verb is *cantar*, that
+  it is the first conjugation, and that this is the imperfect subjunctive, first
+  person plural. That card is there now, with the verb's own meaning under it
+  and the infinitive as a row you can press to look it up properly. The
+  infinitive is not guessed: it is read from the bundled table of inflected
+  forms, which records it outright, irregulars and all. Which *form* it is comes
+  from `CatalanVerbs`, which tries the six verbs no rule describes — *ser*,
+  *estar*, *haver*, *anar*, *fer*, *tenir* — then the regular paradigm generated
+  from the infinitive and compared with the accents off, since Catalan moves its
+  stress around a paradigm and changes nothing else, and only then the ending on
+  its own. Where none of the three is sure, the card names the verb and says it
+  could not place the form, because a learner told that *corria* is a
+  conditional has been taught something false about their own reading and will
+  not find out.
 - **Privacy** — nothing is collected, and the manifest is made to say so as
   well as the policy: the app's data is excluded from Google's cloud backup, so
   a vocabulary list and the sentences behind it never leave the phone, while
@@ -276,16 +298,37 @@ does both after bumping the version in `app/build.gradle.kts`.
 
   Each deck is a card of its own on the tab, with a picture of its own — chosen
   from the same grid, or its first card's — a bar for how well it is known and
-  its own button into practice carrying how many are waiting. Decks can be
-  pinned to the top. The decks are the choice, so there is no second list of
-  them to choose from. Which way round is two flags, not two language names,
-  and the meaning can be practised in Romanian or in English: a second flag
-  switch, because recognising a Catalan word is the same skill whichever
-  language the answer comes in, so it is the same schedule. Going through cards
-  again when none are due is always one press away, as extra practice that does
-  not move the schedule — repetition helps, and three right answers in ten
-  minutes are not three days' learning. Saving a copy is a button in the
-  corner.
+  its own way into practice. Decks can be pinned to the top. The decks are the
+  choice, so there is no second list of them to choose from. Which way round is
+  two flags, not two language names, and the meaning can be practised in
+  Romanian or in English: a second flag switch, because recognising a Catalan
+  word is the same skill whichever language the answer comes in, so it is the
+  same schedule. Going through cards again when none are due is always one press
+  away, as extra practice that does not move the schedule — repetition helps,
+  and three right answers in ten minutes are not three days' learning. Saving a
+  copy is a button in the corner.
+
+  Decks can be grouped into collections, one level deep: *Vegetables*, *Fruit*
+  and *At the market* on a shelf called *Food*, which folds open and shut and
+  has a play button of its own. That button is the point of the feature —
+  practising *food* is one session over every card on the shelf, dealt and
+  scheduled like any other, not three sessions run back to back. A collection
+  owns nothing: deleting one leaves every deck that was on it exactly where it
+  was, and a deck belongs to at most one. Decks that are on no collection are
+  simply the list they always were, so a reader who never makes one never sees
+  one. The + makes either, with the choice as the first thing in the sheet
+  rather than behind a second floating button.
+
+  The way into practice is the same round button everywhere it appears — on the
+  tab's own header for everything at once, on a collection, on a deck. It never
+  carries a number. It used to grow a count when something was due and shrink
+  back when nothing was, so the same control was three shapes down one screen;
+  and a number on a button reads as a promise about how many cards pressing it
+  will deal, which stops being true the moment another card falls due. What is
+  due belongs in the list, not on the button. For the same reason the tab no
+  longer opens with a panel headed *14 cards to review*: a place where things
+  are made should not greet anybody with a debt, and what is due still decides
+  whether a press deals a scheduled round or an extra one without being shouted.
 
   Practice asks one way round at a time, and each way keeps its own schedule:
   recognising *pa* says nothing about producing it from *pâine*, so a right

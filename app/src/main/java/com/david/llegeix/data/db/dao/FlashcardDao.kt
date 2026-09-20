@@ -3,6 +3,7 @@ package com.david.llegeix.data.db.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import kotlinx.coroutines.flow.Flow
@@ -13,6 +14,8 @@ data class DeckWithCount(
     val name: String,
     val createdAt: Long,
     val isPinned: Boolean,
+    /** The shelf it sits on, or null for a deck that sits on its own. */
+    val collectionId: Long?,
     val cardCount: Int,
     /** How many of its cards carry a picture, which deleting the deck also deletes. */
     val imageCount: Int,
@@ -46,6 +49,7 @@ interface FlashcardDao {
     @Query(
         """
         SELECT d.id AS id, d.name AS name, d.createdAt AS createdAt, d.isPinned AS isPinned,
+               d.collectionId AS collectionId,
                COUNT(c.id) AS cardCount, COUNT(c.imagePath) AS imageCount,
                COALESCE(SUM(CASE WHEN c.english IS NOT NULL AND TRIM(c.english) != ''
                    THEN 1 ELSE 0 END), 0) AS englishCount,
@@ -69,6 +73,47 @@ interface FlashcardDao {
 
     @Query("SELECT * FROM flashcard_decks")
     suspend fun decks(): List<FlashcardDeckEntity>
+
+    // ---- Collections -------------------------------------------------------
+
+    /**
+     * The shelves, pinned first and then alphabetical, exactly as the decks
+     * are ordered: the two kinds of row sit in one list and cannot be sorted
+     * by different rules without the list looking broken.
+     *
+     * Only the rows. What is on a shelf — how many decks, how many cards, which
+     * picture stands for it — is worked out from the decks the screen has
+     * already loaded, rather than asked for again in SQL that would have to
+     * repeat the deck query's own cover logic word for word.
+     */
+    @Query("SELECT * FROM flashcard_collections ORDER BY isPinned DESC, name COLLATE NOCASE")
+    fun observeCollections(): Flow<List<FlashcardCollectionEntity>>
+
+    @Query("SELECT * FROM flashcard_collections")
+    suspend fun collections(): List<FlashcardCollectionEntity>
+
+    @Query("SELECT * FROM flashcard_collections WHERE id = :id")
+    suspend fun collection(id: Long): FlashcardCollectionEntity?
+
+    @Insert
+    suspend fun insertCollection(collection: FlashcardCollectionEntity): Long
+
+    @Query("UPDATE flashcard_collections SET name = :name WHERE id = :id")
+    suspend fun renameCollection(id: Long, name: String)
+
+    @Query("UPDATE flashcard_collections SET isPinned = :pinned WHERE id = :id")
+    suspend fun setCollectionPinned(id: Long, pinned: Boolean)
+
+    /** The decks on it stay; their `collectionId` goes to null, by the foreign key. */
+    @Query("DELETE FROM flashcard_collections WHERE id = :id")
+    suspend fun deleteCollection(id: Long)
+
+    /** Put a deck on a shelf, or take it off one with null. */
+    @Query("UPDATE flashcard_decks SET collectionId = :collectionId WHERE id = :id")
+    suspend fun setDeckCollection(id: Long, collectionId: Long?)
+
+    @Query("DELETE FROM flashcard_collections")
+    suspend fun clearCollections()
 
     @Insert
     suspend fun insertDeck(deck: FlashcardDeckEntity): Long
@@ -136,6 +181,23 @@ interface FlashcardDao {
     /** Every card in a deck, for dealing a study session from. */
     @Query("SELECT * FROM flashcards WHERE deckId = :deckId")
     suspend fun cardsInDeck(deckId: Long): List<FlashcardEntity>
+
+    /**
+     * Every card on a shelf: all of food at once, rather than one deck of it.
+     *
+     * This is the whole point of collections. A reader with *Vegetables*,
+     * *Fruit* and *At the market* can practise any one of them, or the subject
+     * — and the subject is a real session over real cards, not three sessions
+     * run back to back.
+     */
+    @Query(
+        """
+        SELECT c.* FROM flashcards c
+        JOIN flashcard_decks d ON d.id = c.deckId
+        WHERE d.collectionId = :collectionId
+        """,
+    )
+    suspend fun cardsInCollection(collectionId: Long): List<FlashcardEntity>
 
     @Query("SELECT * FROM flashcards")
     suspend fun allCards(): List<FlashcardEntity>

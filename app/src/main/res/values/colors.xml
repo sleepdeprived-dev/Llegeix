@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The only colours defined in XML, and they exist for one frame.
+
+    Everything the reader actually looks at is built in Compose, from their own
+    accent and theme. These two are for the window that stands in front of the
+    app while it starts: Android draws it from the activity's theme, before a
+    single line of Kotlin has run, so it cannot be asked what accent anybody
+    chose. What it can be given is the app's own paper — the same warm off-white
+    the artwork sits on — so the first thing seen is Llegeix rather than a sheet
+    of system white.
+-->
+<resources>
+
+    <!-- Warm paper: the ground the book and rose are drawn on. -->
+    <color name="splash_background">#FBF6EC</color>
+
+</resources>

@@ -1,11 +1,6 @@
 package com.david.llegeix.ui.flashcards
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.LinearProgressIndicator
 import com.david.llegeix.data.flashcards.PictureResults
-import com.david.llegeix.data.flashcards.StudyDirection
-import com.david.llegeix.data.practice.Leitner
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -173,8 +168,18 @@ fun DeckScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(top = Space.sm, bottom = CardListBottomClearance),
                 ) {
+                    // No pair of direction bars here any more.
+                    //
+                    // They said how well the deck was known each way round,
+                    // under two pairs of flags, directly below the search field
+                    // — and the tab this screen is opened from asks the very
+                    // same question with the very same flags, two taps earlier
+                    // and about every deck at once. Two controls saying the
+                    // same thing in the same language is one too many, and this
+                    // was the one in the way: it sat between the search field
+                    // and the cards, which are the two reasons anybody opens a
+                    // deck.
                     if (query.isBlank()) {
-                        item(key = "known") { HowWellKnown(list) }
                         if (missingEnglish > 0) {
                             item(key = "english") {
                                 MissingEnglish(
@@ -341,39 +346,6 @@ private const val ThumbnailPixels = 192
 
 /** Clears the extended button: its 56dp, and the 16dp it floats above the edge. */
 private val CardListBottomClearance = 88.dp
-
-/**
- * How well the deck is known, each way round, as two bars under two pairs of
- * flags. Each direction has its own schedule, so one bar for the deck would
- * average a word known well one way with the same word not known at all the
- * other, and say nothing true about either.
- */
-@Composable
-private fun HowWellKnown(cards: List<FlashcardEntity>) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(Space.lg),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Space.screen)
-            .padding(top = Space.sm, bottom = Space.md),
-    ) {
-        StudyDirection.entries.forEach { direction ->
-            Column(modifier = Modifier.weight(1f)) {
-                DirectionFlags(direction = direction, flagWidth = 18.dp)
-                LinearProgressIndicator(
-                    progress = {
-                        cards.map { Leitner.progressOf(direction.boxOf(it)) }.average().toFloat()
-                    },
-                    drawStopIndicator = {},
-                    modifier = Modifier
-                        .padding(top = Space.sm)
-                        .fillMaxWidth()
-                        .height(6.dp),
-                )
-            }
-        }
-    }
-}
 
 /**
  * Cards an English session would leave out, said once, with the way to fix it

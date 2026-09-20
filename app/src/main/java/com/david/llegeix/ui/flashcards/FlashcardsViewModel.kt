@@ -11,6 +11,7 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
+import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.FlashcardBackup
 import com.david.llegeix.data.flashcards.FlashcardRepository
@@ -27,10 +28,59 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * The list of decks, and making, renaming and deleting them.
+ * A collection and the decks on it, as the list draws them.
+ *
+ * The counts are added up here rather than asked of SQL, because the decks
+ * have already been loaded with theirs and a second query would have to repeat
+ * the first one's cover logic word for word to get the same answers.
+ */
+data class DeckShelf(
+    val collection: FlashcardCollectionEntity,
+    val decks: List<DeckWithCount>,
+) {
+    val id: Long get() = collection.id
+    val cardCount: Int get() = decks.sumOf { it.cardCount }
+    val englishCount: Int get() = decks.sumOf { it.englishCount }
+
+    /**
+     * The picture that stands for the shelf: the first picture any deck on it
+     * has, in the order the decks are listed.
+     *
+     * A collection is a grouping of things the reader already made, so it
+     * borrows rather than asking for a picture of its own — and what it borrows
+     * is the deck at the top of it, which is the one they pinned or the one
+     * that comes first by name.
+     */
+    val coverImage: String? get() = decks.firstNotNullOfOrNull { it.coverImage }
+
+    val coverCredit: String?
+        get() = decks.firstOrNull { it.coverImage != null }?.coverCredit
+}
+
+/**
+ * The tab's list: the shelves, then the decks that are on no shelf.
+ *
+ * Null until the database has answered, which is what stops the screen
+ * flashing "no decks yet" for a frame on every visit.
+ */
+data class DeckList(
+    val shelves: List<DeckShelf>,
+    val loose: List<DeckWithCount>,
+) {
+    val allDecks: List<DeckWithCount> get() = shelves.flatMap { it.decks } + loose
+
+    val isEmpty: Boolean get() = shelves.isEmpty() && loose.isEmpty()
+
+    val hasCards: Boolean get() = allDecks.any { it.cardCount > 0 }
+}
+
+/**
+ * The list of decks and the shelves they sit on, and making, renaming and
+ * deleting either.
  */
 class FlashcardsViewModel(
     private val flashcards: FlashcardRepository,
@@ -44,6 +94,38 @@ class FlashcardsViewModel(
      */
     val decks: StateFlow<List<DeckWithCount>?> = flashcards.observeDecks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val collections: StateFlow<List<FlashcardCollectionEntity>?> =
+        flashcards.observeCollections()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Which shelves are open.
+     *
+     * Kept here rather than in the screen so that going into a deck and coming
+     * back does not fold everything shut again — which is the one thing that
+     * would make a shelf feel like a place you are put rather than one you
+     * opened.
+     */
+    private val _openShelves = MutableStateFlow<Set<Long>>(emptySet())
+    val openShelves: StateFlow<Set<Long>> = _openShelves.asStateFlow()
+
+    /** The decks grouped under the shelves they are on, in the order both are listed. */
+    val list: StateFlow<DeckList?> = combine(decks, collections) { decks, collections ->
+        if (decks == null || collections == null) return@combine null
+        val byCollection = decks.groupBy { it.collectionId }
+        DeckList(
+            // A shelf with nothing on it is still listed: it was made on
+            // purpose, and a collection that vanished until something was put
+            // on it would look like the app having forgotten it.
+            shelves = collections.map { DeckShelf(it, byCollection[it.id].orEmpty()) },
+            loose = byCollection[null].orEmpty(),
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun onToggleShelf(id: Long) {
+        _openShelves.update { if (id in it) it - id else it + id }
+    }
 
     private val _message = MutableStateFlow<UiText?>(null)
     val message: StateFlow<UiText?> = _message.asStateFlow()
@@ -86,6 +168,43 @@ class FlashcardsViewModel(
 
     fun setPinned(deck: DeckWithCount, pinned: Boolean) = viewModelScope.launch {
         flashcards.setDeckPinned(deck.id, pinned)
+    }
+
+    // ---- Collections -------------------------------------------------------
+
+    fun setCollectionPinned(id: Long, pinned: Boolean) = viewModelScope.launch {
+        flashcards.setCollectionPinned(id, pinned)
+    }
+
+    /** Whether [name] could be used for a collection; see [checkName] for a deck's. */
+    fun checkCollectionName(name: String, renaming: Long? = null): DeckNames.Check {
+        val others = list.value?.shelves.orEmpty()
+            .filter { it.id != renaming }
+            .map { it.collection.name }
+        return DeckNames.check(name, others)
+    }
+
+    fun renameCollection(id: Long, name: String) = viewModelScope.launch {
+        report(flashcards.renameCollection(id, name))
+    }
+
+    /**
+     * Take a shelf away. The decks on it stay, and the message says so, because
+     * "delete" next to a thing holding sixty cards is worth being explicit
+     * about.
+     */
+    fun deleteCollection(shelf: DeckShelf) = viewModelScope.launch {
+        flashcards.deleteCollection(shelf.id)
+        _openShelves.update { it - shelf.id }
+        _message.value = UiText.of(R.string.flashcards_collection_deleted, shelf.collection.name)
+    }
+
+    /** Put a deck on a shelf, or take it off one with null. */
+    fun moveDeck(deck: DeckWithCount, collectionId: Long?) = viewModelScope.launch {
+        flashcards.setDeckCollection(deck.id, collectionId)
+        // Filing something into a shelf that is folded shut looks like the deck
+        // disappearing, so the shelf it went onto opens.
+        if (collectionId != null) _openShelves.update { it + collectionId }
     }
 
     /** The tab is being looked at again: count against the time it is now. */

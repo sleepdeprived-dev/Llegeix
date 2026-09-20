@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The same ground after dark: warm ink rather than black.
+
+    Pure black would make the gold of the mark glare, and the app's own dark
+    surfaces are never quite black either unless the reader asks for AMOLED.
+-->
+<resources>
+
+    <color name="splash_background">#12100D</color>
+
+</resources>

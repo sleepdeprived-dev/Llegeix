@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Llegeix" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+        The window, and the half-second in front of it.
+
+        Everything the reader sees once the app is running is Compose, built
+        from their own accent and theme, so this style is almost empty on
+        purpose. What it does carry is the starting window: since Android 12 the
+        system draws one from the launching activity's theme, before any of this
+        app's code has run, and left unsaid it draws the launcher icon —
+        stripes, satin and all — on a sheet of system white.
+
+        That is the screen this describes instead. The app's own paper for a
+        ground, the book and the bloom alone in the middle of it, and the same
+        paper set as the window background underneath so that nothing flashes
+        white in the gap between the starting window going and the first frame
+        arriving.
+    -->
+    <style name="Theme.Llegeix" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+    </style>
+
 </resources>

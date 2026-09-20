@@ -2,14 +2,8 @@ package com.david.llegeix.ui.flashcards
 
 import androidx.annotation.DrawableRes
 import com.david.llegeix.data.flashcards.MeaningLanguage
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.draw.alpha
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Row
@@ -33,6 +27,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.ui.common.Pill
+import com.david.llegeix.ui.common.PillGroup
+import com.david.llegeix.ui.common.Space
 
 /**
  * A direction of study as two flags and an arrow: the side you are shown, then
@@ -112,47 +109,80 @@ fun directionName(direction: StudyDirection, language: MeaningLanguage): String 
 }
 
 /**
- * Which language the meanings are practised in: two small flags, the one in
- * use lit and the other faded — the same switch the reader's lookup panel uses
- * to pick a translation language, so it is already known by sight.
+ * Which way round the cards are asked, as two pills.
+ *
+ * This replaces a pair of Material segmented buttons, which were the wrong
+ * control twice over. They drew a shared outline divided by a hairline, which
+ * is the shape of a form field rather than of a choice; and they insisted on
+ * equal widths and a tick slot per item, so two flags and an arrow sat in a box
+ * sized for a sentence. What was left looked like a setting somebody had to
+ * fill in before they were allowed to practise.
+ *
+ * Pills say the same thing without any of that: a groove, and the chosen way
+ * round sitting solid on it. The flags do the work — *Català → Romanès* is two
+ * words and an arrow to read twice, and two flags are told apart without
+ * reading at all — and the direction's full name goes to anybody who cannot see
+ * them, through the pill's own label.
+ */
+@Composable
+fun DirectionPills(
+    selected: StudyDirection,
+    language: MeaningLanguage,
+    onSelect: (StudyDirection) -> Unit,
+    modifier: Modifier = Modifier,
+    track: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+) {
+    PillGroup(modifier = modifier, track = track) {
+        StudyDirection.entries.forEach { direction ->
+            Pill(
+                selected = direction == selected,
+                onClick = { onSelect(direction) },
+                label = directionName(direction, language),
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = Space.sm, vertical = Space.sm),
+            ) {
+                DirectionFlags(direction = direction, language = language, flagWidth = 22.dp)
+            }
+        }
+    }
+}
+
+/**
+ * Which language the meanings are practised in: the two flags as pills, the
+ * one in use lifted onto the accent and the other flat on the groove.
+ *
+ * The same control as the direction switch, one size smaller, because it is the
+ * same kind of question asked about something smaller. It was two flags in a
+ * grey capsule with the unchosen one faded, which said "off" about a language
+ * rather than "not this one" — English does not stop existing because you are
+ * practising in Romanian.
  */
 @Composable
 fun LanguageSwitch(
     selected: MeaningLanguage,
     onSelect: (MeaningLanguage) -> Unit,
     modifier: Modifier = Modifier,
+    track: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
 ) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f))
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    PillGroup(modifier = modifier, track = track, padding = 3.dp) {
         MeaningLanguage.entries.forEach { language ->
-            val isSelected = language == selected
-            val name = stringResource(
-                when (language) {
-                    MeaningLanguage.ROMANIAN -> R.string.lookup_target_romanian
-                    MeaningLanguage.ENGLISH -> R.string.lookup_target_english
-                },
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
-                    .selectable(selected = isSelected, role = Role.RadioButton) { onSelect(language) }
-                    .semantics { contentDescription = name }
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
+            Pill(
+                selected = language == selected,
+                onClick = { onSelect(language) },
+                label = stringResource(
+                    when (language) {
+                        MeaningLanguage.ROMANIAN -> R.string.lookup_target_romanian
+                        MeaningLanguage.ENGLISH -> R.string.lookup_target_english
+                    },
+                ),
+                contentPadding = PaddingValues(horizontal = 11.dp, vertical = 7.dp),
             ) {
                 Image(
                     painter = painterResource(language.flagRes),
                     contentDescription = null,
                     modifier = Modifier
-                        .size(width = 21.dp, height = 14.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .alpha(if (isSelected) 1f else 0.45f),
+                        .size(width = 22.dp, height = 15.dp)
+                        .clip(RoundedCornerShape(2.dp)),
                 )
             }
         }

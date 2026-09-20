@@ -96,6 +96,28 @@ class CatalanWordBank private constructor(
     }
 
     /**
+     * The base form the inflected-forms table records for [word], or null when
+     * it has none.
+     *
+     * A recorded fact rather than a rule: the file says outright that *vaig*
+     * is a form of *anar*, which no amount of ending-stripping would ever work
+     * out. The dictionary asks this before deciding whether a word is worth
+     * explaining as a verb form.
+     *
+     * An entry can name more than one base form — *soc* is filed against both
+     * *ésser* and *ser* — and the wiki markup they are written in is stripped
+     * here so that callers only ever see words.
+     */
+    fun lemmaOf(word: String): String? {
+        val key = normalise(word)
+        if (key.isEmpty()) return null
+        val recorded = lemmas.find(key)?.getOrNull(1) ?: return null
+        return recorded.split(LEMMA_SEPARATOR)
+            .map { it.replace("[[", "").replace("]]", "").trim() }
+            .firstOrNull { it.isNotEmpty() && it != key }
+    }
+
+    /**
      * Headwords beginning with [prefix], for the dictionary screen's list of
      * what the reader might mean.
      *
@@ -293,6 +315,15 @@ class CatalanWordBank private constructor(
 
         /** Separates the meanings inside one definition field. */
         private const val UNIT_SEPARATOR = '\u001F'
+
+        /**
+         * Splits an entry that records more than one base form.
+         *
+         * The inflected-forms file keeps them as wiki links joined by slashes
+         * — `[[ésser]]/[[ser]]` — because that is how the Viccionari writes
+         * them.
+         */
+        private val LEMMA_SEPARATOR = Regex("[/,]")
 
         /**
          * How a written form is walked back to a listed one when the recorded

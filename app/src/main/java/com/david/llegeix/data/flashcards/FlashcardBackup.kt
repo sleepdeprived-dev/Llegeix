@@ -71,6 +71,21 @@ object FlashcardBackup {
         /** The deck's own picture's name inside the zip, if it chose one. */
         val cover: String? = null,
         val coverCredit: String? = null,
+        /**
+         * The shelf the deck was on, by name, or null for a deck that was on
+         * none.
+         *
+         * By name rather than by id, like everything else in this file: the ids
+         * on the phone a copy is brought back to have nothing to do with the
+         * ids on the phone it was made on. A copy naming a collection that does
+         * not exist yet makes it; one naming a collection that does joins it.
+         *
+         * Added without moving [VERSION] on. It is one optional key, and a
+         * version older than this one reads a copy containing it perfectly —
+         * it simply does not see the shelves, which is a much kinder outcome
+         * than refusing the whole file over a grouping.
+         */
+        val collection: String? = null,
     )
 
     /** Why a file could not be read as a copy, for the message the reader sees. */
@@ -96,6 +111,7 @@ object FlashcardBackup {
                             .put("pinned", deck.isPinned)
                             .putOpt("cover", deck.cover)
                             .putOpt("coverCredit", deck.coverCredit)
+                            .putOpt("collection", deck.collection)
                             .put("cards", JSONArray(deck.cards.map(::encodeCard)))
                     },
                 ),
@@ -156,6 +172,8 @@ object FlashcardBackup {
                 isPinned = deck.optBoolean("pinned", false),
                 cover = deck.optStringOrNull("cover"),
                 coverCredit = deck.optStringOrNull("coverCredit"),
+                collection = deck.optStringOrNull("collection")?.let(DeckNames::tidy)
+                    ?.takeIf { it.isNotEmpty() },
                 cards = (0 until cards.length()).mapNotNull { j ->
                     cards.optJSONObject(j)?.let(::decodeCard)
                 },
@@ -218,6 +236,16 @@ object FlashcardBackup {
         val isPinned: Boolean = false,
         val cover: String? = null,
         val coverCredit: String? = null,
+        /**
+         * The shelf to put the deck on — only ever for a deck this restore
+         * creates.
+         *
+         * A deck already on the phone keeps where the reader has filed it. A
+         * copy is allowed to add things and never to rearrange what is already
+         * here, and moving somebody's deck off the shelf they put it on would
+         * be exactly that.
+         */
+        val collection: String? = null,
     )
 
     fun plan(incoming: List<Deck>, existing: List<ExistingDeck>): Plan {
@@ -243,6 +271,7 @@ object FlashcardBackup {
                     isPinned = deck.isPinned,
                     cover = deck.cover,
                     coverCredit = deck.coverCredit,
+                    collection = deck.collection,
                 )
             }
             for (card in deck.cards) {
@@ -267,6 +296,7 @@ object FlashcardBackup {
                         isPinned = it.isPinned,
                         cover = it.cover,
                         coverCredit = it.coverCredit,
+                        collection = it.collection.takeIf { _ -> it.existingId == null },
                     )
                 },
             skipped = skipped,
@@ -282,6 +312,7 @@ object FlashcardBackup {
         val isPinned: Boolean = false,
         val cover: String? = null,
         val coverCredit: String? = null,
+        val collection: String? = null,
     )
 
     private fun deckKey(name: String): String = DeckNames.tidy(name).lowercase(Locale.ROOT)

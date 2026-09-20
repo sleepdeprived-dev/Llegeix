@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The mark Android shows while the app starts.
+
+    Not the launcher icon. A launcher icon has to survive being cut to a
+    circle at 48dp among forty others, which is why that one is stripes edge to
+    edge with the book floated on top; here the mark has a whole screen to
+    itself for half a second and nothing to compete with, so the stripes would
+    be shouting. What is left is the thing that identifies the app — the book
+    and the bloom — drawn once, large, in the Senyera's two colours on the app's
+    own paper.
+
+    Framed like every other layer of the icon: the artwork keeps to the middle
+    of the 108dp canvas, well inside the two-thirds the system will show, so
+    nothing is clipped whatever mask the device applies.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!--
+        The cover, in gold, lit from above.
+
+        The gradient is shallow on purpose: enough that the shape reads as an
+        object with light falling on it rather than as a flat swatch, not so
+        much that it becomes a gradient anybody notices.
+    -->
+    <path
+        android:pathData="M28,25 h52 a4,4 0 0 1 4,4 v50 a4,4 0 0 1 -4,4 h-52 a4,4 0 0 1 -4,-4 v-50 a4,4 0 0 1 4,-4 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="25"
+                android:endX="54"
+                android:endY="83"
+                android:type="linear">
+                <item android:color="#FFD75A" android:offset="0" />
+                <item android:color="#F5C014" android:offset="0.55" />
+                <item android:color="#E0A302" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!--
+        The spine. A book seen flat is a rectangle and nothing else; one band
+        of deeper gold down the binding edge is the whole difference between a
+        book and a card.
+    -->
+    <path
+        android:fillColor="#C98A00"
+        android:pathData="M28,25 h6 v58 h-6 a4,4 0 0 1 -4,-4 v-50 a4,4 0 0 1 4,-4 z" />
+
+    <!-- A hairline along the spine, where the cover turns. -->
+    <path
+        android:fillColor="#B77C00"
+        android:fillAlpha="0.55"
+        android:pathData="M34,25 h1.4 v58 h-1.4 z" />
+
+    <!--
+        The bloom, as three turns rather than a disc.
+
+        The launcher's silhouette collapses the rose into a ring because a
+        themed icon is one flat colour and a spiral would fill in. Here there
+        are two colours and room, so it can actually be a rose.
+    -->
+    <path
+        android:fillColor="#D91F2E"
+        android:fillType="evenOdd"
+        android:pathData="M59,54 m-16,0 a16,16 0 1 0 32,0 a16,16 0 1 0 -32,0 z M59,54 m-11,0 a11,11 0 1 1 22,0 a11,11 0 1 1 -22,0 z" />
+    <path
+        android:fillColor="#D91F2E"
+        android:fillType="evenOdd"
+        android:pathData="M59,54 m-8,0 a8,8 0 1 0 16,0 a8,8 0 1 0 -16,0 z M59,54 m-3.5,0 a3.5,3.5 0 1 1 7,0 a3.5,3.5 0 1 1 -7,0 z" />
+    <path
+        android:fillColor="#B81826"
+        android:pathData="M59,54 m-1.6,0 a1.6,1.6 0 1 0 3.2,0 a1.6,1.6 0 1 0 -3.2,0 z" />
+
+</vector>

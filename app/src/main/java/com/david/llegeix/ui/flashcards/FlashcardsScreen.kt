@@ -1,12 +1,12 @@
 package com.david.llegeix.ui.flashcards
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.material3.Button
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,29 +31,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -68,17 +65,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -90,10 +84,13 @@ import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.data.practice.Leitner
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuIcon
+import com.david.llegeix.ui.common.Pill
+import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
@@ -101,27 +98,44 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
- * The Flashcards tab: the decks the reader has made, and a way into practice.
+ * The Flashcards tab: the decks the reader has made, the shelves they sit on,
+ * and a way into practice.
  *
  * A tab of its own because this is somewhere things are *made*. The other three
  * are the books, the language, and what was set aside while reading; this is
  * vocabulary written by hand, and it is a main reason to open the app rather
  * than a view of something that already lives elsewhere.
  *
- * Three things on it, in order of use: practice over everything, the decks
- * (each with its own way into practice), and a bare + for a new deck. Saving a
- * copy is a button in the corner: it matters, and it is also something done
- * once in a while, so it has no business being a panel read past every visit.
+ * ### The strip at the top
+ *
+ * It was a filled panel headed with a number — "14 cards to review" — over a
+ * row of controls. The number was the loudest thing on the tab and it was a
+ * scoreboard: it went up on its own, it could not be acted on except by
+ * practising, and on a bad week it sat there in the accent colour counting how
+ * far behind the reader was. A tab for making things should not open with a
+ * debt.
+ *
+ * What is left is the two questions practice actually needs answering — which
+ * language the meanings are in, and which way round the cards are asked — and
+ * one round button to start. What is due is still known and still decides
+ * whether pressing that button deals a scheduled round or an extra one; it is
+ * simply no longer shouted.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlashcardsScreen(
     onOpenDeck: (deckId: Long) -> Unit,
-    onStudy: (deckId: Long?, direction: StudyDirection, language: MeaningLanguage, extra: Boolean) -> Unit,
+    onStudy: (
+        scope: StudyScope,
+        direction: StudyDirection,
+        language: MeaningLanguage,
+        extra: Boolean,
+    ) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FlashcardsViewModel = viewModel(factory = FlashcardsViewModel.Factory),
 ) {
-    val decks by viewModel.decks.collectAsStateWithLifecycle()
+    val list by viewModel.list.collectAsStateWithLifecycle()
+    val openShelves by viewModel.openShelves.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dueByDeck by viewModel.dueByDeck.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
@@ -155,6 +169,9 @@ fun FlashcardsScreen(
     var renaming by remember { mutableStateOf<DeckWithCount?>(null) }
     var deleting by remember { mutableStateOf<DeckWithCount?>(null) }
     var picturing by remember { mutableStateOf<DeckWithCount?>(null) }
+    var moving by remember { mutableStateOf<DeckWithCount?>(null) }
+    var renamingShelf by remember { mutableStateOf<DeckShelf?>(null) }
+    var deletingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var showingBackup by remember { mutableStateOf(false) }
 
     val messageText = message?.resolved()
@@ -162,6 +179,18 @@ fun FlashcardsScreen(
         val text = messageText ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(text)
         viewModel.onMessageShown()
+    }
+
+    /** How many of a set of decks are due, the way round currently chosen. */
+    fun dueIn(decks: List<DeckWithCount>): Int =
+        decks.sumOf { dueByDeck[it.id]?.dueIn(direction) ?: 0 }
+
+    /** Whether a set of decks has anything to ask in the language chosen. */
+    fun canPractise(decks: List<DeckWithCount>): Boolean = decks.any { deck ->
+        when (language) {
+            MeaningLanguage.ROMANIAN -> deck.cardCount > 0
+            MeaningLanguage.ENGLISH -> deck.englishCount > 0
+        }
     }
 
     Scaffold(
@@ -195,13 +224,13 @@ fun FlashcardsScreen(
             }
         },
     ) { innerPadding ->
-        val list = decks
+        val loaded = list
         when {
             // Still asking the database: draw nothing rather than a false
             // "no decks yet" for one frame.
-            list == null -> Box(Modifier.padding(innerPadding))
+            loaded == null -> Box(Modifier.padding(innerPadding))
 
-            list.isEmpty() -> EmptyState(
+            loaded.isEmpty -> EmptyState(
                 title = stringResource(R.string.flashcards_empty_title),
                 body = stringResource(R.string.flashcards_empty_body),
                 icon = painterResource(R.drawable.ic_flashcards),
@@ -223,37 +252,106 @@ fun FlashcardsScreen(
                 // Room under the last deck for the + button.
                 contentPadding = PaddingValues(top = Space.xs, bottom = BottomClearance),
             ) {
-                // Only once there is something to practise: a panel over decks
-                // with nothing in them is a question with no answer.
-                if (list.any { it.cardCount > 0 }) {
+                // Only once there is something to practise: asking which way
+                // round to go through decks that have nothing in them is a
+                // question with no answer.
+                if (loaded.hasCards) {
                     item(key = "practice") {
-                        val due = dueByDeck.values.sumOf { it.dueIn(direction) }
-                        PracticePanel(
+                        val due = dueIn(loaded.allDecks)
+                        PracticeStrip(
                             direction = direction,
                             language = language,
-                            dueCount = due,
                             onChooseDirection = viewModel::onChooseDirection,
                             onChooseLanguage = viewModel::onChooseLanguage,
                             // Nothing due is not a closed door: it is a round of
                             // extra practice, off the schedule.
-                            onStudy = { onStudy(null, direction, language, due == 0) },
+                            onStudy = {
+                                onStudy(StudyScope.Everything, direction, language, due == 0)
+                            },
                         )
                     }
                 }
-                items(list, key = { it.id }) { deck ->
+
+                // The shelves first, then what is on no shelf. A reader who has
+                // never made a collection sees exactly the list they had before
+                // collections existed.
+                loaded.shelves.forEach { shelf ->
+                    item(key = "shelf-${shelf.id}") {
+                        val due = dueIn(shelf.decks)
+                        ShelfRow(
+                            shelf = shelf,
+                            isOpen = shelf.id in openShelves,
+                            dueCount = due,
+                            canPractise = canPractise(shelf.decks),
+                            onToggle = { viewModel.onToggleShelf(shelf.id) },
+                            onPractise = {
+                                onStudy(
+                                    StudyScope.Collection(shelf.id),
+                                    direction,
+                                    language,
+                                    due == 0,
+                                )
+                            },
+                            onTogglePinned = {
+                                viewModel.setCollectionPinned(shelf.id, !shelf.collection.isPinned)
+                            },
+                            onRename = { renamingShelf = shelf },
+                            onDelete = { deletingShelf = shelf },
+                        )
+                    }
+                    if (shelf.id in openShelves) {
+                        if (shelf.decks.isEmpty()) {
+                            item(key = "shelf-${shelf.id}-empty") {
+                                Text(
+                                    text = stringResource(R.string.flashcards_collection_empty),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .padding(start = Space.screen + ShelfIndent)
+                                        .padding(end = Space.screen, top = Space.xs, bottom = Space.md),
+                                )
+                            }
+                        }
+                        items(shelf.decks, key = { "deck-${it.id}" }) { deck ->
+                            DeckRow(
+                                deck = deck,
+                                direction = direction,
+                                dueCount = dueByDeck[deck.id]?.dueIn(direction) ?: 0,
+                                canPractise = canPractise(listOf(deck)),
+                                indent = ShelfIndent,
+                                onOpen = { onOpenDeck(deck.id) },
+                                onPractise = {
+                                    onStudy(
+                                        StudyScope.Deck(deck.id),
+                                        direction,
+                                        language,
+                                        (dueByDeck[deck.id]?.dueIn(direction) ?: 0) == 0,
+                                    )
+                                },
+                                onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
+                                onPicture = { picturing = deck },
+                                onMove = { moving = deck },
+                                onRename = { renaming = deck },
+                                onDelete = { deleting = deck },
+                            )
+                        }
+                    }
+                }
+
+                items(loaded.loose, key = { "deck-${it.id}" }) { deck ->
                     val due = dueByDeck[deck.id]?.dueIn(direction) ?: 0
-                    DeckCard(
+                    DeckRow(
                         deck = deck,
                         direction = direction,
                         dueCount = due,
-                        canPractise = when (language) {
-                            MeaningLanguage.ROMANIAN -> deck.cardCount > 0
-                            MeaningLanguage.ENGLISH -> deck.englishCount > 0
-                        },
+                        canPractise = canPractise(listOf(deck)),
                         onOpen = { onOpenDeck(deck.id) },
-                        onPractise = { onStudy(deck.id, direction, language, due == 0) },
+                        onPractise = {
+                            onStudy(StudyScope.Deck(deck.id), direction, language, due == 0)
+                        },
                         onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
                         onPicture = { picturing = deck },
+                        onMove = { moving = deck },
                         onRename = { renaming = deck },
                         onDelete = { deleting = deck },
                     )
@@ -275,6 +373,18 @@ fun FlashcardsScreen(
         DeckPictureSheet(deck = deck, onDismiss = { picturing = null })
     }
 
+    moving?.let { deck ->
+        MoveToShelfSheet(
+            deck = deck,
+            shelves = list?.shelves.orEmpty(),
+            onDismiss = { moving = null },
+            onMove = { collectionId ->
+                viewModel.moveDeck(deck, collectionId)
+                moving = null
+            },
+        )
+    }
+
     if (creating) {
         // A fresh sheet each time it is opened, so the last attempt's name and
         // picture are not waiting in it.
@@ -282,8 +392,11 @@ fun FlashcardsScreen(
     }
 
     renaming?.let { deck ->
-        DeckNameDialog(
+        NameDialog(
             title = stringResource(R.string.flashcards_rename_deck_title),
+            label = stringResource(R.string.flashcards_deck_name_label),
+            hint = stringResource(R.string.flashcards_deck_name_hint),
+            takenRes = R.string.flashcards_deck_exists,
             confirmLabel = stringResource(R.string.action_rename),
             initialName = deck.name,
             check = { viewModel.checkName(it, renaming = deck.id) },
@@ -291,6 +404,59 @@ fun FlashcardsScreen(
             onConfirm = { name ->
                 viewModel.renameDeck(deck.id, name)
                 renaming = null
+            },
+        )
+    }
+
+    renamingShelf?.let { shelf ->
+        NameDialog(
+            title = stringResource(R.string.flashcards_rename_collection_title),
+            label = stringResource(R.string.flashcards_collection_name_label),
+            hint = stringResource(R.string.flashcards_collection_name_hint),
+            takenRes = R.string.flashcards_collection_exists,
+            confirmLabel = stringResource(R.string.action_rename),
+            initialName = shelf.collection.name,
+            check = { viewModel.checkCollectionName(it, renaming = shelf.id) },
+            onDismiss = { renamingShelf = null },
+            onConfirm = { name ->
+                viewModel.renameCollection(shelf.id, name)
+                renamingShelf = null
+            },
+        )
+    }
+
+    deletingShelf?.let { shelf ->
+        AlertDialog(
+            onDismissRequest = { deletingShelf = null },
+            title = { Text(stringResource(R.string.flashcards_delete_collection_title, shelf.collection.name)) },
+            // The one thing anybody wants to know before deleting a shelf is
+            // what happens to what was on it. Nothing happens to it, and saying
+            // so is the difference between a tidy-up and a moment of panic.
+            text = {
+                Text(
+                    if (shelf.decks.isEmpty()) {
+                        stringResource(R.string.flashcards_delete_collection_body_empty)
+                    } else {
+                        pluralStringResource(
+                            R.plurals.flashcards_delete_collection_body,
+                            shelf.decks.size,
+                            shelf.decks.size,
+                        )
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteCollection(shelf)
+                        deletingShelf = null
+                    },
+                ) { Text(stringResource(R.string.action_delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingShelf = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }
@@ -349,18 +515,20 @@ fun FlashcardsScreen(
 }
 
 /**
- * Practice over every deck: which language, which way round, and go.
+ * The two questions practice needs answered, and the button that starts it.
  *
- * Deliberately compact — a line of what is waiting, a line of controls — so the
- * decks start near the top of the screen instead of under a poster. The number
- * is still the largest thing in it, because it is the reason to look.
+ * Deliberately a strip on the page rather than a card on it. A filled panel is
+ * a thing to read before getting to the list; this is a set of controls sitting
+ * where controls sit, and the first deck begins immediately underneath.
+ *
+ * The language goes above the directions because the directions are drawn in
+ * its flag: choosing English changes what the two pills below it show, and a
+ * control that changes another should be read first.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PracticePanel(
+private fun PracticeStrip(
     direction: StudyDirection,
     language: MeaningLanguage,
-    dueCount: Int,
     onChooseDirection: (StudyDirection) -> Unit,
     onChooseLanguage: (MeaningLanguage) -> Unit,
     onStudy: () -> Unit,
@@ -369,85 +537,190 @@ private fun PracticePanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Space.screen)
-            .padding(bottom = Space.md)
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = Space.lg, vertical = Space.md),
+            .padding(top = Space.sm, bottom = Space.md),
     ) {
-        val onPanel = MaterialTheme.colorScheme.onPrimaryContainer
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.flashcards_study_title),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = onPanel.copy(alpha = 0.75f),
-                )
-                if (dueCount > 0) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            text = "$dueCount",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = onPanel,
-                        )
-                        Text(
-                            text = pluralStringResource(R.plurals.flashcards_panel_due, dueCount),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = onPanel,
-                            modifier = Modifier.padding(start = Space.sm, bottom = 5.dp),
-                        )
-                    }
-                } else {
-                    Text(
-                        text = stringResource(R.string.flashcards_panel_all_done),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = onPanel,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
-            }
+            Text(
+                text = stringResource(R.string.flashcards_meanings_in),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
             LanguageSwitch(selected = language, onSelect = onChooseLanguage)
         }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(top = Space.md),
+            modifier = Modifier.padding(top = Space.sm),
         ) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
-                StudyDirection.entries.forEachIndexed { index, entry ->
-                    SegmentedButton(
-                        selected = entry == direction,
-                        onClick = { onChooseDirection(entry) },
-                        shape = SegmentedButtonDefaults.itemShape(index, StudyDirection.entries.size),
-                        colors = SegmentedButtonDefaults.colors(
-                            // The chosen way round in the accent, bright in
-                            // either theme; the other left open on the panel.
-                            activeContainerColor = MaterialTheme.colorScheme.primary,
-                            activeContentColor = MaterialTheme.colorScheme.onPrimary,
-                            activeBorderColor = MaterialTheme.colorScheme.primary,
-                            inactiveContainerColor = Color.Transparent,
-                            inactiveContentColor = onPanel,
-                            inactiveBorderColor = onPanel.copy(alpha = 0.3f),
-                        ),
-                        // The flags say which is chosen as well as any tick would,
-                        // and a tick would crowd two flags and an arrow.
-                        icon = {},
-                        label = { DirectionFlags(entry, language = language, flagWidth = 20.dp) },
+            DirectionPills(
+                selected = direction,
+                language = language,
+                onSelect = onChooseDirection,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(Space.md))
+            PlayButton(
+                onClick = onStudy,
+                contentDescription = stringResource(R.string.flashcards_panel_start),
+                prominent = true,
+                size = 48.dp,
+            )
+        }
+    }
+}
+
+/**
+ * A collection, as the row that opens it.
+ *
+ * Pressing anywhere on it folds it open or shut, which is the thing the row is
+ * mostly for; the chevron turns to say which way it went. Its own play button
+ * starts a session over every card on the shelf at once — the reason
+ * collections exist at all, since practising *food* is a different session from
+ * practising *vegetables* three times in a row.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ShelfRow(
+    shelf: DeckShelf,
+    isOpen: Boolean,
+    dueCount: Int,
+    canPractise: Boolean,
+    onToggle: () -> Unit,
+    onPractise: () -> Unit,
+    onTogglePinned: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val turn by animateFloatAsState(if (isOpen) 0f else -90f, label = "shelf chevron")
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen, vertical = 5.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .combinedClickable(onClick = onToggle, onLongClick = { menuOpen = true })
+            .padding(Space.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Cover(
+            image = shelf.coverImage,
+            credit = shelf.coverCredit,
+            initial = shelf.collection.name,
+            size = CoverSize,
+            // A shelf is drawn as a stack: the same square, a step squarer than
+            // a deck's, so the two kinds of row are told apart without a label.
+            corner = 12.dp,
+        )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.lg),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = stringResource(
+                        if (isOpen) R.string.flashcards_hide_decks else R.string.flashcards_show_decks,
+                        shelf.collection.name,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .rotate(turn),
+                )
+                if (shelf.collection.isPinned) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_pin),
+                        contentDescription = stringResource(R.string.folders_pinned),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(start = Space.xs)
+                            .size(16.dp),
                     )
                 }
+                Text(
+                    text = shelf.collection.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = Space.xs),
+                )
             }
-            Spacer(Modifier.width(Space.md))
-            FilledIconButton(
-                onClick = onStudy,
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                ),
-            ) {
-                Icon(
-                    Icons.Default.PlayArrow,
-                    contentDescription = stringResource(
-                        if (dueCount > 0) R.string.flashcards_panel_start else R.string.flashcards_practise_again,
+            Text(
+                text = listOf(
+                    pluralStringResource(
+                        R.plurals.flashcards_deck_count,
+                        shelf.decks.size,
+                        shelf.decks.size,
                     ),
+                    pluralStringResource(
+                        R.plurals.flashcards_card_count,
+                        shelf.cardCount,
+                        shelf.cardCount,
+                    ),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 26.dp, top = 2.dp),
+            )
+        }
+
+        if (canPractise) {
+            PlayButton(
+                onClick = onPractise,
+                contentDescription = if (dueCount > 0) {
+                    stringResource(
+                        R.string.flashcards_practise_deck,
+                        shelf.collection.name,
+                        dueCount,
+                    )
+                } else {
+                    stringResource(R.string.flashcards_practise_deck_again, shelf.collection.name)
+                },
+                modifier = Modifier.padding(start = Space.sm),
+            )
+        }
+
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_more),
+                    contentDescription = stringResource(
+                        R.string.document_actions,
+                        shelf.collection.name,
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
+                    text = {
+                        Text(
+                            stringResource(
+                                if (shelf.collection.isPinned) {
+                                    R.string.folders_unpin
+                                } else {
+                                    R.string.folders_pin
+                                },
+                            ),
+                        )
+                    },
+                    onClick = { onTogglePinned(); menuOpen = false },
+                )
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(Icons.Default.Edit) },
+                    text = { Text(stringResource(R.string.folders_rename)) },
+                    onClick = { onRename(); menuOpen = false },
+                )
+                HorizontalDivider()
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(Icons.Default.Delete) },
+                    text = { Text(stringResource(R.string.action_delete)) },
+                    onClick = { onDelete(); menuOpen = false },
                 )
             }
         }
@@ -459,16 +732,16 @@ private fun PracticePanel(
  *
  * Its cover is the picture the reader chose for it, or its first card's, or its
  * initial. Under the name, how well the deck is known this way round, as a bar
- * rather than a number. On the right, the deck's own way into practice:
- * carrying how many are due when some are, and still there when none are,
- * because going through a deck again is never the wrong thing to want.
+ * rather than a number. On the right, the deck's own round way into practice —
+ * the same circle as everywhere else, whatever is or is not due, because going
+ * through a deck again is never the wrong thing to want.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DeckCard(
+private fun DeckRow(
     deck: DeckWithCount,
     direction: StudyDirection,
-    /** Due in the direction and language currently chosen, so the numbers agree with the panel. */
+    /** Due in the direction and language currently chosen, for what is announced. */
     dueCount: Int,
     /**
      * Whether any of its cards can be asked in the language chosen. A deck with
@@ -480,22 +753,32 @@ private fun DeckCard(
     onPractise: () -> Unit,
     onTogglePinned: () -> Unit,
     onPicture: () -> Unit,
+    onMove: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    /** How far in from the margin, so a deck on a shelf reads as being on it. */
+    indent: Dp = 0.dp,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Space.screen, vertical = 5.dp)
+            .padding(start = Space.screen + indent, end = Space.screen)
+            .padding(vertical = 5.dp)
             .clip(RoundedCornerShape(22.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .combinedClickable(onClick = onOpen, onLongClick = { menuOpen = true })
             .padding(Space.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        DeckCover(deck)
+        Cover(
+            image = deck.coverImage,
+            credit = deck.coverCredit,
+            initial = deck.name,
+            size = CoverSize,
+            corner = 16.dp,
+        )
 
         Column(
             modifier = Modifier
@@ -546,32 +829,17 @@ private fun DeckCard(
         }
 
         if (canPractise) {
-            // A play mark and a number read at a glance; said out loud they
-            // need the words.
-            val label = if (dueCount > 0) {
-                stringResource(R.string.flashcards_practise_deck, deck.name, dueCount)
-            } else {
-                stringResource(R.string.flashcards_practise_deck_again, deck.name)
-            }
-            FilledTonalButton(
+            // A round mark reads at a glance; said out loud it needs the words,
+            // and out loud is the one place the count still belongs.
+            PlayButton(
                 onClick = onPractise,
-                contentPadding = PaddingValues(horizontal = if (dueCount > 0) Space.md else Space.sm),
-                modifier = Modifier
-                    .padding(start = Space.sm)
-                    .clearAndSetSemantics {
-                        contentDescription = label
-                        role = Role.Button
-                    },
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                if (dueCount > 0) {
-                    Text(
-                        text = "$dueCount",
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(start = Space.xs),
-                    )
-                }
-            }
+                contentDescription = if (dueCount > 0) {
+                    stringResource(R.string.flashcards_practise_deck, deck.name, dueCount)
+                } else {
+                    stringResource(R.string.flashcards_practise_deck_again, deck.name)
+                },
+                modifier = Modifier.padding(start = Space.sm),
+            )
         }
 
         Box {
@@ -591,6 +859,11 @@ private fun DeckCard(
                         )
                     },
                     onClick = { onTogglePinned(); menuOpen = false },
+                )
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_collection)) },
+                    text = { Text(stringResource(R.string.flashcards_move_to_collection)) },
+                    onClick = { onMove(); menuOpen = false },
                 )
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
@@ -613,31 +886,43 @@ private fun DeckCard(
     }
 }
 
-/** The deck's picture: the chosen one, its first card's, or its initial on a tinted tile. */
+/**
+ * The square that stands for a deck or a shelf: its picture, or its initial on
+ * a tinted tile.
+ *
+ * One composable for both, because a shelf borrows the picture of the first
+ * deck on it and two near-identical squares drawn by two different pieces of
+ * code is how they stop being near-identical.
+ */
 @Composable
-private fun DeckCover(deck: DeckWithCount) {
-    val shape = RoundedCornerShape(16.dp)
-    val cover = deck.coverImage
-    if (cover != null) {
+private fun Cover(
+    image: String?,
+    credit: String?,
+    initial: String,
+    size: Dp,
+    corner: Dp,
+) {
+    val shape = RoundedCornerShape(corner)
+    if (image != null) {
         CardImage(
-            path = cover,
+            path = image,
             maxEdge = 192,
             contentDescription = null,
-            pictogram = PictureResults.isPictogram(deck.coverCredit),
+            pictogram = PictureResults.isPictogram(credit),
             modifier = Modifier
-                .size(CoverSize)
+                .size(size)
                 .clip(shape),
         )
     } else {
         Box(
             modifier = Modifier
-                .size(CoverSize)
+                .size(size)
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.secondaryContainer),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = deck.name.trim().take(1).uppercase(),
+                text = initial.trim().take(1).uppercase(),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
@@ -646,10 +931,109 @@ private fun DeckCover(deck: DeckWithCount) {
 }
 
 /**
- * A new deck: its name, and a picture for it chosen while the name is typed.
+ * Which shelf a deck goes on, chosen from the shelves that exist.
  *
- * A sheet rather than the small dialog it used to be, because the picture is
- * part of making the deck now and a dialog has no room for a grid of them.
+ * A list of the reader's own collections and one row for none of them, rather
+ * than a picker that can also invent one: making a collection is what the +
+ * does, and offering it here as well would be the same decision reachable two
+ * ways, each with its own idea of what is being made.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MoveToShelfSheet(
+    deck: DeckWithCount,
+    shelves: List<DeckShelf>,
+    onDismiss: () -> Unit,
+    onMove: (collectionId: Long?) -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = Space.xl)
+                .navigationBarsPadding(),
+        ) {
+            Text(
+                text = stringResource(R.string.flashcards_move_title, deck.name),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = Space.screen, vertical = Space.sm),
+            )
+            if (shelves.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.flashcards_no_collections),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(horizontal = Space.screen)
+                        .padding(top = Space.sm, bottom = Space.lg),
+                )
+            }
+            ShelfChoice(
+                name = stringResource(R.string.flashcards_move_none),
+                chosen = deck.collectionId == null,
+                onClick = { onMove(null) },
+            )
+            shelves.forEach { shelf ->
+                ShelfChoice(
+                    name = shelf.collection.name,
+                    chosen = deck.collectionId == shelf.id,
+                    onClick = { onMove(shelf.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShelfChoice(name: String, chosen: Boolean, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = Space.screen, vertical = Space.md),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_collection),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp),
+        )
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = Space.lg),
+        )
+        if (chosen) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+/**
+ * Something new here: a deck, or a shelf to put decks on.
+ *
+ * One sheet for both, reached by the one + button. What is being made is the
+ * first thing in it, as two pills, so the choice is in front of the reader
+ * rather than behind a second floating button they would have to notice — and
+ * the name field below is the same field either way.
+ *
+ * A deck is offered a picture while its name is being typed, because the name
+ * is the best search there is for one: typing *Menjar* is already asking for
+ * pictures of food. A collection is not: it wears the picture of the first deck
+ * on it, which is a picture the reader has already chosen once.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -672,6 +1056,8 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
     val nameFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { nameFocus.requestFocus() } }
 
+    val isDeck = state.kind == NewDeckKind.DECK
+
     ModalBottomSheet(
         onDismissRequest = close,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -684,20 +1070,66 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
                 .navigationBarsPadding()
                 .imePadding(),
         ) {
-            Text(
-                text = stringResource(R.string.flashcards_new_deck),
-                style = MaterialTheme.typography.titleLarge,
-            )
+            PillGroup(modifier = Modifier.fillMaxWidth()) {
+                NewDeckKind.entries.forEach { kind ->
+                    val name = stringResource(
+                        when (kind) {
+                            NewDeckKind.DECK -> R.string.flashcards_kind_deck
+                            NewDeckKind.COLLECTION -> R.string.flashcards_kind_collection
+                        },
+                    )
+                    Pill(
+                        selected = kind == state.kind,
+                        onClick = { viewModel.onKindChange(kind) },
+                        label = name,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(text = name, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+
             val taken = state.check as? DeckNames.Check.Taken
             OutlinedTextField(
                 value = state.name,
                 onValueChange = viewModel::onNameChange,
-                label = { Text(stringResource(R.string.flashcards_deck_name_label)) },
-                placeholder = { Text(stringResource(R.string.flashcards_deck_name_hint)) },
+                label = {
+                    Text(
+                        stringResource(
+                            if (isDeck) {
+                                R.string.flashcards_deck_name_label
+                            } else {
+                                R.string.flashcards_collection_name_label
+                            },
+                        ),
+                    )
+                },
+                placeholder = {
+                    Text(
+                        stringResource(
+                            if (isDeck) {
+                                R.string.flashcards_deck_name_hint
+                            } else {
+                                R.string.flashcards_collection_name_hint
+                            },
+                        ),
+                    )
+                },
                 singleLine = true,
                 isError = taken != null,
                 supportingText = taken?.let {
-                    { Text(stringResource(R.string.flashcards_deck_exists, it.existing)) }
+                    {
+                        Text(
+                            stringResource(
+                                if (isDeck) {
+                                    R.string.flashcards_deck_exists
+                                } else {
+                                    R.string.flashcards_collection_exists
+                                },
+                                it.existing,
+                            ),
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -705,40 +1137,42 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
                     .focusRequester(nameFocus),
             )
 
-            Text(
-                text = stringResource(R.string.flashcards_picture),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = Space.md, bottom = Space.sm),
-            )
-            val cover = state.coverPath
-            if (cover != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CardImage(
-                        path = cover,
-                        maxEdge = 384,
-                        contentDescription = stringResource(R.string.flashcards_picture),
-                        pictogram = PictureResults.isPictogram(state.coverCredit),
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(RoundedCornerShape(20.dp)),
-                    )
-                    TextButton(
-                        onClick = viewModel::onRemoveCover,
-                        modifier = Modifier.padding(start = Space.md),
-                    ) { Text(stringResource(R.string.flashcards_picture_other)) }
-                }
-            } else {
-                PictureGrid(
-                    suggestions = suggestions,
-                    source = source,
-                    onSourceChange = viewModel::onSourceChange,
-                    onPick = viewModel::onPick,
-                    onPickOwn = {
-                        pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                    onRetry = viewModel::onRetry,
+            if (isDeck) {
+                Text(
+                    text = stringResource(R.string.flashcards_picture),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = Space.md, bottom = Space.sm),
                 )
+                val cover = state.coverPath
+                if (cover != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CardImage(
+                            path = cover,
+                            maxEdge = 384,
+                            contentDescription = stringResource(R.string.flashcards_picture),
+                            pictogram = PictureResults.isPictogram(state.coverCredit),
+                            modifier = Modifier
+                                .size(96.dp)
+                                .clip(RoundedCornerShape(20.dp)),
+                        )
+                        TextButton(
+                            onClick = viewModel::onRemoveCover,
+                            modifier = Modifier.padding(start = Space.md),
+                        ) { Text(stringResource(R.string.flashcards_picture_other)) }
+                    }
+                } else {
+                    PictureGrid(
+                        suggestions = suggestions,
+                        source = source,
+                        onSourceChange = viewModel::onSourceChange,
+                        onPick = viewModel::onPick,
+                        onPickOwn = {
+                            pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        onRetry = viewModel::onRetry,
+                    )
+                }
             }
             message?.resolved()?.let {
                 Text(
@@ -865,7 +1299,7 @@ private fun BackupSheet(isBusy: Boolean, onExport: () -> Unit, onRestore: () -> 
             horizontalArrangement = Arrangement.spacedBy(Space.sm),
             modifier = Modifier.padding(top = Space.lg),
         ) {
-            FilledTonalButton(onClick = onExport, enabled = !isBusy, modifier = Modifier.weight(1f)) {
+            Button(onClick = onExport, enabled = !isBusy, modifier = Modifier.weight(1f)) {
                 Text(stringResource(R.string.flashcards_backup_save))
             }
             OutlinedButton(onClick = onRestore, enabled = !isBusy, modifier = Modifier.weight(1f)) {
@@ -889,22 +1323,25 @@ private fun DeckWithCount.knownIn(direction: StudyDirection): Float {
     return (total.toFloat() / (cardCount * Leitner.LAST_BOX)).coerceIn(0f, 1f)
 }
 
-/** How many of the deck's cards are due in [direction]. */
+/** How many of a deck's cards are due in [direction]. */
 private fun DeckDue.dueIn(direction: StudyDirection): Int = when (direction) {
     StudyDirection.CATALAN_TO_MEANING -> forwardDue
     StudyDirection.MEANING_TO_CATALAN -> reverseDue
 }
 
 /**
- * Name a deck, new or existing.
+ * Name a deck or a collection, new or existing.
  *
  * The name is checked as it is typed, and a clash is said under the field in
- * words, naming the deck it clashes with — a disabled button with no reason
+ * words, naming the one it clashes with — a disabled button with no reason
  * given is a puzzle, and this app is built not to set those.
  */
 @Composable
-private fun DeckNameDialog(
+private fun NameDialog(
     title: String,
+    label: String,
+    hint: String,
+    takenRes: Int,
     confirmLabel: String,
     check: (String) -> DeckNames.Check,
     onDismiss: () -> Unit,
@@ -922,13 +1359,11 @@ private fun DeckNameDialog(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(stringResource(R.string.flashcards_deck_name_label)) },
-                placeholder = { Text(stringResource(R.string.flashcards_deck_name_hint)) },
+                label = { Text(label) },
+                placeholder = { Text(hint) },
                 singleLine = true,
                 isError = taken != null,
-                supportingText = taken?.let {
-                    { Text(stringResource(R.string.flashcards_deck_exists, it.existing)) }
-                },
+                supportingText = taken?.let { { Text(stringResource(takenRes, it.existing)) } },
             )
         },
         confirmButton = {
@@ -944,6 +1379,9 @@ private fun DeckNameDialog(
 }
 
 private val CoverSize = 60.dp
+
+/** How far a deck on a shelf sits in from the margin. */
+private val ShelfIndent = 20.dp
 
 /** Clears the + button: its 56dp, and the 16dp it floats above the bar. */
 private val BottomClearance = 88.dp

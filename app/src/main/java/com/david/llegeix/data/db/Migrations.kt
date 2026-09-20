@@ -535,3 +535,47 @@ val MIGRATION_16_17 = object : Migration(16, 17) {
         db.execSQL("ALTER TABLE flashcards ADD COLUMN english TEXT")
     }
 }
+
+/**
+ * Collections of decks: a shelf a deck can be put on.
+ *
+ * One new table and one new column, and no table is rebuilt. Adding a column
+ * that carries a foreign key normally means building the table again, copying
+ * it across and dropping the old one — and dropping `flashcard_decks` is the
+ * one thing this migration must never do, because every card in the database
+ * hangs off it by `ON DELETE CASCADE`. If foreign keys happened to be enforced
+ * at that moment, the drop would take every card on the phone with it.
+ *
+ * SQLite allows the column outright in the one case that applies here: a
+ * `REFERENCES` clause is permitted on `ADD COLUMN` as long as the new column
+ * defaults to NULL, which this one does — no deck is on a shelf until somebody
+ * puts it there. Nothing existing is touched at all.
+ *
+ * Room checks a migration by reading the tables back, not by comparing the
+ * statements that made them, so a column added this way is the same column
+ * `schemas/18.json` describes.
+ */
+val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `flashcard_collections` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `isPinned` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            ALTER TABLE `flashcard_decks` ADD COLUMN `collectionId` INTEGER
+                REFERENCES `flashcard_collections`(`id`) ON DELETE SET NULL
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_flashcard_decks_collectionId` " +
+                "ON `flashcard_decks` (`collectionId`)",
+        )
+    }
+}

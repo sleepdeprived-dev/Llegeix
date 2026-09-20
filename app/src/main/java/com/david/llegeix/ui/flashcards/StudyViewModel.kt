@@ -11,6 +11,7 @@ import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.FlashcardSession
 import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.data.flashcards.StudyScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,8 +21,11 @@ import kotlinx.coroutines.launch
 
 data class StudyUiState(
     val isLoading: Boolean = true,
-    /** The deck being studied, or null for every deck at once. */
-    val deckName: String? = null,
+    /**
+     * What is being studied, by name: a deck, a collection, or null for
+     * everything at once.
+     */
+    val scopeName: String? = null,
     val direction: StudyDirection = StudyDirection.Default,
     val language: MeaningLanguage = MeaningLanguage.Default,
     /**
@@ -81,7 +85,7 @@ data class StudyUiState(
  */
 class StudyViewModel(
     private val flashcards: FlashcardRepository,
-    private val deckId: Long?,
+    private val scope: StudyScope,
     direction: StudyDirection,
     language: MeaningLanguage,
     extra: Boolean,
@@ -99,8 +103,12 @@ class StudyViewModel(
     /** Take a fresh hand: the due cards, or for extra practice any of them. */
     fun deal() = viewModelScope.launch {
         _uiState.update { it.copy(isLoading = true) }
-        val deckName = deckId?.let { flashcards.observeDeck(it).first()?.name }
-        val all = flashcards.cardsToStudy(deckId)
+        val scopeName = when (scope) {
+            StudyScope.Everything -> null
+            is StudyScope.Deck -> flashcards.observeDeck(scope.id).first()?.name
+            is StudyScope.Collection -> flashcards.collection(scope.id)?.name
+        }
+        val all = flashcards.cardsToStudy(scope)
         val now = System.currentTimeMillis()
         val state = _uiState.value
         val direction = state.direction
@@ -113,7 +121,7 @@ class StudyViewModel(
         _uiState.update {
             it.copy(
                 isLoading = false,
-                deckName = deckName,
+                scopeName = scopeName,
                 cards = dealt,
                 index = 0,
                 isRevealed = false,
@@ -192,7 +200,7 @@ class StudyViewModel(
 
     companion object {
         fun factory(
-            deckId: Long?,
+            scope: StudyScope,
             direction: StudyDirection,
             language: MeaningLanguage,
             extra: Boolean,
@@ -200,7 +208,7 @@ class StudyViewModel(
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                     as LlegeixApp
-                StudyViewModel(app.flashcardRepository, deckId, direction, language, extra)
+                StudyViewModel(app.flashcardRepository, scope, direction, language, extra)
             }
         }
     }

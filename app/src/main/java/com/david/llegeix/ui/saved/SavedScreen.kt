@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,10 +20,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -41,6 +41,9 @@ import com.david.llegeix.ui.bookmarks.BookmarksViewModel
 import com.david.llegeix.ui.bookmarks.PagesPane
 import com.david.llegeix.ui.bookmarks.WordsPane
 import com.david.llegeix.ui.common.AppSnackbarHost
+import com.david.llegeix.ui.common.Pill
+import com.david.llegeix.ui.common.PillCount
+import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.folders.CollectionsPane
@@ -134,9 +137,20 @@ fun SavedScreen(
         },
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            PrimaryTabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.surface,
+            // Pills on a groove rather than Material's underlined tab row.
+            //
+            // The old row wrote its counts into the labels, as "Pages (2)".
+            // Brackets read as part of the name rather than as a number about
+            // it, and three of them across a row turn a set of names into a set
+            // of expressions to be parsed. The count is now a mark the pill
+            // wears — see [com.david.llegeix.ui.common.PillCount] — and the
+            // chosen pane is a solid pill rather than a word with a line under
+            // it, which is a thing you can see from across the room.
+            PillGroup(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Space.screen)
+                    .padding(top = Space.sm, bottom = Space.xs),
             ) {
                 SavedTab.entries.forEachIndexed { index, tab ->
                     val count = when (tab) {
@@ -144,22 +158,37 @@ fun SavedScreen(
                         SavedTab.PAGES -> pages.size
                         SavedTab.WORDS -> savedWords.size
                     }
-                    Tab(
-                        selected = selectedTab == index,
+                    val name = stringResource(tab.labelRes)
+                    val isSelected = selectedTab == index
+                    Pill(
+                        selected = isSelected,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = {
-                            val name = stringResource(tab.labelRes)
-                            Text(
-                                text = if (count > 0) {
-                                    stringResource(R.string.bookmarks_tab_with_count, name, count)
-                                } else {
-                                    name
-                                },
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                        // Said in full for anybody who cannot see the badge:
+                        // the number is a picture of a fact, not the fact.
+                        label = if (count > 0) {
+                            stringResource(R.string.bookmarks_tab_with_count, name, count)
+                        } else {
+                            name
                         },
-                    )
+                        // Each pill takes an equal share, so the three of them
+                        // fill the width and none of them moves as the counts
+                        // change underneath.
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = Space.sm, vertical = Space.sm),
+                    ) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        PillCount(
+                            count = count,
+                            selected = isSelected,
+                            modifier = Modifier.padding(start = Space.sm),
+                        )
+                    }
                 }
             }
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,9 +16,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -133,55 +134,78 @@ fun SourcesSheet(
         sheetState = sheetState,
         modifier = modifier,
     ) {
-        // A scrolling column rather than a lazy list: inside a sheet a lazy
-        // list takes the whole height it is offered, so one source would arrive
-        // as one card marooned at the top of a full-screen panel.
-        Column(
+        // A lazy list rather than a scrolling Column.
+        //
+        // It was a Column with verticalScroll, on the reasoning that a lazy
+        // list would take the whole height it was offered and leave a single
+        // source marooned at the top of a full-screen panel. It does not — a
+        // LazyColumn measures to its content and only stops at the height the
+        // sheet allows — and the Column cost something real: a sheet's height
+        // is its content's, so opening a source grew the sheet and moved its
+        // anchors while a scroll was in flight, and scrolling down through a
+        // long list of folders stuttered and snapped back. The lazy list is the
+        // scrolling container the sheet's own drag handling is written against,
+        // and it recycles rows besides, which is what a phone with a thousand
+        // PDFs in forty folders actually needs.
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .navigationBarsPadding()
-                .padding(horizontal = Space.screen)
-                .padding(bottom = Space.xxl),
+                .navigationBarsPadding(),
+            contentPadding = PaddingValues(
+                start = Space.screen,
+                end = Space.screen,
+                bottom = Space.xxl,
+            ),
             verticalArrangement = Arrangement.spacedBy(Space.md),
         ) {
             // The same disc and title the library's own sources card carries,
             // so opening it reads as going into that card rather than as
             // arriving somewhere new. A sheet that repeats the thing you
             // pressed is a sheet you can tell you are inside.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_folder),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(22.dp),
+            item(key = "header") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_folder),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.library_sources),
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(start = Space.lg),
                     )
                 }
+            }
+
+            item(key = "explainer") {
                 Text(
-                    text = stringResource(R.string.library_sources),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(start = Space.lg),
+                    text = stringResource(R.string.sources_explainer),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = Space.sm),
                 )
             }
-            Text(
-                text = stringResource(R.string.sources_explainer),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = Space.sm),
-            )
 
             if (state.isScanning) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                item(key = "scanning") {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
             }
 
-            state.groups.forEach { group ->
+            // Keyed by position rather than by name: two granted folders can
+            // genuinely be called the same thing — a phone has more than one
+            // "Documents" — and a lazy list with two identical keys in it
+            // throws.
+            itemsIndexed(state.groups, key = { index, _ -> "granted-$index" }) { _, group ->
                 SourceCard(
                     group = group,
                     expanded = state.expanded,
@@ -192,24 +216,31 @@ fun SourcesSheet(
                 )
             }
 
-            DeviceScanCard(
-                permitted = state.deviceScanPermitted,
-                enabled = state.deviceScanEnabled,
-                count = state.deviceScanCount,
-                onOpenSettings = ::openDeviceScanSettings,
-                onSetEnabled = viewModel::onSetDeviceScan,
-                modifier = Modifier.padding(top = Space.sm),
-            )
+            item(key = "device-scan") {
+                DeviceScanCard(
+                    permitted = state.deviceScanPermitted,
+                    enabled = state.deviceScanEnabled,
+                    count = state.deviceScanCount,
+                    onOpenSettings = ::openDeviceScanSettings,
+                    onSetEnabled = viewModel::onSetDeviceScan,
+                    modifier = Modifier.padding(top = Space.sm),
+                )
+            }
 
             if (state.deviceScanEnabled && state.deviceGroups.isNotEmpty()) {
                 // Without this the sweep's folders look like more granted
                 // sources: the same card, in the same column, meaning something
                 // quite different. One quiet line says whose they are.
-                SectionLabel(stringResource(R.string.sources_found_by_scan))
+                item(key = "scan-label") {
+                    SectionLabel(stringResource(R.string.sources_found_by_scan))
+                }
             }
 
             if (state.deviceScanEnabled) {
-                state.deviceGroups.forEach { group ->
+                itemsIndexed(
+                    state.deviceGroups,
+                    key = { index, _ -> "found-$index" },
+                ) { _, group ->
                     SourceCard(
                         group = group,
                         expanded = state.expanded,
@@ -223,11 +254,13 @@ fun SourcesSheet(
                 }
             }
 
-            AddSourceCard(
-                onAddFolder = { folderPicker.launch(null) },
-                onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
-                modifier = Modifier.padding(top = Space.xl),
-            )
+            item(key = "add") {
+                AddSourceCard(
+                    onAddFolder = { folderPicker.launch(null) },
+                    onAddFiles = { filePicker.launch(arrayOf(PDF_MIME_TYPE)) },
+                    modifier = Modifier.padding(top = Space.xl),
+                )
+            }
         }
     }
 

@@ -101,12 +101,27 @@ class AddToCollectionViewModel(
     private val everything = MutableStateFlow<List<PdfDocument>>(emptyList())
 
     /**
+     * Which documents were already in the collection when the sheet opened.
+     *
+     * The order of the list is taken from this and not from what is in the
+     * collection *now*, which is the difference between a list you can work
+     * down and one that rearranges itself under your finger. Ticking a book
+     * used to make it true that it was in the collection, which made it sort to
+     * the top, which took it out from under the finger that had just tapped it
+     * — so a mistap could not be undone because the row was no longer there.
+     * Now a tick only ticks. The order settles when this ViewModel is built
+     * again, which is the next visit to the collection — never while somebody
+     * is aiming at a row.
+     */
+    private var orderedBy: Set<String>? = null
+
+    /**
      * The list, filtered by the query and annotated with where each document
      * currently sits.
      *
-     * Sorted with the ones already in this collection first, so opening the
-     * sheet on a collection you have been building shows you what you built
-     * rather than making you hunt for it among two hundred others.
+     * Sorted with the ones that were already in this collection first, so
+     * opening the sheet on a collection you have been building shows you what
+     * you built rather than making you hunt for it among two hundred others.
      */
     val candidates: StateFlow<List<AddCandidate>> = combine(
         everything,
@@ -117,6 +132,13 @@ class AddToCollectionViewModel(
     ) { documents, query, assignments, collections, names ->
         val namesById = collections.associate { it.id to it.name }
         val needle = query.trim()
+        // Taken on the first answer from the database and kept from then on:
+        // see [orderedBy].
+        val order = orderedBy ?: assignments
+            .filterValues { it == collectionId }
+            .keys
+            .toSet()
+            .also { orderedBy = it }
         documents
             .map { document ->
                 val filedIn = assignments[document.uriString]
@@ -139,7 +161,7 @@ class AddToCollectionViewModel(
                     candidate.document.parentLabel?.contains(needle, ignoreCase = true) == true
             }
             .sortedWith(
-                compareByDescending<AddCandidate> { it.inThisCollection }
+                compareByDescending<AddCandidate> { it.document.uriString in order }
                     .thenBy { it.title.lowercase() },
             )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

@@ -66,6 +66,7 @@ import com.david.llegeix.data.flashcards.ImageSizing
 import com.david.llegeix.data.flashcards.NextDue
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.IpaLine
 import com.david.llegeix.ui.common.PronounceButton
@@ -84,15 +85,15 @@ import com.david.llegeix.ui.common.Space
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyScreen(
-    deckId: Long?,
+    scope: StudyScope,
     direction: StudyDirection,
     language: MeaningLanguage,
     extra: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: StudyViewModel = viewModel(
-        key = "study-$deckId-$direction-$language-$extra",
-        factory = StudyViewModel.factory(deckId, direction, language, extra),
+        key = "study-$scope-$direction-$language-$extra",
+        factory = StudyViewModel.factory(scope, direction, language, extra),
     ),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -116,7 +117,7 @@ fun StudyScreen(
                     title = {
                         Column {
                             Text(
-                                text = state.deckName
+                                text = state.scopeName
                                     ?: stringResource(R.string.flashcards_all_decks),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,

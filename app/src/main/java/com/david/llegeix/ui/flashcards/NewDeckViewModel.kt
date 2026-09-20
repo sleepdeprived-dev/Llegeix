@@ -24,7 +24,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** What the + is making this time. */
+enum class NewDeckKind { DECK, COLLECTION }
+
 data class NewDeckUiState(
+    val kind: NewDeckKind = NewDeckKind.DECK,
     val name: String = "",
     val check: DeckNames.Check = DeckNames.Check.Blank,
     /** The picture chosen so far, copied in already so it can be shown. */
@@ -60,6 +64,13 @@ class NewDeckViewModel(
 
     private var english: WordTranslator? = null
     private var names: List<String> = emptyList()
+    private var collectionNames: List<String> = emptyList()
+
+    /** The names the typed one must not clash with, which depends on what is being made. */
+    private fun takenNames(kind: NewDeckKind): List<String> = when (kind) {
+        NewDeckKind.DECK -> names
+        NewDeckKind.COLLECTION -> collectionNames
+    }
 
     val pictures = PictureSuggester(
         scope = viewModelScope,
@@ -71,11 +82,45 @@ class NewDeckViewModel(
 
     init {
         viewModelScope.launch { names = flashcards.observeDecks().first().map { it.name } }
+        viewModelScope.launch {
+            collectionNames = flashcards.observeCollections().first().map { it.name }
+        }
+    }
+
+    /**
+     * Switch between making a deck and making a collection.
+     *
+     * The + makes both, because they are the same gesture — *something new
+     * here* — and a screen with two floating buttons on it makes the reader
+     * choose before they have been asked anything. The choice is the first
+     * thing in the sheet instead, where the name field is waiting either way.
+     *
+     * A collection has no picture of its own: it wears the picture of the first
+     * deck on it, which is a picture the reader already chose once. So any
+     * picture picked before the switch is let go of here rather than quietly
+     * kept and thrown away at the end.
+     */
+    fun onKindChange(kind: NewDeckKind) {
+        if (_uiState.value.kind == kind) return
+        if (kind == NewDeckKind.COLLECTION) {
+            pictures.cancel()
+            discardCover()
+        }
+        _uiState.update {
+            it.copy(
+                kind = kind,
+                coverPath = null,
+                coverCredit = null,
+                check = DeckNames.check(it.name, takenNames(kind)),
+            )
+        }
+        if (kind == NewDeckKind.DECK) pictures.suggest(_uiState.value.name, pause = false)
     }
 
     fun onNameChange(name: String) {
-        _uiState.update { it.copy(name = name, check = DeckNames.check(name, names)) }
-        if (_uiState.value.coverPath == null) pictures.suggest(name)
+        _uiState.update { it.copy(name = name, check = DeckNames.check(name, takenNames(it.kind))) }
+        val state = _uiState.value
+        if (state.kind == NewDeckKind.DECK && state.coverPath == null) pictures.suggest(name)
     }
 
     fun onSourceChange(source: PictureSource) = pictures.setSource(source)
@@ -115,7 +160,12 @@ class NewDeckViewModel(
         if (state.check !is DeckNames.Check.Ok || state.isBusy) return
         _uiState.update { it.copy(isBusy = true) }
         viewModelScope.launch {
-            val result = flashcards.createDeck(state.name, state.coverPath, state.coverCredit)
+            val result = when (state.kind) {
+                NewDeckKind.DECK ->
+                    flashcards.createDeck(state.name, state.coverPath, state.coverCredit)
+
+                NewDeckKind.COLLECTION -> flashcards.createCollection(state.name)
+            }
             if (result is DeckNames.Check.Ok) {
                 // The picture belongs to the deck now; nothing to clean up.
                 _uiState.update { it.copy(coverPath = null, isBusy = false) }

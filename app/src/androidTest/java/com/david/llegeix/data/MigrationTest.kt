@@ -21,6 +21,7 @@ import com.david.llegeix.data.db.MIGRATION_13_14
 import com.david.llegeix.data.db.MIGRATION_14_15
 import com.david.llegeix.data.db.MIGRATION_15_16
 import com.david.llegeix.data.db.MIGRATION_16_17
+import com.david.llegeix.data.db.MIGRATION_17_18
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -927,16 +928,100 @@ class MigrationTest {
         }
     }
 
+    /**
+     * Collections arrive, every deck starts on none of them, and — the thing
+     * that matters most here — every card is still there.
+     *
+     * The column carries a foreign key, and the obvious way to add one of those
+     * is to rebuild the table; rebuilding `flashcard_decks` means dropping it,
+     * and every card in the database hangs off it by `ON DELETE CASCADE`. This
+     * test would be the thing that caught that, so it counts the cards.
+     */
+    @Test
+    fun migrate17To18_addsCollectionsAndKeepsEveryCard() {
+        helper.createDatabase(TEST_DB, 17).use { db ->
+            db.execSQL(
+                "INSERT INTO flashcard_decks (id, name, createdAt, isPinned, coverPath) " +
+                    "VALUES (1, 'Verdures', 1, 1, 'flashcards/v.jpg')",
+            )
+            db.execSQL(
+                """
+                INSERT INTO flashcards
+                    (id, deckId, catalan, romanian, english, ipa, ipaApproximate, imagePath,
+                     imageCredit, createdAt, box, dueAt, reviewCount, lastReviewedAt,
+                     reverseBox, reverseDueAt, reverseReviewCount, reverseLastReviewedAt)
+                VALUES (1, 1, 'pastanaga', 'morcov', 'carrot', 'pəstəˈnaɣə', 0, NULL,
+                        NULL, 5, 3, 900, 7, 800, 1, 950, 2, NULL)
+                """.trimIndent(),
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 18, true, MIGRATION_17_18)
+
+        db.query("SELECT name, isPinned, coverPath, collectionId FROM flashcard_decks").use { cursor ->
+            assertTrue("deck survived", cursor.moveToFirst())
+            assertEquals("Verdures", cursor.getString(0))
+            assertEquals("and its pin", 1, cursor.getInt(1))
+            assertEquals("and its picture", "flashcards/v.jpg", cursor.getString(2))
+            assertTrue("no deck starts on a collection", cursor.isNull(3))
+        }
+        db.query("SELECT catalan, romanian, english, box FROM flashcards").use { cursor ->
+            assertEquals("the card was not cascaded away", 1, cursor.count)
+            assertTrue(cursor.moveToFirst())
+            assertEquals("pastanaga", cursor.getString(0))
+            assertEquals("morcov", cursor.getString(1))
+            assertEquals("carrot", cursor.getString(2))
+            assertEquals("and its schedule survived", 3, cursor.getInt(3))
+        }
+        db.query("SELECT COUNT(*) FROM flashcard_collections").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("the shelf table is there and empty", 0, cursor.getInt(0))
+        }
+    }
+
+    /**
+     * Deleting a collection leaves the decks that were on it alone.
+     *
+     * The foreign key is added by `ALTER TABLE ADD COLUMN` rather than by
+     * rebuilding the table, so that it is really there — and really `SET NULL`
+     * rather than `CASCADE` — is worth checking rather than assuming.
+     */
+    @Test
+    fun migrate17To18_deletingACollectionKeepsItsDecks() {
+        helper.createDatabase(TEST_DB, 17).use { db ->
+            db.execSQL(
+                "INSERT INTO flashcard_decks (id, name, createdAt, isPinned) " +
+                    "VALUES (1, 'Verdures', 1, 0)",
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 18, true, MIGRATION_17_18).use { db ->
+            db.execSQL("PRAGMA foreign_keys = ON")
+            db.execSQL(
+                "INSERT INTO flashcard_collections (id, name, createdAt, isPinned) " +
+                    "VALUES (9, 'Menjar', 1, 0)",
+            )
+            db.execSQL("UPDATE flashcard_decks SET collectionId = 9 WHERE id = 1")
+            db.execSQL("DELETE FROM flashcard_collections WHERE id = 9")
+
+            db.query("SELECT name, collectionId FROM flashcard_decks").use { cursor ->
+                assertTrue("the deck is still here", cursor.moveToFirst())
+                assertEquals("Verdures", cursor.getString(0))
+                assertTrue("and is simply on no collection now", cursor.isNull(1))
+            }
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To17_runsEveryStepInSequence() {
+    fun migrate1To18_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            17,
+            18,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -954,6 +1039,7 @@ class MigrationTest {
             MIGRATION_14_15,
             MIGRATION_15_16,
             MIGRATION_16_17,
+            MIGRATION_17_18,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

@@ -647,7 +647,6 @@
     <string name="flashcards_discard_body">What you have typed on this card will be lost.</string>
     <string name="flashcards_discard">Discard</string>
     <string name="flashcards_keep_editing">Keep editing</string>
-    <string name="flashcards_study_title">Practice</string>
     <string name="flashcards_all_decks">All decks</string>
     <string name="flashcards_study_no_cards_title">No cards to practise</string>
     <string name="flashcards_study_no_cards_body">Add some cards to this deck first.</string>
@@ -712,11 +711,6 @@
     <string name="flashcards_picture_other">Choose another</string>
     <string name="flashcards_picture_from_gallery">From your photos</string>
     <string name="flashcards_picture_fetch_failed">That picture could not be downloaded. Try another one.</string>
-    <plurals name="flashcards_panel_due">
-        <item quantity="one">card to practise</item>
-        <item quantity="other">cards to practise</item>
-    </plurals>
-    <string name="flashcards_panel_all_done">All caught up</string>
     <string name="flashcards_panel_start">Practise</string>
     <string name="flashcards_practise_deck">Practise %1$s (%2$d)</string>
     <string name="flashcards_study_missed">Worth another look</string>
@@ -725,7 +719,6 @@
     <string name="flashcards_field_english">English (optional)</string>
     <string name="flashcards_direction_from_catalan">Catalan → %1$s</string>
     <string name="flashcards_direction_to_catalan">%1$s → Catalan</string>
-    <string name="flashcards_practise_again">Practise again</string>
     <string name="flashcards_practise_deck_again">Practise %1$s again</string>
     <string name="flashcards_practise_anyway">Practise them anyway</string>
     <string name="flashcards_repeat_these">Repeat these</string>
@@ -749,4 +742,56 @@
     <string name="flashcards_study_no_english_body">These cards have only their Romanian meaning. Fill in the English from the deck, or practise in Romanian with the flag at the top of the tab.</string>
     <string name="flashcards_meaning_from_dictionary">From ARASAAC\'s dictionary, written by people for this word. Change it if you mean something else.</string>
     <string name="flashcards_catalan_suggested">Worked out from the meaning. Change it if you mean another word.</string>
+    <string name="flashcards_meanings_in">Meanings in</string>
+    <string name="flashcards_kind_deck">Deck</string>
+    <string name="flashcards_kind_collection">Collection</string>
+    <string name="flashcards_collection_name_label">Collection name</string>
+    <string name="flashcards_collection_name_hint">e.g. Food</string>
+    <string name="flashcards_collection_exists">A collection called \"%1$s\" already exists</string>
+    <string name="flashcards_rename_collection_title">Rename collection</string>
+    <string name="flashcards_collection_deleted">Deleted \"%1$s\". Its decks are still here.</string>
+    <string name="flashcards_delete_collection_title">Delete \"%1$s\"?</string>
+    <string name="flashcards_delete_collection_body_empty">No decks are on it, so nothing else changes.</string>
+    <plurals name="flashcards_delete_collection_body">
+        <item quantity="one">The deck on it stays where it is, on no collection. No cards are deleted.</item>
+        <item quantity="other">The %1$d decks on it stay where they are, on no collection. No cards are deleted.</item>
+    </plurals>
+    <string name="flashcards_collection_empty">No decks on this collection yet. Put one here from a deck\'s menu.</string>
+    <string name="flashcards_move_to_collection">Collection…</string>
+    <string name="flashcards_move_title">Where does \"%1$s\" go?</string>
+    <string name="flashcards_move_none">On no collection</string>
+    <string name="flashcards_no_collections">You have not made a collection yet. The + button makes one.</string>
+    <string name="flashcards_show_decks">Show the decks on %1$s</string>
+    <string name="flashcards_hide_decks">Hide the decks on %1$s</string>
+    <plurals name="flashcards_deck_count">
+        <item quantity="one">%1$d deck</item>
+        <item quantity="other">%1$d decks</item>
+    </plurals>
+    <string name="dictionary_verb_title">Verb form</string>
+    <string name="dictionary_verb_infinitive">Infinitive</string>
+    <string name="dictionary_verb_look_up">Look up %1$s</string>
+    <string name="dictionary_verb_also">also %1$s</string>
+    <string name="dictionary_verb_reading">%1$s · %2$s</string>
+    <string name="dictionary_verb_unplaced">An irregular form. Which part of the verb it is could not be worked out.</string>
+    <string name="verb_conjugation_first">1st conjugation (-ar)</string>
+    <string name="verb_conjugation_second">2nd conjugation (-re, -er)</string>
+    <string name="verb_conjugation_third">3rd conjugation (-ir)</string>
+    <string name="verb_mood_indicative">Indicative</string>
+    <string name="verb_mood_imperative">Imperative</string>
+    <string name="verb_tense_present_indicative">Present indicative</string>
+    <string name="verb_tense_imperfect_indicative">Imperfect indicative</string>
+    <string name="verb_tense_past">Simple past</string>
+    <string name="verb_tense_future">Future</string>
+    <string name="verb_tense_conditional">Conditional</string>
+    <string name="verb_tense_present_subjunctive">Present subjunctive</string>
+    <string name="verb_tense_imperfect_subjunctive">Imperfect subjunctive</string>
+    <string name="verb_person_1s">1st person singular</string>
+    <string name="verb_person_2s">2nd person singular</string>
+    <string name="verb_person_3s">3rd person singular</string>
+    <string name="verb_person_1p">1st person plural</string>
+    <string name="verb_person_2p">2nd person plural</string>
+    <string name="verb_person_3p">3rd person plural</string>
+    <string name="verb_form_infinitive">Infinitive</string>
+    <string name="verb_form_gerund">Gerund</string>
+    <string name="verb_form_participle">Past participle</string>
 </resources>
