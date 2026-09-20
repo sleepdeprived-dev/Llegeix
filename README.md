@@ -104,6 +104,16 @@ does both after bumping the version in `app/build.gradle.kts`.
   legibility win on a phone, where a fifth of an A4 page's width is paper with
   nothing on it. The margins are found by looking at the pixels rather than at
   the text layer, so it works on scans too.
+
+  Scrolling downwards does not move the page under your finger. A strip of pages
+  is a lazy list, and a lazy list has to be told how tall a page is before it can
+  place the ones below it — so a page that only learnt its own height when its
+  bitmap arrived made the whole column resize itself at exactly the moment you
+  were scrolling into it, which is also why the page number and the mark in the
+  contents flickered between two answers. Each page is now measured from the
+  document's own dimensions, which costs no rendering at all, and pages not yet
+  measured stand at the shape of the first page that answered, books being made
+  of pages the same size as each other.
 - **Find** — a search says how many times the word is in the book and where,
   and then shows them: every occurrence quoted in the line it was found in,
   grouped under its page, with the word itself the only coloured thing on the
@@ -532,6 +542,19 @@ The environment-variable equivalents are `LLEGEIX_STORE_FILE`,
 `LLEGEIX_STORE_PASSWORD`, `LLEGEIX_KEY_ALIAS`, and `LLEGEIX_KEY_PASSWORD`. When
 no keystore is configured the release build still succeeds, but produces an
 unsigned APK.
+
+### The launcher icon
+
+The artwork is one flat picture — a rounded square of Senyera stripes with an
+open book and a rose standing on it — and an adaptive icon needs it in two
+layers, a background that runs past every edge and a foreground that stands in
+the middle. `python3 tools/icon/build.py` cuts those out of
+`tools/icon/artwork.png` and writes them into every mipmap density; it needs
+Pillow, NumPy and SciPy. The separation works because the stripes are horizontal
+and even, so each row's colour can be read from the margin beside the book and
+painted across the whole row, and anything that differs from its own row is the
+book. The artwork lives in the tree beside the script because a release once
+went out without a new icon for want of the file it was to be cut from.
 
 ```sh
 ./gradlew assembleRelease

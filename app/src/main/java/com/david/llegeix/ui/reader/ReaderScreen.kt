@@ -74,6 +74,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -362,6 +363,28 @@ fun ReaderScreen(
     var showDisplay by remember { mutableStateOf(false) }
     var showOutline by remember { mutableStateOf(false) }
 
+    /*
+     * The shape of the first page that reported one, used for every page that
+     * has not yet.
+     *
+     * This is what stops the strip of pages moving under the finger. A page in
+     * scroll mode used to stand at a guess — A4 portrait — until its bitmap
+     * arrived and gave it its real height, and a page that changes height is a
+     * lazy list that re-lays out everything below it. Scrolling downwards goes
+     * into pages that have not been drawn yet, so it was scrolling into a
+     * column that kept resizing itself: the page under the finger jumped, the
+     * topmost visible page changed with it, and the page number and the mark in
+     * the contents flickered between two answers.
+     *
+     * Each page is measured properly, which is cheap and needs no bitmap. This
+     * only covers the moment before that answer comes back, and covers it well
+     * because the pages of a book are all the same size: the first page to
+     * report is almost always the right answer for every page after it.
+     * Forgotten when the crop is toggled, which is the one thing that changes
+     * a page's shape.
+     */
+    var assumedAspect by remember(state.cropMargins) { mutableStateOf<Float?>(null) }
+
     // Opening find with the chrome hidden would put a text field on screen with
     // no visible way back out of it.
     LaunchedEffect(state.search.isOpen) {
@@ -493,6 +516,12 @@ fun ReaderScreen(
                             applyScale = !scrolling,
                             tint = state.pageTint,
                             render = viewModel::renderPage,
+                            measureAspectRatio = { page ->
+                                viewModel.pageAspectRatio(page)?.also {
+                                    if (assumedAspect == null) assumedAspect = it
+                                }
+                            },
+                            assumedAspectRatio = assumedAspect ?: DEFAULT_PAGE_ASPECT_RATIO,
                             // Passed in rather than read inside, so stepping to
                             // the next match re-runs the effect that fetches the
                             // rectangles instead of leaving the old ones drawn.
@@ -1066,6 +1095,24 @@ private fun PdfPage(
     cropMargins: Boolean,
     tint: PageTint,
     render: suspend (index: Int, widthPx: Int) -> Bitmap?,
+    /**
+     * The shape this page will come out, asked before it is drawn.
+     *
+     * A lazy list has to measure an item before it can place the ones below it,
+     * so in scroll mode a page that does not know its own shape until its
+     * bitmap arrives is a page that changes height in the middle of a scroll.
+     * See [assumedAspectRatio] for what stands in until this answers.
+     */
+    measureAspectRatio: suspend (index: Int) -> Float?,
+    /**
+     * What this page is assumed to look like until it has been measured.
+     *
+     * The shape of the first page that answered, because the pages of a book
+     * are all the same size as each other: one measurement is normally the
+     * right answer for every page in the document, and a page that starts at
+     * the right height never has to move.
+     */
+    assumedAspectRatio: Float,
     searchMatch: PdfMatch?,
     highlights: suspend (widthPx: Int, heightPx: Int) -> List<RectF>,
     /** Where words the reader has already saved sit on this page. */
@@ -1115,6 +1162,11 @@ private fun PdfPage(
         // blinking to a spinner and back.
         var bitmap by remember(index) { mutableStateOf<Bitmap?>(null) }
         var offset by remember(index) { mutableStateOf(Offset.Zero) }
+        // How tall a slot this page asks for, which it can say before it has
+        // anything to put in it. Keyed on the crop as well as the page,
+        // because trimming the margins changes a page's shape and not only its
+        // size.
+        var aspectRatio by remember(index, cropMargins) { mutableFloatStateOf(assumedAspectRatio) }
         // The gesture handlers outlive the composition that started them, so
         // they have to read the zoom through a holder rather than capture it —
         // a captured value goes stale the moment the first pinch changes it.
@@ -1123,6 +1175,13 @@ private fun PdfPage(
         // What this page is actually drawn at, which is 1 in scroll mode however
         // magnified the column is.
         val drawnZoom = if (applyScale) zoom else 1f
+
+        // Before the render rather than with it: this is the cheap half of the
+        // question — the document's own dimensions, no rasterising — and its
+        // whole point is to be answered while the bitmap is still being drawn.
+        LaunchedEffect(index, cropMargins) {
+            measureAspectRatio(index)?.let { aspectRatio = it }
+        }
 
         LaunchedEffect(index, widthPx, cropMargins, tint) {
             // A page already on screen waits a moment before being redrawn at a
@@ -1380,7 +1439,7 @@ private fun PdfPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Space.sm, vertical = Space.sm)
-                    .aspectRatio(DEFAULT_PAGE_ASPECT_RATIO)
+                    .aspectRatio(aspectRatio)
                     .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center,
             ) {

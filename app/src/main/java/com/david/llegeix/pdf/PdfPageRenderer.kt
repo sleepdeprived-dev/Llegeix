@@ -100,6 +100,27 @@ interface PdfPageRenderer : AutoCloseable {
     suspend fun renderPage(index: Int, targetWidthPx: Int, crop: Boolean = false): Bitmap
 
     /**
+     * The shape one page will come out, width over height, without rendering
+     * it.
+     *
+     * Why a renderer has to answer this separately: in scroll mode the pages
+     * are a lazy list, and a lazy list has to be told how tall an item is
+     * before it can place anything below it. Until a page's bitmap arrived
+     * there was nothing to ask, so every page stood at a guess and then changed
+     * height the moment its bitmap landed — which is a jump under the finger of
+     * anyone scrolling downwards into pages that have not been drawn yet, and
+     * a page number that flickers because the topmost visible page keeps
+     * moving. PDFium knows a page's dimensions from its dictionary, without
+     * rasterising a single pixel, so the list can be told the right height
+     * from the start.
+     *
+     * [crop] must be whatever will be passed to [renderPage]: trimming the
+     * margins changes the shape of the page as well as its size, and the answer
+     * has to describe the bitmap that will actually arrive.
+     */
+    suspend fun pageAspectRatio(index: Int, crop: Boolean = false): Float
+
+    /**
      * The document's own table of contents, flattened, or empty when it has
      * none.
      *
@@ -214,7 +235,9 @@ interface PdfPageRenderer : AutoCloseable {
 const val MATCH_LIMIT: Int = 500
 
 /**
- * A4 portrait, used to size the placeholder before a page's real dimensions are
- * known. Only affects the brief moment before the first bitmap arrives.
+ * A4 portrait: the shape a page is assumed to be when the document cannot say.
+ *
+ * The last resort behind [PdfPageRenderer.pageAspectRatio], which is what pages
+ * are normally measured with.
  */
 const val DEFAULT_PAGE_ASPECT_RATIO: Float = 1f / 1.414f

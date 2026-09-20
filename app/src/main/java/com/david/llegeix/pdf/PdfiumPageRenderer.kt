@@ -82,6 +82,19 @@ class PdfiumPageRenderer private constructor(
      */
     private val contentBoxes = HashMap<Int, ContentBox>()
 
+    /**
+     * Each page's shape, kept because it is asked for far more often than it
+     * changes — which is never.
+     *
+     * The pages of a document are measured as they are scrolled towards, and a
+     * page scrolled past, back to, and rotated is measured again each time. The
+     * call itself is cheap, but it takes the same lock every render wants, and
+     * a lazy list asks about a page before it asks for its bitmap: a measure
+     * queued behind a render is a page that stands at the wrong height until
+     * the render it was meant to precede has finished.
+     */
+    private val sheetRatios = HashMap<Int, Float>()
+
     override suspend fun renderPage(
         index: Int,
         targetWidthPx: Int,
@@ -195,6 +208,49 @@ class PdfiumPageRenderer private constructor(
         probe.recycle()
         mutex.withLock { contentBoxes[index] = box }
         return box
+    }
+
+    /**
+     * The shape a page will be rendered at, worked out from its dimensions
+     * rather than from a bitmap.
+     *
+     * Cropping is a plain multiplication on top of that: the content box is
+     * expressed as fractions of the sheet, [renderCropped] scales the sheet up
+     * until the box is the width asked for and then takes the box out of it, so
+     * the bitmap that arrives is the sheet's shape stretched by the box's own.
+     * Nothing here depends on the width, which is why the answer can be given
+     * before anyone has decided what width to draw at.
+     *
+     * With [crop] on this does have to know where the ink is, which is measured
+     * on a small render the first time it is asked. That work is not extra: it
+     * is the same measurement [renderPage] is about to make, cached, and making
+     * it here means the page is placed at the right height before its bitmap is
+     * drawn rather than after.
+     */
+    override suspend fun pageAspectRatio(index: Int, crop: Boolean): Float =
+        withContext(Dispatchers.IO) {
+            // Resolved before the lock is taken, as everywhere else: marginsOf
+            // takes the same mutex and it is not reentrant.
+            val box = boxFor(index, crop)
+            val sheet = sheetRatio(index) ?: return@withContext DEFAULT_PAGE_ASPECT_RATIO
+            if (box.width <= 0f || box.height <= 0f) {
+                sheet
+            } else {
+                sheet * (box.width / box.height)
+            }
+        }
+
+    /** The whole sheet's width over its height, in PDF points. */
+    private suspend fun sheetRatio(index: Int): Float? = mutex.withLock {
+        if (closed) return@withLock null
+        sheetRatios[index]?.let { return@withLock it }
+        val page = document.openPage(index) ?: return@withLock null
+        page.use { open ->
+            val widthPt = open.getPageWidthPoint().toFloat()
+            val heightPt = open.getPageHeightPoint().toFloat()
+            if (widthPt <= 0f || heightPt <= 0f) return@withLock null
+            (widthPt / heightPt).also { sheetRatios[index] = it }
+        }
     }
 
     override suspend fun outline(): List<PdfOutlineEntry> = withContext(Dispatchers.IO) {

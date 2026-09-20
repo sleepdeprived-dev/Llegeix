@@ -3,17 +3,21 @@
     <!--
         Two layers, so the launcher's own shape is filled edge to edge.
 
-        The background is the Senyera's red and gold, as vertical bands that
-        run past every edge of the 108dp canvas: whatever shape the launcher
-        cuts — Samsung's squircle, a Pixel's circle — it cuts it out of stripes,
-        with no ground colour showing at the corners. The satin light across it
-        is the artwork's own, lighter at the top and darker at the foot.
+        The background is the Senyera, as horizontal bars that run past every
+        edge of the 108dp canvas: whatever shape the launcher cuts — Samsung's
+        squircle, a Pixel's circle — it cuts it out of stripes, with no ground
+        colour showing at the corners. The satin light across them is the
+        artwork's own, read row by row from the margin beside the book.
 
-        The foreground is the open book and rose, cut out of the artwork and
+        The foreground is the open book and its rose, cut out of the artwork and
         standing 54dp wide in the middle 72dp a launcher shows: whole through a
         circle, with stripes all round it, rather than filling the icon to its
         edges. A soft shadow of its own sits under it, because the one painted
-        into the artwork fell on stripes that are not there any more.
+        into the artwork fell on stripes that are not in this layer any more.
+
+        Both layers are built from tools/icon/artwork.png by tools/icon/build.py
+        rather than cut by hand, so the next time the artwork changes this is one
+        command and not an afternoon.
     -->
     <background android:drawable="@mipmap/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />

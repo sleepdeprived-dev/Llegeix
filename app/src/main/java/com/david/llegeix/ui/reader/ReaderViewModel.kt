@@ -696,6 +696,20 @@ class ReaderViewModel(
     }
 
     /**
+     * How tall a page will be for its width, before it has been drawn.
+     *
+     * Answered from the document rather than from a bitmap, so the strip of
+     * pages can measure a slot for a page it has not rendered yet and then not
+     * have to change it. Null while the document is still opening, which is the
+     * only moment there is nothing to ask.
+     */
+    suspend fun pageAspectRatio(index: Int): Float? {
+        val active = renderer ?: return null
+        val crop = _uiState.value.cropMargins
+        return runCatchingCancellable { active.pageAspectRatio(index, crop) }.getOrNull()
+    }
+
+    /**
      * Where the reader's saved words appear on a page.
      *
      * Answered per page and per rendered size, and only while the marking is
