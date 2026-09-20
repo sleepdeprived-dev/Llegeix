@@ -28,6 +28,13 @@ import androidx.compose.ui.unit.dp
  * instead of "there is nothing here yet". The optional actions are ordered, not
  * equal — one obvious next step, with anything else offered more quietly
  * underneath, so an empty screen asks for one decision rather than several.
+ *
+ * The disc behind the mark is in the reader's own accent rather than in grey.
+ * An empty screen is the one place the app has nothing of the reader's to show,
+ * which made it also the one place that looked like nobody's: a grey disc, grey
+ * text and a grey glyph, in an app whose every other surface is tinted by a
+ * colour they chose. It is a small thing and it changes what the screen says —
+ * grey on grey reads as switched off, and this is not an error.
  */
 @Composable
 fun EmptyState(
@@ -53,13 +60,13 @@ fun EmptyState(
                 modifier = Modifier
                     .size(72.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(30.dp),
                 )
             }
@@ -68,7 +75,10 @@ fun EmptyState(
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            // The title takes the accent too, and the body underneath stays
+            // quiet: the heading is the line that says what is missing, and
+            // the paragraph is the one that says what to do about it.
+            color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = if (icon != null) Space.xl else 0.dp),
         )

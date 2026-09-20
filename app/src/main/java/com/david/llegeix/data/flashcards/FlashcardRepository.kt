@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.room.withTransaction
 import com.david.llegeix.data.db.LlegeixDatabase
-import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
@@ -71,13 +70,31 @@ class FlashcardRepository(
         dao.setCollectionPinned(id, pinned)
 
     /**
+     * Give a collection a picture of its own, or take it away with null.
+     *
+     * The picture replaced is deleted once nothing points at it, in the same
+     * order and for the same reason a deck's is.
+     */
+    suspend fun setCollectionCover(id: Long, path: String?, credit: String?) {
+        val old = dao.collection(id)?.coverPath
+        dao.setCollectionCover(id, path, credit.takeIf { path != null })
+        if (old != null && old != path) images.delete(listOf(old))
+    }
+
+    /**
      * Take a shelf away, and leave every deck that was on it alone.
      *
-     * No pictures are deleted and no cards are touched: a collection owns
-     * nothing except the fact that some decks were grouped, and that is the
-     * only thing this loses.
+     * No cards are touched and no deck's picture goes: a collection owns
+     * nothing but the grouping, and its own picture if it was given one. That
+     * one file is deleted with it, in the order [deleteDeck] explains — the row
+     * first, then the file, so nothing is ever left pointing at a picture that
+     * is no longer there.
      */
-    suspend fun deleteCollection(id: Long) = dao.deleteCollection(id)
+    suspend fun deleteCollection(id: Long) {
+        val cover = dao.collection(id)?.coverPath
+        dao.deleteCollection(id)
+        cover?.let { images.delete(listOf(it)) }
+    }
 
     /** Put a deck on a shelf, or take it off one with null. */
     suspend fun setDeckCollection(deckId: Long, collectionId: Long?) =
@@ -211,13 +228,6 @@ class FlashcardRepository(
 
     // ---- Study -------------------------------------------------------------
 
-    /**
-     * Due counts per deck and direction, as of [now], counting only cards
-     * that can be asked in [language].
-     */
-    fun observeDueCounts(now: Long, language: MeaningLanguage): Flow<List<DeckDue>> =
-        dao.observeDueCounts(now, englishOnly = language == MeaningLanguage.ENGLISH)
-
     /** Every card a session could be dealt from, for whatever it is over. */
     suspend fun cardsToStudy(scope: StudyScope): List<FlashcardEntity> = when (scope) {
         StudyScope.Everything -> dao.allCards()
@@ -284,8 +294,24 @@ class FlashcardRepository(
      */
     suspend fun exportTo(uri: Uri, now: Long = System.currentTimeMillis()): Int {
         val cardsByDeck = dao.allCards().groupBy { it.deckId }
-        val collectionNames = dao.collections().associate { it.id to it.name }
+        val shelves = dao.collections()
+        val collectionNames = shelves.associate { it.id to it.name }
         val pictures = LinkedHashMap<String, File>()
+        val collections = shelves
+            .sortedBy { it.name.lowercase(Locale.ROOT) }
+            .map { shelf ->
+                val coverEntry = shelf.coverPath?.let { path ->
+                    (FlashcardBackup.IMAGE_FOLDER + File(path).name).also {
+                        pictures[it] = images.fileOf(path)
+                    }
+                }
+                FlashcardBackup.Collection(
+                    name = shelf.name,
+                    isPinned = shelf.isPinned,
+                    cover = coverEntry,
+                    coverCredit = shelf.coverCredit.takeIf { coverEntry != null },
+                )
+            }
         val decks = dao.decks()
             .sortedBy { it.name.lowercase(Locale.ROOT) }
             .map { deck ->
@@ -311,7 +337,7 @@ class FlashcardRepository(
                     },
                 )
             }
-        backupFiles.write(uri, FlashcardBackup.encode(decks, now), pictures)
+        backupFiles.write(uri, FlashcardBackup.encode(decks, now, collections), pictures)
         return decks.sumOf { it.cards.size }
     }
 
@@ -334,6 +360,8 @@ class FlashcardRepository(
         val unpacked = backupFiles.read(uri)
         try {
             val incoming = FlashcardBackup.decode(unpacked.json)
+            val incomingShelves = FlashcardBackup.decodeCollections(unpacked.json)
+                .associateBy { DeckNames.tidy(it.name).lowercase(Locale.ROOT) }
             val existing = dao.decks().map { deck ->
                 FlashcardBackup.ExistingDeck(deck.id, deck.name, dao.cardsInDeck(deck.id))
             }
@@ -350,6 +378,30 @@ class FlashcardRepository(
                 if (stored == null) picturesLost++ else broughtIn += stored
                 deck.name to stored
             }
+            // A shelf's picture, brought in alongside the decks' so that a
+            // failure part-way leaves one pile of files to delete rather than
+            // two. Only for shelves the copy would actually create: one
+            // already here keeps whatever it has.
+            val existingShelfKeys = dao.collections()
+                .mapTo(HashSet()) { DeckNames.tidy(it.name).lowercase(Locale.ROOT) }
+            val shelfCovers = incomingShelves
+                .filterKeys { it !in existingShelfKeys }
+                .values
+                .mapNotNull { shelf ->
+                    val entry = shelf.cover ?: return@mapNotNull null
+                    val stored = unpacked.images[entry]?.let { file ->
+                        runCatchingCancellable { images.import(Uri.fromFile(file)) }.getOrNull()
+                    }
+                    if (stored == null) {
+                        picturesLost++
+                        null
+                    } else {
+                        broughtIn += stored
+                        entry to stored
+                    }
+                }
+                .toMap()
+
             val prepared = plan.decks.map { deck ->
                 deck to deck.cards.map { card ->
                     val source = card.image?.let { unpacked.images[it] }
@@ -376,7 +428,19 @@ class FlashcardRepository(
                     suspend fun shelfFor(name: String): Long {
                         val key = DeckNames.tidy(name).lowercase(Locale.ROOT)
                         shelves[key]?.let { return it.id }
-                        val made = FlashcardCollectionEntity(name = DeckNames.tidy(name))
+                        // Only a shelf this restore creates takes what the copy
+                        // says about it. One already on the phone keeps its own
+                        // pin and its own picture, for the reason the whole
+                        // restore works this way: a copy adds, and never
+                        // rearranges what is already here.
+                        val described = incomingShelves[key]
+                        val made = FlashcardCollectionEntity(
+                            name = DeckNames.tidy(name),
+                            isPinned = described?.isPinned == true,
+                            coverPath = described?.cover?.let { shelfCovers[it] },
+                            coverCredit = described?.coverCredit
+                                ?.takeIf { described.cover?.let(shelfCovers::get) != null },
+                        )
                         val id = dao.insertCollection(made)
                         shelves[key] = made.copy(id = id)
                         return id

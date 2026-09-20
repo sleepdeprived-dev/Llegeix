@@ -29,4 +29,18 @@ data class FlashcardCollectionEntity(
     val createdAt: Long = System.currentTimeMillis(),
     /** Kept at the top of the list, above the alphabetical rest, as a deck can be. */
     val isPinned: Boolean = false,
+    /**
+     * A picture the reader chose for the shelf, relative to the files directory
+     * like a deck's or a card's.
+     *
+     * Null means the shelf borrows the picture of the first deck on it, which
+     * is what it always did and is often right — *Food* showing the vegetables
+     * is no worse than *Food* showing a basket. What it could not do was be
+     * wrong on purpose: a shelf whose first deck alphabetically happens to be
+     * *Herbs* wore a sprig of parsley and there was nothing to be done about
+     * it.
+     */
+    val coverPath: String? = null,
+    /** Who made [coverPath], when it came from a search. */
+    val coverCredit: String? = null,
 )

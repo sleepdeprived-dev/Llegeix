@@ -55,6 +55,7 @@ import com.david.llegeix.ui.common.TagPickerDialog
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PdfCover
+import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.util.pdfTitle
@@ -85,6 +86,8 @@ fun FolderDetailScreen(
         factory = FolderDetailViewModel.factory(folderId),
     )
     val documents by viewModel.documents.collectAsStateWithLifecycle()
+    val shown by viewModel.shown.collectAsStateWithLifecycle()
+    val query by viewModel.query.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val names by viewModel.names.collectAsStateWithLifecycle()
     val allTags by viewModel.tags.collectAsStateWithLifecycle()
@@ -145,106 +148,133 @@ fun FolderDetailScreen(
                 },
             )
         } else {
-            LazyColumn(
-                modifier = Modifier.padding(innerPadding),
-                // Clear of the button, which would otherwise sit on top of the
-                // last document in the collection.
-                contentPadding = PaddingValues(bottom = Space.huge + Space.xl),
-            ) {
-                items(documents, key = { it.uriString }) { document ->
-                    var menuOpen by remember { mutableStateOf(false) }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            // Held rather than tapped: the same gesture as the
-                            // library's rows, landing on the same three things
-                            // — the tags, the name, and taking it off the
-                            // shelf. A PDF should not answer to different
-                            // gestures depending on which list it is met in.
-                            .combinedClickable(
-                                onClick = {
-                                    onOpenDocument(
-                                        document.uriString,
-                                        names.titleFor(
-                                            document.uriString,
-                                            document.displayName,
-                                        ),
-                                    )
-                                },
-                                onLongClick = { menuOpen = true },
-                            )
-                            .padding(start = Space.screen, top = Space.row, bottom = Space.row),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        // The gap after the cover is the row's, not the
-                        // cover's: inside the modifier chain the padding came
-                        // off the width the aspect ratio was then applied to,
-                        // so every cover on this screen was drawn a third too
-                        // narrow and looked nothing like the same object as the
-                        // one in the library.
-                        PdfCover(
-                            uriString = document.uriString,
-                            width = ListCoverWidth,
-                            progress = progress[document.uriString]?.fraction,
+            Column(modifier = Modifier.padding(innerPadding)) {
+                // Above the list rather than in it, so it stays put while the
+                // documents scroll under it — the same field, in the same
+                // place, as the one at the top of a deck. A collection is the
+                // shelf somebody built on purpose, and the moment it is worth
+                // building is also the moment it stops being a list you can
+                // take in at a glance.
+                SearchField(
+                    query = query,
+                    placeholder = stringResource(R.string.folder_detail_search),
+                    onQueryChange = viewModel::onQueryChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Space.screen)
+                        .padding(top = Space.sm, bottom = Space.xs),
+                )
+                if (shown.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.folder_detail_search_none, query.trim()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(
+                            horizontal = Space.screen,
+                            vertical = Space.xl,
+                        ),
+                    )
+                }
+                LazyColumn(
+                    // Clear of the button, which would otherwise sit on top of
+                    // the last document in the collection.
+                    contentPadding = PaddingValues(bottom = Space.huge + Space.xl),
+                ) {
+                    items(shown, key = { it.uriString }) { document ->
+                        var menuOpen by remember { mutableStateOf(false) }
+                        Row(
                             modifier = Modifier
-                                .width(ListCoverWidth)
-                                .aspectRatio(CoverAspectRatio),
-                        )
-                        Spacer(modifier = Modifier.width(Space.lg))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = names.titleFor(
-                                    document.uriString,
-                                    document.displayName,
-                                ),
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
+                                .fillMaxWidth()
+                                // Held rather than tapped: the same gesture as the
+                                // library's rows, landing on the same three things
+                                // — the tags, the name, and taking it off the
+                                // shelf. A PDF should not answer to different
+                                // gestures depending on which list it is met in.
+                                .combinedClickable(
+                                    onClick = {
+                                        onOpenDocument(
+                                            document.uriString,
+                                            names.titleFor(
+                                                document.uriString,
+                                                document.displayName,
+                                            ),
+                                        )
+                                    },
+                                    onLongClick = { menuOpen = true },
+                                )
+                                .padding(start = Space.screen, top = Space.row, bottom = Space.row),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            // The gap after the cover is the row's, not the
+                            // cover's: inside the modifier chain the padding came
+                            // off the width the aspect ratio was then applied to,
+                            // so every cover on this screen was drawn a third too
+                            // narrow and looked nothing like the same object as the
+                            // one in the library.
+                            PdfCover(
+                                uriString = document.uriString,
+                                width = ListCoverWidth,
+                                progress = progress[document.uriString]?.fraction,
+                                modifier = Modifier
+                                    .width(ListCoverWidth)
+                                    .aspectRatio(CoverAspectRatio),
                             )
-                        }
-                        TagStrip(
-                            tags = tagsByDocument[document.uriString].orEmpty(),
-                            modifier = Modifier.padding(start = Space.sm),
-                        )
-                        Box {
-                            IconButton(
-                                onClick = { viewModel.removeFromFolder(document.uriString) },
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = stringResource(
-                                        R.string.folder_detail_remove,
+                            Spacer(modifier = Modifier.width(Space.lg))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = names.titleFor(
+                                        document.uriString,
+                                        document.displayName,
                                     ),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
-                            DropdownMenu(
-                                expanded = menuOpen,
-                                onDismissRequest = { menuOpen = false },
-                            ) {
-                                DropdownMenuItem(
-                                    leadingIcon = {
-                                        MenuIcon(painterResource(R.drawable.ic_tag))
-                                    },
-                                    text = { Text(stringResource(R.string.tags_open)) },
-                                    onClick = { menuOpen = false; tagsFor = document },
-                                )
-                                DropdownMenuItem(
-                                    leadingIcon = { MenuIcon(Icons.Default.Edit) },
-                                    text = { Text(stringResource(R.string.document_rename)) },
-                                    onClick = { menuOpen = false; renaming = document },
-                                )
-                                HorizontalDivider()
-                                DropdownMenuItem(
-                                    leadingIcon = { MenuIcon(Icons.Default.Close) },
-                                    text = {
-                                        Text(stringResource(R.string.folder_detail_remove))
-                                    },
-                                    onClick = {
-                                        menuOpen = false
-                                        viewModel.removeFromFolder(document.uriString)
-                                    },
-                                )
+                            TagStrip(
+                                tags = tagsByDocument[document.uriString].orEmpty(),
+                                modifier = Modifier.padding(start = Space.sm),
+                            )
+                            Box {
+                                IconButton(
+                                    onClick = { viewModel.removeFromFolder(document.uriString) },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = stringResource(
+                                            R.string.folder_detail_remove,
+                                        ),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = menuOpen,
+                                    onDismissRequest = { menuOpen = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        leadingIcon = {
+                                            MenuIcon(painterResource(R.drawable.ic_tag))
+                                        },
+                                        text = { Text(stringResource(R.string.tags_open)) },
+                                        onClick = { menuOpen = false; tagsFor = document },
+                                    )
+                                    DropdownMenuItem(
+                                        leadingIcon = { MenuIcon(Icons.Default.Edit) },
+                                        text = { Text(stringResource(R.string.document_rename)) },
+                                        onClick = { menuOpen = false; renaming = document },
+                                    )
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        leadingIcon = { MenuIcon(Icons.Default.Close) },
+                                        text = {
+                                            Text(stringResource(R.string.folder_detail_remove))
+                                        },
+                                        onClick = {
+                                            menuOpen = false
+                                            viewModel.removeFromFolder(document.uriString)
+                                        },
+                                    )
+                                }
                             }
                         }
                     }

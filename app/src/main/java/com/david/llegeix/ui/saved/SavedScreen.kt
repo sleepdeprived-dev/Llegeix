@@ -33,7 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
@@ -42,7 +42,6 @@ import com.david.llegeix.ui.bookmarks.PagesPane
 import com.david.llegeix.ui.bookmarks.WordsPane
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Pill
-import com.david.llegeix.ui.common.PillCount
 import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.Space
@@ -82,15 +81,12 @@ fun SavedScreen(
     onPractise: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Both ViewModels are read here as well as inside their panes so the tab
-    // row can carry counts. They are the same instances the panes get: this
-    // composable and its panes share one ViewModelStoreOwner, so `viewModel()`
-    // hands back what is already there rather than building a second copy.
+    // Built here rather than inside the panes so that the three of them share
+    // one instance each: this composable and its panes share a
+    // ViewModelStoreOwner, so `viewModel()` hands back what is already there
+    // rather than building a second copy per pane.
     val foldersViewModel: FoldersViewModel = viewModel(factory = FoldersViewModel.Factory)
     val bookmarksViewModel: BookmarksViewModel = viewModel(factory = BookmarksViewModel.Factory)
-    val folders by foldersViewModel.folders.collectAsStateWithLifecycle()
-    val pages by bookmarksViewModel.pageBookmarks.collectAsStateWithLifecycle()
-    val savedWords by bookmarksViewModel.savedWords.collectAsStateWithLifecycle()
 
     // The pager owns the position; the tab row follows it, so a swipe and a tap
     // cannot disagree about which tab is showing.
@@ -137,15 +133,17 @@ fun SavedScreen(
         },
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            // Pills on a groove rather than Material's underlined tab row.
+            // Pills on a groove rather than Material's underlined tab row, and
+            // the name and nothing else on each one.
             //
-            // The old row wrote its counts into the labels, as "Pages (2)".
-            // Brackets read as part of the name rather than as a number about
-            // it, and three of them across a row turn a set of names into a set
-            // of expressions to be parsed. The count is now a mark the pill
-            // wears — see [com.david.llegeix.ui.common.PillCount] — and the
-            // chosen pane is a solid pill rather than a word with a line under
-            // it, which is a thing you can see from across the room.
+            // They carried a count: first written into the label as "Pages
+            // (2)", then as a small badge beside it. Both were wrong for the
+            // same reason, which only showed up in Catalan — *Col·leccions* is
+            // twelve letters, a third of the width available to it, and a
+            // number sharing that pill left "Col·lecc…". A tab whose name
+            // cannot be read is not a tab. The count was the lesser fact: how
+            // many pages are saved is answered by the pane itself the moment
+            // it opens, and by its empty state when there are none.
             PillGroup(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -153,40 +151,28 @@ fun SavedScreen(
                     .padding(top = Space.sm, bottom = Space.xs),
             ) {
                 SavedTab.entries.forEachIndexed { index, tab ->
-                    val count = when (tab) {
-                        SavedTab.COLLECTIONS -> folders.size
-                        SavedTab.PAGES -> pages.size
-                        SavedTab.WORDS -> savedWords.size
-                    }
                     val name = stringResource(tab.labelRes)
-                    val isSelected = selectedTab == index
                     Pill(
-                        selected = isSelected,
+                        selected = selectedTab == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        // Said in full for anybody who cannot see the badge:
-                        // the number is a picture of a fact, not the fact.
-                        label = if (count > 0) {
-                            stringResource(R.string.bookmarks_tab_with_count, name, count)
-                        } else {
-                            name
-                        },
+                        label = name,
                         // Each pill takes an equal share, so the three of them
-                        // fill the width and none of them moves as the counts
-                        // change underneath.
+                        // fill the width between them.
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = Space.sm, vertical = Space.sm),
+                        contentPadding = PaddingValues(horizontal = Space.xs, vertical = Space.sm),
                     ) {
+                        // A step down from labelLarge, which is what buys the
+                        // longest of the three names the room to be read: at
+                        // 14sp "Col·leccions" is most of a third of a narrow
+                        // phone and arrives as "Col·lecc…". There is no
+                        // ellipsis here on purpose — nothing should be able to
+                        // cut one of these three names again without the pill
+                        // visibly overflowing in a preview.
                         Text(
                             text = name,
-                            style = MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        PillCount(
-                            count = count,
-                            selected = isSelected,
-                            modifier = Modifier.padding(start = Space.sm),
+                            textAlign = TextAlign.Center,
                         )
                     }
                 }

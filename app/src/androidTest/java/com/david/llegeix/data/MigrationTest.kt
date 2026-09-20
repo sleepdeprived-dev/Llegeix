@@ -22,6 +22,7 @@ import com.david.llegeix.data.db.MIGRATION_14_15
 import com.david.llegeix.data.db.MIGRATION_15_16
 import com.david.llegeix.data.db.MIGRATION_16_17
 import com.david.llegeix.data.db.MIGRATION_17_18
+import com.david.llegeix.data.db.MIGRATION_18_19
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1012,16 +1013,48 @@ class MigrationTest {
         }
     }
 
+    /** A collection can be given a picture, and none has one to begin with. */
+    @Test
+    fun migrate18To19_addsCollectionPicturesAndChangesNothingElse() {
+        helper.createDatabase(TEST_DB, 18).use { db ->
+            db.execSQL(
+                "INSERT INTO flashcard_collections (id, name, createdAt, isPinned) " +
+                    "VALUES (1, 'Menjar', 5, 1)",
+            )
+            db.execSQL(
+                "INSERT INTO flashcard_decks (id, name, createdAt, isPinned, collectionId) " +
+                    "VALUES (2, 'Verdures', 6, 0, 1)",
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 19, true, MIGRATION_18_19)
+
+        db.query(
+            "SELECT name, isPinned, coverPath, coverCredit FROM flashcard_collections",
+        ).use { cursor ->
+            assertTrue("the collection survived", cursor.moveToFirst())
+            assertEquals("Menjar", cursor.getString(0))
+            assertEquals("and its pin", 1, cursor.getInt(1))
+            assertTrue("no collection starts with a picture of its own", cursor.isNull(2))
+            assertTrue(cursor.isNull(3))
+        }
+        db.query("SELECT name, collectionId FROM flashcard_decks").use { cursor ->
+            assertTrue("and so did the deck on it", cursor.moveToFirst())
+            assertEquals("Verdures", cursor.getString(0))
+            assertEquals(1, cursor.getInt(1))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To18_runsEveryStepInSequence() {
+    fun migrate1To19_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            18,
+            19,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -1040,6 +1073,7 @@ class MigrationTest {
             MIGRATION_15_16,
             MIGRATION_16_17,
             MIGRATION_17_18,
+            MIGRATION_18_19,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

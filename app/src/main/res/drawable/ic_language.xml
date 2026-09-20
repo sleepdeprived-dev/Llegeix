@@ -1,0 +1,38 @@
+<!--
+    Which languages a session is between, and which way round.
+
+    A globe with its meridians, which is the mark a phone already uses for
+    "language" everywhere else — the settings app, the keyboard's own switch.
+    Deliberately not two flags: the button has to say what the menu behind it is
+    *about* before it is opened, and the flags are inside it, on every row,
+    saying which pair each one is.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/white"
+        android:fillType="evenOdd"
+        android:pathData="M12,2 a10,10 0 1 0 0,20 a10,10 0 1 0 0,-20 z M12,4 a8,8 0 1 1 0,16 a8,8 0 1 1 0,-16 z" />
+    <!-- The equator and one line of latitude either side of it. -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,11 h18 v2 h-18 z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M5.2,7 h13.6 v1.6 h-13.6 z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M5.2,15.4 h13.6 v1.6 h-13.6 z" />
+    <!--
+        The meridian, drawn as an outline rather than a line: a globe with a
+        straight bar down it reads as a coin with a slot in it.
+    -->
+    <path
+        android:fillColor="@android:color/white"
+        android:fillType="evenOdd"
+        android:pathData="M12,2 c-2.6,0 -4.6,4.5 -4.6,10 c0,5.5 2,10 4.6,10 c2.6,0 4.6,-4.5 4.6,-10 c0,-5.5 -2,-10 -4.6,-10 z M12,4 c1.2,0 2.6,3.3 2.6,8 c0,4.7 -1.4,8 -2.6,8 c-1.2,0 -2.6,-3.3 -2.6,-8 c0,-4.7 1.4,-8 2.6,-8 z" />
+</vector>

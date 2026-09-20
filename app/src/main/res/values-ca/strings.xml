@@ -115,7 +115,6 @@
 
     <!-- Marcadors -->
     <string name="bookmarks_tab_pages">Pàgines</string>
-    <string name="bookmarks_tab_with_count">%1$s (%2$d)</string>
     <string name="bookmarks_pages_empty_title">Cap pàgina amb marcador</string>
     <string name="bookmarks_pages_empty_body">Toca l\'estrella mentre llegeixes per marcar la pàgina on ets. Es desen aquí, a part dels PDF sencers.</string>
     <string name="bookmarks_page_detail">%1$s · %2$s</string>
@@ -631,8 +630,6 @@
     <string name="flashcards_all_decks">Totes les baralles</string>
     <string name="flashcards_study_no_cards_title">No hi ha targetes per repassar</string>
     <string name="flashcards_study_no_cards_body">Primer afegeix alguna targeta a aquesta baralla.</string>
-    <string name="flashcards_study_nothing_due_title">No toca res</string>
-    <string name="flashcards_study_nothing_due_body">Totes les targetes s\'han repassat fa poc en aquest sentit. Tornaran quan toqui: com millor te\'n saps una, més triga a tornar.</string>
     <plurals name="flashcards_delete_deck_pictures">
         <item quantity="one">La imatge d\'una d\'elles se\'n va amb ella.</item>
         <item quantity="many">Les imatges de %1$d d\'elles se\'n van amb elles.</item>
@@ -642,22 +639,6 @@
     <string name="flashcards_cannot_undo">No es pot desfer.</string>
     <string name="flashcards_search_deck">Cerca en aquesta baralla</string>
     <string name="flashcards_search_none">Cap targeta d\'aquí coincideix amb «%1$s».</string>
-    <string name="flashcards_study_switch">Repassa %1$s (%2$d)</string>
-    <plurals name="flashcards_next_due_minutes">
-        <item quantity="one">La propera targeta torna d\'aquí a %1$d minut.</item>
-        <item quantity="many">La propera targeta torna d\'aquí a %1$d minuts.</item>
-        <item quantity="other">La propera targeta torna d\'aquí a %1$d minuts.</item>
-    </plurals>
-    <plurals name="flashcards_next_due_hours">
-        <item quantity="one">La propera targeta torna d\'aquí a %1$d hora.</item>
-        <item quantity="many">La propera targeta torna d\'aquí a %1$d hores.</item>
-        <item quantity="other">La propera targeta torna d\'aquí a %1$d hores.</item>
-    </plurals>
-    <plurals name="flashcards_next_due_days">
-        <item quantity="one">La propera targeta torna d\'aquí a %1$d dia.</item>
-        <item quantity="many">La propera targeta torna d\'aquí a %1$d dies.</item>
-        <item quantity="other">La propera targeta torna d\'aquí a %1$d dies.</item>
-    </plurals>
     <string name="flashcards_backup_title">Còpia de seguretat</string>
     <string name="flashcards_backup_body">Les targetes són en aquest telèfon i enlloc més: si desinstal·les l\'aplicació o perds el telèfon, es perden. Desa\'n una còpia en un fitxer de tant en tant i guarda-la en un lloc segur.</string>
     <string name="flashcards_backup_save">Desa\'n una còpia</string>
@@ -700,16 +681,12 @@
     <string name="flashcards_picture_other">Tria\'n una altra</string>
     <string name="flashcards_picture_from_gallery">De les teves fotos</string>
     <string name="flashcards_picture_fetch_failed">No s\'ha pogut baixar aquesta imatge. Prova\'n una altra.</string>
-    <string name="flashcards_panel_start">Repassa</string>
-    <string name="flashcards_practise_deck">Repassa %1$s (%2$d)</string>
     <string name="flashcards_study_missed">Per tornar-hi</string>
     <string name="flashcards_study_perfect">Totes encertades.</string>
     <string name="flashcards_section_meaning">Significat</string>
     <string name="flashcards_field_english">Anglès (opcional)</string>
     <string name="flashcards_direction_from_catalan">Català → %1$s</string>
     <string name="flashcards_direction_to_catalan">%1$s → català</string>
-    <string name="flashcards_practise_deck_again">Repassa %1$s de nou</string>
-    <string name="flashcards_practise_anyway">Repassa-les igualment</string>
     <string name="flashcards_repeat_these">Repeteix-les</string>
     <string name="flashcards_extra_label">Pràctica extra</string>
     <string name="flashcards_extra_finished_body">La pràctica extra no canvia quan tornen les targetes: repeteix-les tantes vegades com vulguis.</string>
@@ -733,7 +710,6 @@
     <string name="flashcards_study_no_english_body">Aquestes targetes només tenen el significat en romanès. Omple l\'anglès des de la baralla, o repassa en romanès amb la bandera de dalt de la pestanya.</string>
     <string name="flashcards_meaning_from_dictionary">Del diccionari d\'ARASAAC, escrit per persones per a aquesta paraula. Canvia\'l si vols dir una altra cosa.</string>
     <string name="flashcards_catalan_suggested">Deduït del significat. Canvia-ho si vols dir una altra paraula.</string>
-    <string name="flashcards_meanings_in">Significats en</string>
     <string name="flashcards_kind_deck">Baralla</string>
     <string name="flashcards_kind_collection">Col·lecció</string>
     <string name="flashcards_collection_name_label">Nom de la col·lecció</string>
@@ -787,4 +763,10 @@
     <string name="verb_form_infinitive">Infinitiu</string>
     <string name="verb_form_gerund">Gerundi</string>
     <string name="verb_form_participle">Participi</string>
+    <string name="folder_detail_search">Cerca en aquesta col·lecció</string>
+    <string name="folder_detail_search_none">Res d\'aquesta col·lecció coincideix amb «%1$s».</string>
+    <string name="flashcards_choose_pair">Quines llengües, i en quin sentit</string>
+    <string name="flashcards_practise_all">Repassa-les totes</string>
+    <string name="flashcards_practise_name">Repassa %1$s</string>
+    <string name="flashcards_collection_picture_remove">Fes servir la imatge de la primera baralla</string>
 </resources>

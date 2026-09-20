@@ -48,22 +48,16 @@ data class StudyUiState(
     val correct: Int = 0,
     /** The cards answered "not yet" this session, to name at the end. */
     val missed: List<FlashcardEntity> = emptyList(),
-    /** How many cards there are to study at all, for when none are due. */
+    /** How many cards there are to practise at all, for when there are none. */
     val cardsInScope: Int = 0,
     /** Cards left out because they have no meaning in the language chosen. */
     val cardsWithoutMeaning: Int = 0,
-    /** When the next card comes back this way round, for when none are due now. */
-    val nextDueAt: Long? = null,
-    /** How many are waiting the other way round, which is somewhere to go instead. */
-    val otherDirectionDue: Int = 0,
 ) {
-    val otherDirection: StudyDirection get() = direction.other()
-
     val current: FlashcardEntity? get() = cards.getOrNull(index)
 
     val isFinished: Boolean get() = !isLoading && cards.isNotEmpty() && index >= cards.size
 
-    /** Nothing was due in the first place, which is a different screen. */
+    /** There was nothing to ask at all, which is a different screen. */
     val isEmpty: Boolean get() = !isLoading && cards.isEmpty()
 
     val progress: Float
@@ -74,25 +68,27 @@ data class StudyUiState(
 }
 
 /**
- * A short session over the cards that are due in one direction — or, when
- * asked, a round of extra practice over cards that are not.
+ * A session over every card in a deck, a collection or the whole lot.
  *
- * Built like [com.david.llegeix.ui.practice.PracticeViewModel] on purpose: the
- * same shape of session, the same two answers, the same scheduler. Added are the
+ * Built like [com.david.llegeix.ui.practice.PracticeViewModel]: the same shape
+ * of session, the same two answers, the same scheduler. Added are the
  * direction, which decides which side of the card is the question and which
  * half of its schedule an answer moves; the language the meaning is shown in;
- * and extra practice, for going through cards again because repetition helps.
+ * and extra practice, which is what *Repeat these* deals at the end of a round.
+ *
+ * "Every card" is the whole of it — see [FlashcardSession.everything]. The
+ * schedule still orders the hand and still moves with the answers; it no longer
+ * decides which cards are in it.
  */
 class StudyViewModel(
     private val flashcards: FlashcardRepository,
     private val scope: StudyScope,
     direction: StudyDirection,
     language: MeaningLanguage,
-    extra: Boolean,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        StudyUiState(direction = direction, language = language, isExtra = extra),
+        StudyUiState(direction = direction, language = language),
     )
     val uiState: StateFlow<StudyUiState> = _uiState.asStateFlow()
 
@@ -100,7 +96,7 @@ class StudyViewModel(
         deal()
     }
 
-    /** Take a fresh hand: the due cards, or for extra practice any of them. */
+    /** Take a fresh hand: every card there is, or a capped extra round. */
     fun deal() = viewModelScope.launch {
         _uiState.update { it.copy(isLoading = true) }
         val scopeName = when (scope) {
@@ -109,14 +105,13 @@ class StudyViewModel(
             is StudyScope.Collection -> flashcards.collection(scope.id)?.name
         }
         val all = flashcards.cardsToStudy(scope)
-        val now = System.currentTimeMillis()
         val state = _uiState.value
         val direction = state.direction
         val language = state.language
         val dealt = if (state.isExtra) {
             FlashcardSession.extra(all, direction, language = language)
         } else {
-            FlashcardSession.deal(all, direction, now, language = language)
+            FlashcardSession.everything(all, direction, language = language)
         }
         _uiState.update {
             it.copy(
@@ -129,27 +124,8 @@ class StudyViewModel(
                 missed = emptyList(),
                 cardsInScope = all.count { card -> language.meaningOf(card) != null },
                 cardsWithoutMeaning = all.count { card -> language.meaningOf(card) == null },
-                nextDueAt = FlashcardSession.nextDueAt(all, direction, now, language),
-                otherDirectionDue = all.count { card ->
-                    direction.other().isDue(card, now) && language.meaningOf(card) != null
-                },
             )
         }
-    }
-
-    /**
-     * Nothing is due this way round but something is the other way: turn the
-     * session round rather than send the reader back to choose it.
-     */
-    fun onSwitchDirection() {
-        _uiState.update { it.copy(direction = it.direction.other(), isExtra = false) }
-        deal()
-    }
-
-    /** Go through the cards anyway, whether they are due or not. */
-    fun onPractiseAnyway() {
-        _uiState.update { it.copy(isExtra = true) }
-        deal()
     }
 
     /**
@@ -203,12 +179,11 @@ class StudyViewModel(
             scope: StudyScope,
             direction: StudyDirection,
             language: MeaningLanguage,
-            extra: Boolean,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                     as LlegeixApp
-                StudyViewModel(app.flashcardRepository, scope, direction, language, extra)
+                StudyViewModel(app.flashcardRepository, scope, direction, language)
             }
         }
     }

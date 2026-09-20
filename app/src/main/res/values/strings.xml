@@ -120,7 +120,6 @@
 
     <!-- Bookmarks -->
     <string name="bookmarks_tab_pages">Pages</string>
-    <string name="bookmarks_tab_with_count">%1$s (%2$d)</string>
     <string name="bookmarks_pages_empty_title">No bookmarked pages</string>
     <string name="bookmarks_pages_empty_body">Tap the star while reading to bookmark the page you are on. Those land here, separately from whole PDFs.</string>
     <!-- A page bookmark's own label, appended after the page number. -->
@@ -650,8 +649,6 @@
     <string name="flashcards_all_decks">All decks</string>
     <string name="flashcards_study_no_cards_title">No cards to practise</string>
     <string name="flashcards_study_no_cards_body">Add some cards to this deck first.</string>
-    <string name="flashcards_study_nothing_due_title">Nothing due</string>
-    <string name="flashcards_study_nothing_due_body">Every card has been practised recently this way round. They come back on their own schedule: the better you know one, the longer it waits.</string>
     <plurals name="flashcards_delete_deck_pictures">
         <item quantity="one">So does the picture on one of them.</item>
         <item quantity="other">So do the pictures on %1$d of them.</item>
@@ -660,19 +657,6 @@
     <string name="flashcards_cannot_undo">This cannot be undone.</string>
     <string name="flashcards_search_deck">Search this deck</string>
     <string name="flashcards_search_none">No card here matches \"%1$s\".</string>
-    <string name="flashcards_study_switch">Practise %1$s (%2$d)</string>
-    <plurals name="flashcards_next_due_minutes">
-        <item quantity="one">The next card comes back in %1$d minute.</item>
-        <item quantity="other">The next card comes back in %1$d minutes.</item>
-    </plurals>
-    <plurals name="flashcards_next_due_hours">
-        <item quantity="one">The next card comes back in %1$d hour.</item>
-        <item quantity="other">The next card comes back in %1$d hours.</item>
-    </plurals>
-    <plurals name="flashcards_next_due_days">
-        <item quantity="one">The next card comes back in %1$d day.</item>
-        <item quantity="other">The next card comes back in %1$d days.</item>
-    </plurals>
     <string name="flashcards_backup_title">Backup</string>
     <string name="flashcards_backup_body">Your cards are on this phone and nowhere else: uninstalling the app or losing the phone loses them. Save a copy to a file now and then, and keep it somewhere safe.</string>
     <string name="flashcards_backup_save">Save a copy</string>
@@ -711,16 +695,12 @@
     <string name="flashcards_picture_other">Choose another</string>
     <string name="flashcards_picture_from_gallery">From your photos</string>
     <string name="flashcards_picture_fetch_failed">That picture could not be downloaded. Try another one.</string>
-    <string name="flashcards_panel_start">Practise</string>
-    <string name="flashcards_practise_deck">Practise %1$s (%2$d)</string>
     <string name="flashcards_study_missed">Worth another look</string>
     <string name="flashcards_study_perfect">Every one right.</string>
     <string name="flashcards_section_meaning">Meaning</string>
     <string name="flashcards_field_english">English (optional)</string>
     <string name="flashcards_direction_from_catalan">Catalan → %1$s</string>
     <string name="flashcards_direction_to_catalan">%1$s → Catalan</string>
-    <string name="flashcards_practise_deck_again">Practise %1$s again</string>
-    <string name="flashcards_practise_anyway">Practise them anyway</string>
     <string name="flashcards_repeat_these">Repeat these</string>
     <string name="flashcards_extra_label">Extra practice</string>
     <string name="flashcards_extra_finished_body">Extra practice does not change when cards come back, so go round as often as you like.</string>
@@ -742,7 +722,6 @@
     <string name="flashcards_study_no_english_body">These cards have only their Romanian meaning. Fill in the English from the deck, or practise in Romanian with the flag at the top of the tab.</string>
     <string name="flashcards_meaning_from_dictionary">From ARASAAC\'s dictionary, written by people for this word. Change it if you mean something else.</string>
     <string name="flashcards_catalan_suggested">Worked out from the meaning. Change it if you mean another word.</string>
-    <string name="flashcards_meanings_in">Meanings in</string>
     <string name="flashcards_kind_deck">Deck</string>
     <string name="flashcards_kind_collection">Collection</string>
     <string name="flashcards_collection_name_label">Collection name</string>
@@ -794,4 +773,10 @@
     <string name="verb_form_infinitive">Infinitive</string>
     <string name="verb_form_gerund">Gerund</string>
     <string name="verb_form_participle">Past participle</string>
+    <string name="folder_detail_search">Search this collection</string>
+    <string name="folder_detail_search_none">Nothing in this collection matches \"%1$s\".</string>
+    <string name="flashcards_choose_pair">Which languages, and which way round</string>
+    <string name="flashcards_practise_all">Practise them all</string>
+    <string name="flashcards_practise_name">Practise %1$s</string>
+    <string name="flashcards_collection_picture_remove">Use the first deck\'s picture</string>
 </resources>

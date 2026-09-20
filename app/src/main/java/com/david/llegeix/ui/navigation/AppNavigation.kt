@@ -67,11 +67,18 @@ private object Routes {
      * Two ids rather than one, because a route can only carry numbers and the
      * session is over one of three things: `deckId` and `collectionId` are each
      * -1 when they are not the answer, and [StudyScope] is what the two ends
-     * actually deal in. `extra` is a round of practice off the schedule.
+     * actually deal in.
+     *
+     * It used to carry an `extra` flag as well, for a round that went through
+     * cards that were not due without recording the answers. Every session goes
+     * through every card now, so there is nothing for the flag to mean on the
+     * way in; extra practice survives only as *Repeat these* at the end of a
+     * round, which is a state the session screen puts itself into rather than
+     * somewhere it is sent.
      */
     const val FLASHCARD_STUDY =
         "flashcards/study?deckId={deckId}&collectionId={collectionId}" +
-            "&direction={direction}&language={language}&extra={extra}"
+            "&direction={direction}&language={language}"
 
     fun flashcardDeck(deckId: Long): String = "flashcards/deck/$deckId"
 
@@ -79,10 +86,9 @@ private object Routes {
         scope: StudyScope,
         direction: StudyDirection,
         language: MeaningLanguage,
-        extra: Boolean,
     ): String = "flashcards/study?deckId=${scope.deckArgument}" +
         "&collectionId=${scope.collectionArgument}" +
-        "&direction=${direction.name}&language=${language.name}&extra=$extra"
+        "&direction=${direction.name}&language=${language.name}"
 
     fun cardEditor(deckId: Long, cardId: Long? = null): String =
         "flashcards/card?deckId=$deckId&cardId=${cardId ?: -1}"
@@ -284,8 +290,8 @@ fun AppNavigation(modifier: Modifier = Modifier) {
             composable(Routes.FLASHCARDS) {
                 FlashcardsScreen(
                     onOpenDeck = { deckId -> navController.navigate(Routes.flashcardDeck(deckId)) },
-                    onStudy = { scope, direction, language, extra ->
-                        navController.navigate(Routes.flashcardStudy(scope, direction, language, extra))
+                    onStudy = { scope, direction, language ->
+                        navController.navigate(Routes.flashcardStudy(scope, direction, language))
                     },
                 )
             }
@@ -303,7 +309,6 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                         type = NavType.StringType
                         defaultValue = MeaningLanguage.Default.name
                     },
-                    navArgument("extra") { type = NavType.BoolType; defaultValue = false },
                 ),
             ) { entry ->
                 StudyScreen(
@@ -313,7 +318,6 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     ),
                     direction = StudyDirection.fromName(entry.arguments?.getString("direction")),
                     language = MeaningLanguage.fromName(entry.arguments?.getString("language")),
-                    extra = entry.arguments?.getBoolean("extra") == true,
                     onBack = { navController.popBackStack() },
                 )
             }

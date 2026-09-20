@@ -35,11 +35,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -74,11 +76,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
-import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.MeaningLanguage
@@ -106,38 +106,30 @@ import java.time.format.DateTimeFormatter
  * vocabulary written by hand, and it is a main reason to open the app rather
  * than a view of something that already lives elsewhere.
  *
- * ### The strip at the top
+ * ### The top of the tab
  *
- * It was a filled panel headed with a number — "14 cards to review" — over a
- * row of controls. The number was the loudest thing on the tab and it was a
- * scoreboard: it went up on its own, it could not be acted on except by
- * practising, and on a bad week it sat there in the accent colour counting how
- * far behind the reader was. A tab for making things should not open with a
- * debt.
+ * It has been a filled panel headed "14 cards to review" over a row of
+ * controls, and then a quieter strip with the same controls on it. Both were
+ * the same mistake in different weights: the first third of a tab about decks
+ * was given over to settings about how to practise them.
  *
- * What is left is the two questions practice actually needs answering — which
- * language the meanings are in, and which way round the cards are asked — and
- * one round button to start. What is due is still known and still decides
- * whether pressing that button deals a scheduled round or an extra one; it is
- * simply no longer shouted.
+ * Those settings are one button in the app bar now — [StudyPairMenu], four
+ * rows, next to the one that saves a copy — which is where a phone keeps the
+ * choices that belong to a whole screen. What is left below the bar is the one
+ * thing anybody came to this tab to do that is not about a particular deck:
+ * go through all of it. The decks begin immediately underneath.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlashcardsScreen(
     onOpenDeck: (deckId: Long) -> Unit,
-    onStudy: (
-        scope: StudyScope,
-        direction: StudyDirection,
-        language: MeaningLanguage,
-        extra: Boolean,
-    ) -> Unit,
+    onStudy: (scope: StudyScope, direction: StudyDirection, language: MeaningLanguage) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FlashcardsViewModel = viewModel(factory = FlashcardsViewModel.Factory),
 ) {
     val list by viewModel.list.collectAsStateWithLifecycle()
     val openShelves by viewModel.openShelves.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
-    val dueByDeck by viewModel.dueByDeck.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
     val language by viewModel.language.collectAsStateWithLifecycle()
     val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
@@ -159,16 +151,12 @@ fun FlashcardsScreen(
     val onRestore = { restoreLauncher.launch(BACKUP_OPEN_TYPES) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LifecycleResumeEffect(Unit) {
-        viewModel.onResumed()
-        onPauseOrDispose { }
-    }
-
     var creating by remember { mutableStateOf(false) }
     var newDeckCount by remember { mutableIntStateOf(0) }
     var renaming by remember { mutableStateOf<DeckWithCount?>(null) }
     var deleting by remember { mutableStateOf<DeckWithCount?>(null) }
     var picturing by remember { mutableStateOf<DeckWithCount?>(null) }
+    var picturingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var moving by remember { mutableStateOf<DeckWithCount?>(null) }
     var renamingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var deletingShelf by remember { mutableStateOf<DeckShelf?>(null) }
@@ -180,10 +168,6 @@ fun FlashcardsScreen(
         snackbarHostState.showSnackbar(text)
         viewModel.onMessageShown()
     }
-
-    /** How many of a set of decks are due, the way round currently chosen. */
-    fun dueIn(decks: List<DeckWithCount>): Int =
-        decks.sumOf { dueByDeck[it.id]?.dueIn(direction) ?: 0 }
 
     /** Whether a set of decks has anything to ask in the language chosen. */
     fun canPractise(decks: List<DeckWithCount>): Boolean = decks.any { deck ->
@@ -209,6 +193,11 @@ fun FlashcardsScreen(
                     )
                 },
                 actions = {
+                    StudyPairMenu(
+                        direction = direction,
+                        language = language,
+                        onChoose = viewModel::onChoosePair,
+                    )
                     IconButton(onClick = { showingBackup = true }) {
                         Icon(
                             painter = painterResource(R.drawable.ic_backup),
@@ -255,19 +244,10 @@ fun FlashcardsScreen(
                 // Only once there is something to practise: asking which way
                 // round to go through decks that have nothing in them is a
                 // question with no answer.
-                if (loaded.hasCards) {
+                if (loaded.hasCards && canPractise(loaded.allDecks)) {
                     item(key = "practice") {
-                        val due = dueIn(loaded.allDecks)
-                        PracticeStrip(
-                            direction = direction,
-                            language = language,
-                            onChooseDirection = viewModel::onChooseDirection,
-                            onChooseLanguage = viewModel::onChooseLanguage,
-                            // Nothing due is not a closed door: it is a round of
-                            // extra practice, off the schedule.
-                            onStudy = {
-                                onStudy(StudyScope.Everything, direction, language, due == 0)
-                            },
+                        PractiseEverything(
+                            onStudy = { onStudy(StudyScope.Everything, direction, language) },
                         )
                     }
                 }
@@ -277,21 +257,15 @@ fun FlashcardsScreen(
                 // collections existed.
                 loaded.shelves.forEach { shelf ->
                     item(key = "shelf-${shelf.id}") {
-                        val due = dueIn(shelf.decks)
                         ShelfRow(
                             shelf = shelf,
                             isOpen = shelf.id in openShelves,
-                            dueCount = due,
                             canPractise = canPractise(shelf.decks),
                             onToggle = { viewModel.onToggleShelf(shelf.id) },
                             onPractise = {
-                                onStudy(
-                                    StudyScope.Collection(shelf.id),
-                                    direction,
-                                    language,
-                                    due == 0,
-                                )
+                                onStudy(StudyScope.Collection(shelf.id), direction, language)
                             },
+                            onPicture = { picturingShelf = shelf },
                             onTogglePinned = {
                                 viewModel.setCollectionPinned(shelf.id, !shelf.collection.isPinned)
                             },
@@ -316,17 +290,11 @@ fun FlashcardsScreen(
                             DeckRow(
                                 deck = deck,
                                 direction = direction,
-                                dueCount = dueByDeck[deck.id]?.dueIn(direction) ?: 0,
                                 canPractise = canPractise(listOf(deck)),
                                 indent = ShelfIndent,
                                 onOpen = { onOpenDeck(deck.id) },
                                 onPractise = {
-                                    onStudy(
-                                        StudyScope.Deck(deck.id),
-                                        direction,
-                                        language,
-                                        (dueByDeck[deck.id]?.dueIn(direction) ?: 0) == 0,
-                                    )
+                                    onStudy(StudyScope.Deck(deck.id), direction, language)
                                 },
                                 onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
                                 onPicture = { picturing = deck },
@@ -339,15 +307,13 @@ fun FlashcardsScreen(
                 }
 
                 items(loaded.loose, key = { "deck-${it.id}" }) { deck ->
-                    val due = dueByDeck[deck.id]?.dueIn(direction) ?: 0
                     DeckRow(
                         deck = deck,
                         direction = direction,
-                        dueCount = due,
                         canPractise = canPractise(listOf(deck)),
                         onOpen = { onOpenDeck(deck.id) },
                         onPractise = {
-                            onStudy(StudyScope.Deck(deck.id), direction, language, due == 0)
+                            onStudy(StudyScope.Deck(deck.id), direction, language)
                         },
                         onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
                         onPicture = { picturing = deck },
@@ -371,6 +337,10 @@ fun FlashcardsScreen(
 
     picturing?.let { deck ->
         DeckPictureSheet(deck = deck, onDismiss = { picturing = null })
+    }
+
+    picturingShelf?.let { shelf ->
+        CollectionPictureSheet(shelf = shelf, onDismiss = { picturingShelf = null })
     }
 
     moving?.let { deck ->
@@ -515,55 +485,39 @@ fun FlashcardsScreen(
 }
 
 /**
- * The two questions practice needs answered, and the button that starts it.
+ * Go through the lot.
  *
- * Deliberately a strip on the page rather than a card on it. A filled panel is
- * a thing to read before getting to the list; this is a set of controls sitting
- * where controls sit, and the first deck begins immediately underneath.
+ * The one thing on this tab that is not about a particular deck, so the one
+ * thing that earns a place above them all. Not a round play button, unlike
+ * every other way into practice in the app: those sit on a row whose name is
+ * already beside them, and this one has nothing next to it to say what it
+ * would play.
  *
- * The language goes above the directions because the directions are drawn in
- * its flag: choosing English changes what the two pills below it show, and a
- * control that changes another should be read first.
+ * Drawn only when something could actually be asked — a tab full of decks with
+ * no English meanings in them has nothing to offer an English session, and a
+ * button that leads to an empty one is a button that lies.
  */
 @Composable
-private fun PracticeStrip(
-    direction: StudyDirection,
-    language: MeaningLanguage,
-    onChooseDirection: (StudyDirection) -> Unit,
-    onChooseLanguage: (MeaningLanguage) -> Unit,
-    onStudy: () -> Unit,
-) {
-    Column(
+private fun PractiseEverything(onStudy: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Space.screen)
             .padding(top = Space.sm, bottom = Space.md),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.flashcards_meanings_in),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            LanguageSwitch(selected = language, onSelect = onChooseLanguage)
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(top = Space.sm),
+        FilledTonalButton(
+            onClick = onStudy,
+            contentPadding = PaddingValues(horizontal = Space.lg, vertical = Space.sm),
         ) {
-            DirectionPills(
-                selected = direction,
-                language = language,
-                onSelect = onChooseDirection,
-                modifier = Modifier.weight(1f),
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
             )
-            Spacer(Modifier.width(Space.md))
-            PlayButton(
-                onClick = onStudy,
-                contentDescription = stringResource(R.string.flashcards_panel_start),
-                prominent = true,
-                size = 48.dp,
+            Text(
+                text = stringResource(R.string.flashcards_practise_all),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(start = Space.sm),
             )
         }
     }
@@ -583,11 +537,11 @@ private fun PracticeStrip(
 private fun ShelfRow(
     shelf: DeckShelf,
     isOpen: Boolean,
-    dueCount: Int,
     canPractise: Boolean,
     onToggle: () -> Unit,
     onPractise: () -> Unit,
     onTogglePinned: () -> Unit,
+    onPicture: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -671,15 +625,10 @@ private fun ShelfRow(
         if (canPractise) {
             PlayButton(
                 onClick = onPractise,
-                contentDescription = if (dueCount > 0) {
-                    stringResource(
-                        R.string.flashcards_practise_deck,
-                        shelf.collection.name,
-                        dueCount,
-                    )
-                } else {
-                    stringResource(R.string.flashcards_practise_deck_again, shelf.collection.name)
-                },
+                contentDescription = stringResource(
+                    R.string.flashcards_practise_name,
+                    shelf.collection.name,
+                ),
                 modifier = Modifier.padding(start = Space.sm),
             )
         }
@@ -712,6 +661,11 @@ private fun ShelfRow(
                     onClick = { onTogglePinned(); menuOpen = false },
                 )
                 DropdownMenuItem(
+                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
+                    text = { Text(stringResource(R.string.flashcards_deck_picture)) },
+                    onClick = { onPicture(); menuOpen = false },
+                )
+                DropdownMenuItem(
                     leadingIcon = { MenuIcon(Icons.Default.Edit) },
                     text = { Text(stringResource(R.string.folders_rename)) },
                     onClick = { onRename(); menuOpen = false },
@@ -741,8 +695,6 @@ private fun ShelfRow(
 private fun DeckRow(
     deck: DeckWithCount,
     direction: StudyDirection,
-    /** Due in the direction and language currently chosen, for what is announced. */
-    dueCount: Int,
     /**
      * Whether any of its cards can be asked in the language chosen. A deck with
      * no English meanings has nothing to offer an English session, and a play
@@ -829,15 +781,13 @@ private fun DeckRow(
         }
 
         if (canPractise) {
-            // A round mark reads at a glance; said out loud it needs the words,
-            // and out loud is the one place the count still belongs.
+            // A round mark reads at a glance; said out loud it needs the words.
             PlayButton(
                 onClick = onPractise,
-                contentDescription = if (dueCount > 0) {
-                    stringResource(R.string.flashcards_practise_deck, deck.name, dueCount)
-                } else {
-                    stringResource(R.string.flashcards_practise_deck_again, deck.name)
-                },
+                contentDescription = stringResource(
+                    R.string.flashcards_practise_name,
+                    deck.name,
+                ),
                 modifier = Modifier.padding(start = Space.sm),
             )
         }
@@ -1265,6 +1215,74 @@ private fun DeckPictureSheet(deck: DeckWithCount, onDismiss: () -> Unit) {
 }
 
 /**
+ * Choosing a collection's picture: the deck sheet's twin, searched with the
+ * shelf's name, with a way back to the borrowed picture when one has been
+ * chosen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CollectionPictureSheet(shelf: DeckShelf, onDismiss: () -> Unit) {
+    val viewModel: CollectionPictureViewModel = viewModel(
+        key = "collection-picture-${shelf.id}",
+        factory = CollectionPictureViewModel.factory(shelf.id),
+    )
+    val suggestions by viewModel.pictures.state.collectAsStateWithLifecycle()
+    val source by viewModel.pictures.source.collectAsStateWithLifecycle()
+    val done by viewModel.done.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val pickOwn = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let(viewModel::onPickOwn)
+    }
+    LaunchedEffect(done) { if (done) onDismiss() }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Space.screen)
+                .padding(bottom = Space.xl)
+                .navigationBarsPadding(),
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.flashcards_deck_picture_title,
+                    shelf.collection.name,
+                ),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = Space.md),
+            )
+            message?.resolved()?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = Space.sm),
+                )
+            }
+            PictureGrid(
+                suggestions = suggestions,
+                source = source,
+                onSourceChange = viewModel::onSourceChange,
+                onPick = viewModel::onPick,
+                onPickOwn = {
+                    pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onRetry = viewModel::onRetry,
+            )
+            if (shelf.chosenCover != null) {
+                OutlinedButton(
+                    onClick = viewModel::onRemove,
+                    modifier = Modifier.padding(top = Space.lg),
+                ) { Text(stringResource(R.string.flashcards_collection_picture_remove)) }
+            }
+        }
+    }
+}
+
+/**
  * Saving a copy of the cards, and bringing one back, in a sheet from the
  * corner button — with the line that says why it matters, which is a fact
  * nobody would guess from the rest of the screen.
@@ -1321,12 +1339,6 @@ private fun DeckWithCount.knownIn(direction: StudyDirection): Float {
         StudyDirection.MEANING_TO_CATALAN -> reverseBoxTotal
     }
     return (total.toFloat() / (cardCount * Leitner.LAST_BOX)).coerceIn(0f, 1f)
-}
-
-/** How many of a deck's cards are due in [direction]. */
-private fun DeckDue.dueIn(direction: StudyDirection): Int = when (direction) {
-    StudyDirection.CATALAN_TO_MEANING -> forwardDue
-    StudyDirection.MEANING_TO_CATALAN -> reverseDue
 }
 
 /**

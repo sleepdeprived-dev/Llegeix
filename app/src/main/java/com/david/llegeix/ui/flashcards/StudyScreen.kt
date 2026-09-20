@@ -63,7 +63,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.ImageSizing
-import com.david.llegeix.data.flashcards.NextDue
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
@@ -88,12 +87,11 @@ fun StudyScreen(
     scope: StudyScope,
     direction: StudyDirection,
     language: MeaningLanguage,
-    extra: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: StudyViewModel = viewModel(
-        key = "study-$scope-$direction-$language-$extra",
-        factory = StudyViewModel.factory(scope, direction, language, extra),
+        key = "study-$scope-$direction-$language",
+        factory = StudyViewModel.factory(scope, direction, language),
     ),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -205,13 +203,6 @@ fun StudyScreen(
                     },
                 )
 
-                state.isEmpty -> NothingDue(
-                    state = state,
-                    onSwitchDirection = viewModel::onSwitchDirection,
-                    onPractiseAnyway = viewModel::onPractiseAnyway,
-                    onBack = onBack,
-                )
-
                 state.isFinished -> Finished(
                     state = state,
                     onRepeat = viewModel::onRepeat,
@@ -235,77 +226,6 @@ fun StudyScreen(
         }
     }
 }
-
-/**
- * Nothing is due this way round.
- *
- * Said with the two facts that make it useful rather than a dead end: when
- * the next card comes back, so "nothing due" is a time rather than a verdict,
- * and — when there is any — the work waiting the other way round, one press
- * away, because somebody who sat down to practise did not sit down to be told
- * to go away.
- */
-@Composable
-private fun NothingDue(
-    state: StudyUiState,
-    onSwitchDirection: () -> Unit,
-    onPractiseAnyway: () -> Unit,
-    onBack: () -> Unit,
-) {
-    val nextDue = state.nextDueAt?.let { dueAt ->
-        val wait = NextDue.waitUntil(dueAt, System.currentTimeMillis())
-        pluralStringResource(
-            when (wait.unit) {
-                NextDue.Unit.MINUTES -> R.plurals.flashcards_next_due_minutes
-                NextDue.Unit.HOURS -> R.plurals.flashcards_next_due_hours
-                NextDue.Unit.DAYS -> R.plurals.flashcards_next_due_days
-            },
-            wait.amount,
-            wait.amount,
-        )
-    }
-    val canSwitch = state.otherDirectionDue > 0
-
-    EmptyState(
-        title = stringResource(R.string.flashcards_study_nothing_due_title),
-        body = listOfNotNull(
-            stringResource(R.string.flashcards_study_nothing_due_body),
-            nextDue,
-        ).joinToString(" "),
-        icon = painterResource(R.drawable.ic_check_circle),
-        // The work waiting the other way round first, when there is any; then
-        // going through these again anyway, because repetition is never wasted.
-        primaryAction = {
-            if (canSwitch) {
-                Button(onClick = onSwitchDirection) {
-                    Text(
-                        stringResource(
-                            R.string.flashcards_study_switch,
-                            directionName(state.otherDirection, state.language),
-                            state.otherDirectionDue,
-                        ),
-                    )
-                }
-            } else {
-                Button(onClick = onPractiseAnyway) {
-                    Text(stringResource(R.string.flashcards_practise_anyway))
-                }
-            }
-        },
-        secondaryAction = {
-            if (canSwitch) {
-                OutlinedButton(onClick = onPractiseAnyway) {
-                    Text(stringResource(R.string.flashcards_practise_anyway))
-                }
-            } else {
-                OutlinedButton(onClick = onBack) {
-                    Text(stringResource(R.string.practice_done))
-                }
-            }
-        },
-    )
-}
-
 
 /**
  * One card, asked — and turned over when the reader has had a go.

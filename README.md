@@ -130,7 +130,11 @@ does both after bumping the version in `app/build.gradle.kts`.
   only ticks: the list is ordered by what was in the collection when the picker
   opened and does not rearrange itself while you work down it, because ticking a
   book used to sort it to the top and take it out from under the finger that had
-  just tapped it, so a mistap could not be undone.
+  just tapped it, so a mistap could not be undone. A collection has a search
+  field of its own once it is built, matched against what you call a document as
+  well as against the file's own name — renaming a PDF is most of the point of
+  collections, and a search that only knew the file name would be searching a
+  list nobody is looking at.
 - **Organisation** — collections, tags with a colour and a name you can change
   at any time and sort by, reading history, and bookmarks, persisted in a Room
   database. A collection's colour is a disc behind its icon rather than a tint on
@@ -322,22 +326,40 @@ does both after bumping the version in `app/build.gradle.kts`.
   has a play button of its own. That button is the point of the feature —
   practising *food* is one session over every card on the shelf, dealt and
   scheduled like any other, not three sessions run back to back. A collection
-  owns nothing: deleting one leaves every deck that was on it exactly where it
-  was, and a deck belongs to at most one. Decks that are on no collection are
-  simply the list they always were, so a reader who never makes one never sees
-  one. The + makes either, with the choice as the first thing in the sheet
-  rather than behind a second floating button.
+  owns nothing but the grouping and, if it is given one, a picture: deleting one
+  leaves every deck that was on it exactly where it was, and a deck belongs to
+  at most one. The picture comes from the same grid a deck's does, searched with
+  the shelf's name, and a shelf with none borrows the picture of the first deck
+  on it — which is usually right and was, until it could be overruled,
+  unarguable. Decks that are on no collection are simply the list they always
+  were, so a reader who never makes one never sees one. The + makes either, with
+  the choice as the first thing in the sheet rather than behind a second
+  floating button.
 
-  The way into practice is the same round button everywhere it appears — on the
-  tab's own header for everything at once, on a collection, on a deck. It never
-  carries a number. It used to grow a count when something was due and shrink
-  back when nothing was, so the same control was three shapes down one screen;
-  and a number on a button reads as a promise about how many cards pressing it
-  will deal, which stops being true the moment another card falls due. What is
-  due belongs in the list, not on the button. For the same reason the tab no
-  longer opens with a panel headed *14 cards to review*: a place where things
-  are made should not greet anybody with a debt, and what is due still decides
-  whether a press deals a scheduled round or an extra one without being shouted.
+  The way into practice is the same round button on every collection and every
+  deck, and it never carries a number. It used to grow a count when something
+  was due and shrink back when nothing was, so the same control was three shapes
+  down one screen; and a number on a button reads as a promise about how many
+  cards pressing it will deal. Pressing it goes through *everything* in that
+  deck or on that collection — not the handful a schedule had picked out, which
+  was a defensible design and not the one anybody wanted. A deck is a thing
+  somebody wrote by hand, and going through it is the whole of what it is for.
+
+  The schedule is still there and still moves with every answer; what it decides
+  now is the *order*. The cards in the lowest Leitner box come first, so the
+  least known are met while there is most attention left, and cards level with
+  each other are shuffled so a deck never becomes a recitation. Those same boxes
+  fill the bar on each deck.
+
+  Which languages, and which way round, is one button in the app bar beside the
+  one that saves a copy: four rows — Catalan → Romanian, the way back, then the
+  same pair in English — each wearing its own flags, with the one in force
+  ticked. One card serves all four, because the meaning in each language is a
+  field on the card rather than a card of its own, and each direction keeps its
+  own half of the schedule. That button is the whole of what used to be a panel
+  headed *14 cards to review*, and then a strip of pills, across the top of the
+  tab. Below the bar there is one thing left, and it is the only thing there
+  that is not about a particular deck: *Practise them all*.
 
   Practice asks one way round at a time, and each way keeps its own schedule:
   recognising *pa* says nothing about producing it from *pâine*, so a right

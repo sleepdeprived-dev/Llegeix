@@ -9,7 +9,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
-import com.david.llegeix.data.db.dao.DeckDue
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.flashcards.DeckNames
@@ -22,11 +21,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -47,18 +43,27 @@ data class DeckShelf(
     val englishCount: Int get() = decks.sumOf { it.englishCount }
 
     /**
-     * The picture that stands for the shelf: the first picture any deck on it
-     * has, in the order the decks are listed.
+     * The picture that stands for the shelf: the one it was given, or failing
+     * that the first picture any deck on it has.
      *
-     * A collection is a grouping of things the reader already made, so it
-     * borrows rather than asking for a picture of its own — and what it borrows
-     * is the deck at the top of it, which is the one they pinned or the one
-     * that comes first by name.
+     * The borrowed one is the older behaviour and stays the default, because it
+     * is usually right and costs nobody a decision — *Food* showing the
+     * vegetables is a perfectly good *Food*. What it could not do was be
+     * overruled, and a shelf that had quietly settled on the parsley from
+     * *Herbs* had no way to be told otherwise.
      */
-    val coverImage: String? get() = decks.firstNotNullOfOrNull { it.coverImage }
+    val coverImage: String?
+        get() = collection.coverPath ?: decks.firstNotNullOfOrNull { it.coverImage }
 
     val coverCredit: String?
-        get() = decks.firstOrNull { it.coverImage != null }?.coverCredit
+        get() = if (collection.coverPath != null) {
+            collection.coverCredit
+        } else {
+            decks.firstOrNull { it.coverImage != null }?.coverCredit
+        }
+
+    /** Only the chosen picture, so the menu knows whether there is one to remove. */
+    val chosenCover: String? get() = collection.coverPath
 }
 
 /**
@@ -139,23 +144,6 @@ class FlashcardsViewModel(
     private val _language = MutableStateFlow(flashcards.prefs.language)
     val language: StateFlow<MeaningLanguage> = _language.asStateFlow()
 
-    /**
-     * The moment "due" is measured against.
-     *
-     * A due count is a question about the clock, and a query takes its answer
-     * at the moment it is asked. So the clock is moved on each time the tab is
-     * looked at again — coming back from a session, or from another app — and
-     * the counts follow, rather than a card that fell due ten minutes ago
-     * staying out of the count until the app is restarted.
-     */
-    private val now = MutableStateFlow(System.currentTimeMillis())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val dueByDeck: StateFlow<Map<Long, DeckDue>> = combine(now, _language) { at, language -> at to language }
-        .flatMapLatest { (at, language) -> flashcards.observeDueCounts(at, language) }
-        .map { rows -> rows.associateBy { it.deckId } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
-
     fun onChooseDirection(direction: StudyDirection) {
         _direction.value = direction
         flashcards.prefs.direction = direction
@@ -164,6 +152,19 @@ class FlashcardsViewModel(
     fun onChooseLanguage(language: MeaningLanguage) {
         _language.value = language
         flashcards.prefs.language = language
+    }
+
+    /**
+     * Both halves of "which languages, and which way round", set together.
+     *
+     * They were two controls and are now one menu of four, because they were
+     * never really two questions: nobody wants Catalan→English asked in
+     * Romanian. Setting them one at a time through the old pair meant passing
+     * through a combination nobody chose, however briefly.
+     */
+    fun onChoosePair(direction: StudyDirection, language: MeaningLanguage) {
+        onChooseDirection(direction)
+        onChooseLanguage(language)
     }
 
     fun setPinned(deck: DeckWithCount, pinned: Boolean) = viewModelScope.launch {
@@ -205,11 +206,6 @@ class FlashcardsViewModel(
         // Filing something into a shelf that is folded shut looks like the deck
         // disappearing, so the shelf it went onto opens.
         if (collectionId != null) _openShelves.update { it + collectionId }
-    }
-
-    /** The tab is being looked at again: count against the time it is now. */
-    fun onResumed() {
-        now.value = System.currentTimeMillis()
     }
 
     init {

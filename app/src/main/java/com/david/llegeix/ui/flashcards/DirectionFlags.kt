@@ -2,8 +2,7 @@ package com.david.llegeix.ui.flashcards
 
 import androidx.annotation.DrawableRes
 import com.david.llegeix.data.flashcards.MeaningLanguage
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Row
@@ -12,10 +11,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,9 +35,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.StudyDirection
-import com.david.llegeix.ui.common.Pill
-import com.david.llegeix.ui.common.PillGroup
-import com.david.llegeix.ui.common.Space
 
 /**
  * A direction of study as two flags and an arrow: the side you are shown, then
@@ -109,81 +114,63 @@ fun directionName(direction: StudyDirection, language: MeaningLanguage): String 
 }
 
 /**
- * Which way round the cards are asked, as two pills.
+ * Which languages, and which way round, as one menu of four.
  *
- * This replaces a pair of Material segmented buttons, which were the wrong
- * control twice over. They drew a shared outline divided by a hairline, which
- * is the shape of a form field rather than of a choice; and they insisted on
- * equal widths and a tick slot per item, so two flags and an arrow sat in a box
- * sized for a sentence. What was left looked like a setting somebody had to
- * fill in before they were allowed to practise.
+ * This replaces two controls that sat across the top of the Flashcards tab: a
+ * pair of pills for the direction and another pair for the language. They took
+ * a third of the screen above the decks, they were the first thing on a tab
+ * whose subject is the decks, and they were never two questions to begin with
+ * — the pair is *Catalan and Romanian, this way round*, and setting half of it
+ * at a time means passing through a combination nobody chose.
  *
- * Pills say the same thing without any of that: a groove, and the chosen way
- * round sitting solid on it. The flags do the work — *Català → Romanès* is two
- * words and an arrow to read twice, and two flags are told apart without
- * reading at all — and the direction's full name goes to anybody who cannot see
- * them, through the pill's own label.
+ * Four rows, in the order somebody would say them: Catalan → Romanian, the way
+ * back, then the same pair in English. Each row wears its own flags, so the
+ * list is read by looking rather than by reading, and carries the full name for
+ * anybody who cannot see them. The one in force is ticked.
+ *
+ * It lives in the app bar next to the backup button, which is where a phone
+ * keeps the settings that belong to a whole screen — and which leaves the tab
+ * itself to be what it is for.
  */
 @Composable
-fun DirectionPills(
-    selected: StudyDirection,
+fun StudyPairMenu(
+    direction: StudyDirection,
     language: MeaningLanguage,
-    onSelect: (StudyDirection) -> Unit,
+    onChoose: (StudyDirection, MeaningLanguage) -> Unit,
     modifier: Modifier = Modifier,
-    track: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
 ) {
-    PillGroup(modifier = modifier, track = track) {
-        StudyDirection.entries.forEach { direction ->
-            Pill(
-                selected = direction == selected,
-                onClick = { onSelect(direction) },
-                label = directionName(direction, language),
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = Space.sm, vertical = Space.sm),
-            ) {
-                DirectionFlags(direction = direction, language = language, flagWidth = 22.dp)
-            }
+    var open by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        IconButton(onClick = { open = true }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_language),
+                contentDescription = stringResource(R.string.flashcards_choose_pair),
+            )
         }
-    }
-}
-
-/**
- * Which language the meanings are practised in: the two flags as pills, the
- * one in use lifted onto the accent and the other flat on the groove.
- *
- * The same control as the direction switch, one size smaller, because it is the
- * same kind of question asked about something smaller. It was two flags in a
- * grey capsule with the unchosen one faded, which said "off" about a language
- * rather than "not this one" — English does not stop existing because you are
- * practising in Romanian.
- */
-@Composable
-fun LanguageSwitch(
-    selected: MeaningLanguage,
-    onSelect: (MeaningLanguage) -> Unit,
-    modifier: Modifier = Modifier,
-    track: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-) {
-    PillGroup(modifier = modifier, track = track, padding = 3.dp) {
-        MeaningLanguage.entries.forEach { language ->
-            Pill(
-                selected = language == selected,
-                onClick = { onSelect(language) },
-                label = stringResource(
-                    when (language) {
-                        MeaningLanguage.ROMANIAN -> R.string.lookup_target_romanian
-                        MeaningLanguage.ENGLISH -> R.string.lookup_target_english
-                    },
-                ),
-                contentPadding = PaddingValues(horizontal = 11.dp, vertical = 7.dp),
-            ) {
-                Image(
-                    painter = painterResource(language.flagRes),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(width = 22.dp, height = 15.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            for (meaning in MeaningLanguage.entries) {
+                for (way in StudyDirection.entries) {
+                    val chosen = way == direction && meaning == language
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            DirectionFlags(direction = way, language = meaning, flagWidth = 20.dp)
+                        },
+                        text = { Text(directionName(way, meaning)) },
+                        trailingIcon = {
+                            if (chosen) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        },
+                        onClick = {
+                            onChoose(way, meaning)
+                            open = false
+                        },
+                    )
+                }
             }
         }
     }

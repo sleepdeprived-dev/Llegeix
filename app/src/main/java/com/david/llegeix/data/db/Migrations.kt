@@ -579,3 +579,18 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
         )
     }
 }
+
+/**
+ * A collection can be given a picture of its own.
+ *
+ * Two nullable columns and nothing else. Null is the state every existing
+ * collection is in and stays a perfectly good answer afterwards: a shelf with
+ * no picture of its own wears the picture of the first deck on it, exactly as
+ * it did before this column existed.
+ */
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `flashcard_collections` ADD COLUMN `coverPath` TEXT")
+        db.execSQL("ALTER TABLE `flashcard_collections` ADD COLUMN `coverCredit` TEXT")
+    }
+}

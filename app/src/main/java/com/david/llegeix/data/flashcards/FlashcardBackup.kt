@@ -63,6 +63,22 @@ object FlashcardBackup {
         val reverseLastReviewedAt: Long? = null,
     )
 
+    /**
+     * A shelf, as the file records it.
+     *
+     * Only what a shelf owns: its name, and the picture it was given if it was
+     * given one. Which decks are on it is not recorded here — each deck names
+     * its own shelf, which is the same fact written once rather than twice and
+     * therefore the same fact that cannot disagree with itself.
+     */
+    data class Collection(
+        val name: String,
+        val isPinned: Boolean = false,
+        /** The picture's name inside the zip, e.g. `images/3f2a.jpg`. */
+        val cover: String? = null,
+        val coverCredit: String? = null,
+    )
+
     data class Deck(
         val name: String,
         val createdAt: Long,
@@ -96,11 +112,27 @@ object FlashcardBackup {
 
     // ---- Writing -----------------------------------------------------------
 
-    fun encode(decks: List<Deck>, exportedAt: Long): String {
+    fun encode(
+        decks: List<Deck>,
+        exportedAt: Long,
+        collections: List<Collection> = emptyList(),
+    ): String {
         val root = JSONObject()
             .put("format", FORMAT)
             .put("version", VERSION)
             .put("exportedAt", exportedAt)
+            .put(
+                "collections",
+                JSONArray(
+                    collections.map { collection ->
+                        JSONObject()
+                            .put("name", collection.name)
+                            .put("pinned", collection.isPinned)
+                            .putOpt("cover", collection.cover)
+                            .putOpt("coverCredit", collection.coverCredit)
+                    },
+                ),
+            )
             .put(
                 "decks",
                 JSONArray(
@@ -147,6 +179,30 @@ object FlashcardBackup {
      * is a card that starts again, not a copy that cannot be read — and strict
      * about what the file says it is.
      */
+    /**
+     * The shelves named in [json], by name.
+     *
+     * Separate from [decode] because they are separate things to put back: a
+     * deck is added or filled, a collection is found or made. A copy written
+     * before collections existed has none, which decodes to nothing at all and
+     * is exactly right.
+     */
+    fun decodeCollections(json: String): List<Collection> {
+        val root = runCatching { JSONObject(json) }.getOrNull() ?: return emptyList()
+        val listed = root.optJSONArray("collections") ?: return emptyList()
+        return (0 until listed.length()).mapNotNull { i ->
+            val entry = listed.optJSONObject(i) ?: return@mapNotNull null
+            val name = DeckNames.tidy(entry.optString("name"))
+            if (name.isEmpty()) return@mapNotNull null
+            Collection(
+                name = name,
+                isPinned = entry.optBoolean("pinned", false),
+                cover = entry.optStringOrNull("cover"),
+                coverCredit = entry.optStringOrNull("coverCredit"),
+            )
+        }
+    }
+
     fun decode(json: String): List<Deck> {
         val root = try {
             JSONObject(json)

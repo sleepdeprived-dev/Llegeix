@@ -35,13 +35,6 @@ data class DeckWithCount(
     val reverseBoxTotal: Int,
 )
 
-/** How many of a deck's cards are due in each direction of study. */
-data class DeckDue(
-    val deckId: Long,
-    val forwardDue: Int,
-    val reverseDue: Int,
-)
-
 @Dao
 interface FlashcardDao {
 
@@ -103,6 +96,9 @@ interface FlashcardDao {
 
     @Query("UPDATE flashcard_collections SET isPinned = :pinned WHERE id = :id")
     suspend fun setCollectionPinned(id: Long, pinned: Boolean)
+
+    @Query("UPDATE flashcard_collections SET coverPath = :path, coverCredit = :credit WHERE id = :id")
+    suspend fun setCollectionCover(id: Long, path: String?, credit: String?)
 
     /** The decks on it stay; their `collectionId` goes to null, by the foreign key. */
     @Query("DELETE FROM flashcard_collections WHERE id = :id")
@@ -202,24 +198,6 @@ interface FlashcardDao {
     @Query("SELECT * FROM flashcards")
     suspend fun allCards(): List<FlashcardEntity>
 
-    /**
-     * How many cards in each deck are due, in each direction.
-     *
-     * One row per deck that has cards; a deck missing from the answer has
-     * nothing in it to be due.
-     */
-    @Query(
-        """
-        SELECT deckId AS deckId,
-               SUM(CASE WHEN dueAt <= :now THEN 1 ELSE 0 END) AS forwardDue,
-               SUM(CASE WHEN reverseDueAt <= :now THEN 1 ELSE 0 END) AS reverseDue
-        FROM flashcards
-        WHERE :englishOnly = 0 OR (english IS NOT NULL AND TRIM(english) != '')
-        GROUP BY deckId
-        """,
-    )
-    fun observeDueCounts(now: Long, englishOnly: Boolean): Flow<List<DeckDue>>
-
     /** A deck's cards still without an English meaning, for filling them in. */
     @Query("SELECT * FROM flashcards WHERE deckId = :deckId AND (english IS NULL OR TRIM(english) = '')")
     suspend fun cardsWithoutEnglish(deckId: Long): List<FlashcardEntity>
@@ -259,6 +237,8 @@ interface FlashcardDao {
         SELECT imagePath FROM flashcards WHERE imagePath IS NOT NULL
         UNION
         SELECT coverPath FROM flashcard_decks WHERE coverPath IS NOT NULL
+        UNION
+        SELECT coverPath FROM flashcard_collections WHERE coverPath IS NOT NULL
         """,
     )
     suspend fun allImagePaths(): List<String>

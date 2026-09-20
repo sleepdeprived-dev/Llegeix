@@ -11,9 +11,13 @@ import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.source.DocumentNames
+import com.david.llegeix.data.flashcards.CardSearch
 import com.david.llegeix.data.source.LibraryDataRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,6 +29,13 @@ class FolderDetailViewModel(
     val documents: StateFlow<List<DocumentEntity>> =
         libraryData.observeDocumentsInFolder(folderId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query.asStateFlow()
+
+    fun onQueryChange(query: String) {
+        _query.value = query
+    }
 
     /** So a collection's rows carry the same progress bars as the library's. */
     val progress: StateFlow<Map<String, ReadingProgress>> = libraryData.observeProgress()
@@ -47,6 +58,31 @@ class FolderDetailViewModel(
     val tagsByDocument: StateFlow<Map<String, List<DocumentTag>>> =
         libraryData.observeTagsByDocument()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * The collection, narrowed by what has been typed.
+     *
+     * Matched against what the reader calls a document as well as against the
+     * file's own name, because those are often not the same thing at all here:
+     * renaming a PDF is most of the point of collections, and a search that
+     * only knew `PROVA_C1_2019_comprensio_lectora_v2.pdf` would be searching a
+     * list nobody is looking at. Accents are ignored for the same reason the
+     * flashcards ignore them — the half-remembered word is typed on whichever
+     * keyboard is up.
+     */
+    val shown: StateFlow<List<DocumentEntity>> =
+        combine(documents, _query, names) { documents, query, names ->
+            val needle = CardSearch.fold(query)
+            if (needle.isEmpty()) {
+                documents
+            } else {
+                documents.filter { document ->
+                    val title = names.titleFor(document.uriString, document.displayName)
+                    CardSearch.fold(title).contains(needle) ||
+                        CardSearch.fold(document.displayName).contains(needle)
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun onToggleTag(document: DocumentEntity, tag: TagEntity) = viewModelScope.launch {
         libraryData.toggleTag(document.uriString, document.displayName, tag.id)
