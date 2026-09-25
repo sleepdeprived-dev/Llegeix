@@ -78,7 +78,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.settings.AccentColor
-import com.david.llegeix.data.settings.AppLanguage
 import com.david.llegeix.data.settings.ThemeMode
 import com.david.llegeix.ui.common.Space
 import kotlin.math.roundToInt
@@ -176,22 +175,6 @@ fun SettingsScreen(
                         modifier = Modifier.padding(top = Space.xs),
                     )
                 }
-            }
-
-            SectionHeader(stringResource(R.string.settings_language))
-
-            // The app's own language, and nothing else. "Translate into" used
-            // to sit under it, and it was a setting for something that is not a
-            // setting: the reader's lookup panel carries the same choice as a
-            // flag next to the word, where the question is actually being
-            // asked, and answering it there is a tap rather than a trip to
-            // Configuració. Two controls for one preference means one of them
-            // is always the wrong place to look.
-            SettingsCard {
-                LanguagePicker(
-                    current = settings.language,
-                    onChoose = viewModel::onLanguageChange,
-                )
             }
 
             SectionHeader(stringResource(R.string.settings_privacy))
@@ -565,90 +548,6 @@ private fun ThemeTile(
         }
     }
 }
-
-/**
- * The app's language, as two cards: a flag and the language's own name.
- *
- * A flag is recognised before a word is read, and each name is written in its
- * own language, so the choice can be made whichever language the screen is in —
- * which matters most to somebody who has just switched to the one they do not
- * read. The chosen card is outlined and lit in the accent with a tick in its
- * corner, so which is in force is seen rather than worked out.
- */
-@Composable
-private fun LanguagePicker(current: AppLanguage, onChoose: (AppLanguage) -> Unit) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(Space.md),
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectableGroup(),
-    ) {
-        AppLanguage.entries.forEach { language ->
-            val selected = language == current
-            val shape = RoundedCornerShape(18.dp)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(shape)
-                    .background(
-                        if (selected) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
-                        },
-                    )
-                    .border(
-                        width = if (selected) 2.dp else 1.dp,
-                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                        shape = shape,
-                    )
-                    .selectable(selected = selected, role = Role.RadioButton) { onChoose(language) }
-                    .padding(vertical = Space.lg, horizontal = Space.md),
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Image(
-                        painter = painterResource(language.flagRes),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(width = 42.dp, height = 28.dp)
-                            .shadow(2.dp, RoundedCornerShape(5.dp))
-                            .clip(RoundedCornerShape(5.dp)),
-                    )
-                    Text(
-                        text = stringResource(language.labelRes),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (selected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
-                        modifier = Modifier.padding(top = Space.md),
-                    )
-                }
-                if (selected) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .size(20.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** The flag a language is known by: the Senyera for Catalan, the Union flag for English. */
-private val AppLanguage.flagRes: Int
-    get() = when (this) {
-        AppLanguage.CATALAN -> R.drawable.ic_flag_ca
-        AppLanguage.ENGLISH -> R.drawable.ic_flag_uk
-    }
 
 @Composable
 private fun AccentPicker(

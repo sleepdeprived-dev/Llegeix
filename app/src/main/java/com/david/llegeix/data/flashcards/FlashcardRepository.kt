@@ -9,6 +9,7 @@ import com.david.llegeix.data.db.dao.WeakCard
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
+import com.david.llegeix.data.db.entity.LearnedWordEntity
 import com.david.llegeix.data.flashcards.FlashcardBackup.toBackup
 import com.david.llegeix.data.flashcards.FlashcardBackup.toEntity
 import com.david.llegeix.util.runCatchingCancellable
@@ -282,6 +283,21 @@ class FlashcardRepository(
         StudyScope.Weak -> dao.weakCards()
     }
 
+    // ---- Words learned, by day ---------------------------------------------
+
+    fun observeLearned(): Flow<List<LearnedWordEntity>> = dao.observeLearned()
+
+    /** Add a word learned today; false, and nothing added, for a blank one. */
+    suspend fun addLearned(catalan: String, romanian: String, now: Long = System.currentTimeMillis()): Boolean {
+        val ca = DeckNames.tidy(catalan)
+        val ro = DeckNames.tidy(romanian)
+        if (ca.isEmpty() || ro.isEmpty()) return false
+        dao.insertLearned(LearnedWordEntity(catalan = ca, romanian = ro, learnedAt = now))
+        return true
+    }
+
+    suspend fun removeLearned(id: Long) = dao.deleteLearned(id)
+
     /** The weak words with the deck each is from, for their own list. */
     fun observeWeak(): Flow<List<WeakCard>> = dao.observeWeak()
 
@@ -402,7 +418,8 @@ class FlashcardRepository(
                     },
                 )
             }
-        backupFiles.write(uri, FlashcardBackup.encode(decks, now, collections), pictures)
+        val learned = dao.learnedWords().map { FlashcardBackup.Learned(it.catalan, it.romanian, it.learnedAt) }
+        backupFiles.write(uri, FlashcardBackup.encode(decks, now, collections, learned), pictures)
         return decks.sumOf { it.cards.size }
     }
 
@@ -523,6 +540,22 @@ class FlashcardRepository(
                         shelves[key] = made.copy(id = id)
                         return id
                     }
+                    // Words learned by day: added unless the same word, with
+                    // the same meaning, is already there on the same moment.
+                    val haveLearned = dao.learnedWords()
+                        .mapTo(HashSet()) { Triple(it.catalan.lowercase(Locale.ROOT), it.romanian.lowercase(Locale.ROOT), it.learnedAt) }
+                    for (word in FlashcardBackup.decodeLearned(unpacked.json)) {
+                        val key = Triple(word.catalan.lowercase(Locale.ROOT), word.romanian.lowercase(Locale.ROOT), word.learnedAt)
+                        if (haveLearned.add(key)) {
+                            dao.insertLearned(
+                                LearnedWordEntity(
+                                    catalan = word.catalan,
+                                    romanian = word.romanian,
+                                    learnedAt = word.learnedAt.takeIf { it > 0 } ?: now,
+                                ),
+                            )
+                        }
+                    }
                     for ((deck, cards) in prepared) {
                         val deckId = deck.existingId ?: dao.insertDeck(
                             FlashcardDeckEntity(
@@ -553,6 +586,7 @@ class FlashcardRepository(
             dao.clearCards()
             dao.clearDecks()
             dao.clearCollections()
+            dao.clearLearned()
         }
         images.deleteAll()
         prefs.clear()

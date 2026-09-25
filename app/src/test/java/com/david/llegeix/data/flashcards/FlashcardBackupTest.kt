@@ -66,6 +66,13 @@ class FlashcardBackupTest {
     }
 
     @Test
+    fun `words learned by day come back with their day`() {
+        val learned = listOf(FlashcardBackup.Learned("poma", "măr", 1_700_000_000_000))
+        val json = FlashcardBackup.encode(emptyList(), 0, learned = learned)
+        assertEquals(learned, FlashcardBackup.decodeLearned(json))
+    }
+
+    @Test
     fun `a file that is not a copy is refused as such`() {
         expectUnreadable(UnreadableException.Reason.NOT_A_BACKUP, "not json at all")
         expectUnreadable(UnreadableException.Reason.NOT_A_BACKUP, """{"hello":"world"}""")

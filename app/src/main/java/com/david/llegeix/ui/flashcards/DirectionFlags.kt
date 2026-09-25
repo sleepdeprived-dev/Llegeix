@@ -1,6 +1,12 @@
 package com.david.llegeix.ui.flashcards
 
 import androidx.annotation.DrawableRes
+import kotlinx.coroutines.delay
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
@@ -53,11 +59,8 @@ import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.Space
 
 /**
- * A direction of study as flags and an arrow: the side you are shown, then the
- * side you answer with.
- *
- * The meaning side is always both of the card's meanings — English and
- * Romanian together — so it is drawn as both flags, touching, as one side.
+ * A direction of study as two flags and an arrow: the side you are shown, then
+ * the side you answer with — the Senyera and Romania's, one way or the other.
  * The words are kept for anyone who cannot see the flags: the whole mark is
  * announced as the direction's full name.
  */
@@ -91,13 +94,10 @@ fun DirectionFlags(
     }
 }
 
-/** The English and Romanian flags side by side: the meaning side of a card. */
+/** The meaning side of a card: Romania's flag. */
 @Composable
 private fun MeaningFlags(width: Dp) {
-    Row(horizontalArrangement = Arrangement.spacedBy(width / 8)) {
-        Flag(MeaningLanguage.ENGLISH.flagRes, width)
-        Flag(MeaningLanguage.ROMANIAN.flagRes, width)
-    }
+    Flag(MeaningLanguage.ROMANIAN.flagRes, width)
 }
 
 @Composable
@@ -122,11 +122,10 @@ val MeaningLanguage.flagRes: Int
         MeaningLanguage.ENGLISH -> R.drawable.ic_flag_uk
     }
 
-/** "Catalan → English · Romanian", said in words, for screen readers and buttons. */
+/** "Català → romanès", said in words, for screen readers. */
 @Composable
 fun directionName(direction: StudyDirection): String {
-    val meaning = stringResource(R.string.lookup_target_english) + " · " +
-        stringResource(R.string.lookup_target_romanian)
+    val meaning = stringResource(R.string.lookup_target_romanian)
     return when (direction) {
         StudyDirection.CATALAN_TO_MEANING -> stringResource(R.string.flashcards_direction_from_catalan, meaning)
         StudyDirection.MEANING_TO_CATALAN -> stringResource(R.string.flashcards_direction_to_catalan, meaning)
@@ -146,10 +145,11 @@ data class PlayRequest(
 /**
  * Which way round — asked every time play is pressed.
  *
- * Two rows: the Catalan shown and its English and Romanian as the answer, or
- * the other way. Both meanings are always shown together, so there is no
- * language to choose, only a direction. The way used last time is lit, so
- * going again the same way is a tap on the obvious row.
+ * The title and two large tiles, and nothing else: the Senyera and Romania's
+ * flag with an arrow between them, one way and the other. No words — the flags
+ * say it faster — though each tile is still announced by name. The way used
+ * last time wears the accent and a tick, so going again the same way is a tap
+ * on the obvious tile.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,90 +161,109 @@ fun PlayPairSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    var chosen by remember { mutableStateOf(false) }
+    var chosen by remember { mutableStateOf<StudyDirection?>(null) }
     AppBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = Space.xl)
+                .padding(horizontal = Space.screen)
+                .padding(bottom = Space.xxl)
                 .navigationBarsPadding(),
         ) {
             Text(
                 text = request.title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = Space.screen),
-            )
-            Text(
-                text = stringResource(R.string.flashcards_choose_pair),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .padding(horizontal = Space.screen)
-                    .padding(top = Space.xs, bottom = Space.md),
+                    .fillMaxWidth()
+                    .padding(top = Space.sm, bottom = Space.xl),
             )
-            for (way in StudyDirection.entries) {
-                PairChoice(
-                    direction = way,
-                    isLast = way == lastDirection,
-                    onClick = {
-                        if (!chosen) {
-                            chosen = true
-                            // Closed first, so the session opens on a screen
-                            // that has finished moving.
-                            scope.launch { sheetState.hide() }.invokeOnCompletion {
-                                onDismiss()
-                                onChoose(way)
+            Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
+                for (way in StudyDirection.entries) {
+                    PairTile(
+                        direction = way,
+                        isSelected = way == (chosen ?: lastDirection),
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (chosen == null) {
+                                chosen = way
+                                // The tick moves first, then the sheet closes,
+                                // so the choice is seen being made.
+                                scope.launch {
+                                    delay(160)
+                                    sheetState.hide()
+                                }.invokeOnCompletion {
+                                    onDismiss()
+                                    onChoose(way)
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         }
     }
 }
 
-/** One way to practise, as its flags and its name, with a tick for last time's. */
+/** One way to practise: two big flags and an arrow on a rounded tile, ticked when it is the one. */
 @Composable
-private fun PairChoice(
+private fun PairTile(
     direction: StudyDirection,
-    isLast: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Space.md, vertical = 2.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (isLast) scheme.secondaryContainer else Color.Transparent)
+    val shape = RoundedCornerShape(24.dp)
+    val fill by animateColorAsState(
+        if (isSelected) scheme.primaryContainer else scheme.surfaceContainerHigh,
+        label = "pair fill",
+    )
+    val edge by animateColorAsState(
+        if (isSelected) scheme.primary else Color.Transparent,
+        label = "pair edge",
+    )
+    val name = directionName(direction)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(fill)
+            .border(2.dp, edge, shape)
             .clickable(onClick = onClick)
-            .heightIn(min = 64.dp)
-            .padding(horizontal = Space.md, vertical = Space.sm),
+            .semantics { contentDescription = name },
     ) {
-        CompositionLocalProvider(
-            LocalContentColor provides if (isLast) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
-        ) {
-            DirectionFlags(direction = direction, flagWidth = 26.dp)
-        }
-        Text(
-            text = directionName(direction),
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (isLast) scheme.onSecondaryContainer else scheme.onSurface,
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .weight(1f)
-                .padding(start = Space.lg),
-        )
-        if (isLast) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = scheme.onSecondaryContainer,
-                modifier = Modifier.size(20.dp),
-            )
+                .fillMaxWidth()
+                .padding(vertical = Space.xxl, horizontal = Space.md),
+        ) {
+            CompositionLocalProvider(
+                LocalContentColor provides if (isSelected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+            ) {
+                DirectionFlags(direction = direction, flagWidth = 44.dp)
+            }
+        }
+        // In the tile's own corner, clear of the flags.
+        if (isSelected) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(scheme.primary),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = scheme.onPrimary,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
     }
 }

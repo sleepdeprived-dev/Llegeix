@@ -16,14 +16,13 @@ import com.david.llegeix.util.withAppLocale
 class MainActivity : ComponentActivity() {
 
     /**
-     * The language is applied here rather than in the composition because
-     * resources are resolved against the activity's base context: wrapping it
-     * before anything is inflated means the very first frame is already in the
-     * chosen language.
+     * The app is in Catalan and only Catalan, whatever the phone's language.
+     * The locale is still set here, not merely the strings: Catalan's plural
+     * rules and its month names ("25 de setembre") come from the locale, and
+     * an English phone would otherwise count and date in English.
      */
     override fun attachBaseContext(newBase: Context) {
-        val language = SettingsRepository.storedLanguage(newBase)
-        super.attachBaseContext(newBase.withAppLocale(language.tag))
+        super.attachBaseContext(newBase.withAppLocale("ca"))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,17 +30,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val settingsRepository = (application as LlegeixApp).settingsRepository
-        // What attachBaseContext actually applied. Anything else means the user
-        // has just picked a different language and the activity has to be
-        // rebuilt against it.
-        val attachedLanguage = settingsRepository.current.language
 
         setContent {
             val settings by settingsRepository.settings.collectAsStateWithLifecycle()
-
-            LaunchedEffect(settings.language) {
-                if (settings.language != attachedLanguage) recreate()
-            }
 
             // Theme and accent need no restart: they are plain composition state.
             LlegeixTheme(

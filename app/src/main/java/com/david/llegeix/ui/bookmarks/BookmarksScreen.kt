@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -150,9 +151,13 @@ fun PagesPane(
 fun WordsPane(
     onOpenDocument: (uriString: String, title: String, page: Int?) -> Unit,
     onPractise: () -> Unit,
+    onOpenLearned: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: BookmarksViewModel = viewModel(factory = BookmarksViewModel.Factory),
 ) {
+    val learnedViewModel: LearnedWordsViewModel = viewModel(factory = LearnedWordsViewModel.Factory)
+    val learnedDays by learnedViewModel.days.collectAsStateWithLifecycle()
+    val addedToday = learnedDays.orEmpty().firstOrNull { it.date == java.time.LocalDate.now() }?.words?.size ?: 0
     val savedWords by viewModel.savedWords.collectAsStateWithLifecycle()
     val visibleWords by viewModel.visibleWords.collectAsStateWithLifecycle()
     val wordQuery by viewModel.wordQuery.collectAsStateWithLifecycle()
@@ -164,16 +169,19 @@ fun WordsPane(
     val learnedToday by viewModel.learnedToday.collectAsStateWithLifecycle()
 
     if (savedWords.isEmpty()) {
-        EmptyState(
-            title = stringResource(R.string.bookmarks_words_empty_title),
-            body = stringResource(R.string.bookmarks_words_empty_body),
-            icon = painterResource(R.drawable.ic_bookmark),
-            modifier = modifier,
-        )
+        Column(modifier = modifier.fillMaxSize()) {
+            LearnedFolderRow(todayCount = addedToday, onOpen = onOpenLearned)
+            EmptyState(
+                title = stringResource(R.string.bookmarks_words_empty_title),
+                body = stringResource(R.string.bookmarks_words_empty_body),
+                icon = painterResource(R.drawable.ic_bookmark),
+            )
+        }
         return
     }
 
     Column(modifier = modifier.fillMaxSize()) {
+        LearnedFolderRow(todayCount = addedToday, onOpen = onOpenLearned)
         PracticeHeader(
             savedCount = savedWords.size,
             dueCount = dueCount,
@@ -220,6 +228,67 @@ fun WordsPane(
                 }
             }
         }
+    }
+}
+
+/**
+ * The way into "Paraules que he après avui", as a folder at the top of the
+ * saved words: the words the reader adds by hand, day by day, apart from the
+ * ones saved while reading.
+ */
+@Composable
+private fun LearnedFolderRow(todayCount: Int, onOpen: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen)
+            .padding(top = Space.lg)
+            .clip(RoundedCornerShape(20.dp))
+            .background(scheme.secondaryContainer)
+            .clickable(onClick = onOpen)
+            .padding(Space.lg),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(scheme.secondary),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_folder),
+                contentDescription = null,
+                tint = scheme.onSecondary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.lg),
+        ) {
+            Text(
+                text = stringResource(R.string.learned_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = scheme.onSecondaryContainer,
+            )
+            Text(
+                text = if (todayCount > 0) {
+                    pluralStringResource(R.plurals.learned_folder_subtitle, todayCount, todayCount)
+                } else {
+                    stringResource(R.string.learned_folder_subtitle_none)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSecondaryContainer.copy(alpha = 0.8f),
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = scheme.onSecondaryContainer,
+        )
     }
 }
 

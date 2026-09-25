@@ -5,6 +5,7 @@ import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.Query
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
+import com.david.llegeix.data.db.entity.LearnedWordEntity
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import kotlinx.coroutines.flow.Flow
@@ -253,6 +254,24 @@ interface FlashcardDao {
         """,
     )
     suspend fun recordReverse(id: Long, box: Int, dueAt: Long, reviewedAt: Long)
+
+    // ---- Words learned, by day ---------------------------------------------
+
+    /** Newest first, which is also each day's words newest first. */
+    @Query("SELECT * FROM learned_words ORDER BY learnedAt DESC")
+    fun observeLearned(): Flow<List<LearnedWordEntity>>
+
+    @Query("SELECT * FROM learned_words")
+    suspend fun learnedWords(): List<LearnedWordEntity>
+
+    @Insert
+    suspend fun insertLearned(word: LearnedWordEntity): Long
+
+    @Query("DELETE FROM learned_words WHERE id = :id")
+    suspend fun deleteLearned(id: Long)
+
+    @Query("DELETE FROM learned_words")
+    suspend fun clearLearned()
 
     // ---- Weak words --------------------------------------------------------
 

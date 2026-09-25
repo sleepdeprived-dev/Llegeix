@@ -49,7 +49,6 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.WeakCard
 import com.david.llegeix.data.flashcards.FlashcardRepository
-import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
@@ -227,10 +226,7 @@ private fun WeakRow(item: WeakCard, onForget: () -> Unit, modifier: Modifier = M
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = listOfNotNull(
-                    MeaningLanguage.ENGLISH.meaningOf(card),
-                    MeaningLanguage.ROMANIAN.meaningOf(card),
-                ).joinToString(" · "),
+                text = card.romanian,
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant,
                 maxLines = 1,

@@ -633,11 +633,11 @@ private fun WeakRow(count: Int, onOpen: () -> Unit, onPractise: () -> Unit, modi
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = Space.screen, vertical = 5.dp)
+            .padding(horizontal = Space.screen, vertical = RowGap)
             .clip(RoundedCornerShape(22.dp))
             .background(scheme.tertiaryContainer)
             .clickable(onClick = onOpen)
-            .padding(Space.md),
+            .padding(horizontal = Space.lg, vertical = RowInset),
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -730,7 +730,7 @@ private fun ShelfRow(
             .fillMaxWidth()
             .treeGuides(guides)
             .padding(start = Space.screen + indent, end = Space.screen)
-            .padding(vertical = 5.dp)
+            .padding(vertical = RowGap)
             .clip(rowShape)
             .background(tint)
             .border(1.5.dp, edge, rowShape)
@@ -742,7 +742,7 @@ private fun ShelfRow(
                 onClick = onToggle,
                 onLongClick = { menuOpen = true },
             )
-            .padding(Space.md),
+            .padding(horizontal = Space.lg, vertical = RowInset),
     ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         ShelfCover(shelf = shelf, isOpen = isOpen)
@@ -852,14 +852,6 @@ private fun ShelfRow(
             }
         }
     }
-    // Folded shut, what is inside it, by name, across the whole width of the
-    // row — collections first, each with the collection mark, then decks.
-    if (!isOpen && !shelf.isEmpty) {
-        ShelfContents(
-            shelf,
-            modifier = Modifier.padding(start = ShelfTile + 6.dp + Space.lg, top = Space.sm),
-        )
-    }
     }
 }
 
@@ -903,11 +895,11 @@ private fun DeckRow(
             .fillMaxWidth()
             .treeGuides(guides)
             .padding(start = Space.screen + indent, end = Space.screen)
-            .padding(vertical = 5.dp)
+            .padding(vertical = RowGap)
             .clip(RoundedCornerShape(22.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .combinedClickable(onClick = onOpen, onLongClick = { menuOpen = true })
-            .padding(Space.md),
+            .padding(horizontal = Space.lg, vertical = RowInset),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Cover(
@@ -936,7 +928,7 @@ private fun DeckRow(
                 }
                 Text(
                     text = deck.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -947,7 +939,7 @@ private fun DeckRow(
                 } else {
                     pluralStringResource(R.plurals.flashcards_card_count, deck.cardCount, deck.cardCount)
                 },
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp),
             )
@@ -1097,63 +1089,6 @@ private fun shelfSummary(shelf: DeckShelf, withContents: Boolean): String = buil
     }
     add(pluralStringResource(R.plurals.flashcards_card_count, shelf.cardCount, shelf.cardCount))
 }.joinToString(" · ")
-
-/**
- * What a folded collection holds, by name, as chips: the collections inside
- * it first, each with the collection mark, then its decks — three at most and
- * a count of the rest, so the row stays one line tall however full it is.
- */
-@Composable
-private fun ShelfContents(shelf: DeckShelf, modifier: Modifier = Modifier) {
-    val scheme = MaterialTheme.colorScheme
-    val names = shelf.children.map { it.collection.name to true } + shelf.decks.map { it.name to false }
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.clipToBounds(),
-    ) {
-        names.take(ChipsShown).forEach { (name, isCollection) ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .widthIn(max = 132.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(scheme.surfaceContainerHighest)
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-            ) {
-                if (isCollection) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_collection),
-                        contentDescription = null,
-                        tint = scheme.primary,
-                        modifier = Modifier
-                            .padding(end = 4.dp)
-                            .size(12.dp),
-                    )
-                }
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        val more = names.size - ChipsShown
-        if (more > 0) {
-            Text(
-                text = "+$more",
-                style = MaterialTheme.typography.labelMedium,
-                color = scheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp),
-            )
-        }
-    }
-}
-
-/** How many names a folded collection shows before "+2". */
-private const val ChipsShown = 3
 
 /** A collection's square: a step smaller than a deck's cover, with room for its badge. */
 private val ShelfTile = 54.dp
@@ -1859,6 +1794,12 @@ private val CoverSize = 60.dp
 
 /** How far a deck on a shelf sits in from the margin. */
 private val ShelfIndent = 20.dp
+
+/** Half the space between two rows of the tab: room to breathe between them. */
+private val RowGap = 8.dp
+
+/** The space inside a row above and below its content. */
+private val RowInset = 14.dp
 
 /**
  * How deep the indent keeps going. Past this a shelf inside a shelf is drawn at

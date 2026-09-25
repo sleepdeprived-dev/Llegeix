@@ -57,27 +57,6 @@ enum class AccentColor(val key: String, @param:StringRes val labelRes: Int) {
 }
 
 /**
- * The language the app itself is shown in.
- *
- * Deliberately independent of the device language: this is a tool for reading
- * Catalan, so Catalan is the default even on an English phone. The label is not
- * a translatable string — each language is listed in its own language so the
- * picker stays readable whichever one is currently active.
- */
-enum class AppLanguage(val tag: String, @param:StringRes val labelRes: Int) {
-    CATALAN("ca", R.string.settings_language_catalan),
-    ENGLISH("en", R.string.settings_language_english),
-    ;
-
-    companion object {
-        val Default: AppLanguage = CATALAN
-
-        fun fromTag(tag: String?): AppLanguage =
-            entries.firstOrNull { it.tag == tag } ?: Default
-    }
-}
-
-/**
  * The language a tapped word is translated into.
  *
  * English is the default because that is what the app was built around, but the
@@ -268,7 +247,6 @@ enum class ReadingMode(
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accent: AccentColor = AccentColor.SYSTEM,
-    val language: AppLanguage = AppLanguage.Default,
     val libraryLayout: LibraryLayout = LibraryLayout.LIST,
     /** How much of the Continue reading shelf the library draws. See [ContinueShelf]. */
     val continueShelf: ContinueShelf = ContinueShelf.SHOWN,

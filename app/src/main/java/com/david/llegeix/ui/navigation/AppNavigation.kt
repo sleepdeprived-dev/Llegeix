@@ -35,6 +35,7 @@ import com.david.llegeix.ui.flashcards.DeckScreen
 import com.david.llegeix.ui.flashcards.FlashcardsScreen
 import com.david.llegeix.ui.flashcards.StudyScreen
 import com.david.llegeix.ui.flashcards.WeakWordsScreen
+import com.david.llegeix.ui.bookmarks.LearnedWordsScreen
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.ui.folders.FolderDetailScreen
@@ -81,6 +82,9 @@ private object Routes {
             "&direction={direction}&weak={weak}"
 
     fun flashcardDeck(deckId: Long): String = "flashcards/deck/$deckId"
+
+    /** The words learned, day by day. */
+    const val LEARNED = "saved/learned"
 
     /** The weak words: every card last answered "not yet". */
     const val FLASHCARD_WEAK = "flashcards/weak"
@@ -286,7 +290,12 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                     },
                     onOpenRecent = { navController.navigate(Routes.RECENT) },
                     onPractise = { navController.navigate(Routes.PRACTICE) },
+                    onOpenLearned = { navController.navigate(Routes.LEARNED) },
                 )
+            }
+
+            composable(Routes.LEARNED) {
+                LearnedWordsScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Routes.FLASHCARDS) {

@@ -8,7 +8,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.DataEraser
 import com.david.llegeix.data.settings.AccentColor
-import com.david.llegeix.data.settings.AppLanguage
 import com.david.llegeix.data.settings.AppSettings
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.ThemeMode
@@ -69,7 +68,6 @@ class SettingsViewModel(
 
     fun onAccentChange(accent: AccentColor) = settingsRepository.setAccent(accent)
 
-    fun onLanguageChange(language: AppLanguage) = settingsRepository.setLanguage(language)
 
     /**
      * Shown, folded away, or hidden, for the Continue reading shelf.

@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.PictureSearch
-import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -66,46 +65,6 @@ class DeckViewModel(
 
     fun onQueryChange(query: String) {
         _query.value = query
-    }
-
-    /**
-     * How many cards have no English meaning — the cards practice shows with
-     * their Romanian alone, since every card shows both when it has both.
-     */
-    val missingEnglish: StateFlow<Int> = cards.map { list ->
-        list.orEmpty().count { MeaningLanguage.ENGLISH.meaningOf(it) == null }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
-
-    private val _fillingEnglish = MutableStateFlow(false)
-    val fillingEnglish: StateFlow<Boolean> = _fillingEnglish.asStateFlow()
-
-    /**
-     * Ask the translator for the English of every card without one.
-     *
-     * Each is written as the card's English, to be corrected in the card like
-     * anything else; a word the translator cannot do is left for the reader.
-     */
-    fun onFillEnglish() {
-        if (_fillingEnglish.value) return
-        _fillingEnglish.value = true
-        viewModelScope.launch {
-            val translator = WordTranslator(targetLanguage = MeaningLanguage.ENGLISH.code)
-            try {
-                val ready = runCatchingCancellable { translator.ensureModel(requireWifi = true) }
-                if (ready.isFailure) {
-                    _message.value = UiText.of(R.string.flashcards_meaning_needs_model)
-                    return@launch
-                }
-                val filled = flashcards.fillEnglish(deckId) { word ->
-                    pictureSearch.meanings(word)?.english
-                        ?: runCatchingCancellable { translator.translate(word) }.getOrNull()
-                }
-                _message.value = UiText.ofPlural(R.plurals.flashcards_english_filled, filled)
-            } finally {
-                translator.close()
-                _fillingEnglish.value = false
-            }
-        }
     }
 
     private val _message = MutableStateFlow<UiText?>(null)

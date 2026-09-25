@@ -88,6 +88,9 @@ object FlashcardBackup {
         val parent: String? = null,
     )
 
+    /** A word learned on a day; optional in the file, as older copies have none. */
+    data class Learned(val catalan: String, val romanian: String, val learnedAt: Long)
+
     data class Deck(
         val name: String,
         val createdAt: Long,
@@ -125,6 +128,7 @@ object FlashcardBackup {
         decks: List<Deck>,
         exportedAt: Long,
         collections: List<Collection> = emptyList(),
+        learned: List<Learned> = emptyList(),
     ): String {
         val root = JSONObject()
             .put("format", FORMAT)
@@ -140,6 +144,17 @@ object FlashcardBackup {
                             .putOpt("cover", collection.cover)
                             .putOpt("coverCredit", collection.coverCredit)
                             .putOpt("parent", collection.parent)
+                    },
+                ),
+            )
+            .put(
+                "learned",
+                JSONArray(
+                    learned.map {
+                        JSONObject()
+                            .put("catalan", it.catalan)
+                            .put("romanian", it.romanian)
+                            .put("learnedAt", it.learnedAt)
                     },
                 ),
             )
@@ -190,6 +205,19 @@ object FlashcardBackup {
      * before collections existed has none, which decodes to nothing at all and
      * is exactly right.
      */
+    /** The words learned by day in [json]; none for a copy made before they existed. */
+    fun decodeLearned(json: String): List<Learned> {
+        val root = runCatching { JSONObject(json) }.getOrNull() ?: return emptyList()
+        val listed = root.optJSONArray("learned") ?: return emptyList()
+        return (0 until listed.length()).mapNotNull { i ->
+            val entry = listed.optJSONObject(i) ?: return@mapNotNull null
+            val catalan = DeckNames.tidy(entry.optString("catalan"))
+            val romanian = DeckNames.tidy(entry.optString("romanian"))
+            if (catalan.isEmpty() || romanian.isEmpty()) return@mapNotNull null
+            Learned(catalan, romanian, entry.optLong("learnedAt", 0))
+        }
+    }
+
     fun decodeCollections(json: String): List<Collection> {
         val root = runCatching { JSONObject(json) }.getOrNull() ?: return emptyList()
         val listed = root.optJSONArray("collections") ?: return emptyList()

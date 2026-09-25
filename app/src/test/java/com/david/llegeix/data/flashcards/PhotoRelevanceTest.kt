@@ -105,4 +105,26 @@ class PhotoRelevanceTest {
         assertEquals("Limes", PhotoRelevance.commonsCategory(json))
         assertNull(PhotoRelevance.commonsCategory("""{"claims":{}}"""))
     }
+
+    @Test
+    fun `the iNaturalist taxon and the category come from the concept's claims`() {
+        val json = """{"entities":{"Q729":{"claims":{
+            "P373":[{"mainsnak":{"datavalue":{"value":"Animalia"}}}],
+            "P3151":[{"mainsnak":{"datavalue":{"value":"1"}}}]}}}}"""
+        assertEquals("Animalia", PhotoRelevance.commonsCategory(json))
+        assertEquals("1", PhotoRelevance.inaturalistTaxon(json))
+    }
+
+    @Test
+    fun `iNaturalist photos are fetched larger than the square they are listed as`() {
+        val json = """{"results":[
+            {"taxon":{"preferred_common_name":"Lion"},"photos":[{"id":7,"license_code":"cc-by-nc",
+             "attribution":"(c) someone","url":"https://inaturalist-open-data.s3.amazonaws.com/photos/7/square.jpg"}]},
+            {"photos":[{"id":8,"license_code":null,"url":"https://x/photos/8/square.jpg"}]}
+        ]}"""
+        val hits = PictureResults.parseInaturalist(json, "lion")
+        assertEquals(1, hits.size)
+        assertTrue(hits.single().fullUrl.endsWith("/7/large.jpg"))
+        assertTrue(hits.single().thumbnailUrl.endsWith("/7/medium.jpg"))
+    }
 }

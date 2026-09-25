@@ -83,8 +83,6 @@ fun DeckScreen(
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val shown by viewModel.shown.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
-    val missingEnglish by viewModel.missingEnglish.collectAsStateWithLifecycle()
-    val fillingEnglish by viewModel.fillingEnglish.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var deleting by remember { mutableStateOf<FlashcardEntity?>(null) }
@@ -183,17 +181,6 @@ fun DeckScreen(
                     // was the one in the way: it sat between the search field
                     // and the cards, which are the two reasons anybody opens a
                     // deck.
-                    if (query.isBlank()) {
-                        if (missingEnglish > 0) {
-                            item(key = "english") {
-                                MissingEnglish(
-                                    count = missingEnglish,
-                                    isFilling = fillingEnglish,
-                                    onFill = viewModel::onFillEnglish,
-                                )
-                            }
-                        }
-                    }
                     items(found, key = { it.id }) { card ->
                         CardRow(
                             card = card,
@@ -351,40 +338,3 @@ private const val ThumbnailPixels = 192
 /** Clears the extended button: its 56dp, and the 16dp it floats above the edge. */
 private val CardListBottomClearance = 88.dp
 
-/**
- * Cards an English session would leave out, said once, with the way to fix it
- * beside it — rather than an English session that is mysteriously shorter
- * than the deck.
- */
-@Composable
-private fun MissingEnglish(count: Int, isFilling: Boolean, onFill: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Space.screen)
-            .padding(bottom = Space.sm)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .padding(start = Space.lg, end = Space.sm, top = Space.sm, bottom = Space.sm),
-    ) {
-        Image(
-            painter = painterResource(R.drawable.ic_flag_uk),
-            contentDescription = null,
-            modifier = Modifier
-                .size(width = 21.dp, height = 14.dp)
-                .clip(RoundedCornerShape(2.dp)),
-        )
-        Text(
-            text = pluralStringResource(R.plurals.flashcards_english_missing, count, count),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = Space.md),
-        )
-        TextButton(onClick = onFill, enabled = !isFilling) {
-            Text(stringResource(R.string.flashcards_english_fill))
-        }
-    }
-}

@@ -552,10 +552,57 @@ object PictureResults {
             .toList()
     }
 
-    /** Where Wikidata keeps a concept's Commons category (property P373). */
-    fun wikidataCategoryUrl(wikidataId: String): String =
-        "https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&property=P373&entity=" +
+    /**
+     * A concept's statements on Wikidata, which is where its Commons category
+     * (P373) and its iNaturalist taxon (P3151) both are.
+     */
+    fun wikidataClaimsUrl(wikidataId: String): String =
+        "https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=claims&ids=" +
             URLEncoder.encode(wikidataId, "UTF-8")
+
+    /**
+     * iNaturalist's best photographs of a taxon: research-grade observations —
+     * identified and agreed on by other people — the most voted-for first, and
+     * only those with an open licence, which on iNaturalist is mostly
+     * CC BY-NC. Free for a non-commercial app like this one.
+     */
+    fun inaturalistUrl(taxonId: String): String =
+        "https://api.inaturalist.org/v1/observations?taxon_id=" + URLEncoder.encode(taxonId, "UTF-8") +
+            "&photos=true&quality_grade=research&order_by=votes&per_page=$INATURALIST_FETCH" +
+            "&photo_license=cc0,cc-by,cc-by-sa,cc-by-nc,cc-by-nc-sa"
+
+    const val INATURALIST_FETCH = 30
+
+    /**
+     * iNaturalist's answer: one photo per observation, at a size for the grid
+     * and a larger one for the card. [query] is added to each photo's context,
+     * since every one of them is the thing searched for.
+     */
+    fun parseInaturalist(json: String, query: String): List<PictureHit> {
+        val results = try {
+            JSONObject(json).optJSONArray("results") ?: return emptyList()
+        } catch (error: JSONException) {
+            return emptyList()
+        }
+        return (0 until results.length()).mapNotNull { index ->
+            val observation = results.optJSONObject(index) ?: return@mapNotNull null
+            val photo = observation.optJSONArray("photos")?.optJSONObject(0) ?: return@mapNotNull null
+            val square = photo.optString("url").takeIf { it.startsWith("https://") && "/square." in it }
+                ?: return@mapNotNull null
+            if (photo.optString("license_code").isBlank()) return@mapNotNull null
+            val name = observation.optJSONObject("taxon")?.optString("preferred_common_name").orEmpty()
+            PictureHit(
+                source = PictureSource.PHOTOS,
+                id = "inat:" + photo.optLong("id"),
+                thumbnailUrl = square.replace("/square.", "/medium."),
+                fullUrl = square.replace("/square.", "/large."),
+                credit = listOf(photo.optString("attribution").takeIf { it.isNotBlank() }, "iNaturalist")
+                    .filterNotNull().joinToString(" · "),
+                context = "$query $name",
+                title = "$query $name",
+            )
+        }
+    }
 
     private val NOT_A_PICTURE =
         Regex("logo|flag|bandera|map[a_ .-]|mapa|escut|coat.of.arms|\\.svg", RegexOption.IGNORE_CASE)

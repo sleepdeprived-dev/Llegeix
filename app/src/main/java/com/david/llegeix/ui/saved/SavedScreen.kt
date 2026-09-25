@@ -79,6 +79,7 @@ fun SavedScreen(
     onOpenReadLater: () -> Unit,
     onOpenRecent: () -> Unit,
     onPractise: () -> Unit,
+    onOpenLearned: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Built here rather than inside the panes so that the three of them share
@@ -208,6 +209,7 @@ fun SavedScreen(
                     SavedTab.WORDS -> WordsPane(
                         onOpenDocument = onOpenDocument,
                         onPractise = onPractise,
+                        onOpenLearned = onOpenLearned,
                         viewModel = bookmarksViewModel,
                     )
                 }

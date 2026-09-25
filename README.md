@@ -366,10 +366,9 @@ does both after bumping the version in `app/build.gradle.kts`.
   Each deck is a card of its own on the tab, with a picture of its own — chosen
   from the same grid, or its first card's — a bar for how well it is known and
   its own way into practice. Decks can be pinned to the top. The decks are the
-  choice, so there is no second list of them to choose from. A card's meaning is
-  always shown in English and Romanian together, each behind its flag — *poma*
-  turns over to *apple* and *măr* — so one session teaches a word in both and
-  there is no language to choose. Going through cards again when none are due is always one press
+  choice, so there is no second list of them to choose from. Practice is Catalan and
+  Romanian only, one way or the other: *poma* turns over to *măr*. A card may
+  still carry an English word, which is only used to search for photos. Going through cards again when none are due is always one press
   away, as extra practice that does not move the schedule — repetition helps,
   and three right answers in ten minutes are not three days' learning. Saving a
   copy is a button in the corner.
@@ -382,8 +381,9 @@ does both after bumping the version in `app/build.gradle.kts`.
   The study card reads the same way on every side, top to bottom: the deck
   (when the session mixes decks), the picture, the question, a short rule,
   and the answer — the Catalan always with its pronunciation and speaker in
-  one pill under it, the meanings always English and Romanian behind their
-  flags. The tab and each deck have a sort button: by name, date, size, or —
+  one pill under it, the Romanian behind its flag. Play asks which way round
+  with two large tiles of flags and nothing else. The tab and each deck have a
+  sort button: by name, date, size, or —
   for cards — least known first.
 
   Decks can be grouped into collections, and collections into collections, to
@@ -548,10 +548,21 @@ one that exists.
 
 ## Language
 
-The interface is available in Catalan and English, and defaults to **Catalan**
-regardless of the device language — this is a tool for reading Catalan, so it
-starts there. The choice lives in Settings and applies to the app alone; it does
-not change the device. "Llegeix" is a proper noun and is never translated.
+The interface is in **Catalan only**, whatever the device language — this is a
+tool for reading Catalan, and there is no English version and no setting for
+one. The locale is set to Catalan too, so plurals and dates ("25 de setembre")
+come out Catalan on any phone. "Llegeix" is a proper noun and is never
+translated.
+
+In Desat → Paraules, *Paraules que he après avui* keeps the words learned each
+day with their Romanian, set out day by day — a date, then that day's words —
+with no day shown that has none. The Romanian fills itself in from ARASAAC's
+dictionary or the on-device translator, and the words travel in the flashcards
+backup.
+
+Photos of animals and plants also come from [iNaturalist](https://www.inaturalist.org):
+research-grade observations of the concept's taxon, found through Wikidata.
+Most are CC BY-NC, which suits a free, non-commercial app like this one.
 
 ## Requirements
 

@@ -229,8 +229,8 @@ fun StudyScreen(
  * Every face is laid out the same way, top to bottom, so the eye always knows
  * where to look: where the card is from, then the picture, then the question,
  * a short rule, and the answer. The Catalan always carries its pronunciation
- * and speaker in one pill right under it; the meanings are always the English
- * and the Romanian, each behind its flag. The picture shows the meaning, so it
+ * and speaker in one pill right under it; the meaning is the Romanian, behind
+ * its flag. The picture shows the meaning, so it
  * is on the front only when the meaning is the question — anywhere else it
  * would give the answer away.
  *
@@ -486,10 +486,7 @@ private fun Finished(
                     ) {
                         Text(card.catalan, style = MaterialTheme.typography.titleSmall)
                         Text(
-                            listOfNotNull(
-                                MeaningLanguage.ENGLISH.meaningOf(card),
-                                MeaningLanguage.ROMANIAN.meaningOf(card),
-                            ).joinToString(" · "),
+                            card.romanian,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -647,11 +644,7 @@ private fun CatalanBlock(card: FlashcardEntity, big: Boolean, answer: Boolean = 
     }
 }
 
-/**
- * Both of a card's meanings, each behind its own flag: the English, when the
- * card has one, then the Romanian. Always both, so one session teaches a word
- * in the two languages at once.
- */
+/** The card's meaning — its Romanian — behind Romania's flag. */
 @Composable
 private fun MeaningBlock(card: FlashcardEntity, big: Boolean, answer: Boolean = false) {
     val scheme = MaterialTheme.colorScheme
@@ -659,7 +652,7 @@ private fun MeaningBlock(card: FlashcardEntity, big: Boolean, answer: Boolean = 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(if (big) Space.sm else Space.xs),
     ) {
-        for (language in listOf(MeaningLanguage.ENGLISH, MeaningLanguage.ROMANIAN)) {
+        for (language in listOf(MeaningLanguage.ROMANIAN)) {
             val meaning = language.meaningOf(card) ?: continue
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Flag(language.flagRes, if (big) 26.dp else 18.dp)

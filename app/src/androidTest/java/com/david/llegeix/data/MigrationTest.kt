@@ -25,6 +25,7 @@ import com.david.llegeix.data.db.MIGRATION_17_18
 import com.david.llegeix.data.db.MIGRATION_18_19
 import com.david.llegeix.data.db.MIGRATION_19_20
 import com.david.llegeix.data.db.MIGRATION_20_21
+import com.david.llegeix.data.db.MIGRATION_21_22
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1097,16 +1098,29 @@ class MigrationTest {
         }
     }
 
+    /** Words learned by day: a new, empty table that takes a word. */
+    @Test
+    fun migrate21To22_addsLearnedWords() {
+        helper.createDatabase(TEST_DB, 21).close()
+        val db = helper.runMigrationsAndValidate(TEST_DB, 22, true, MIGRATION_21_22)
+        db.execSQL("INSERT INTO learned_words (catalan, romanian, learnedAt) VALUES ('poma', 'măr', 5)")
+        db.query("SELECT catalan, romanian FROM learned_words").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("poma", cursor.getString(0))
+            assertEquals("măr", cursor.getString(1))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To21_runsEveryStepInSequence() {
+    fun migrate1To22_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            21,
+            22,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -1128,6 +1142,7 @@ class MigrationTest {
             MIGRATION_18_19,
             MIGRATION_19_20,
             MIGRATION_20_21,
+            MIGRATION_21_22,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

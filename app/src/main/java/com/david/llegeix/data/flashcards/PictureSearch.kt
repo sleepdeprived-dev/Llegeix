@@ -140,11 +140,8 @@ class PictureSearch(context: Context) {
         val sharpened = listOfNotNull(english, hint).joinToString(" ")
         // Filed under the concept by people, and so ahead of word matches.
         val vouched = HashSet<String>()
-        val category = async {
-            concept?.wikidataId
-                ?.let { textFrom(PictureResults.wikidataCategoryUrl(it)) }
-                ?.let(PhotoRelevance::commonsCategory)
-        }
+        val claims = async { concept?.wikidataId?.let { textFrom(PictureResults.wikidataClaimsUrl(it)) } }
+        val category = async { claims.await()?.let(PhotoRelevance::commonsCategory) }
         val shelves = buildList {
             add(async {
                 category.await()?.let { name ->
@@ -162,6 +159,13 @@ class PictureSearch(context: Context) {
                     }
             })
             add(async { hitsFrom(PictureResults.commonsSearchUrl(english, hint), PictureResults::parseCommons) })
+            // The real animal or plant, when the concept is one iNaturalist knows.
+            add(async {
+                claims.await()?.let(PhotoRelevance::inaturalistTaxon)?.let { taxon ->
+                    hitsFrom(PictureResults.inaturalistUrl(taxon)) { PictureResults.parseInaturalist(it, english) }
+                        ?.also { found -> synchronized(vouched) { found.mapTo(vouched) { it.id } } }
+                }
+            })
             add(catalanWiki)
             for (page in 1..PictureResults.OPENVERSE_PAGES) {
                 add(async {

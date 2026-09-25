@@ -614,3 +614,18 @@ val MIGRATION_20_21 = object : Migration(20, 21) {
         db.execSQL("ALTER TABLE `flashcards` ADD COLUMN `weakAt` INTEGER")
     }
 }
+
+/**
+ * v4.4.1: the words learned each day, in a table of their own. Starts empty:
+ * they are words the reader adds, not ones the app can work out.
+ */
+val MIGRATION_21_22 = object : Migration(21, 22) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `learned_words` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`catalan` TEXT NOT NULL, `romanian` TEXT NOT NULL, `learnedAt` INTEGER NOT NULL)",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_learned_words_learnedAt` ON `learned_words` (`learnedAt`)")
+    }
+}

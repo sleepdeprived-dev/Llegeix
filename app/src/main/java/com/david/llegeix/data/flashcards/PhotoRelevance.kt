@@ -99,9 +99,24 @@ object PhotoRelevance {
     private fun hintIn(description: String): String? =
         words(description).firstOrNull { it in HINTS }
 
-    /** The Commons category Wikidata files the concept's pictures under, from `wbgetclaims`. */
-    fun commonsCategory(json: String): String? = try {
-        JSONObject(json).optJSONObject("claims")?.optJSONArray("P373")
+    /** The Commons category Wikidata files the concept's pictures under (P373). */
+    fun commonsCategory(json: String): String? = claim(json, "P373")
+
+    /**
+     * The concept's taxon on iNaturalist (P3151), when it is a living thing
+     * iNaturalist knows — *animal*, *lion*, *robin* — for photos of the real
+     * animal or plant, identified by people.
+     */
+    fun inaturalistTaxon(json: String): String? = claim(json, "P3151")?.takeIf { it.all(Char::isDigit) }
+
+    /** The first value of [property], from `wbgetclaims` or `wbgetentities` alike. */
+    private fun claim(json: String, property: String): String? = try {
+        val root = JSONObject(json)
+        val claims = root.optJSONObject("claims")
+            ?: root.optJSONObject("entities")?.let { entities ->
+                entities.keys().asSequence().firstOrNull()?.let { entities.optJSONObject(it) }
+            }?.optJSONObject("claims")
+        claims?.optJSONArray(property)
             ?.optJSONObject(0)?.optJSONObject("mainsnak")?.optJSONObject("datavalue")
             ?.optString("value")?.takeIf { it.isNotBlank() }
     } catch (error: JSONException) {
