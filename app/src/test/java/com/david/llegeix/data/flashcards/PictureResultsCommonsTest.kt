@@ -19,7 +19,7 @@ class PictureResultsCommonsTest {
           {"title":"File:Pa de pagès.jpg",
            "categories":[{"title":"Category:Breads of Catalonia"}],
            "imageinfo":[{
-             "thumburl":"https://upload.wikimedia.org/w/thumb/a/ab/Pa.jpg/320px-Pa.jpg",
+             "thumburl":"https://upload.wikimedia.org/w/thumb/a/ab/Pa.jpg/330px-Pa.jpg",
              "url":"https://upload.wikimedia.org/w/a/ab/Pa.jpg",
              "extmetadata":{
                "Artist":{"value":"<a href=\"/wiki/User:Someone\">Someone &amp; Co</a>"},
@@ -43,8 +43,8 @@ class PictureResultsCommonsTest {
     @Test
     fun `the full size is another thumbnail, not the original`() {
         val hit = PictureResults.parseCommons(answer).first()
-        assertTrue("the grid uses the small copy", hit.thumbnailUrl.contains("320px-"))
-        assertTrue("and the card a bigger one", hit.fullUrl.contains("800px-"))
+        assertTrue("the grid uses the small copy", hit.thumbnailUrl.contains("330px-"))
+        assertTrue("and the card a bigger one", hit.fullUrl.contains("960px-"))
         assertTrue("neither is the original", !hit.fullUrl.endsWith("/Pa.jpg"))
     }
 

@@ -42,28 +42,50 @@ data class PictureHit(
 object PictureResults {
 
     /**
-     * How many to offer.
+     * How many to ask each service for.
      *
-     * Twelve, which was two rows of the grid, and the complaint about it was
-     * fair: picking a picture for a word is a job you do by eye, and two rows
-     * is not enough to have found the right one in. Twenty-four is eight rows
-     * of three — enough to choose from, still a grid you can take in by
-     * scrolling rather than a gallery to be searched in its own right, and
-     * within what the thumbnail cache holds comfortably.
+     * There is no longer a cap on what is shown: the grid used to stop at
+     * twenty-four, which threw away pictures a service had already found and
+     * the reader might have wanted. Every source is asked for as much as it
+     * will give in one anonymous request, and everything that survives the
+     * safety check and the duplicate check is offered.
      */
-    const val LIMIT = 24
+    const val COMMONS_FETCH = 50
+
+    /** Openverse refuses more than twenty to a request made without a key. */
+    const val OPENVERSE_PAGE = 20
+
+    /** And so is asked for two pages. */
+    const val OPENVERSE_PAGES = 2
+
+    /** Global Symbols refuses a limit above a hundred. */
+    const val GLOBAL_SYMBOLS_FETCH = 100
+
+    const val WIKIPEDIA_FETCH = 20
 
     /**
-     * How many to ask each service for, more than are offered, so that the ones
-     * the safety check and the duplicate check drop still leave a full grid.
+     * The width Commons is asked to make its thumbnails at, for the grid.
+     *
+     * Wikimedia only makes thumbnails at a fixed ladder of widths now — 330,
+     * 500, 960, 1280 and so on — and answers any other width with an error.
+     * Asked for 320 it quietly sent 330, which broke the swap below to the
+     * larger size; asked for 800, it refused. So both are rungs of the ladder,
+     * and the swap matches whatever width came back.
      */
-    const val FETCH = 30
-
-    /** The width Commons is asked to make its thumbnails at, for the grid. */
-    private const val COMMONS_THUMBNAIL_PX = 320
+    private const val COMMONS_THUMBNAIL_PX = 330
 
     /** And the width the one chosen picture is fetched at. */
-    private const val COMMONS_FULL_PX = 800
+    private const val COMMONS_FULL_PX = 960
+
+    /** The width in a Wikimedia thumbnail's file name, "/330px-". */
+    private val THUMBNAIL_WIDTH = Regex("/\\d+px-")
+
+    /**
+     * The same picture at [COMMONS_FULL_PX] across. A picture smaller than that
+     * has no such copy; the download falls back to the thumbnail itself.
+     */
+    private fun fullSize(thumbnail: String): String =
+        thumbnail.replace(THUMBNAIL_WIDTH, "/${COMMONS_FULL_PX}px-")
 
     private val HTML_TAG = Regex("<[^>]*>")
     private val WHITESPACE = Regex("\\s+")
@@ -72,18 +94,19 @@ object PictureResults {
 
     /**
      * Whether a picture with this credit is a pictogram, and so drawn as one:
-     * a line drawing on white paper that the app cuts away and replaces with a
-     * colour of its theme.
+     * whole, on its own white paper, with a little air around it.
      *
      * By credit rather than by a flag on the card, because the credit is what a
      * card keeps — the source a picture came from is not stored anywhere else,
      * and cards made before Global Symbols existed carry only ARASAAC's.
      */
     fun isPictogram(credit: String?): Boolean =
-        credit != null && (credit.contains("ARASAAC") || credit.contains(GLOBAL_SYMBOLS))
+        credit != null &&
+            (credit.contains("ARASAAC") || credit.contains(GLOBAL_SYMBOLS) || credit.contains(OPENMOJI))
 
-    fun arasaacSearchUrl(word: String): String =
-        "https://api.arasaac.org/v1/pictograms/ca/search/" + encodePath(word.trim())
+    /** ARASAAC in Catalan, or — for the words it has only labelled in English — "en". */
+    fun arasaacSearchUrl(word: String, language: String = "ca"): String =
+        "https://api.arasaac.org/v1/pictograms/$language/search/" + encodePath(word.trim())
 
     /**
      * Global Symbols, asked for the same word in Catalan.
@@ -100,8 +123,9 @@ object PictureResults {
      * duplicate check in [PictureSearch] is what stops the grid showing the
      * same drawing side by side.
      */
-    fun globalSymbolsSearchUrl(word: String): String =
-        "https://globalsymbols.com/api/v1/labels/search?language=cat&limit=$FETCH&query=" +
+    fun globalSymbolsSearchUrl(word: String, language: String = "cat"): String =
+        "https://globalsymbols.com/api/v1/labels/search?language=$language" +
+            "&limit=$GLOBAL_SYMBOLS_FETCH&query=" +
             URLEncoder.encode(word.trim(), "UTF-8")
 
     /** The index of symbol sets, which is where a Global Symbols credit comes from. */
@@ -116,11 +140,19 @@ object PictureResults {
      * gallery does, and that path reads bitmaps. Offering a thumbnail that
      * cannot be drawn would be worse than offering one fewer.
      *
+     * Global Symbols searches by the start of a label, so *pa* also brings back
+     * *paciència*, *pala* and *palau*. Given the [query], only labels that have
+     * it as a whole word are kept: *pa*, *pa de motllo*, *pa amb tomàquet*.
+     *
      * @param setNames symbol set id to its name and licence, from
      *   [parseGlobalSymbolsSets]; the credit says "unknown" about neither, it
      *   simply leaves out what it was not told.
      */
-    fun parseGlobalSymbols(json: String, setNames: Map<Int, String> = emptyMap()): List<PictureHit> {
+    fun parseGlobalSymbols(
+        json: String,
+        setNames: Map<Int, String> = emptyMap(),
+        query: String? = null,
+    ): List<PictureHit> {
         val array = try {
             JSONArray(json)
         } catch (error: JSONException) {
@@ -128,6 +160,7 @@ object PictureResults {
         }
         return (0 until array.length()).asSequence()
             .mapNotNull { array.optJSONObject(it) }
+            .filter { query == null || hasWholeWord(it.optString("text"), query) }
             .mapNotNull { label ->
                 val picto = label.optJSONObject("picto") ?: return@mapNotNull null
                 val url = picto.optString("image_url").takeIf { it.startsWith("https://") }
@@ -142,9 +175,28 @@ object PictureResults {
                     credit = globalSymbolsCredit(setNames[setId]),
                 )
             }
-            .take(LIMIT)
             .toList()
     }
+
+    /**
+     * Whether [text] has every word of [query] in it as a word of its own, not
+     * as the start of a longer one. Case and accents are ignored, so *Pa* and
+     * *pa* are the same word, and so are *cafe* and *cafè*.
+     */
+    fun hasWholeWord(text: String, query: String): Boolean {
+        val words = wordsOf(text).toSet()
+        val wanted = wordsOf(query)
+        return wanted.isNotEmpty() && wanted.all { it in words }
+    }
+
+    private fun wordsOf(text: String): List<String> =
+        java.text.Normalizer.normalize(text.lowercase(Locale.ROOT), java.text.Normalizer.Form.NFD)
+            .replace(COMBINING_MARKS, "")
+            .split(NON_WORD)
+            .filter { it.isNotEmpty() }
+
+    private val COMBINING_MARKS = Regex("\\p{Mn}+")
+    private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
 
     /** Whether the app's bitmap decoder stands a chance with this file. */
     private fun isDrawableImage(url: String): Boolean {
@@ -180,10 +232,17 @@ object PictureResults {
             .toMap()
     }
 
-    fun openverseSearchUrl(query: String): String =
+    /**
+     * One page of Openverse's answer.
+     *
+     * Twenty to a page, because that is the most it gives a request without a
+     * key: asking for thirty got a refusal, not thirty, and every photo search
+     * came back from Openverse empty without anything saying so.
+     */
+    fun openverseSearchUrl(query: String, page: Int = 1): String =
         "https://api.openverse.org/v1/images/?q=" +
             URLEncoder.encode(query.trim(), "UTF-8") +
-            "&page_size=$FETCH&mature=false"
+            "&page_size=$OPENVERSE_PAGE&page=$page&mature=false"
 
     /**
      * Wikimedia Commons, asked for the same word.
@@ -203,7 +262,7 @@ object PictureResults {
      */
     fun commonsSearchUrl(query: String): String =
         "https://commons.wikimedia.org/w/api.php?action=query&format=json" +
-            "&formatversion=2&generator=search&gsrnamespace=6&gsrlimit=$FETCH" +
+            "&formatversion=2&generator=search&gsrnamespace=6&gsrlimit=$COMMONS_FETCH" +
             "&gsrsearch=" + URLEncoder.encode("filetype:bitmap " + query.trim(), "UTF-8") +
             "&prop=imageinfo%7Ccategories&cllimit=20&iiprop=url%7Cextmetadata" +
             "&iiurlwidth=$COMMONS_THUMBNAIL_PX"
@@ -232,7 +291,8 @@ object PictureResults {
             .mapNotNull { page ->
                 val info = page.optJSONArray("imageinfo")?.optJSONObject(0)
                     ?: return@mapNotNull null
-                val thumbnail = info.optString("thumburl").takeIf { it.startsWith("https://") }
+                val thumbnail = info.optString("thumburl").substringBefore('?')
+                    .takeIf { it.startsWith("https://") }
                     ?: return@mapNotNull null
                 val full = info.optString("url").takeIf { it.startsWith("https://") } ?: thumbnail
                 val meta = info.optJSONObject("extmetadata")
@@ -242,10 +302,7 @@ object PictureResults {
                     thumbnailUrl = thumbnail,
                     // Commons will make a copy at any width; asking for one the
                     // card can actually use saves pulling down the original.
-                    fullUrl = thumbnail.replace(
-                        "/${COMMONS_THUMBNAIL_PX}px-",
-                        "/${COMMONS_FULL_PX}px-",
-                    ),
+                    fullUrl = fullSize(thumbnail),
                     credit = commonsCredit(
                         creator = stripMarkup(meta?.optJSONObject("Artist")?.optString("value")),
                         license = meta?.optJSONObject("LicenseShortName")?.optString("value")
@@ -253,7 +310,6 @@ object PictureResults {
                     ),
                 )
             }
-            .take(LIMIT)
             .toList()
     }
 
@@ -310,7 +366,6 @@ object PictureResults {
                     credit = ARASAAC_CREDIT,
                 )
             }
-            .take(LIMIT)
             .toList()
     }
 
@@ -346,7 +401,6 @@ object PictureResults {
                     ),
                 )
             }
-            .take(LIMIT)
             .toList()
     }
 
@@ -368,6 +422,129 @@ object PictureResults {
         return listOfNotNull(creator.trim().takeIf { it.isNotEmpty() }, where, licence)
             .joinToString(" · ")
     }
+
+    /**
+     * The pictures at the top of Wikipedia's articles for a word.
+     *
+     * An article's lead picture was chosen by people to show what the article
+     * is about, which for a noun is very often exactly the photo a card wants:
+     * *Bread* leads with a basket of rolls, *Gos* with a dog. Asked in Catalan
+     * with the card's own word as well as in English with its translation, so a
+     * word the translator gets wrong still finds its article.
+     */
+    fun wikipediaSearchUrl(language: String, query: String): String =
+        "https://$language.wikipedia.org/w/api.php?action=query&format=json" +
+            "&formatversion=2&generator=search&gsrnamespace=0&gsrlimit=$WIKIPEDIA_FETCH" +
+            "&gsrsearch=" + URLEncoder.encode(query.trim(), "UTF-8") +
+            "&prop=pageimages&piprop=thumbnail%7Cname&pithumbsize=$COMMONS_THUMBNAIL_PX"
+
+    /**
+     * Wikipedia's answer, in the order the search ranked it.
+     *
+     * Only pictures kept on Commons: a Wikipedia may hold a few pictures of its
+     * own under "fair use", which is a licence to show them in that article and
+     * nowhere else. Logos, flags, maps and coats of arms are left out too —
+     * they lead the articles on places and companies, and are not a picture
+     * of a word.
+     */
+    fun parseWikipedia(json: String): List<PictureHit> {
+        val pages = try {
+            JSONObject(json).optJSONObject("query")?.optJSONArray("pages") ?: return emptyList()
+        } catch (error: JSONException) {
+            return emptyList()
+        }
+        return (0 until pages.length()).asSequence()
+            .mapNotNull { pages.optJSONObject(it) }
+            .sortedBy { it.optInt("index", Int.MAX_VALUE) }
+            .mapNotNull { page ->
+                val file = page.optString("pageimage").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val thumbnail = page.optJSONObject("thumbnail")?.optString("source")
+                    ?.substringBefore('?')
+                    ?.takeIf { it.startsWith("https://") && "/wikipedia/commons/" in it }
+                    ?: return@mapNotNull null
+                val title = page.optString("title")
+                if (NOT_A_PICTURE.containsMatchIn(file)) return@mapNotNull null
+                if (!isDrawableImage(thumbnail)) return@mapNotNull null
+                if (PictureSafety.isBlockedPhoto(title, listOf(file))) return@mapNotNull null
+                PictureHit(
+                    source = PictureSource.PHOTOS,
+                    // The same file as a Commons result, so the two are told
+                    // apart from each other by the duplicate check.
+                    id = "commons:File:" + file.replace('_', ' '),
+                    thumbnailUrl = thumbnail,
+                    fullUrl = fullSize(thumbnail),
+                    credit = listOf(file.substringBeforeLast('.').replace('_', ' '), "Wikimedia Commons")
+                        .joinToString(" · "),
+                )
+            }
+            .toList()
+    }
+
+    private val NOT_A_PICTURE =
+        Regex("logo|flag|bandera|map[a_ .-]|mapa|escut|coat.of.arms|\\.svg", RegexOption.IGNORE_CASE)
+
+    /**
+     * OpenMoji: four thousand emoji drawn as open, flat pictograms, every one
+     * of them under CC BY-SA 4.0 and served as PNG from a public CDN.
+     *
+     * There is no search service — the whole catalogue is one file of
+     * annotations in English, fetched once per run and searched on the phone.
+     * Skin-tone variants are left out: a card about *mà* wants the hand, not
+     * the same hand five times.
+     */
+    const val OPENMOJI_DATA_URL =
+        "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.1.0/data/openmoji.json"
+
+    private const val OPENMOJI_PNG =
+        "https://cdn.jsdelivr.net/gh/hfg-gmuend/openmoji@15.1.0/color/618x618/"
+
+    const val OPENMOJI = "OpenMoji"
+    const val OPENMOJI_CREDIT = "$OPENMOJI · CC BY-SA 4.0"
+
+    /** One OpenMoji, reduced to what a search needs. */
+    data class OpenMoji(val hexcode: String, val annotation: String, val tags: String)
+
+    fun parseOpenMojiIndex(json: String): List<OpenMoji> {
+        val array = try {
+            JSONArray(json)
+        } catch (error: JSONException) {
+            return emptyList()
+        }
+        return (0 until array.length()).mapNotNull { index ->
+            val emoji = array.optJSONObject(index) ?: return@mapNotNull null
+            if (emoji.optString("skintone").isNotEmpty()) return@mapNotNull null
+            val hexcode = emoji.optString("hexcode").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            OpenMoji(
+                hexcode = hexcode,
+                annotation = emoji.optString("annotation"),
+                tags = emoji.optString("tags") + ", " + emoji.optString("openmoji_tags"),
+            )
+        }
+    }
+
+    /**
+     * The OpenMoji whose name or tags have [english] as whole words: the ones
+     * named for it first — *bread* before *sandwich*, which is only tagged
+     * with it — and never more than a handful, since past that they are
+     * things that merely go with the word.
+     */
+    fun openMojiMatches(index: List<OpenMoji>, english: String): List<PictureHit> {
+        if (wordsOf(english).isEmpty()) return emptyList()
+        val named = index.filter { hasWholeWord(it.annotation, english) }
+        val tagged = index.filter { it !in named && hasWholeWord(it.tags, english) }
+        return (named + tagged).take(OPENMOJI_MAX).map { emoji ->
+            val url = OPENMOJI_PNG + emoji.hexcode + ".png"
+            PictureHit(
+                source = PictureSource.PICTOGRAMS,
+                id = "openmoji:" + emoji.hexcode,
+                thumbnailUrl = url,
+                fullUrl = url,
+                credit = OPENMOJI_CREDIT,
+            )
+        }
+    }
+
+    private const val OPENMOJI_MAX = 12
 
     /** A path segment, where a space is %20 rather than the query string's +. */
     private fun encodePath(segment: String): String =

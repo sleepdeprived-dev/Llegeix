@@ -14,6 +14,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -113,11 +119,11 @@ import java.time.format.DateTimeFormatter
  * the same mistake in different weights: the first third of a tab about decks
  * was given over to settings about how to practise them.
  *
- * Those settings are one button in the app bar now — [StudyPairMenu], four
- * rows, next to the one that saves a copy — which is where a phone keeps the
- * choices that belong to a whole screen. What is left below the bar is the one
- * thing anybody came to this tab to do that is not about a particular deck:
- * go through all of it. The decks begin immediately underneath.
+ * Those settings are not on the tab at all now. Which languages and which way
+ * round is asked when play is pressed — [PlayPairSheet] — which is the moment
+ * it matters. What is left below the bar is the one thing anybody came to
+ * this tab to do that is not about a particular deck: go through all of it.
+ * The decks begin immediately underneath.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,6 +164,7 @@ fun FlashcardsScreen(
     var picturing by remember { mutableStateOf<DeckWithCount?>(null) }
     var picturingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var moving by remember { mutableStateOf<DeckWithCount?>(null) }
+    var movingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var renamingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var deletingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var showingBackup by remember { mutableStateOf(false) }
@@ -169,12 +176,19 @@ fun FlashcardsScreen(
         viewModel.onMessageShown()
     }
 
-    /** Whether a set of decks has anything to ask in the language chosen. */
-    fun canPractise(decks: List<DeckWithCount>): Boolean = decks.any { deck ->
-        when (language) {
-            MeaningLanguage.ROMANIAN -> deck.cardCount > 0
-            MeaningLanguage.ENGLISH -> deck.englishCount > 0
-        }
+    /**
+     * Whether a set of decks has anything to ask. Every card has its Romanian,
+     * so any card at all is something; the English is asked about when play is
+     * pressed, and only offered where there is some.
+     */
+    fun canPractise(decks: List<DeckWithCount>): Boolean = decks.any { it.cardCount > 0 }
+
+    // Play asks which way round every time; this is what it is asking about.
+    var asking by remember { mutableStateOf<PlayRequest?>(null) }
+    val everything = stringResource(R.string.flashcards_practise_all)
+    val practiseName = stringResource(R.string.flashcards_practise_name)
+    fun play(scope: StudyScope, title: String, decks: List<DeckWithCount>) {
+        asking = PlayRequest(scope, title, hasEnglish = decks.any { it.englishCount > 0 })
     }
 
     Scaffold(
@@ -193,11 +207,6 @@ fun FlashcardsScreen(
                     )
                 },
                 actions = {
-                    StudyPairMenu(
-                        direction = direction,
-                        language = language,
-                        onChoose = viewModel::onChoosePair,
-                    )
                     IconButton(onClick = { showingBackup = true }) {
                         Icon(
                             painter = painterResource(R.drawable.ic_backup),
@@ -247,7 +256,70 @@ fun FlashcardsScreen(
                 if (loaded.hasCards && canPractise(loaded.allDecks)) {
                     item(key = "practice") {
                         PractiseEverything(
-                            onStudy = { onStudy(StudyScope.Everything, direction, language) },
+                            onStudy = { play(StudyScope.Everything, everything, loaded.allDecks) },
+                        )
+                    }
+                }
+
+                // Shelves inside shelves are drawn by the same function,
+                // one step further in each time.
+                fun LazyListScope.shelf(shelf: DeckShelf) {
+                    val depth = shelf.depth.coerceAtMost(MaxDrawnDepth)
+                    item(key = "shelf-${shelf.id}") {
+                        ShelfRow(
+                            shelf = shelf,
+                            isOpen = shelf.id in openShelves,
+                            canPractise = canPractise(shelf.allDecks),
+                            indent = ShelfIndent * depth,
+                            onToggle = { viewModel.onToggleShelf(shelf.id) },
+                            onPractise = {
+                                play(
+                                    StudyScope.Collection(shelf.id),
+                                    practiseName.format(shelf.collection.name),
+                                    shelf.allDecks,
+                                )
+                            },
+                            onPicture = { picturingShelf = shelf },
+                            onTogglePinned = {
+                                viewModel.setCollectionPinned(shelf.id, !shelf.collection.isPinned)
+                            },
+                            onMove = { movingShelf = shelf },
+                            onRename = { renamingShelf = shelf },
+                            onDelete = { deletingShelf = shelf },
+                        )
+                    }
+                    if (shelf.id !in openShelves) return
+                    val inside = ShelfIndent * (depth + 1)
+                    if (shelf.isEmpty) {
+                        item(key = "shelf-${shelf.id}-empty") {
+                            Text(
+                                text = stringResource(R.string.flashcards_collection_empty),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(start = Space.screen + inside)
+                                    .padding(end = Space.screen, top = Space.xs, bottom = Space.md),
+                            )
+                        }
+                    }
+                    // The shelves inside first, then its decks, the way the
+                    // top of the list puts shelves above loose decks.
+                    shelf.children.forEach { shelf(it) }
+                    items(shelf.decks, key = { "deck-${it.id}" }) { deck ->
+                        DeckRow(
+                            deck = deck,
+                            direction = direction,
+                            canPractise = canPractise(listOf(deck)),
+                            indent = inside,
+                            onOpen = { onOpenDeck(deck.id) },
+                            onPractise = {
+                                play(StudyScope.Deck(deck.id), practiseName.format(deck.name), listOf(deck))
+                            },
+                            onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
+                            onPicture = { picturing = deck },
+                            onMove = { moving = deck },
+                            onRename = { renaming = deck },
+                            onDelete = { deleting = deck },
                         )
                     }
                 }
@@ -255,56 +327,7 @@ fun FlashcardsScreen(
                 // The shelves first, then what is on no shelf. A reader who has
                 // never made a collection sees exactly the list they had before
                 // collections existed.
-                loaded.shelves.forEach { shelf ->
-                    item(key = "shelf-${shelf.id}") {
-                        ShelfRow(
-                            shelf = shelf,
-                            isOpen = shelf.id in openShelves,
-                            canPractise = canPractise(shelf.decks),
-                            onToggle = { viewModel.onToggleShelf(shelf.id) },
-                            onPractise = {
-                                onStudy(StudyScope.Collection(shelf.id), direction, language)
-                            },
-                            onPicture = { picturingShelf = shelf },
-                            onTogglePinned = {
-                                viewModel.setCollectionPinned(shelf.id, !shelf.collection.isPinned)
-                            },
-                            onRename = { renamingShelf = shelf },
-                            onDelete = { deletingShelf = shelf },
-                        )
-                    }
-                    if (shelf.id in openShelves) {
-                        if (shelf.decks.isEmpty()) {
-                            item(key = "shelf-${shelf.id}-empty") {
-                                Text(
-                                    text = stringResource(R.string.flashcards_collection_empty),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier
-                                        .padding(start = Space.screen + ShelfIndent)
-                                        .padding(end = Space.screen, top = Space.xs, bottom = Space.md),
-                                )
-                            }
-                        }
-                        items(shelf.decks, key = { "deck-${it.id}" }) { deck ->
-                            DeckRow(
-                                deck = deck,
-                                direction = direction,
-                                canPractise = canPractise(listOf(deck)),
-                                indent = ShelfIndent,
-                                onOpen = { onOpenDeck(deck.id) },
-                                onPractise = {
-                                    onStudy(StudyScope.Deck(deck.id), direction, language)
-                                },
-                                onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
-                                onPicture = { picturing = deck },
-                                onMove = { moving = deck },
-                                onRename = { renaming = deck },
-                                onDelete = { deleting = deck },
-                            )
-                        }
-                    }
-                }
+                loaded.shelves.forEach { shelf(it) }
 
                 items(loaded.loose, key = { "deck-${it.id}" }) { deck ->
                     DeckRow(
@@ -313,7 +336,7 @@ fun FlashcardsScreen(
                         canPractise = canPractise(listOf(deck)),
                         onOpen = { onOpenDeck(deck.id) },
                         onPractise = {
-                            onStudy(StudyScope.Deck(deck.id), direction, language)
+                            play(StudyScope.Deck(deck.id), practiseName.format(deck.name), listOf(deck))
                         },
                         onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
                         onPicture = { picturing = deck },
@@ -324,6 +347,20 @@ fun FlashcardsScreen(
                 }
             }
         }
+    }
+
+    asking?.let { request ->
+        PlayPairSheet(
+            request = request,
+            lastDirection = direction,
+            lastLanguage = language,
+            onDismiss = { asking = null },
+            onChoose = { way, meaning ->
+                // Remembered, so it is the row lit next time.
+                viewModel.onChoosePair(way, meaning)
+                onStudy(request.scope, way, meaning)
+            },
+        )
     }
 
     if (showingBackup) {
@@ -344,14 +381,27 @@ fun FlashcardsScreen(
     }
 
     moving?.let { deck ->
-        MoveToShelfSheet(
-            deck = deck,
-            shelves = list?.shelves.orEmpty(),
+        MoveSheet(
+            name = deck.name,
+            current = deck.collectionId,
+            shelves = list?.allShelves.orEmpty(),
             onDismiss = { moving = null },
-            onMove = { collectionId ->
-                viewModel.moveDeck(deck, collectionId)
-                moving = null
-            },
+            onMove = { collectionId -> viewModel.moveDeck(deck, collectionId) },
+            emptyHint = list?.allShelves.orEmpty().isEmpty(),
+        )
+    }
+
+    movingShelf?.let { shelf ->
+        // Not into itself, nor into anything inside it: that would take the
+        // whole branch out of the tree.
+        val own = shelf.allShelves.mapTo(HashSet()) { it.id }
+        MoveSheet(
+            name = shelf.collection.name,
+            current = shelf.collection.parentId,
+            shelves = list?.allShelves.orEmpty().filter { it.id !in own },
+            onDismiss = { movingShelf = null },
+            onMove = { parentId -> viewModel.moveCollection(shelf, parentId) },
+            emptyHint = false,
         )
     }
 
@@ -403,15 +453,16 @@ fun FlashcardsScreen(
             // what happens to what was on it. Nothing happens to it, and saying
             // so is the difference between a tidy-up and a moment of panic.
             text = {
+                val parent = list?.allShelves.orEmpty()
+                    .firstOrNull { it.id == shelf.collection.parentId }
                 Text(
-                    if (shelf.decks.isEmpty()) {
-                        stringResource(R.string.flashcards_delete_collection_body_empty)
-                    } else {
-                        pluralStringResource(
-                            R.plurals.flashcards_delete_collection_body,
-                            shelf.decks.size,
-                            shelf.decks.size,
+                    when {
+                        shelf.isEmpty -> stringResource(R.string.flashcards_delete_collection_body_empty)
+                        parent != null -> stringResource(
+                            R.string.flashcards_delete_collection_body_up_to,
+                            parent.collection.name,
                         )
+                        else -> stringResource(R.string.flashcards_delete_collection_body_up_top)
                     },
                 )
             },
@@ -542,8 +593,11 @@ private fun ShelfRow(
     onPractise: () -> Unit,
     onTogglePinned: () -> Unit,
     onPicture: () -> Unit,
+    onMove: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    /** How far in from the margin, so a shelf inside a shelf reads as being in it. */
+    indent: Dp = 0.dp,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val turn by animateFloatAsState(if (isOpen) 0f else -90f, label = "shelf chevron")
@@ -551,7 +605,8 @@ private fun ShelfRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Space.screen, vertical = 5.dp)
+            .padding(start = Space.screen + indent, end = Space.screen)
+            .padding(vertical = 5.dp)
             .clip(RoundedCornerShape(22.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .combinedClickable(onClick = onToggle, onLongClick = { menuOpen = true })
@@ -684,6 +739,11 @@ private fun ShelfRow(
                     leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
                     text = { Text(stringResource(R.string.flashcards_deck_picture)) },
                     onClick = { onPicture(); menuOpen = false },
+                )
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_move)) },
+                    text = { Text(stringResource(R.string.flashcards_move_to_collection)) },
+                    onClick = { onMove(); menuOpen = false },
                 )
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(Icons.Default.Edit) },
@@ -829,14 +889,14 @@ private fun DeckRow(
                     onClick = { onTogglePinned(); menuOpen = false },
                 )
                 DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_collection)) },
-                    text = { Text(stringResource(R.string.flashcards_move_to_collection)) },
-                    onClick = { onMove(); menuOpen = false },
-                )
-                DropdownMenuItem(
                     leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
                     text = { Text(stringResource(R.string.flashcards_deck_picture)) },
                     onClick = { onPicture(); menuOpen = false },
+                )
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_move)) },
+                    text = { Text(stringResource(R.string.flashcards_move_to_collection)) },
+                    onClick = { onMove(); menuOpen = false },
                 )
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(Icons.Default.Edit) },
@@ -899,25 +959,48 @@ private fun Cover(
 }
 
 /**
- * Which shelf a deck goes on, chosen from the shelves that exist.
+ * Where a deck or a shelf goes, chosen from the tree as it stands.
  *
- * A list of the reader's own collections and one row for none of them, rather
- * than a picker that can also invent one: making a collection is what the +
- * does, and offering it here as well would be the same decision reachable two
- * ways, each with its own idea of what is being made.
+ * The top level first, then every shelf in the order the list shows them,
+ * each stepped in under the one it is inside — so the sheet is a small map of
+ * the tab rather than a flat list of names that could be anywhere. Where the
+ * thing is now is lit and says so; tapping anywhere else moves it, and the
+ * sheet slides away before the list below rearranges, so the move is seen
+ * happening rather than arriving already done.
+ *
+ * Only places that exist are offered. Making a collection is what the + does,
+ * and offering it here as well would be the same decision reachable two ways.
+ *
+ * @param current the shelf it is in now, or null for the top level.
+ * @param emptyHint say that there are no collections yet, and how to make one.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MoveToShelfSheet(
-    deck: DeckWithCount,
+private fun MoveSheet(
+    name: String,
+    current: Long?,
     shelves: List<DeckShelf>,
     onDismiss: () -> Unit,
     onMove: (collectionId: Long?) -> Unit,
+    emptyHint: Boolean,
 ) {
-    AppBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    ) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    // A second tap while the sheet is closing would move it twice.
+    var chosen by remember { mutableStateOf(false) }
+    val choose: (Long?) -> Unit = { target ->
+        if (!chosen) {
+            chosen = true
+            scope.launch { sheetState.hide() }.invokeOnCompletion {
+                if (target != current) onMove(target)
+                onDismiss()
+            }
+        }
+    }
+    // The current place is known even when its shelf has gone, as the top.
+    val here = current?.takeIf { id -> shelves.any { it.id == id } }
+
+    AppBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -925,66 +1008,136 @@ private fun MoveToShelfSheet(
                 .padding(bottom = Space.xl)
                 .navigationBarsPadding(),
         ) {
-            Text(
-                text = stringResource(R.string.flashcards_move_title, deck.name),
-                style = MaterialTheme.typography.titleLarge,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = Space.screen, vertical = Space.sm),
-            )
-            if (shelves.isEmpty()) {
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_move),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.flashcards_move_title, name),
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = Space.md),
+                )
+            }
+            if (emptyHint) {
                 Text(
                     text = stringResource(R.string.flashcards_no_collections),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .padding(horizontal = Space.screen)
-                        .padding(top = Space.sm, bottom = Space.lg),
+                        .padding(top = Space.xs, bottom = Space.sm),
                 )
             }
-            ShelfChoice(
+            Spacer(Modifier.height(Space.sm))
+            MoveChoice(
+                icon = painterResource(R.drawable.ic_flashcards),
                 name = stringResource(R.string.flashcards_move_none),
-                chosen = deck.collectionId == null,
-                onClick = { onMove(null) },
+                detail = stringResource(R.string.flashcards_move_top_hint),
+                depth = 0,
+                isHere = here == null,
+                onClick = { choose(null) },
             )
             shelves.forEach { shelf ->
-                ShelfChoice(
+                MoveChoice(
+                    icon = painterResource(R.drawable.ic_collection),
                     name = shelf.collection.name,
-                    chosen = deck.collectionId == shelf.id,
-                    onClick = { onMove(shelf.id) },
+                    detail = null,
+                    // The top level is depth 0, so a shelf at the top is one in.
+                    depth = shelf.depth.coerceAtMost(MaxDrawnDepth) + 1,
+                    isHere = here == shelf.id,
+                    onClick = { choose(shelf.id) },
                 )
             }
         }
     }
 }
 
+/** One place in [MoveSheet]: a rounded row, stepped in by its depth, lit when it is where the thing is now. */
 @Composable
-private fun ShelfChoice(name: String, chosen: Boolean, onClick: () -> Unit) {
+private fun MoveChoice(
+    icon: Painter,
+    name: String,
+    detail: String?,
+    depth: Int,
+    isHere: Boolean,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .padding(start = Space.md + MoveStep * depth, end = Space.md, top = 2.dp, bottom = 2.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isHere) scheme.secondaryContainer else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = Space.screen, vertical = Space.md),
+            .heightIn(min = 56.dp)
+            .padding(horizontal = Space.md, vertical = Space.sm),
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_collection),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(22.dp),
-        )
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (isHere) scheme.surface.copy(alpha = 0.6f) else scheme.surfaceContainerHighest),
+        ) {
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                tint = if (isHere) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = Space.lg),
-        )
-        if (chosen) {
+                .padding(horizontal = Space.md),
+        ) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isHere) scheme.onSecondaryContainer else scheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (detail != null) {
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isHere) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (isHere) {
+            Text(
+                text = stringResource(R.string.flashcards_move_here_now),
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.onSecondaryContainer,
+                modifier = Modifier.padding(end = Space.xs),
+            )
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = scheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -1415,6 +1568,16 @@ private val CoverSize = 60.dp
 
 /** How far a deck on a shelf sits in from the margin. */
 private val ShelfIndent = 20.dp
+
+/**
+ * How deep the indent keeps going. Past this a shelf inside a shelf is drawn at
+ * the same step as its parent, rather than squeezing its name into a sliver at
+ * the right edge of the phone.
+ */
+private const val MaxDrawnDepth = 3
+
+/** A level of the tree in the move sheet: tighter than the list's, since it has no covers. */
+private val MoveStep = 16.dp
 
 /** Clears the + button: its 56dp, and the 16dp it floats above the bar. */
 private val BottomClearance = 88.dp

@@ -11,6 +11,7 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
+import com.david.llegeix.data.flashcards.CollectionTree
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.FlashcardBackup
 import com.david.llegeix.data.flashcards.FlashcardRepository
@@ -28,7 +29,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * A collection and the decks on it, as the list draws them.
+ * A collection, the decks on it and the collections inside it, as the list
+ * draws them.
  *
  * The counts are added up here rather than asked of SQL, because the decks
  * have already been loaded with theirs and a second query would have to repeat
@@ -37,14 +39,28 @@ import kotlinx.coroutines.launch
 data class DeckShelf(
     val collection: FlashcardCollectionEntity,
     val decks: List<DeckWithCount>,
+    /** The shelves directly inside this one, in the order they are listed. */
+    val children: List<DeckShelf> = emptyList(),
+    /** How many shelves up the top of the list is: 0 for a shelf at the top. */
+    val depth: Int = 0,
 ) {
     val id: Long get() = collection.id
-    val cardCount: Int get() = decks.sumOf { it.cardCount }
-    val englishCount: Int get() = decks.sumOf { it.englishCount }
+
+    /** Every deck on this shelf and on every shelf inside it, however deep. */
+    val allDecks: List<DeckWithCount> get() = decks + children.flatMap { it.allDecks }
+
+    /** This shelf and every shelf inside it, in the order the tree lists them. */
+    val allShelves: List<DeckShelf> get() = listOf(this) + children.flatMap { it.allShelves }
+
+    val cardCount: Int get() = allDecks.sumOf { it.cardCount }
+    val englishCount: Int get() = allDecks.sumOf { it.englishCount }
+
+    val isEmpty: Boolean get() = decks.isEmpty() && children.isEmpty()
 
     /**
      * The picture that stands for the shelf: the one it was given, or failing
-     * that the first picture any deck on it has.
+     * that the first picture any deck on it has — its own decks first, then
+     * those of the shelves inside it.
      *
      * The borrowed one is the older behaviour and stays the default, because it
      * is usually right and costs nobody a decision — *Food* showing the
@@ -53,13 +69,13 @@ data class DeckShelf(
      * *Herbs* had no way to be told otherwise.
      */
     val coverImage: String?
-        get() = collection.coverPath ?: decks.firstNotNullOfOrNull { it.coverImage }
+        get() = collection.coverPath ?: allDecks.firstNotNullOfOrNull { it.coverImage }
 
     val coverCredit: String?
         get() = if (collection.coverPath != null) {
             collection.coverCredit
         } else {
-            decks.firstOrNull { it.coverImage != null }?.coverCredit
+            allDecks.firstOrNull { it.coverImage != null }?.coverCredit
         }
 
     /** Only the chosen picture, so the menu knows whether there is one to remove. */
@@ -67,7 +83,8 @@ data class DeckShelf(
 }
 
 /**
- * The tab's list: the shelves, then the decks that are on no shelf.
+ * The tab's list: the shelves at the top of the tree, then the decks that are
+ * on no shelf.
  *
  * Null until the database has answered, which is what stops the screen
  * flashing "no decks yet" for a frame on every visit.
@@ -76,11 +93,41 @@ data class DeckList(
     val shelves: List<DeckShelf>,
     val loose: List<DeckWithCount>,
 ) {
-    val allDecks: List<DeckWithCount> get() = shelves.flatMap { it.decks } + loose
+    /** Every shelf, however deep, in the order the tree lists them. */
+    val allShelves: List<DeckShelf> get() = shelves.flatMap { it.allShelves }
+
+    val allDecks: List<DeckWithCount> get() = shelves.flatMap { it.allDecks } + loose
 
     val isEmpty: Boolean get() = shelves.isEmpty() && loose.isEmpty()
 
     val hasCards: Boolean get() = allDecks.any { it.cardCount > 0 }
+
+    companion object {
+        /**
+         * The rows laid out as a tree. A deck whose shelf has gone is loose,
+         * and a shelf whose parent has gone is at the top — nothing is ever
+         * lost from the list because what held it went first.
+         */
+        fun build(decks: List<DeckWithCount>, collections: List<FlashcardCollectionEntity>): DeckList {
+            val known = collections.mapTo(HashSet()) { it.id }
+            val byCollection = decks.groupBy { deck -> deck.collectionId?.takeIf { it in known } }
+            val parents = CollectionTree.parents(collections)
+            val childrenOf = collections.groupBy { parents[it.id] }
+            fun shelf(collection: FlashcardCollectionEntity, depth: Int): DeckShelf = DeckShelf(
+                collection = collection,
+                decks = byCollection[collection.id].orEmpty(),
+                children = childrenOf[collection.id].orEmpty().map { shelf(it, depth + 1) },
+                depth = depth,
+            )
+            return DeckList(
+                // A shelf with nothing on it is still listed: it was made on
+                // purpose, and a collection that vanished until something was
+                // put on it would look like the app having forgotten it.
+                shelves = childrenOf[null].orEmpty().map { shelf(it, 0) },
+                loose = byCollection[null].orEmpty(),
+            )
+        }
+    }
 }
 
 /**
@@ -118,14 +165,7 @@ class FlashcardsViewModel(
     /** The decks grouped under the shelves they are on, in the order both are listed. */
     val list: StateFlow<DeckList?> = combine(decks, collections) { decks, collections ->
         if (decks == null || collections == null) return@combine null
-        val byCollection = decks.groupBy { it.collectionId }
-        DeckList(
-            // A shelf with nothing on it is still listed: it was made on
-            // purpose, and a collection that vanished until something was put
-            // on it would look like the app having forgotten it.
-            shelves = collections.map { DeckShelf(it, byCollection[it.id].orEmpty()) },
-            loose = byCollection[null].orEmpty(),
-        )
+        DeckList.build(decks, collections)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun onToggleShelf(id: Long) {
@@ -179,7 +219,7 @@ class FlashcardsViewModel(
 
     /** Whether [name] could be used for a collection; see [checkName] for a deck's. */
     fun checkCollectionName(name: String, renaming: Long? = null): DeckNames.Check {
-        val others = list.value?.shelves.orEmpty()
+        val others = list.value?.allShelves.orEmpty()
             .filter { it.id != renaming }
             .map { it.collection.name }
         return DeckNames.check(name, others)
@@ -202,10 +242,37 @@ class FlashcardsViewModel(
 
     /** Put a deck on a shelf, or take it off one with null. */
     fun moveDeck(deck: DeckWithCount, collectionId: Long?) = viewModelScope.launch {
+        if (deck.collectionId == collectionId) return@launch
         flashcards.setDeckCollection(deck.id, collectionId)
-        // Filing something into a shelf that is folded shut looks like the deck
-        // disappearing, so the shelf it went onto opens.
-        if (collectionId != null) _openShelves.update { it + collectionId }
+        revealAndSay(deck.name, collectionId)
+    }
+
+    /** Put a shelf inside another, or at the top of the list with null. */
+    fun moveCollection(shelf: DeckShelf, parentId: Long?) = viewModelScope.launch {
+        if (shelf.collection.parentId == parentId) return@launch
+        if (flashcards.setCollectionParent(shelf.id, parentId)) revealAndSay(shelf.collection.name, parentId)
+    }
+
+    /**
+     * Open the way down to where something was just put, and say where.
+     *
+     * Filing something into a shelf that is folded shut looks like it
+     * disappearing — and with shelves inside shelves, the one it went into may
+     * itself be inside a closed one — so every shelf above it opens.
+     */
+    private fun revealAndSay(name: String, target: Long?) {
+        val shelves = list.value?.allShelves.orEmpty()
+        if (target != null) {
+            val parents = CollectionTree.parents(shelves.map { it.collection })
+            val path = generateSequence(target) { parents[it] }.toList()
+            _openShelves.update { it + path }
+        }
+        val where = target?.let { id -> shelves.firstOrNull { it.id == id }?.collection?.name }
+        _message.value = if (where == null) {
+            UiText.of(R.string.flashcards_moved_to_top, name)
+        } else {
+            UiText.of(R.string.flashcards_moved_to, name, where)
+        }
     }
 
     init {

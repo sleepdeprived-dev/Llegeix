@@ -82,19 +82,45 @@ class FlashcardRepository(
     }
 
     /**
-     * Take a shelf away, and leave every deck that was on it alone.
+     * Take a shelf away, and leave everything that was in it alone.
      *
      * No cards are touched and no deck's picture goes: a collection owns
-     * nothing but the grouping, and its own picture if it was given one. That
-     * one file is deleted with it, in the order [deleteDeck] explains — the row
+     * nothing but the grouping, and its own picture if it was given one. What
+     * was inside it — decks and shelves both — moves up one level, into the
+     * shelf that held it, so deleting *Fruit* from inside *Food* leaves its
+     * decks in *Food* rather than scattered at the top of the list.
+     *
+     * The picture is deleted in the order [deleteDeck] explains — the row
      * first, then the file, so nothing is ever left pointing at a picture that
      * is no longer there.
      */
     suspend fun deleteCollection(id: Long) {
-        val cover = dao.collection(id)?.coverPath
-        dao.deleteCollection(id)
+        val cover = database.withTransaction {
+            val shelf = dao.collection(id) ?: return@withTransaction null
+            val parent = CollectionTree.parents(dao.collections())[id]
+            dao.moveDecksBetween(from = id, to = parent)
+            dao.moveChildCollections(from = id, to = parent)
+            dao.deleteCollection(id)
+            shelf.coverPath
+        }
         cover?.let { images.delete(listOf(it)) }
     }
+
+    /**
+     * Put a shelf inside another, or at the top of the list with null.
+     *
+     * Refused — returning false — when [parentId] is the shelf itself or is
+     * somewhere inside it, which would lift the whole branch out of the tree
+     * into a loop that nothing could reach.
+     */
+    suspend fun setCollectionParent(id: Long, parentId: Long?): Boolean =
+        database.withTransaction {
+            val all = dao.collections()
+            if (!CollectionTree.canMove(id, parentId, all)) return@withTransaction false
+            if (parentId != null && all.none { it.id == parentId }) return@withTransaction false
+            dao.setCollectionParent(id, parentId)
+            true
+        }
 
     /** Put a deck on a shelf, or take it off one with null. */
     suspend fun setDeckCollection(deckId: Long, collectionId: Long?) =
@@ -264,8 +290,8 @@ class FlashcardRepository(
     /** Copy a picked photo in, shrunk. Returns its stored path. */
     suspend fun importImage(uri: Uri): String = images.import(uri)
 
-    suspend fun loadImage(path: String, maxEdge: Int, cutPaper: Boolean = false): Bitmap? =
-        images.load(path, maxEdge, cutPaper)
+    suspend fun loadImage(path: String, maxEdge: Int): Bitmap? =
+        images.load(path, maxEdge)
 
     suspend fun deleteImage(path: String) = images.delete(listOf(path))
 
@@ -296,6 +322,7 @@ class FlashcardRepository(
         val cardsByDeck = dao.allCards().groupBy { it.deckId }
         val shelves = dao.collections()
         val collectionNames = shelves.associate { it.id to it.name }
+        val parents = CollectionTree.parents(shelves)
         val pictures = LinkedHashMap<String, File>()
         val collections = shelves
             .sortedBy { it.name.lowercase(Locale.ROOT) }
@@ -310,6 +337,7 @@ class FlashcardRepository(
                     isPinned = shelf.isPinned,
                     cover = coverEntry,
                     coverCredit = shelf.coverCredit.takeIf { coverEntry != null },
+                    parent = parents[shelf.id]?.let(collectionNames::get),
                 )
             }
         val decks = dao.decks()
@@ -425,17 +453,30 @@ class FlashcardRepository(
                         .associateByTo(HashMap()) {
                             DeckNames.tidy(it.name).lowercase(Locale.ROOT)
                         }
+                    // Shelves being made right now, so a copy whose shelves
+                    // name each other as parents in a circle ends rather than
+                    // recursing for ever; the one that closes the circle goes
+                    // at the top.
+                    val making = HashSet<String>()
                     suspend fun shelfFor(name: String): Long {
                         val key = DeckNames.tidy(name).lowercase(Locale.ROOT)
                         shelves[key]?.let { return it.id }
+                        making += key
                         // Only a shelf this restore creates takes what the copy
                         // says about it. One already on the phone keeps its own
                         // pin and its own picture, for the reason the whole
                         // restore works this way: a copy adds, and never
                         // rearranges what is already here.
                         val described = incomingShelves[key]
+                        // The shelf it was inside, made first if it is not
+                        // here yet — so a deck three shelves deep comes back
+                        // three shelves deep.
+                        val parentId = described?.parent
+                            ?.takeIf { DeckNames.tidy(it).lowercase(Locale.ROOT) !in making }
+                            ?.let { shelfFor(it) }
                         val made = FlashcardCollectionEntity(
                             name = DeckNames.tidy(name),
+                            parentId = parentId,
                             isPinned = described?.isPinned == true,
                             coverPath = described?.cover?.let { shelfCovers[it] },
                             coverCredit = described?.coverCredit

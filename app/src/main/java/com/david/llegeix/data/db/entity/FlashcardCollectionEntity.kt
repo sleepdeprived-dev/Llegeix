@@ -6,11 +6,11 @@ import androidx.room.PrimaryKey
 /**
  * A shelf of decks: "Food", holding "Vegetables", "Fruit" and "At the market".
  *
- * One level of grouping and deliberately no more. A reader with twenty decks
- * on one subject wants two things — to practise *Vegetables*, and to practise
- * all of food at once — and a shelf gives them both. A shelf inside a shelf
- * gives them a filing system to maintain instead, and the answer to "where is
- * that card" stops being a glance and becomes a search.
+ * A reader with twenty decks on one subject wants two things — to practise
+ * *Vegetables*, and to practise all of food at once — and a shelf gives them
+ * both. Shelves can sit inside other shelves ([parentId]), to any depth, so
+ * *Food* can hold *Fruit* and *Fruit* its own decks; practising a shelf goes
+ * through everything under it.
  *
  * A deck belongs to at most one shelf, and belonging to none is normal: a
  * reader who never makes a collection never sees one, and the decks sit in the
@@ -43,4 +43,13 @@ data class FlashcardCollectionEntity(
     val coverPath: String? = null,
     /** Who made [coverPath], when it came from a search. */
     val coverCredit: String? = null,
+    /**
+     * The shelf this one sits inside, or null for one at the top of the list.
+     *
+     * No foreign key: deleting a shelf moves what was inside it up a level
+     * (see the repository), which a key's SET NULL would do wrongly — to the
+     * top rather than to the parent. A parent that has gone anyway is read as
+     * no parent.
+     */
+    val parentId: Long? = null,
 )

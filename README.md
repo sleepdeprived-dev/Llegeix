@@ -233,8 +233,10 @@ does both after bumping the version in `app/build.gradle.kts`.
   flashcard is open to be written: suggestions. After a pause in the typing,
   the word goes to ARASAAC (in Catalan), for its pictograms and for the
   Romanian and English its pictograms are labelled with, or, on the Photos tab, its
-  English meaning goes to Openverse — the word and nothing else, with no
-  identifier. Both are free public services that need no account or key. With
+  English meaning goes to Wikimedia Commons, Wikipedia and Openverse — the word
+  and nothing else, with no identifier. All are free public services that need
+  no account or key; OpenMoji's catalogue is downloaded whole and searched on
+  the phone, so it is sent no word at all. With
   no card open, nothing is sent.
 
 - **Updates** — Llegeix is sideloaded rather than installed from a store, so
@@ -318,15 +320,17 @@ does both after bumping the version in `app/build.gradle.kts`.
   ARASAAC has not labelled. The field says which of the two it came from. It
   works the other way round too: a card can be started from its Romanian or its
   English, and the Catalan, its pronunciation and the other meaning are filled
-  in from there. A pictogram's white paper is cut away and replaced with a
-  colour of the theme — dark at night — while the drawing itself is left
-  exactly as it was drawn.
-  Pictures are offered as the word is typed, as a grid of two dozen: pictograms
-  from ARASAAC and from Global Symbols — an index over three dozen other freely
-  licensed symbol sets — both searched in Catalan; or openly licensed
-  photographs from Wikimedia Commons and Openverse, searched with the card's
+  in from there. Every picture is shown exactly as it is, background and all: a
+  pictogram keeps its own white paper, because cutting the paper away also took
+  every pale part of the drawing with it.
+  Pictures are offered as the word is typed, as a grid of everything that was
+  found rather than a round number of it: pictograms from ARASAAC and from
+  Global Symbols — an index over three dozen other freely licensed symbol sets —
+  searched in Catalan and again in English, plus OpenMoji's open emoji; or
+  openly licensed photographs from Wikimedia Commons, Wikipedia's article
+  pictures (in Catalan and in English) and Openverse, searched with the card's
   English meaning, since the lone Catalan word is too thin a thing to translate
-  and *pa* on its own comes back as Pennsylvania. Each pair is asked in parallel
+  and *pa* on its own comes back as Pennsylvania. The sources are asked in parallel
   and the answers interleaved, with the same picture never offered twice: the
   shelves overlap, and a grid half made of pairs is half a grid. Photos are held
   to three safety checks: the source's own adult flag or the file's categories,
@@ -352,14 +356,17 @@ does both after bumping the version in `app/build.gradle.kts`.
   and three right answers in ten minutes are not three days' learning. Saving a
   copy is a button in the corner.
 
-  Decks can be grouped into collections, one level deep: *Vegetables*, *Fruit*
-  and *At the market* on a shelf called *Food*, which folds open and shut and
-  has a play button of its own. That button is the point of the feature —
+  Decks can be grouped into collections, and collections into collections, to
+  any depth: *Vegetables*, *Fruit* and *At the market* on a shelf called *Food*,
+  which folds open and shut and has a play button of its own that goes through
+  everything under it. Every deck and collection has *Move to…* in its ⋮ menu,
+  which opens the tree as a small map with where it is now lit; a collection is
+  never offered a place inside itself. That button is the point of the feature —
   practising *food* is one session over every card on the shelf, dealt and
   scheduled like any other, not three sessions run back to back. A collection
   owns nothing but the grouping and, if it is given one, a picture: deleting one
-  leaves every deck that was on it exactly where it was, and a deck belongs to
-  at most one. The picture comes from the same grid a deck's does, searched with
+  moves everything that was in it up a level, and a deck belongs to at most
+  one. The picture comes from the same grid a deck's does, searched with
   the shelf's name, and a shelf with none borrows the picture of the first deck
   on it — which is usually right and was, until it could be overruled,
   unarguable. Decks that are on no collection are simply the list they always
@@ -382,14 +389,14 @@ does both after bumping the version in `app/build.gradle.kts`.
   each other are shuffled so a deck never becomes a recitation. Those same boxes
   fill the bar on each deck.
 
-  Which languages, and which way round, is one button in the app bar beside the
-  one that saves a copy: four rows — Catalan → Romanian, the way back, then the
-  same pair in English — each wearing its own flags, with the one in force
-  ticked. One card serves all four, because the meaning in each language is a
+  Which languages, and which way round, is asked every time play is pressed:
+  four rows — Catalan → Romanian, the way back, then the same pair in English —
+  each wearing its own flags, with last time's lit so going again the same way
+  is one tap. The English rows are left out when nothing being practised has an
+  English meaning. One card serves all four, because the meaning in each language is a
   field on the card rather than a card of its own, and each direction keeps its
-  own half of the schedule. That button is the whole of what used to be a panel
-  headed *14 cards to review*, and then a strip of pills, across the top of the
-  tab. Below the bar there is one thing left, and it is the only thing there
+  own half of the schedule. That question replaced a panel headed *14 cards to
+  review*, then a strip of pills, then a menu in the app bar. Below the bar there is one thing left, and it is the only thing there
   that is not about a particular deck: *Practise them all*.
 
   Practice asks one way round at a time, and each way keeps its own schedule:
@@ -609,10 +616,12 @@ were created by Sergio Palao, under the Creative Commons BY-NC-SA licence; the
 rest come through [Global Symbols](https://globalsymbols.com), which indexes
 some three dozen freely licensed symbol sets — Mulberry, Sclera, Blissymbols and
 others — each under its own licence, which the app reads from the index and
-writes onto the card. Photographs come from
-[Wikimedia Commons](https://commons.wikimedia.org) and
-[Openverse](https://openverse.org), each under its own open licence. The credit
-for any picture, from any of the four, is kept on the card it was put on.
+writes onto the card; and [OpenMoji](https://openmoji.org) draws open emoji
+under CC BY-SA 4.0. Photographs come from
+[Wikimedia Commons](https://commons.wikimedia.org), through its own search and
+through the lead pictures of [Wikipedia](https://www.wikipedia.org) articles,
+and from [Openverse](https://openverse.org), each under its own open licence.
+The credit for any picture, from any source, is kept on the card it was put on.
 
 ## Downloads
 

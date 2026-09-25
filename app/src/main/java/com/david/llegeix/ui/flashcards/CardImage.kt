@@ -20,8 +20,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
@@ -34,13 +32,13 @@ import com.david.llegeix.LlegeixApp
  * Holds its space with a quiet fill while the file is read, so a list of cards
  * does not jump as their pictures arrive one by one.
  *
- * ### Pictograms
+ * ### Pictures as they are
  *
- * ARASAAC's pictograms are drawn on white paper, and on a dark card that white
- * is a lamp left on. Only the paper is changed: it is cut out (see
- * [com.david.llegeix.data.flashcards.PictogramMatte]) and the square behind is
- * filled with [pictogramPaper] instead, so the drawing's own colours are
- * exactly as ARASAAC drew them — nothing tinted, nothing inverted.
+ * A picture is shown exactly as it was stored, background and all. The white
+ * paper under a pictogram used to be cut away and a colour of the theme put in
+ * its place, and on real pictures that did more harm than good: anything
+ * white or pale inside the drawing — a plate, a cloud, the whites of an eye —
+ * went with the paper. A pictogram now keeps its own white square.
  *
  * @param maxEdge roughly how many pixels across it is drawn at. A thumbnail
  *   asks for a fraction of the stored picture, and gets it decoded that small.
@@ -55,10 +53,10 @@ fun CardImage(
     contentScale: ContentScale = ContentScale.Crop,
     pictogram: Boolean = false,
 ) {
-    val bitmap = rememberCardBitmap(path, maxEdge, cutPaper = pictogram)
+    val bitmap = rememberCardBitmap(path, maxEdge)
     Box(
         modifier = modifier.background(
-            if (pictogram) pictogramPaper() else MaterialTheme.colorScheme.surfaceContainerHighest,
+            if (pictogram) PictogramPaper else MaterialTheme.colorScheme.surfaceContainerHighest,
         ),
         contentAlignment = Alignment.Center,
     ) {
@@ -94,7 +92,7 @@ fun FramedPicture(
     modifier: Modifier = Modifier,
     maxEdge: Int = 1024,
 ) {
-    val bitmap = rememberCardBitmap(path, maxEdge, cutPaper = pictogram)
+    val bitmap = rememberCardBitmap(path, maxEdge)
     val ratio = bitmap?.let { it.width.toFloat() / it.height }?.takeIf { it > 0f } ?: 1f
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         // As large as fits, at the picture's own proportions.
@@ -108,7 +106,7 @@ fun FramedPicture(
             modifier = frame
                 .shadow(elevation = 3.dp, shape = FrameShape)
                 .clip(FrameShape)
-                .background(if (pictogram) pictogramPaper() else MaterialTheme.colorScheme.surfaceContainerHighest),
+                .background(if (pictogram) PictogramPaper else MaterialTheme.colorScheme.surfaceContainerHighest),
         ) {
             bitmap?.let {
                 Image(
@@ -125,30 +123,19 @@ fun FramedPicture(
 }
 
 /**
- * What a pictogram sits on, in place of its white paper.
- *
- * In the light theme, white warmed by a little of the accent, so a pictogram
- * reads as a card of the app's own. In the dark theme, a dark grey from the
- * theme — dark, so there is no bright square at night, but not black: the
- * drawings are outlined in black, and on black their outlines would vanish.
+ * The white a pictogram was drawn on, filled in around it too, so a picture
+ * narrower than its frame is framed in its own paper rather than in grey.
  */
-@Composable
-fun pictogramPaper(): Color {
-    val scheme = MaterialTheme.colorScheme
-    val isDark = scheme.surface.luminance() < 0.5f
-    return remember(scheme.primary, scheme.surfaceContainerHighest, isDark) {
-        if (isDark) scheme.surfaceContainerHighest else lerp(Color.White, scheme.primary, 0.07f)
-    }
-}
+val PictogramPaper = Color.White
 
 @Composable
-private fun rememberCardBitmap(path: String, maxEdge: Int, cutPaper: Boolean): ImageBitmap? {
+private fun rememberCardBitmap(path: String, maxEdge: Int): ImageBitmap? {
     val context = LocalContext.current
     val flashcards = remember(context) {
         (context.applicationContext as LlegeixApp).flashcardRepository
     }
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, path, maxEdge, cutPaper) {
-        value = flashcards.loadImage(path, maxEdge, cutPaper)?.asImageBitmap()
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, path, maxEdge) {
+        value = flashcards.loadImage(path, maxEdge)?.asImageBitmap()
     }
     return bitmap
 }

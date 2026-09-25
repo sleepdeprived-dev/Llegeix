@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** How the row of suggested pictures stands. */
 enum class PictureStatus {
@@ -51,7 +52,8 @@ data class PictureSuggestions(
  *
  * ### Which word photos are searched with
  *
- * Openverse's photos are tagged in English. Translating a lone Catalan word
+ * Photos are tagged in English, and so are most of the pictograms outside
+ * ARASAAC's Catalan labels. Translating a lone Catalan word
  * into English is where a translator is weakest — *pa* comes back as "pa", and
  * the photos are of Pennsylvania — so the English is taken, in order, from:
  * the English the reader has on the card; the translator, if it actually
@@ -98,20 +100,24 @@ class PictureSuggester(
         job = scope.launch {
             if (pause) delay(PAUSE_MS)
             _state.value = PictureSuggestions(PictureStatus.SEARCHING, word = trimmed, source = source)
-            val query = when (source) {
-                PictureSource.PICTOGRAMS -> trimmed
-                PictureSource.PHOTOS -> photoQuery(request) ?: run {
+            val english = when (source) {
+                // Pictograms are found in Catalan; the English only widens the
+                // search, so it is not waited on for long.
+                PictureSource.PICTOGRAMS -> withTimeoutOrNull(PICTOGRAM_ENGLISH_WAIT_MS) {
+                    englishQuery(request)
+                }
+                PictureSource.PHOTOS -> englishQuery(request) ?: run {
                     _state.value = PictureSuggestions(PictureStatus.NO_ENGLISH, word = trimmed, source = source)
                     return@launch
                 }
             }
             if (source == PictureSource.PHOTOS &&
-                (PictureSafety.isBlockedQuery(query) || PictureSafety.isBlockedQuery(trimmed))
+                (PictureSafety.isBlockedQuery(english.orEmpty()) || PictureSafety.isBlockedQuery(trimmed))
             ) {
                 _state.value = PictureSuggestions(PictureStatus.BLOCKED, word = trimmed, source = source)
                 return@launch
             }
-            _state.value = when (val outcome = search.search(source, query)) {
+            _state.value = when (val outcome = search.search(source, trimmed, english)) {
                 PictureSearch.Outcome.Offline ->
                     PictureSuggestions(PictureStatus.OFFLINE, word = trimmed, source = source)
 
@@ -125,7 +131,7 @@ class PictureSuggester(
         }
     }
 
-    private suspend fun photoQuery(request: Request): String? {
+    private suspend fun englishQuery(request: Request): String? {
         request.english?.let { return it }
         englishFor(request.word)
             ?.takeIf { !it.equals(request.word, ignoreCase = true) }
@@ -172,5 +178,8 @@ class PictureSuggester(
     private companion object {
         /** It goes to a server, so it waits until the word has plainly stopped changing. */
         const val PAUSE_MS = 700L
+
+        /** A translator that has its model answers in well under this. */
+        const val PICTOGRAM_ENGLISH_WAIT_MS = 2_500L
     }
 }

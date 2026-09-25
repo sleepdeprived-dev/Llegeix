@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import com.david.llegeix.LlegeixApp
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.PictureHit
-import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
@@ -78,15 +77,10 @@ fun PictureGrid(
         // answer arrives, and nothing jumps when it does.
         val tiles = buildList<@Composable (Modifier) -> Unit> {
             add { m -> OwnPhotoTile(onPickOwn, m) }
-            // Every picture the search came back with, not the first eight.
-            //
-            // Eight plus the reader's own photo was three rows, which is not
-            // enough of a choice to find the right picture of a word in — and
-            // the services were being asked for far more than that and then
-            // having most of it thrown away. The cap now lives in one place,
-            // PictureResults.LIMIT, so what is asked for and what is shown
-            // cannot drift apart again.
-            hits.take(PictureResults.LIMIT).forEach { hit ->
+            // Every picture the search came back with, from every source: a
+            // grid that stopped at a round number was throwing away pictures
+            // the services had already found.
+            hits.forEach { hit ->
                 add { m ->
                     SuggestionTile(
                         hit = hit,
@@ -239,15 +233,12 @@ private fun SuggestionTile(
     val thumbnail by produceState<ImageBitmap?>(initialValue = null, hit.thumbnailUrl) {
         value = search.thumbnail(hit.thumbnailUrl)?.asImageBitmap()
     }
-    // A pictogram on the accent-tinted paper every pictogram in the app sits
-    // on (see CardImage); a photo fills its square.
+    // A pictogram on white, the way it will look on the card once chosen
+    // (see CardImage); a photo fills its square.
     val isPictogram = hit.source == PictureSource.PICTOGRAMS
-    // ARASAAC serves its pictograms with a transparent background already, so
-    // the paper they sit on is simply the colour drawn behind them.
-    val paper = pictogramPaper()
     Box(
         modifier = modifier
-            .background(if (isPictogram) paper else MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(if (isPictogram) PictogramPaper else MaterialTheme.colorScheme.surfaceContainerHighest)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

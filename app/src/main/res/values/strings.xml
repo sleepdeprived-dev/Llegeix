@@ -291,7 +291,7 @@ The app uses the internet for three things. None of them carries an account, an 
 
 The first is downloading Google\'s ML Kit translation models, once per language, so that tapping a word can translate it. That request goes to Google and is subject to Google\'s own privacy policy; the app sends no information about you with it, and no text from your documents ever leaves the device. After the models are downloaded, translation and pronunciation work entirely offline.
 
-The second is finding pictures for a flashcard, and it is the only one that ever sends a word you typed. It happens while a card is open to be written and never otherwise: after a pause in your typing, that one word — and nothing else — is asked of ARASAAC and Global Symbols, for pictograms, and of Wikimedia Commons and Openverse, for photographs. For photographs it is the English translation of the word, made on this phone first. Those services see the word and the address you connect from, as any website does; they are given no account, no identifier and nothing about your documents. Pictures are only ever downloaded for the grid you are looking at, and one is only kept when you tap it.
+The second is finding pictures for a flashcard, and it is the only one that ever sends a word you typed. It happens while a card is open to be written and never otherwise: after a pause in your typing, that one word and its English translation, made on this phone first — and nothing else — are asked of ARASAAC and Global Symbols, for pictograms, and of Wikimedia Commons, Wikipedia and Openverse, for photographs. OpenMoji\'s pictograms are found by downloading its whole catalogue and searching it here, so it is sent no word at all. Those services see the word and the address you connect from, as any website does; they are given no account, no identifier and nothing about your documents. Pictures are only ever downloaded for the grid you are looking at, and one is only kept when you tap it.
 
 The third is checking for a new version of the app: at most once a day, when you open the library, and whenever you press the button in Configuració. It is what puts a red dot on the settings gear when there is a new one; there is no background service and no notification. It asks GitHub what the newest release is and, if you choose to install it, downloads it from there. The request carries no account, no identifier and nothing about your documents — it is the same anonymous request anybody can make of a public page — though GitHub, like any website, can see the address you connect from.
 
@@ -705,8 +705,8 @@ The app asks for permission to read files so it can find your PDFs, for network 
     <string name="flashcards_pictures_none_photos">No photos for \"%1$s\". Try Pictograms.</string>
     <string name="flashcards_pictures_offline">No connection, so no pictures to suggest.</string>
     <string name="flashcards_pictures_retry">Try again</string>
-    <string name="flashcards_pictures_credit_pictograms">Pictograms by Sergio Palao for ARASAAC, CC BY-NC-SA.</string>
-    <string name="flashcards_pictures_credit_photos">Photos from Openverse, each under its own open licence.</string>
+    <string name="flashcards_pictures_credit_pictograms">Pictograms from ARASAAC (Sergio Palao, CC BY-NC-SA), Global Symbols and OpenMoji (CC BY-SA), each credited on the card.</string>
+    <string name="flashcards_pictures_credit_photos">Photos from Wikimedia Commons, Wikipedia and Openverse, each under its own open licence.</string>
     <string name="flashcards_picture_use">Use this picture</string>
     <string name="flashcards_picture_other">Choose another</string>
     <string name="flashcards_picture_from_gallery">From your photos</string>
@@ -744,20 +744,22 @@ The app asks for permission to read files so it can find your PDFs, for network 
     <string name="flashcards_collection_name_hint">e.g. Food</string>
     <string name="flashcards_collection_exists">A collection called \"%1$s\" already exists</string>
     <string name="flashcards_rename_collection_title">Rename collection</string>
-    <string name="flashcards_collection_deleted">Deleted \"%1$s\". Its decks are still here.</string>
+    <string name="flashcards_collection_deleted">Deleted \"%1$s\". Everything that was in it is still here.</string>
     <string name="flashcards_delete_collection_title">Delete \"%1$s\"?</string>
-    <string name="flashcards_delete_collection_body_empty">No decks are on it, so nothing else changes.</string>
-    <plurals name="flashcards_delete_collection_body">
-        <item quantity="one">The deck on it stays where it is, on no collection. No cards are deleted.</item>
-        <item quantity="other">The %1$d decks on it stay where they are, on no collection. No cards are deleted.</item>
-    </plurals>
-    <string name="flashcards_collection_empty">No decks on this collection yet. Put one here from a deck\'s menu.</string>
-    <string name="flashcards_move_to_collection">Collection…</string>
-    <string name="flashcards_move_title">Where does \"%1$s\" go?</string>
-    <string name="flashcards_move_none">On no collection</string>
+    <string name="flashcards_delete_collection_body_empty">Nothing is in it, so nothing else changes.</string>
+    <string name="flashcards_collection_empty">Nothing in this collection yet. Put a deck or a collection here from its ⋮ menu.</string>
+    <string name="flashcards_move_to_collection">Move to…</string>
+    <string name="flashcards_move_title">Move \"%1$s\" to…</string>
+    <string name="flashcards_move_none">Top level</string>
+    <string name="flashcards_delete_collection_body_up_to">Everything inside it moves up into \"%1$s\". No cards are deleted.</string>
+    <string name="flashcards_delete_collection_body_up_top">Everything inside it moves up to the top level. No cards are deleted.</string>
+    <string name="flashcards_moved_to">Moved \"%1$s\" to %2$s</string>
+    <string name="flashcards_moved_to_top">Moved \"%1$s\" to the top level</string>
+    <string name="flashcards_move_here_now">Here now</string>
+    <string name="flashcards_move_top_hint">Not inside any collection</string>
     <string name="flashcards_no_collections">You have not made a collection yet. The + button makes one.</string>
-    <string name="flashcards_show_decks">Show the decks on %1$s</string>
-    <string name="flashcards_hide_decks">Hide the decks on %1$s</string>
+    <string name="flashcards_show_decks">Show what is in %1$s</string>
+    <string name="flashcards_hide_decks">Hide what is in %1$s</string>
     <plurals name="flashcards_deck_count">
         <item quantity="one">%1$d deck</item>
         <item quantity="other">%1$d decks</item>

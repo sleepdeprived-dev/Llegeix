@@ -56,6 +56,16 @@ class FlashcardBackupTest {
     }
 
     @Test
+    fun `collections inside collections come back inside them`() {
+        val shelves = listOf(
+            FlashcardBackup.Collection(name = "Menjar"),
+            FlashcardBackup.Collection(name = "Fruita", parent = "Menjar"),
+        )
+        val json = FlashcardBackup.encode(emptyList(), 0, shelves)
+        assertEquals(shelves, FlashcardBackup.decodeCollections(json))
+    }
+
+    @Test
     fun `a file that is not a copy is refused as such`() {
         expectUnreadable(UnreadableException.Reason.NOT_A_BACKUP, "not json at all")
         expectUnreadable(UnreadableException.Reason.NOT_A_BACKUP, """{"hello":"world"}""")

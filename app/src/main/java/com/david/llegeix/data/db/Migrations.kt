@@ -594,3 +594,13 @@ val MIGRATION_18_19 = object : Migration(18, 19) {
         db.execSQL("ALTER TABLE `flashcard_collections` ADD COLUMN `coverCredit` TEXT")
     }
 }
+
+/**
+ * v4.3.7: shelves inside shelves. One nullable column, so every shelf there
+ * already is stays where it was — at the top of the list.
+ */
+val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `flashcard_collections` ADD COLUMN `parentId` INTEGER")
+    }
+}

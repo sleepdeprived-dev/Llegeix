@@ -288,7 +288,7 @@ L\'aplicació fa servir internet per a tres coses. Cap no porta cap compte, cap 
 
 La primera és baixar els models de traducció d\'ML Kit de Google, un cop per llengua, perquè en tocar una paraula es pugui traduir. Aquesta petició va a Google i es regeix per la política de privadesa de Google; l\'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents no surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot sense connexió.
 
-La segona és trobar imatges per a una targeta, i és l\'única que envia mai una paraula que hagis escrit. Només passa mentre tens una targeta oberta per escriure-la: després d\'una pausa en l\'escriptura, aquella paraula —i res més— es demana a l\'ARASAAC i a Global Symbols, per als pictogrames, i a Wikimedia Commons i a Openverse, per a les fotografies. Per a les fotografies és la traducció anglesa de la paraula, feta abans en aquest telèfon. Aquests serveis veuen la paraula i l\'adreça des d\'on et connectes, com qualsevol lloc web; no se\'ls dona cap compte, cap identificador ni res sobre els teus documents. Les imatges només es baixen per a la graella que estàs mirant, i només se\'n queda una quan la toques.
+La segona és trobar imatges per a una targeta, i és l\'única que envia mai una paraula que hagis escrit. Només passa mentre tens una targeta oberta per escriure-la: després d\'una pausa en l\'escriptura, aquella paraula i la seva traducció anglesa, feta abans en aquest telèfon —i res més— es demanen a l\'ARASAAC i a Global Symbols, per als pictogrames, i a Wikimedia Commons, a la Viquipèdia i a Openverse, per a les fotografies. Els pictogrames d\'OpenMoji es troben baixant-ne el catàleg sencer i cercant-hi aquí, de manera que no se li envia cap paraula. Aquests serveis veuen la paraula i l\'adreça des d\'on et connectes, com qualsevol lloc web; no se\'ls dona cap compte, cap identificador ni res sobre els teus documents. Les imatges només es baixen per a la graella que estàs mirant, i només se\'n queda una quan la toques.
 
 La tercera és comprovar si hi ha una versió nova de l\'aplicació: com a molt un cop al dia, en obrir la biblioteca, i sempre que premis el botó de Configuració. És el que posa un punt vermell a la roda dentada quan n\'hi ha una de nova; no hi ha cap servei en segon pla ni cap notificació. Pregunta a GitHub quina és la darrera versió i, si tries instal·lar-la, la baixa d\'allà. La petició no porta cap compte, cap identificador ni res sobre els teus documents —és la mateixa petició anònima que pot fer qualsevol a una pàgina pública— tot i que GitHub, com qualsevol lloc web, pot veure l\'adreça des d\'on et connectes.
 
@@ -691,8 +691,8 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_pictures_none_photos">No hi ha fotos per a «%1$s». Prova amb Pictogrames.</string>
     <string name="flashcards_pictures_offline">Sense connexió, no es poden suggerir imatges.</string>
     <string name="flashcards_pictures_retry">Torna-ho a provar</string>
-    <string name="flashcards_pictures_credit_pictograms">Pictogrames de Sergio Palao per a ARASAAC, CC BY-NC-SA.</string>
-    <string name="flashcards_pictures_credit_photos">Fotos d\'Openverse, cadascuna amb la seva llicència lliure.</string>
+    <string name="flashcards_pictures_credit_pictograms">Pictogrames d\'ARASAAC (Sergio Palao, CC BY-NC-SA), Global Symbols i OpenMoji (CC BY-SA), amb el crèdit a cada targeta.</string>
+    <string name="flashcards_pictures_credit_photos">Fotos de Wikimedia Commons, la Viquipèdia i Openverse, cadascuna amb la seva llicència lliure.</string>
     <string name="flashcards_picture_use">Fes servir aquesta imatge</string>
     <string name="flashcards_picture_other">Tria\'n una altra</string>
     <string name="flashcards_picture_from_gallery">De les teves fotos</string>
@@ -732,21 +732,22 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_collection_name_hint">p. ex. Menjar</string>
     <string name="flashcards_collection_exists">Ja hi ha una col·lecció que es diu «%1$s»</string>
     <string name="flashcards_rename_collection_title">Canvia el nom de la col·lecció</string>
-    <string name="flashcards_collection_deleted">S\'ha esborrat «%1$s». Les seves baralles continuen aquí.</string>
+    <string name="flashcards_collection_deleted">S\'ha esborrat «%1$s». Tot el que hi havia continua aquí.</string>
     <string name="flashcards_delete_collection_title">Vols esborrar «%1$s»?</string>
-    <string name="flashcards_delete_collection_body_empty">No hi ha cap baralla, així que no canvia res més.</string>
-    <plurals name="flashcards_delete_collection_body">
-        <item quantity="one">La baralla que hi ha es queda on és, sense col·lecció. No s\'esborra cap targeta.</item>
-        <item quantity="many">Les %1$d baralles que hi ha es queden on són, sense col·lecció. No s\'esborra cap targeta.</item>
-        <item quantity="other">Les %1$d baralles que hi ha es queden on són, sense col·lecció. No s\'esborra cap targeta.</item>
-    </plurals>
-    <string name="flashcards_collection_empty">Encara no hi ha cap baralla en aquesta col·lecció. Posa-n\'hi una des del menú d\'una baralla.</string>
-    <string name="flashcards_move_to_collection">Col·lecció…</string>
-    <string name="flashcards_move_title">On va «%1$s»?</string>
-    <string name="flashcards_move_none">Sense col·lecció</string>
+    <string name="flashcards_delete_collection_body_empty">No hi ha res a dins, així que no canvia res més.</string>
+    <string name="flashcards_collection_empty">Encara no hi ha res en aquesta col·lecció. Posa-hi una baralla o una col·lecció des del seu menú ⋮.</string>
+    <string name="flashcards_move_to_collection">Mou a…</string>
+    <string name="flashcards_move_title">Mou «%1$s» a…</string>
+    <string name="flashcards_move_none">Nivell superior</string>
+    <string name="flashcards_delete_collection_body_up_to">Tot el que hi ha a dins puja a «%1$s». No s\'esborra cap targeta.</string>
+    <string name="flashcards_delete_collection_body_up_top">Tot el que hi ha a dins puja al nivell superior. No s\'esborra cap targeta.</string>
+    <string name="flashcards_moved_to">S\'ha mogut «%1$s» a %2$s</string>
+    <string name="flashcards_moved_to_top">S\'ha mogut «%1$s» al nivell superior</string>
+    <string name="flashcards_move_here_now">Ara és aquí</string>
+    <string name="flashcards_move_top_hint">Fora de qualsevol col·lecció</string>
     <string name="flashcards_no_collections">Encara no has fet cap col·lecció. El botó + en fa una.</string>
-    <string name="flashcards_show_decks">Mostra les baralles de %1$s</string>
-    <string name="flashcards_hide_decks">Amaga les baralles de %1$s</string>
+    <string name="flashcards_show_decks">Mostra el contingut de %1$s</string>
+    <string name="flashcards_hide_decks">Amaga el contingut de %1$s</string>
     <plurals name="flashcards_deck_count">
         <item quantity="one">%1$d baralla</item>
         <item quantity="many">%1$d baralles</item>

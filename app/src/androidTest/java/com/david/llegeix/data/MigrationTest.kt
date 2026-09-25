@@ -23,6 +23,7 @@ import com.david.llegeix.data.db.MIGRATION_15_16
 import com.david.llegeix.data.db.MIGRATION_16_17
 import com.david.llegeix.data.db.MIGRATION_17_18
 import com.david.llegeix.data.db.MIGRATION_18_19
+import com.david.llegeix.data.db.MIGRATION_19_20
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1045,16 +1046,44 @@ class MigrationTest {
         }
     }
 
+    /** Collections can sit inside collections, and every one there already is at the top. */
+    @Test
+    fun migrate19To20_addsNestingAndLeavesEveryCollectionAtTheTop() {
+        helper.createDatabase(TEST_DB, 19).use { db ->
+            db.execSQL(
+                "INSERT INTO flashcard_collections (id, name, createdAt, isPinned) " +
+                    "VALUES (1, 'Menjar', 5, 1)",
+            )
+            db.execSQL(
+                "INSERT INTO flashcard_decks (id, name, createdAt, isPinned, collectionId) " +
+                    "VALUES (2, 'Verdures', 6, 0, 1)",
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 20, true, MIGRATION_19_20)
+
+        db.query("SELECT name, isPinned, parentId FROM flashcard_collections").use { cursor ->
+            assertTrue("the collection survived", cursor.moveToFirst())
+            assertEquals("Menjar", cursor.getString(0))
+            assertEquals(1, cursor.getInt(1))
+            assertTrue("at the top of the list", cursor.isNull(2))
+        }
+        db.query("SELECT collectionId FROM flashcard_decks").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("the deck is still on it", 1, cursor.getInt(0))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To19_runsEveryStepInSequence() {
+    fun migrate1To20_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            19,
+            20,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -1074,6 +1103,7 @@ class MigrationTest {
             MIGRATION_16_17,
             MIGRATION_17_18,
             MIGRATION_18_19,
+            MIGRATION_19_20,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->

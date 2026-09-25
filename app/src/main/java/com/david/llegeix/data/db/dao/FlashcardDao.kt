@@ -100,9 +100,20 @@ interface FlashcardDao {
     @Query("UPDATE flashcard_collections SET coverPath = :path, coverCredit = :credit WHERE id = :id")
     suspend fun setCollectionCover(id: Long, path: String?, credit: String?)
 
-    /** The decks on it stay; their `collectionId` goes to null, by the foreign key. */
+    /** See [com.david.llegeix.data.flashcards.FlashcardRepository.deleteCollection] for what happens to what was in it. */
     @Query("DELETE FROM flashcard_collections WHERE id = :id")
     suspend fun deleteCollection(id: Long)
+
+    /** Put a shelf inside another, or at the top with null. */
+    @Query("UPDATE flashcard_collections SET parentId = :parentId WHERE id = :id")
+    suspend fun setCollectionParent(id: Long, parentId: Long?)
+
+    /** Everything directly inside [from] — shelves and decks — moved into [to]. */
+    @Query("UPDATE flashcard_collections SET parentId = :to WHERE parentId = :from")
+    suspend fun moveChildCollections(from: Long, to: Long?)
+
+    @Query("UPDATE flashcard_decks SET collectionId = :to WHERE collectionId = :from")
+    suspend fun moveDecksBetween(from: Long, to: Long?)
 
     /** Put a deck on a shelf, or take it off one with null. */
     @Query("UPDATE flashcard_decks SET collectionId = :collectionId WHERE id = :id")
@@ -185,12 +196,21 @@ interface FlashcardDao {
      * *Fruit* and *At the market* can practise any one of them, or the subject
      * — and the subject is a real session over real cards, not three sessions
      * run back to back.
+     *
+     * Everything under the shelf, however deep: the shelves inside it and the
+     * shelves inside those. `UNION` rather than `UNION ALL`, so a loop — which
+     * the repository never lets be made — would still end.
      */
     @Query(
         """
+        WITH RECURSIVE tree(id) AS (
+            SELECT :collectionId
+            UNION
+            SELECT s.id FROM flashcard_collections s JOIN tree t ON s.parentId = t.id
+        )
         SELECT c.* FROM flashcards c
         JOIN flashcard_decks d ON d.id = c.deckId
-        WHERE d.collectionId = :collectionId
+        WHERE d.collectionId IN (SELECT id FROM tree)
         """,
     )
     suspend fun cardsInCollection(collectionId: Long): List<FlashcardEntity>

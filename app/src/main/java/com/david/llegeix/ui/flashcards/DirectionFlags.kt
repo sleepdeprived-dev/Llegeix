@@ -1,6 +1,22 @@
 package com.david.llegeix.ui.flashcards
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import com.david.llegeix.data.flashcards.StudyScope
+import com.david.llegeix.ui.common.AppBottomSheet
+import kotlinx.coroutines.launch
 import com.david.llegeix.data.flashcards.MeaningLanguage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.Image
@@ -12,10 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -115,95 +128,144 @@ fun directionName(direction: StudyDirection, language: MeaningLanguage): String 
 }
 
 /**
- * Which languages, and which way round, as one menu of four.
+ * What pressing play is about to start, waiting on which way round.
  *
- * This replaces two controls that sat across the top of the Flashcards tab: a
- * pair of pills for the direction and another pair for the language. They took
- * a third of the screen above the decks, they were the first thing on a tab
- * whose subject is the decks, and they were never two questions to begin with
- * — the pair is *Catalan and Romanian, this way round*, and setting half of it
- * at a time means passing through a combination nobody chose.
- *
- * Four rows, in the order somebody would say them: Catalan → Romanian, the way
- * back, then the same pair in English. Each row wears its own flags, so the
- * list is read by looking rather than by reading, and carries the full name for
- * anybody who cannot see them. The one in force is ticked.
- *
- * It lives in the app bar next to the backup button, which is where a phone
- * keeps the settings that belong to a whole screen — and which leaves the tab
- * itself to be what it is for.
+ * @param title what is being practised, said as the sheet's heading.
+ * @param hasEnglish whether any of its cards has an English meaning; without
+ *   one the two English rows would each lead to an empty session.
  */
+data class PlayRequest(
+    val scope: StudyScope,
+    val title: String,
+    val hasEnglish: Boolean,
+)
+
+/**
+ * Which languages, and which way round — asked every time play is pressed.
+ *
+ * It was a menu in the app bar, set once and then silently in force for every
+ * session after, which meant the one choice that changes what a session *is*
+ * was made somewhere other than where the session was started, and was easy
+ * to forget had been made at all. Now play asks, and the answer is one tap:
+ * four rows, in the order somebody would say them — Catalan → Romanian, the way
+ * back, then the same pair in English — each wearing its flags at either end so
+ * the list is read by looking. The pair used last time is lit, so going again
+ * the same way is a tap on the obvious row.
+ *
+ * The English rows are left out when nothing being practised has an English
+ * meaning, rather than shown and leading nowhere.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StudyPairMenu(
-    direction: StudyDirection,
-    language: MeaningLanguage,
+fun PlayPairSheet(
+    request: PlayRequest,
+    lastDirection: StudyDirection,
+    lastLanguage: MeaningLanguage,
+    onDismiss: () -> Unit,
     onChoose: (StudyDirection, MeaningLanguage) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    var open by remember { mutableStateOf(false) }
-    Box(modifier = modifier) {
-        IconButton(onClick = { open = true }) {
-            Icon(
-                painter = painterResource(R.drawable.ic_language),
-                contentDescription = stringResource(R.string.flashcards_choose_pair),
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var chosen by remember { mutableStateOf(false) }
+    AppBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = Space.xl)
+                .navigationBarsPadding(),
+        ) {
+            Text(
+                text = request.title,
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = Space.screen),
             )
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (meaning in MeaningLanguage.entries) {
+            Text(
+                text = stringResource(R.string.flashcards_choose_pair),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(horizontal = Space.screen)
+                    .padding(top = Space.xs, bottom = Space.md),
+            )
+            val languages = MeaningLanguage.entries.filter {
+                it != MeaningLanguage.ENGLISH || request.hasEnglish
+            }
+            for (meaning in languages) {
                 for (way in StudyDirection.entries) {
-                    val chosen = way == direction && meaning == language
-                    // Flag, the two names with the arrow between them, flag.
-                    //
-                    // The flags used to sit together in the leading slot as a
-                    // pair with an arrow of their own, which meant the row read
-                    // as two flags and then, separately, as two words — the
-                    // same fact stated twice with nothing tying the halves
-                    // together. Put one at each end the row reads as one
-                    // sentence, and which flag belongs to which language is
-                    // answered by where it is.
-                    DropdownMenuItem(
-                        leadingIcon = {
-                            Flag(
-                                if (way == StudyDirection.CATALAN_TO_MEANING) {
-                                    R.drawable.ic_flag_ca
-                                } else {
-                                    meaning.flagRes
-                                },
-                                20.dp,
-                            )
-                        },
-                        text = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = directionName(way, meaning),
-                                    modifier = Modifier.padding(end = Space.md),
-                                )
-                                Flag(
-                                    if (way == StudyDirection.CATALAN_TO_MEANING) {
-                                        meaning.flagRes
-                                    } else {
-                                        R.drawable.ic_flag_ca
-                                    },
-                                    20.dp,
-                                )
-                            }
-                        },
-                        trailingIcon = {
-                            if (chosen) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        },
+                    PairChoice(
+                        direction = way,
+                        language = meaning,
+                        isLast = way == lastDirection && meaning == lastLanguage,
                         onClick = {
-                            onChoose(way, meaning)
-                            open = false
+                            if (!chosen) {
+                                chosen = true
+                                // Closed first, so the session opens on a
+                                // screen that has finished moving.
+                                scope.launch { sheetState.hide() }.invokeOnCompletion {
+                                    onDismiss()
+                                    onChoose(way, meaning)
+                                }
+                            }
                         },
                     )
                 }
             }
+        }
+    }
+}
+
+/** One way to practise: flag, "Catalan → Romanian", flag, and a tick for last time's. */
+@Composable
+private fun PairChoice(
+    direction: StudyDirection,
+    language: MeaningLanguage,
+    isLast: Boolean,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val (from, to) = when (direction) {
+        StudyDirection.CATALAN_TO_MEANING -> R.drawable.ic_flag_ca to language.flagRes
+        StudyDirection.MEANING_TO_CATALAN -> language.flagRes to R.drawable.ic_flag_ca
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.md, vertical = 2.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isLast) scheme.secondaryContainer else Color.Transparent)
+            .clickable(onClick = onClick)
+            .heightIn(min = 60.dp)
+            .padding(horizontal = Space.md, vertical = Space.sm),
+    ) {
+        Flag(from, 28.dp)
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = if (isLast) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(horizontal = Space.sm)
+                .size(18.dp),
+        )
+        Flag(to, 28.dp)
+        Text(
+            text = directionName(direction, language),
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (isLast) scheme.onSecondaryContainer else scheme.onSurface,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.lg),
+        )
+        if (isLast) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = scheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

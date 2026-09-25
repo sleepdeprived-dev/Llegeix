@@ -77,6 +77,13 @@ object FlashcardBackup {
         /** The picture's name inside the zip, e.g. `images/3f2a.jpg`. */
         val cover: String? = null,
         val coverCredit: String? = null,
+        /**
+         * The collection this one sits inside, by name, or null for one at the
+         * top of the list. Optional like the deck's shelf, and for the same
+         * reason: an older version reads a copy with it and simply lays every
+         * collection out flat.
+         */
+        val parent: String? = null,
     )
 
     data class Deck(
@@ -130,6 +137,7 @@ object FlashcardBackup {
                             .put("pinned", collection.isPinned)
                             .putOpt("cover", collection.cover)
                             .putOpt("coverCredit", collection.coverCredit)
+                            .putOpt("parent", collection.parent)
                     },
                 ),
             )
@@ -172,14 +180,6 @@ object FlashcardBackup {
     // ---- Reading -----------------------------------------------------------
 
     /**
-     * The decks in [json], or [UnreadableException] if it is not a copy this
-     * version understands.
-     *
-     * Forgiving about what is missing inside a card — a schedule field absent
-     * is a card that starts again, not a copy that cannot be read — and strict
-     * about what the file says it is.
-     */
-    /**
      * The shelves named in [json], by name.
      *
      * Separate from [decode] because they are separate things to put back: a
@@ -199,10 +199,19 @@ object FlashcardBackup {
                 isPinned = entry.optBoolean("pinned", false),
                 cover = entry.optStringOrNull("cover"),
                 coverCredit = entry.optStringOrNull("coverCredit"),
+                parent = entry.optStringOrNull("parent")?.let(DeckNames::tidy)?.takeIf { it.isNotEmpty() },
             )
         }
     }
 
+    /**
+     * The decks in [json], or [UnreadableException] if it is not a copy this
+     * version understands.
+     *
+     * Forgiving about what is missing inside a card — a schedule field absent
+     * is a card that starts again, not a copy that cannot be read — and strict
+     * about what the file says it is.
+     */
     fun decode(json: String): List<Deck> {
         val root = try {
             JSONObject(json)
@@ -375,7 +384,7 @@ object FlashcardBackup {
 
     /** The same two sides, ignoring case and stray spaces — not accents, which change words. */
     private fun cardKey(catalan: String, romanian: String): String =
-        DeckNames.tidy(catalan).lowercase(Locale.ROOT) + " " +
+        DeckNames.tidy(catalan).lowercase(Locale.ROOT) + "\u0000" +
             DeckNames.tidy(romanian).lowercase(Locale.ROOT)
 
     // ---- Between the file and the database ---------------------------------

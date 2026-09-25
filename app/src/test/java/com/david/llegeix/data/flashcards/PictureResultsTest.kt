@@ -33,7 +33,7 @@ class PictureResultsTest {
         // out most of the illustrations that are the clearest pictures of all.
         val url = PictureResults.openverseSearchUrl("apple tree")
         assertEquals(
-            "https://api.openverse.org/v1/images/?q=apple+tree&page_size=30&mature=false",
+            "https://api.openverse.org/v1/images/?q=apple+tree&page_size=20&page=1&mature=false",
             url,
         )
         assertTrue(PictureResults.openverseSearchUrl("a&b=c").contains("q=a%26b%3Dc&"))
@@ -44,7 +44,7 @@ class PictureResultsTest {
         val url = PictureResults.commonsSearchUrl("apple tree")
         assertTrue("only real pictures", url.contains("filetype%3Abitmap+apple+tree"))
         assertTrue("files, not articles", url.contains("gsrnamespace=6"))
-        assertTrue("with a thumbnail already made", url.contains("iiurlwidth=320"))
+        assertTrue("with a thumbnail already made", url.contains("iiurlwidth=330"))
         assertTrue("and what it is filed under", url.contains("categories"))
     }
 
@@ -83,9 +83,77 @@ class PictureResultsTest {
     }
 
     @Test
-    fun `no more than a grid's worth is offered`() {
+    fun `everything found is offered, not the first grid's worth`() {
         val json = (1..60).joinToString(",", "[", "]") { """{"_id": $it}""" }
-        assertEquals(PictureResults.LIMIT, PictureResults.parseArasaac(json).size)
+        assertEquals(60, PictureResults.parseArasaac(json).size)
+    }
+
+    @Test
+    fun `Openverse is never asked for more than it gives a request without a key`() {
+        val url = PictureResults.openverseSearchUrl("bread", page = 2)
+        assertTrue(url.contains("page_size=20"))
+        assertTrue(url.contains("page=2"))
+    }
+
+    @Test
+    fun `Global Symbols labels that only start with the word are left out`() {
+        val json = """[
+            {"text":"pa","picto":{"id":1,"image_url":"https://globalsymbols.com/u/1.png"}},
+            {"text":"pa de motllo","picto":{"id":2,"image_url":"https://globalsymbols.com/u/2.png"}},
+            {"text":"paciència","picto":{"id":3,"image_url":"https://globalsymbols.com/u/3.png"}},
+            {"text":"Pa","picto":{"id":4,"image_url":"https://globalsymbols.com/u/4.png"}}
+        ]"""
+        assertEquals(
+            listOf("gs:1", "gs:2", "gs:4"),
+            PictureResults.parseGlobalSymbols(json, query = "pa").map { it.id },
+        )
+    }
+
+    @Test
+    fun `a whole word ignores case and accents`() {
+        assertTrue(PictureResults.hasWholeWord("Cafè amb llet", "cafe"))
+        assertTrue(PictureResults.hasWholeWord("bread (sliced),sliced bread", "bread"))
+        assertEquals(false, PictureResults.hasWholeWord("breadcrumbs", "bread"))
+        assertEquals(false, PictureResults.hasWholeWord("anything", "  "))
+    }
+
+    @Test
+    fun `Wikipedia's pictures come in the search's order, and only free ones`() {
+        val json = """{"query":{"pages":[
+            {"title":"Bread pudding","index":3,"pageimage":"Pudding.jpg",
+             "thumbnail":{"source":"https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Pudding.jpg/330px-Pudding.jpg?utm_source=x"}},
+            {"title":"Bread","index":1,"pageimage":"Rolls.JPG",
+             "thumbnail":{"source":"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Rolls.JPG/330px-Rolls.JPG"}},
+            {"title":"Some film","index":2,"pageimage":"Poster.jpg",
+             "thumbnail":{"source":"https://upload.wikimedia.org/wikipedia/en/thumb/1/12/Poster.jpg/330px-Poster.jpg"}},
+            {"title":"Bakery Inc","index":4,"pageimage":"Bakery_logo.png",
+             "thumbnail":{"source":"https://upload.wikimedia.org/wikipedia/commons/1/10/Bakery_logo.png"}},
+            {"title":"No picture","index":5}
+        ]}}"""
+        val hits = PictureResults.parseWikipedia(json)
+        assertEquals(listOf("commons:File:Rolls.JPG", "commons:File:Pudding.jpg"), hits.map { it.id })
+        assertEquals(PictureSource.PHOTOS, hits.first().source)
+        assertEquals(
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Rolls.JPG/960px-Rolls.JPG",
+            hits.first().fullUrl,
+        )
+        assertTrue("no tracking tail", !hits[1].thumbnailUrl.contains("utm_"))
+    }
+
+    @Test
+    fun `OpenMoji named for the word come before those only tagged with it`() {
+        val index = PictureResults.parseOpenMojiIndex(
+            """[
+            {"hexcode":"1F96A","annotation":"sandwich","tags":"bread, vegetable","skintone":""},
+            {"hexcode":"1F35E","annotation":"bread","tags":"loaf, wheat","skintone":""},
+            {"hexcode":"1F44B-1F3FB","annotation":"waving hand: light skin tone","tags":"bread","skintone":"1"},
+            {"hexcode":"1F950","annotation":"croissant","tags":"breakfast","skintone":""}
+            ]""",
+        )
+        val hits = PictureResults.openMojiMatches(index, "Bread")
+        assertEquals(listOf("openmoji:1F35E", "openmoji:1F96A"), hits.map { it.id })
+        assertTrue(PictureResults.isPictogram(hits.first().credit))
+        assertTrue(hits.first().fullUrl.endsWith("/618x618/1F35E.png"))
     }
 
     @Test
