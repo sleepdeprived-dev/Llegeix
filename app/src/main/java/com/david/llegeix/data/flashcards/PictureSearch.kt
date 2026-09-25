@@ -110,31 +110,91 @@ class PictureSearch(context: Context) {
     }
 
     /**
-     * Photos from every collection at once, Commons first.
+     * Photos of the thing a flashcard means, best first.
      *
-     * Commons is the largest by a wide margin and its files are categorised by
-     * people, so it leads. Wikipedia's article pictures come next — the one
-     * picture people chose to show what a word is — asked in Catalan with the
-     * card's own word and in English with its translation. Openverse follows,
-     * for Flickr and the others Commons does not have.
+     * First the sense: Wikipedia's search for the English word, with each
+     * article's description, picks out the vocabulary sense — *Lime (fruit)*,
+     * not the Roman frontier — see [PhotoRelevance.concept]. That same answer
+     * is a shelf of its own, the lead pictures of the articles that qualify.
+     * The concept's Commons category, from Wikidata, is then searched inside,
+     * which is people having sorted the photos of the thing already; Commons
+     * is also searched at large with the description's noun added ("lime
+     * fruit"), and so is Openverse, for Flickr and the rest. The Catalan
+     * Viquipèdia is asked with the card's own word.
+     *
+     * Everything is then scored by [PhotoRelevance] against what each source
+     * says the picture is: people posing and underwear are left out unless the
+     * word is about people, logos and scenery go to the end, and an Openverse
+     * photo that never mentions the word is dropped.
      */
     private suspend fun searchPhotos(catalan: String, english: String): Outcome = coroutineScope {
+        val encyclopedia = async { textFrom(PictureResults.wikipediaSearchUrl("en", english)) }
+        val catalanWiki = async {
+            hitsFrom(PictureResults.wikipediaSearchUrl("ca", catalan)) {
+                PictureResults.parseWikipedia(it, query = catalan)
+            }
+        }
+        val concept = encyclopedia.await()?.let { PhotoRelevance.concept(it, english) }
+        val hint = concept?.hint?.takeIf { !PictureResults.hasWholeWord(english, it) }
+        val sharpened = listOfNotNull(english, hint).joinToString(" ")
+        // Filed under the concept by people, and so ahead of word matches.
+        val vouched = HashSet<String>()
+        val category = async {
+            concept?.wikidataId
+                ?.let { textFrom(PictureResults.wikidataCategoryUrl(it)) }
+                ?.let(PhotoRelevance::commonsCategory)
+        }
         val shelves = buildList {
-            add(async { hitsFrom(PictureResults.commonsSearchUrl(english), PictureResults::parseCommons) })
-            add(async { hitsFrom(PictureResults.wikipediaSearchUrl("en", english), PictureResults::parseWikipedia) })
-            add(async { hitsFrom(PictureResults.wikipediaSearchUrl("ca", catalan), PictureResults::parseWikipedia) })
+            add(async {
+                category.await()?.let { name ->
+                    hitsFrom(PictureResults.commonsCategorySearchUrl(name), PictureResults::parseCommons)
+                        ?.also { found -> synchronized(vouched) { found.mapTo(vouched) { it.id } } }
+                }
+            })
+            add(async {
+                encyclopedia.await()?.let { PictureResults.parseWikipedia(it, query = english) }
+                    ?.also { found ->
+                        // The concept's own article leads with the picture its
+                        // editors chose to show what it is.
+                        val lead = found.firstOrNull { it.title == concept?.title }
+                        if (lead != null) synchronized(vouched) { vouched += lead.id }
+                    }
+            })
+            add(async { hitsFrom(PictureResults.commonsSearchUrl(english, hint), PictureResults::parseCommons) })
+            add(catalanWiki)
             for (page in 1..PictureResults.OPENVERSE_PAGES) {
                 add(async {
-                    hitsFrom(PictureResults.openverseSearchUrl(english, page), PictureResults::parseOpenverse)
+                    hitsFrom(PictureResults.openverseSearchUrl(sharpened, page), PictureResults::parseOpenverse)
                 })
             }
         }
-        found(shelves.map { it.await() })
+        val found = shelves.map { it.await() }
+        if (found.all { it == null }) return@coroutineScope Outcome.Offline
+        val merged = merge(found.map { it.orEmpty() })
+        Outcome.Found(
+            PhotoRelevance.rank(
+                hits = merged,
+                query = english,
+                hint = concept?.hint,
+                // Commons and Wikipedia files are named and categorised by
+                // people; Openverse's tags are anybody's.
+                strict = { !it.id.startsWith("commons:") },
+                vouched = { it.id in vouched },
+            ),
+        )
     }
 
     /** Only every shelf being unreachable is being offline; one failing is one fewer shelf. */
     private fun found(shelves: List<List<PictureHit>?>): Outcome =
         if (shelves.all { it == null }) Outcome.Offline else Outcome.Found(merge(shelves.map { it.orEmpty() }))
+
+    /** A reply as text, or null when the service could not be reached. */
+    private fun textFrom(url: String): String? =
+        try {
+            fetch(url, MAX_ANSWER_BYTES, acceptEmpty = true).toString(Charsets.UTF_8)
+        } catch (error: IOException) {
+            null
+        }
 
     /** Null when the service could not be reached at all, as against having nothing. */
     private suspend fun hitsFrom(
@@ -342,7 +402,14 @@ class PictureSearch(context: Context) {
     }
 
     private companion object {
-        const val USER_AGENT = "Llegeix"
+        /**
+         * Who is asking, with somewhere to find out more — which is what
+         * Wikimedia's policy asks of every client, and what it throttles
+         * clients for not saying. A bare "Llegeix" had searches coming back
+         * empty after a few words typed in quick succession.
+         */
+        const val USER_AGENT =
+            "Llegeix (Android vocabulary app; https://github.com/sleepdeprived-dev/Llegeix-releases)"
         const val TIMEOUT_MS = 12_000
 
         /** A page of search results is tens of kilobytes. */

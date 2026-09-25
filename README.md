@@ -242,7 +242,7 @@ does both after bumping the version in `app/build.gradle.kts`.
 - **Updates** — Llegeix is sideloaded rather than installed from a store, so
   nothing would ever update it. Configuració has a button that asks when it is
   pressed: it reads the newest release from a small public repository that
-  carries the builds and nothing else, says what changed, fetches the APK for
+  carries the builds and nothing else, says which version is waiting, fetches the APK for
   this phone's architecture rather than the universal one, and hands it to
   Android's own installer. Nothing is installed without the system's own dialog,
   and the request carries no identifier — it is the same unauthenticated call
@@ -335,7 +335,17 @@ does both after bumping the version in `app/build.gradle.kts`.
   shelves overlap, and a grid half made of pairs is half a grid. Photos are held
   to three safety checks: the source's own adult flag or the file's categories,
   a list of words never searched for, and the same list read against every
-  photo's title and tags.
+  photo's title and tags. And they are held to being a picture of the *thing*:
+  Wikipedia's one-line descriptions pick out the sense a flashcard means —
+  *apple* the "Edible fruit", not the "American multinational technology
+  company" — that article's Commons category is searched first, Commons at large
+  only for files named after the word, and every photo is scored against what
+  its source says it shows. People posing and underwear are left out unless the
+  word is about people (Flickr tags a bra "peach" and a green shirt "lime"),
+  and logos, landscapes, rotten fruit and a fruit's tree or blossom go to the
+  end. A search field over the grid searches for anything else instead, for
+  both kinds of picture. Pinterest is not a source: it has no public search
+  that works without an approved account and a key.
   They are offered and never placed — a picture of the wrong sense of *banc* is
   worse than none — and the one chosen keeps its maker's credit on the card.
   Your own photos come through Android's photo picker, so the app is never given
@@ -347,19 +357,21 @@ does both after bumping the version in `app/build.gradle.kts`.
   Each deck is a card of its own on the tab, with a picture of its own — chosen
   from the same grid, or its first card's — a bar for how well it is known and
   its own way into practice. Decks can be pinned to the top. The decks are the
-  choice, so there is no second list of them to choose from. Which way round is
-  two flags, not two language names, and the meaning can be practised in
-  Romanian or in English: a second flag switch, because recognising a Catalan
-  word is the same skill whichever language the answer comes in, so it is the
-  same schedule. Going through cards again when none are due is always one press
+  choice, so there is no second list of them to choose from. A card's meaning is
+  always shown in English and Romanian together, each behind its flag — *poma*
+  turns over to *apple* and *măr* — so one session teaches a word in both and
+  there is no language to choose. Going through cards again when none are due is always one press
   away, as extra practice that does not move the schedule — repetition helps,
   and three right answers in ten minutes are not three days' learning. Saving a
   copy is a button in the corner.
 
   Decks can be grouped into collections, and collections into collections, to
   any depth: *Vegetables*, *Fruit* and *At the market* on a shelf called *Food*,
-  which folds open and shut and has a play button of its own that goes through
-  everything under it. Every deck and collection has *Move to…* in its ⋮ menu,
+  which folds open and shut at a tap on the row and has a play button of its own
+  that goes through everything under it. A collection is drawn as a small pile
+  of cards; folded shut it names what is inside it, and open it takes a hairline
+  of the accent while its contents hang under it on a guide line. Its ⋮ menu can
+  make a new collection straight inside it. Every deck and collection has *Move to…* in its ⋮ menu,
   which opens the tree as a small map with where it is now lit; a collection is
   never offered a place inside itself. That button is the point of the feature —
   practising *food* is one session over every card on the shelf, dealt and
@@ -389,13 +401,10 @@ does both after bumping the version in `app/build.gradle.kts`.
   each other are shuffled so a deck never becomes a recitation. Those same boxes
   fill the bar on each deck.
 
-  Which languages, and which way round, is asked every time play is pressed:
-  four rows — Catalan → Romanian, the way back, then the same pair in English —
-  each wearing its own flags, with last time's lit so going again the same way
-  is one tap. The English rows are left out when nothing being practised has an
-  English meaning. One card serves all four, because the meaning in each language is a
-  field on the card rather than a card of its own, and each direction keeps its
-  own half of the schedule. That question replaced a panel headed *14 cards to
+  Which way round is asked every time play is pressed: Catalan → English ·
+  Romanian, or the way back, with last time's lit so going again the same way
+  is one tap. At the end of a round the app offers the other way round straight
+  away, once. Each direction keeps its own half of the schedule. That question replaced a panel headed *14 cards to
   review*, then a strip of pills, then a menu in the app bar. Below the bar there is one thing left, and it is the only thing there
   that is not about a particular deck: *Practise them all*.
 

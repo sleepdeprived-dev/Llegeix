@@ -33,6 +33,14 @@ data class PictureHit(
     val fullUrl: String,
     /** Who made it and under what licence, to keep with the card. */
     val credit: String,
+    /**
+     * What the source says the picture is — its title, tags or categories,
+     * and for Wikipedia the article's description — for [PhotoRelevance] to
+     * read. Never shown.
+     */
+    val context: String = "",
+    /** The picture's own name — a file name, a photo's title — also for [PhotoRelevance]. */
+    val title: String = "",
 )
 
 /**
@@ -260,10 +268,30 @@ object PictureResults {
      * come back with the search so every candidate can be read against the
      * same blocklist Openverse's tags are.
      */
-    fun commonsSearchUrl(query: String): String =
+    /**
+     * Commons at large, for files with the word in their own name: a file
+     * called *Red apples.jpg* is a photo of apples, where one that merely has
+     * "apple" somewhere in its description is as likely a banana at a market
+     * that also sold them. [hint] is added as a word to rank by, not to require.
+     */
+    fun commonsSearchUrl(query: String, hint: String? = null): String =
+        commonsUrl(
+            "filetype:bitmap intitle:\"" + query.trim().replace("\"", "") + "\"" +
+                (hint?.let { " $it" } ?: ""),
+        )
+
+    /**
+     * Commons, asked only inside the category Wikidata files a concept's
+     * pictures under — *Limes*, *Prunus persica* — which is people having
+     * already sorted the photos of the thing from the photos that mention it.
+     */
+    fun commonsCategorySearchUrl(category: String): String =
+        commonsUrl("filetype:bitmap incategory:\"" + category.replace("\"", "") + "\"")
+
+    private fun commonsUrl(search: String): String =
         "https://commons.wikimedia.org/w/api.php?action=query&format=json" +
             "&formatversion=2&generator=search&gsrnamespace=6&gsrlimit=$COMMONS_FETCH" +
-            "&gsrsearch=" + URLEncoder.encode("filetype:bitmap " + query.trim(), "UTF-8") +
+            "&gsrsearch=" + URLEncoder.encode(search, "UTF-8") +
             "&prop=imageinfo%7Ccategories&cllimit=20&iiprop=url%7Cextmetadata" +
             "&iiurlwidth=$COMMONS_THUMBNAIL_PX"
 
@@ -285,6 +313,8 @@ object PictureResults {
         }
         return (0 until pages.length()).asSequence()
             .mapNotNull { pages.optJSONObject(it) }
+            // The pages come back keyed, not ranked; the rank is in "index".
+            .sortedBy { it.optInt("index", Int.MAX_VALUE) }
             .filterNot { page ->
                 PictureSafety.isBlockedPhoto(page.optString("title"), categoriesOf(page))
             }
@@ -308,6 +338,8 @@ object PictureResults {
                         license = meta?.optJSONObject("LicenseShortName")?.optString("value")
                             .orEmpty(),
                     ),
+                    context = (listOf(page.optString("title")) + categoriesOf(page)).joinToString(" "),
+                    title = page.optString("title").removePrefix("File:"),
                 )
             }
             .toList()
@@ -399,6 +431,8 @@ object PictureResults {
                         license = photo.optString("license"),
                         version = photo.optString("license_version"),
                     ),
+                    context = (listOf(photo.optString("title")) + tagsOf(photo)).joinToString(" "),
+                    title = photo.optString("title"),
                 )
             }
             .toList()
@@ -436,7 +470,8 @@ object PictureResults {
         "https://$language.wikipedia.org/w/api.php?action=query&format=json" +
             "&formatversion=2&generator=search&gsrnamespace=0&gsrlimit=$WIKIPEDIA_FETCH" +
             "&gsrsearch=" + URLEncoder.encode(query.trim(), "UTF-8") +
-            "&prop=pageimages&piprop=thumbnail%7Cname&pithumbsize=$COMMONS_THUMBNAIL_PX"
+            "&prop=pageimages%7Cdescription%7Cpageprops&ppprop=wikibase_item" +
+            "&piprop=thumbnail%7Cname&pithumbsize=$COMMONS_THUMBNAIL_PX"
 
     /**
      * Wikipedia's answer, in the order the search ranked it.
@@ -447,7 +482,7 @@ object PictureResults {
      * they lead the articles on places and companies, and are not a picture
      * of a word.
      */
-    fun parseWikipedia(json: String): List<PictureHit> {
+    fun parseWikipedia(json: String, query: String? = null): List<PictureHit> {
         val pages = try {
             JSONObject(json).optJSONObject("query")?.optJSONArray("pages") ?: return emptyList()
         } catch (error: JSONException) {
@@ -463,7 +498,16 @@ object PictureResults {
                     ?.takeIf { it.startsWith("https://") && "/wikipedia/commons/" in it }
                     ?: return@mapNotNull null
                 val title = page.optString("title")
+                val description = page.optString("description")
                 if (NOT_A_PICTURE.containsMatchIn(file)) return@mapNotNull null
+                // Only articles about the word, and only the kinds of thing a
+                // flashcard means: *Apple*, not *Apple Inc.* nor *Fiona Apple*.
+                if (query != null) {
+                    if (!hasWholeWord(PhotoRelevance.words(title).joinToString(" ") { PhotoRelevance.stem(it) },
+                            PhotoRelevance.words(query).joinToString(" ") { PhotoRelevance.stem(it) })
+                    ) return@mapNotNull null
+                    if (PhotoRelevance.senseScore("$description $title") < 0) return@mapNotNull null
+                }
                 if (!isDrawableImage(thumbnail)) return@mapNotNull null
                 if (PictureSafety.isBlockedPhoto(title, listOf(file))) return@mapNotNull null
                 PictureHit(
@@ -475,10 +519,17 @@ object PictureResults {
                     fullUrl = fullSize(thumbnail),
                     credit = listOf(file.substringBeforeLast('.').replace('_', ' '), "Wikimedia Commons")
                         .joinToString(" · "),
+                    context = "$title $description ${file.replace('_', ' ')}",
+                    title = title,
                 )
             }
             .toList()
     }
+
+    /** Where Wikidata keeps a concept's Commons category (property P373). */
+    fun wikidataCategoryUrl(wikidataId: String): String =
+        "https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&property=P373&entity=" +
+            URLEncoder.encode(wikidataId, "UTF-8")
 
     private val NOT_A_PICTURE =
         Regex("logo|flag|bandera|map[a_ .-]|mapa|escut|coat.of.arms|\\.svg", RegexOption.IGNORE_CASE)

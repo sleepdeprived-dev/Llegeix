@@ -42,6 +42,12 @@ data class PictureSuggestions(
     val source: PictureSource = PictureSource.PICTOGRAMS,
     /** The suggestion being fetched after a tap, so its tile can say so. */
     val fetching: String? = null,
+    /**
+     * What was actually searched for — the English, for photos — so the
+     * search field can show it and the reader can see why the grid is what it
+     * is, and change it.
+     */
+    val searched: String = "",
 )
 
 /**
@@ -79,7 +85,16 @@ class PictureSuggester(
     private var job: Job? = null
     private var last: Request? = null
 
-    private data class Request(val word: String, val english: String?, val romanian: String?)
+    /**
+     * @param typed what the reader typed into the search field, which is
+     *   searched as it is, for both kinds of picture, in place of the word.
+     */
+    private data class Request(
+        val word: String,
+        val english: String?,
+        val romanian: String?,
+        val typed: String? = null,
+    )
 
     /**
      * Look for pictures of [word], after a pause if [pause].
@@ -88,19 +103,45 @@ class PictureSuggester(
      * @param romanian the Romanian meaning, for working one out if not.
      */
     fun suggest(word: String, english: String? = null, romanian: String? = null, pause: Boolean = true) {
+        val request = Request(
+            word.trim(),
+            english?.trim()?.takeIf { it.isNotEmpty() },
+            romanian?.trim()?.takeIf { it.isNotEmpty() },
+        )
+        // A search the reader typed stands until the word itself changes.
+        val kept = last?.typed?.takeIf { last?.word == request.word }
+        run(request.copy(typed = kept), pause)
+    }
+
+    /**
+     * Search for exactly [text], typed into the grid's own search field: for
+     * when the word's own pictures are not the ones wanted — *taronja*, but a
+     * picture of orange juice.
+     */
+    fun searchFor(text: String) {
+        val base = last ?: Request(word = text.trim(), english = null, romanian = null)
+        run(base.copy(typed = text.trim().takeIf { it.isNotEmpty() }), pause = false)
+    }
+
+    private fun run(request: Request, pause: Boolean) {
         job?.cancel()
-        val trimmed = word.trim()
+        val trimmed = request.word
         val source = _source.value
-        last = Request(trimmed, english?.trim()?.takeIf { it.isNotEmpty() }, romanian?.trim()?.takeIf { it.isNotEmpty() })
-        if (trimmed.isEmpty()) {
+        last = request
+        if (trimmed.isEmpty() && request.typed == null) {
             _state.value = PictureSuggestions(source = source)
             return
         }
-        val request = last!!
         job = scope.launch {
             if (pause) delay(PAUSE_MS)
-            _state.value = PictureSuggestions(PictureStatus.SEARCHING, word = trimmed, source = source)
-            val english = when (source) {
+            val typed = request.typed
+            _state.value = PictureSuggestions(
+                PictureStatus.SEARCHING,
+                word = trimmed,
+                source = source,
+                searched = typed.orEmpty(),
+            )
+            val english = if (typed != null) typed else when (source) {
                 // Pictograms are found in Catalan; the English only widens the
                 // search, so it is not waited on for long.
                 PictureSource.PICTOGRAMS -> withTimeoutOrNull(PICTOGRAM_ENGLISH_WAIT_MS) {
@@ -117,15 +158,18 @@ class PictureSuggester(
                 _state.value = PictureSuggestions(PictureStatus.BLOCKED, word = trimmed, source = source)
                 return@launch
             }
-            _state.value = when (val outcome = search.search(source, trimmed, english)) {
+            val catalan = typed ?: trimmed
+            val searched = if (source == PictureSource.PHOTOS) english.orEmpty() else catalan
+            _state.value = when (val outcome = search.search(source, catalan, english)) {
                 PictureSearch.Outcome.Offline ->
-                    PictureSuggestions(PictureStatus.OFFLINE, word = trimmed, source = source)
+                    PictureSuggestions(PictureStatus.OFFLINE, word = trimmed, source = source, searched = searched)
 
                 is PictureSearch.Outcome.Found -> PictureSuggestions(
                     status = if (outcome.hits.isEmpty()) PictureStatus.NONE_FOUND else PictureStatus.FOUND,
                     hits = outcome.hits,
                     word = trimmed,
                     source = source,
+                    searched = searched,
                 )
             }
         }
@@ -147,7 +191,7 @@ class PictureSuggester(
 
     /** Search once more for the last word: after "no connection", or a change of source. */
     fun again() {
-        last?.let { suggest(it.word, it.english, it.romanian, pause = false) }
+        last?.let { run(it, pause = false) }
     }
 
     /** Whether the row on show is for [word] as it is now. */

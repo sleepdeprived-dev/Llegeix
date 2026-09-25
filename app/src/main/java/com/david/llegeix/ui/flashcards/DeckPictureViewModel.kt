@@ -66,6 +66,8 @@ class DeckPictureViewModel(
 
     fun onSourceChange(source: PictureSource) = pictures.setSource(source)
 
+    fun onSearchPictures(text: String) = pictures.searchFor(text)
+
     fun onRetry() = pictures.again()
 
     fun onPick(hit: PictureHit) = setCover {

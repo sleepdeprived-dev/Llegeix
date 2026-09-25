@@ -704,6 +704,7 @@ The app asks for permission to read files so it can find your PDFs, for network 
     <string name="flashcards_pictures_none_pictograms">No pictograms for \"%1$s\". Try Photos.</string>
     <string name="flashcards_pictures_none_photos">No photos for \"%1$s\". Try Pictograms.</string>
     <string name="flashcards_pictures_offline">No connection, so no pictures to suggest.</string>
+    <string name="flashcards_pictures_search">Search for other pictures</string>
     <string name="flashcards_pictures_retry">Try again</string>
     <string name="flashcards_pictures_credit_pictograms">Pictograms from ARASAAC (Sergio Palao, CC BY-NC-SA), Global Symbols and OpenMoji (CC BY-SA), each credited on the card.</string>
     <string name="flashcards_pictures_credit_photos">Photos from Wikimedia Commons, Wikipedia and Openverse, each under its own open licence.</string>
@@ -726,16 +727,14 @@ The app asks for permission to read files so it can find your PDFs, for network 
     <string name="flashcards_pictures_no_english">Photos are searched in English, and no English word could be found for \"%1$s\". Add the English meaning, or try Pictograms.</string>
     <string name="flashcards_pictures_blocked">For safety, this word is not searched in Photos. Try Pictograms.</string>
     <plurals name="flashcards_english_missing">
-        <item quantity="one">%1$d card has no English meaning yet, so English practice leaves it out.</item>
-        <item quantity="other">%1$d cards have no English meaning yet, so English practice leaves them out.</item>
+        <item quantity="one">%1$d card has no English meaning yet, so practice shows only its Romanian.</item>
+        <item quantity="other">%1$d cards have no English meaning yet, so practice shows only their Romanian.</item>
     </plurals>
     <string name="flashcards_english_fill">Fill in</string>
     <plurals name="flashcards_english_filled">
         <item quantity="one">English filled in for %1$d card. Check it in the card.</item>
         <item quantity="other">English filled in for %1$d cards. Check them in the cards.</item>
     </plurals>
-    <string name="flashcards_study_no_english_title">No English meanings yet</string>
-    <string name="flashcards_study_no_english_body">These cards have only their Romanian meaning. Fill in the English from the deck, or practise in Romanian with the flag at the top of the tab.</string>
     <string name="flashcards_meaning_from_dictionary">From ARASAAC\'s dictionary, written by people for this word. Change it if you mean something else.</string>
     <string name="flashcards_catalan_suggested">Worked out from the meaning. Change it if you mean another word.</string>
     <string name="flashcards_kind_deck">Deck</string>
@@ -757,6 +756,8 @@ The app asks for permission to read files so it can find your PDFs, for network 
     <string name="flashcards_moved_to_top">Moved \"%1$s\" to the top level</string>
     <string name="flashcards_move_here_now">Here now</string>
     <string name="flashcards_move_top_hint">Not inside any collection</string>
+    <string name="flashcards_new_collection_inside">New collection inside…</string>
+    <string name="flashcards_new_collection_inside_title">New collection in \"%1$s\"</string>
     <string name="flashcards_no_collections">You have not made a collection yet. The + button makes one.</string>
     <string name="flashcards_show_decks">Show what is in %1$s</string>
     <string name="flashcards_hide_decks">Hide what is in %1$s</string>
@@ -793,7 +794,9 @@ The app asks for permission to read files so it can find your PDFs, for network 
     <string name="verb_form_participle">Past participle</string>
     <string name="folder_detail_search">Search this collection</string>
     <string name="folder_detail_search_none">Nothing in this collection matches \"%1$s\".</string>
-    <string name="flashcards_choose_pair">Which languages, and which way round</string>
+    <string name="flashcards_turn_round_title">Now the other way round?</string>
+    <string name="flashcards_turn_round_action">Start</string>
+    <string name="flashcards_choose_pair">Which way round</string>
     <string name="flashcards_practise_all">Practise them all</string>
     <string name="flashcards_practise_name">Practise %1$s</string>
     <string name="flashcards_collection_picture_remove">Use the first deck\'s picture</string>

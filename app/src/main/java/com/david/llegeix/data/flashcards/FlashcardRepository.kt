@@ -50,13 +50,22 @@ class FlashcardRepository(
      * called *Food* are never in the same list, so they are not in each other's
      * way.
      */
-    suspend fun createCollection(name: String): DeckNames.Check = database.withTransaction {
-        val check = DeckNames.check(name, dao.collections().map { it.name })
-        if (check is DeckNames.Check.Ok) {
-            dao.insertCollection(FlashcardCollectionEntity(name = check.name))
+    suspend fun createCollection(name: String, parentId: Long? = null): DeckNames.Check =
+        database.withTransaction {
+            val all = dao.collections()
+            val check = DeckNames.check(name, all.map { it.name })
+            if (check is DeckNames.Check.Ok) {
+                dao.insertCollection(
+                    FlashcardCollectionEntity(
+                        name = check.name,
+                        // Only a parent that exists; one deleted while the name
+                        // was being typed leaves the new one at the top.
+                        parentId = parentId?.takeIf { id -> all.any { it.id == id } },
+                    ),
+                )
+            }
+            check
         }
-        check
-    }
 
     suspend fun renameCollection(id: Long, name: String): DeckNames.Check =
         database.withTransaction {

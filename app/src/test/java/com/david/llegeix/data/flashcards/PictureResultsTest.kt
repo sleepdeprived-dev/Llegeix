@@ -42,7 +42,7 @@ class PictureResultsTest {
     @Test
     fun `Commons is asked for bitmaps, with the categories that let them be checked`() {
         val url = PictureResults.commonsSearchUrl("apple tree")
-        assertTrue("only real pictures", url.contains("filetype%3Abitmap+apple+tree"))
+        assertTrue("only real pictures, named for the word", url.contains("filetype%3Abitmap+intitle%3A%22apple+tree%22"))
         assertTrue("files, not articles", url.contains("gsrnamespace=6"))
         assertTrue("with a thumbnail already made", url.contains("iiurlwidth=330"))
         assertTrue("and what it is filed under", url.contains("categories"))

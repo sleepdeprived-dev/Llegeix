@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.offset
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.LazyListScope
@@ -86,7 +93,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.DeckNames
-import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
@@ -129,7 +135,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun FlashcardsScreen(
     onOpenDeck: (deckId: Long) -> Unit,
-    onStudy: (scope: StudyScope, direction: StudyDirection, language: MeaningLanguage) -> Unit,
+    onStudy: (scope: StudyScope, direction: StudyDirection) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FlashcardsViewModel = viewModel(factory = FlashcardsViewModel.Factory),
 ) {
@@ -137,7 +143,6 @@ fun FlashcardsScreen(
     val openShelves by viewModel.openShelves.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
-    val language by viewModel.language.collectAsStateWithLifecycle()
     val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
 
     // The system's own file screens, so the copy goes wherever the reader
@@ -165,6 +170,7 @@ fun FlashcardsScreen(
     var picturingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var moving by remember { mutableStateOf<DeckWithCount?>(null) }
     var movingShelf by remember { mutableStateOf<DeckShelf?>(null) }
+    var creatingInside by remember { mutableStateOf<DeckShelf?>(null) }
     var renamingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var deletingShelf by remember { mutableStateOf<DeckShelf?>(null) }
     var showingBackup by remember { mutableStateOf(false) }
@@ -187,8 +193,8 @@ fun FlashcardsScreen(
     var asking by remember { mutableStateOf<PlayRequest?>(null) }
     val everything = stringResource(R.string.flashcards_practise_all)
     val practiseName = stringResource(R.string.flashcards_practise_name)
-    fun play(scope: StudyScope, title: String, decks: List<DeckWithCount>) {
-        asking = PlayRequest(scope, title, hasEnglish = decks.any { it.englishCount > 0 })
+    fun play(scope: StudyScope, title: String) {
+        asking = PlayRequest(scope, title)
     }
 
     Scaffold(
@@ -256,7 +262,7 @@ fun FlashcardsScreen(
                 if (loaded.hasCards && canPractise(loaded.allDecks)) {
                     item(key = "practice") {
                         PractiseEverything(
-                            onStudy = { play(StudyScope.Everything, everything, loaded.allDecks) },
+                            onStudy = { play(StudyScope.Everything, everything) },
                         )
                     }
                 }
@@ -271,12 +277,14 @@ fun FlashcardsScreen(
                             isOpen = shelf.id in openShelves,
                             canPractise = canPractise(shelf.allDecks),
                             indent = ShelfIndent * depth,
+                            guides = depth,
+                            modifier = Modifier.animateItem(),
+                            onNewInside = { creatingInside = shelf },
                             onToggle = { viewModel.onToggleShelf(shelf.id) },
                             onPractise = {
                                 play(
                                     StudyScope.Collection(shelf.id),
                                     practiseName.format(shelf.collection.name),
-                                    shelf.allDecks,
                                 )
                             },
                             onPicture = { picturingShelf = shelf },
@@ -297,6 +305,9 @@ fun FlashcardsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier
+                                    .animateItem()
+                                    .fillMaxWidth()
+                                    .treeGuides(depth + 1)
                                     .padding(start = Space.screen + inside)
                                     .padding(end = Space.screen, top = Space.xs, bottom = Space.md),
                             )
@@ -311,9 +322,11 @@ fun FlashcardsScreen(
                             direction = direction,
                             canPractise = canPractise(listOf(deck)),
                             indent = inside,
+                            guides = depth + 1,
+                            modifier = Modifier.animateItem(),
                             onOpen = { onOpenDeck(deck.id) },
                             onPractise = {
-                                play(StudyScope.Deck(deck.id), practiseName.format(deck.name), listOf(deck))
+                                play(StudyScope.Deck(deck.id), practiseName.format(deck.name))
                             },
                             onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
                             onPicture = { picturing = deck },
@@ -332,11 +345,12 @@ fun FlashcardsScreen(
                 items(loaded.loose, key = { "deck-${it.id}" }) { deck ->
                     DeckRow(
                         deck = deck,
+                        modifier = Modifier.animateItem(),
                         direction = direction,
                         canPractise = canPractise(listOf(deck)),
                         onOpen = { onOpenDeck(deck.id) },
                         onPractise = {
-                            play(StudyScope.Deck(deck.id), practiseName.format(deck.name), listOf(deck))
+                            play(StudyScope.Deck(deck.id), practiseName.format(deck.name))
                         },
                         onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
                         onPicture = { picturing = deck },
@@ -353,12 +367,11 @@ fun FlashcardsScreen(
         PlayPairSheet(
             request = request,
             lastDirection = direction,
-            lastLanguage = language,
             onDismiss = { asking = null },
-            onChoose = { way, meaning ->
+            onChoose = { way ->
                 // Remembered, so it is the row lit next time.
-                viewModel.onChoosePair(way, meaning)
-                onStudy(request.scope, way, meaning)
+                viewModel.onChooseDirection(way)
+                onStudy(request.scope, way)
             },
         )
     }
@@ -424,6 +437,23 @@ fun FlashcardsScreen(
             onConfirm = { name ->
                 viewModel.renameDeck(deck.id, name)
                 renaming = null
+            },
+        )
+    }
+
+    creatingInside?.let { parent ->
+        NameDialog(
+            title = stringResource(R.string.flashcards_new_collection_inside_title, parent.collection.name),
+            label = stringResource(R.string.flashcards_collection_name_label),
+            hint = stringResource(R.string.flashcards_collection_name_hint),
+            takenRes = R.string.flashcards_collection_exists,
+            confirmLabel = stringResource(R.string.action_create),
+            initialName = "",
+            check = { viewModel.checkCollectionName(it) },
+            onDismiss = { creatingInside = null },
+            onConfirm = { name ->
+                viewModel.createCollectionInside(parent, name)
+                creatingInside = null
             },
         )
     }
@@ -594,34 +624,52 @@ private fun ShelfRow(
     onTogglePinned: () -> Unit,
     onPicture: () -> Unit,
     onMove: () -> Unit,
+    onNewInside: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     /** How far in from the margin, so a shelf inside a shelf reads as being in it. */
     indent: Dp = 0.dp,
+    /** How many levels of the tree it is inside, for the guide lines on the left. */
+    guides: Int = 0,
+    modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val turn by animateFloatAsState(if (isOpen) 0f else -90f, label = "shelf chevron")
+    val scheme = MaterialTheme.colorScheme
+    // Open is said by the row itself rather than by an arrow: it lifts a
+    // shade and takes a hairline of the accent, and what is inside hangs
+    // under it on a guide line. Not a fill of the accent's own container
+    // colour, which is the play button's, and swallowed it.
+    val tint by animateColorAsState(
+        if (isOpen) scheme.surfaceContainerHigh else scheme.surfaceContainer,
+        label = "shelf tint",
+    )
+    val edge by animateColorAsState(
+        if (isOpen) scheme.primary.copy(alpha = 0.45f) else Color.Transparent,
+        label = "shelf edge",
+    )
+    val rowShape = RoundedCornerShape(22.dp)
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .treeGuides(guides)
             .padding(start = Space.screen + indent, end = Space.screen)
             .padding(vertical = 5.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .combinedClickable(onClick = onToggle, onLongClick = { menuOpen = true })
+            .clip(rowShape)
+            .background(tint)
+            .border(1.5.dp, edge, rowShape)
+            .combinedClickable(
+                onClickLabel = stringResource(
+                    if (isOpen) R.string.flashcards_hide_decks else R.string.flashcards_show_decks,
+                    shelf.collection.name,
+                ),
+                onClick = onToggle,
+                onLongClick = { menuOpen = true },
+            )
             .padding(Space.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Cover(
-            image = shelf.coverImage,
-            credit = shelf.coverCredit,
-            initial = shelf.collection.name,
-            size = CoverSize,
-            // A shelf is drawn as a stack: the same square, a step squarer than
-            // a deck's, so the two kinds of row are told apart without a label.
-            corner = 12.dp,
-        )
+        ShelfCover(shelf = shelf, isOpen = isOpen)
 
         Column(
             modifier = Modifier
@@ -663,6 +711,12 @@ private fun ShelfRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp),
             )
+            // Folded shut, the row says what is inside it by name — the
+            // collections first, each behind the collection mark, then the
+            // decks — so a shelf can be found without opening every one.
+            if (!isOpen && !shelf.isEmpty) {
+                ShelfContents(shelf, modifier = Modifier.padding(top = 4.dp))
+            }
         }
 
         if (canPractise) {
@@ -673,38 +727,6 @@ private fun ShelfRow(
                     shelf.collection.name,
                 ),
                 modifier = Modifier.padding(start = Space.sm),
-            )
-        }
-
-        // The chevron, as a thing you can aim at.
-        //
-        // It was a 20dp glyph tucked in front of the name, which made it look
-        // like a bullet rather than a control and gave it no target of its own
-        // — the whole row opened the shelf, so the mark was decoration. Here it
-        // is at the end, in a tinted disc, at the size of a button, and it
-        // turns to say which way the row went.
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .padding(start = Space.sm)
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .clickable(
-                    onClickLabel = stringResource(
-                        if (isOpen) R.string.flashcards_hide_decks else R.string.flashcards_show_decks,
-                        shelf.collection.name,
-                    ),
-                    onClick = onToggle,
-                ),
-        ) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(22.dp)
-                    .rotate(turn),
             )
         }
 
@@ -720,6 +742,12 @@ private fun ShelfRow(
                 )
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_new_collection)) },
+                    text = { Text(stringResource(R.string.flashcards_new_collection_inside)) },
+                    onClick = { onNewInside(); menuOpen = false },
+                )
+                HorizontalDivider()
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
                     text = {
@@ -790,12 +818,16 @@ private fun DeckRow(
     onDelete: () -> Unit,
     /** How far in from the margin, so a deck on a shelf reads as being on it. */
     indent: Dp = 0.dp,
+    /** How many levels of the tree it is inside, for the guide lines on the left. */
+    guides: Int = 0,
+    modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .treeGuides(guides)
             .padding(start = Space.screen + indent, end = Space.screen)
             .padding(vertical = 5.dp)
             .clip(RoundedCornerShape(22.dp))
@@ -910,6 +942,92 @@ private fun DeckRow(
                     onClick = { onDelete(); menuOpen = false },
                 )
             }
+        }
+    }
+}
+
+/**
+ * A collection's square: its picture or its initial, with two more squares
+ * peeking out behind it, so a collection reads as a pile of things at a glance
+ * and never as one more deck. Open, the pile fans out a little.
+ */
+@Composable
+private fun ShelfCover(shelf: DeckShelf, isOpen: Boolean) {
+    // Two sheets behind the cover, each a little narrower and a little
+    // higher, the way a pile of cards looks from the front. Open, they rise.
+    val rise by animateDpAsState(if (isOpen) 5.dp else 4.dp, label = "shelf rise")
+    val scheme = MaterialTheme.colorScheme
+    val front = CoverSize - StackDepth
+    Box(
+        modifier = Modifier.size(CoverSize),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        for (layer in 2 downTo 1) {
+            Box(
+                modifier = Modifier
+                    .offset(y = -rise * layer)
+                    .size(width = front - 8.dp * layer, height = front)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(scheme.primary.copy(alpha = if (layer == 2) 0.14f else 0.28f)),
+            )
+        }
+        Cover(
+            image = shelf.coverImage,
+            credit = shelf.coverCredit,
+            initial = shelf.collection.name,
+            size = front,
+            corner = 12.dp,
+        )
+    }
+}
+
+/** How much of a collection's square the pile behind its cover takes. */
+private val StackDepth = 10.dp
+
+/**
+ * What a folded collection holds, by name, on one line: the collections inside
+ * it behind the collection mark, then its decks.
+ */
+@Composable
+private fun ShelfContents(shelf: DeckShelf, modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        if (shelf.children.isNotEmpty()) {
+            Icon(
+                painter = painterResource(R.drawable.ic_collection),
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier
+                    .padding(end = 3.dp)
+                    .size(12.dp),
+            )
+        }
+        Text(
+            text = (shelf.children.map { it.collection.name } + shelf.decks.map { it.name })
+                .joinToString(" · "),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * The tree's guide lines: one thin vertical rule for each level a row is
+ * inside, drawn in the gutter its indent leaves, so what is in a collection
+ * hangs visibly from it. Drawn edge to edge of the item, so the rules of
+ * rows one under another join into one line.
+ */
+@Composable
+private fun Modifier.treeGuides(levels: Int): Modifier {
+    if (levels <= 0) return this
+    val color = MaterialTheme.colorScheme.outlineVariant
+    return drawBehind {
+        val width = 2.dp.toPx()
+        for (level in 0 until levels.coerceAtMost(MaxDrawnDepth + 1)) {
+            val x = (Space.screen + ShelfIndent * level + ShelfIndent / 2).toPx()
+            drawLine(color, Offset(x, 0f), Offset(x, size.height), strokeWidth = width, cap = StrokeCap.Round)
         }
     }
 }
@@ -1295,6 +1413,7 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
                             pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
                         onRetry = viewModel::onRetry,
+                        onSearch = viewModel::onSearchPictures,
                     )
                 }
             }
@@ -1377,6 +1496,7 @@ private fun DeckPictureSheet(deck: DeckWithCount, onDismiss: () -> Unit) {
                     pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 },
                 onRetry = viewModel::onRetry,
+                onSearch = viewModel::onSearchPictures,
             )
             if (deck.chosenCover != null) {
                 OutlinedButton(
@@ -1445,6 +1565,7 @@ private fun CollectionPictureSheet(shelf: DeckShelf, onDismiss: () -> Unit) {
                     pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 },
                 onRetry = viewModel::onRetry,
+                onSearch = viewModel::onSearchPictures,
             )
             if (shelf.chosenCover != null) {
                 OutlinedButton(

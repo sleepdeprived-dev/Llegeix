@@ -690,6 +690,7 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_pictures_none_pictograms">No hi ha pictogrames per a «%1$s». Prova amb Fotos.</string>
     <string name="flashcards_pictures_none_photos">No hi ha fotos per a «%1$s». Prova amb Pictogrames.</string>
     <string name="flashcards_pictures_offline">Sense connexió, no es poden suggerir imatges.</string>
+    <string name="flashcards_pictures_search">Cerca altres imatges</string>
     <string name="flashcards_pictures_retry">Torna-ho a provar</string>
     <string name="flashcards_pictures_credit_pictograms">Pictogrames d\'ARASAAC (Sergio Palao, CC BY-NC-SA), Global Symbols i OpenMoji (CC BY-SA), amb el crèdit a cada targeta.</string>
     <string name="flashcards_pictures_credit_photos">Fotos de Wikimedia Commons, la Viquipèdia i Openverse, cadascuna amb la seva llicència lliure.</string>
@@ -712,9 +713,9 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_pictures_no_english">Les fotos es cerquen en anglès, i no s\'ha trobat cap paraula anglesa per a «%1$s». Afegeix el significat en anglès o prova amb Pictogrames.</string>
     <string name="flashcards_pictures_blocked">Per seguretat, aquesta paraula no es cerca a Fotos. Prova amb Pictogrames.</string>
     <plurals name="flashcards_english_missing">
-        <item quantity="one">%1$d targeta encara no té significat en anglès, i el repàs en anglès la deixa fora.</item>
-        <item quantity="many">%1$d targetes encara no tenen significat en anglès, i el repàs en anglès les deixa fora.</item>
-        <item quantity="other">%1$d targetes encara no tenen significat en anglès, i el repàs en anglès les deixa fora.</item>
+        <item quantity="one">%1$d targeta encara no té significat en anglès, i el repàs només en mostra el romanès.</item>
+        <item quantity="many">%1$d targetes encara no tenen significat en anglès, i el repàs només en mostra el romanès.</item>
+        <item quantity="other">%1$d targetes encara no tenen significat en anglès, i el repàs només en mostra el romanès.</item>
     </plurals>
     <string name="flashcards_english_fill">Omple</string>
     <plurals name="flashcards_english_filled">
@@ -722,8 +723,6 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
         <item quantity="many">S\'ha omplert l\'anglès de %1$d targetes. Revisa-ho a les targetes.</item>
         <item quantity="other">S\'ha omplert l\'anglès de %1$d targetes. Revisa-ho a les targetes.</item>
     </plurals>
-    <string name="flashcards_study_no_english_title">Encara no tenen significat en anglès</string>
-    <string name="flashcards_study_no_english_body">Aquestes targetes només tenen el significat en romanès. Omple l\'anglès des de la baralla, o repassa en romanès amb la bandera de dalt de la pestanya.</string>
     <string name="flashcards_meaning_from_dictionary">Del diccionari d\'ARASAAC, escrit per persones per a aquesta paraula. Canvia\'l si vols dir una altra cosa.</string>
     <string name="flashcards_catalan_suggested">Deduït del significat. Canvia-ho si vols dir una altra paraula.</string>
     <string name="flashcards_kind_deck">Baralla</string>
@@ -745,6 +744,8 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_moved_to_top">S\'ha mogut «%1$s» al nivell superior</string>
     <string name="flashcards_move_here_now">Ara és aquí</string>
     <string name="flashcards_move_top_hint">Fora de qualsevol col·lecció</string>
+    <string name="flashcards_new_collection_inside">Col·lecció nova a dins…</string>
+    <string name="flashcards_new_collection_inside_title">Col·lecció nova a «%1$s»</string>
     <string name="flashcards_no_collections">Encara no has fet cap col·lecció. El botó + en fa una.</string>
     <string name="flashcards_show_decks">Mostra el contingut de %1$s</string>
     <string name="flashcards_hide_decks">Amaga el contingut de %1$s</string>
@@ -782,7 +783,9 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="verb_form_participle">Participi</string>
     <string name="folder_detail_search">Cerca en aquesta col·lecció</string>
     <string name="folder_detail_search_none">Res d\'aquesta col·lecció coincideix amb «%1$s».</string>
-    <string name="flashcards_choose_pair">Quines llengües, i en quin sentit</string>
+    <string name="flashcards_turn_round_title">Ara al revés?</string>
+    <string name="flashcards_turn_round_action">Comença</string>
+    <string name="flashcards_choose_pair">En quin sentit</string>
     <string name="flashcards_practise_all">Repassa-les totes</string>
     <string name="flashcards_practise_name">Repassa %1$s</string>
     <string name="flashcards_collection_picture_remove">Fes servir la imatge de la primera baralla</string>

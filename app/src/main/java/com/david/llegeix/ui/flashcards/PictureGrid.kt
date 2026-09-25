@@ -26,6 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import com.david.llegeix.ui.common.SearchField
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,10 +67,33 @@ fun PictureGrid(
     onPick: (PictureHit) -> Unit,
     onPickOwn: () -> Unit,
     onRetry: () -> Unit,
+    /** Search for exactly this instead of the word, from the field over the grid. */
+    onSearch: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
         SourceSwitch(selected = source, onSelect = onSourceChange)
+
+        // What was searched, and room to search for something else: the
+        // word's own pictures are not always the ones wanted, and a grid with
+        // no way to ask again is a grid you can only accept or leave. It
+        // shows what was actually asked — for photos the English — so a
+        // strange grid explains itself. Submitted with the keyboard's search
+        // key; each kind of picture is searched for the same text.
+        var text by remember(suggestions.searched) { mutableStateOf(suggestions.searched) }
+        val focus = LocalFocusManager.current
+        SearchField(
+            query = text,
+            placeholder = stringResource(R.string.flashcards_pictures_search),
+            onQueryChange = { text = it },
+            onSubmit = {
+                focus.clearFocus()
+                onSearch(text)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Space.md),
+        )
 
         val showing = suggestions.source == source
         val hits = if (showing && suggestions.status == PictureStatus.FOUND) suggestions.hits else emptyList()

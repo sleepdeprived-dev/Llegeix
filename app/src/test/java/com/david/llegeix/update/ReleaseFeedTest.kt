@@ -47,7 +47,7 @@ class ReleaseFeedTest {
     """.trimIndent()
 
     @Test
-    fun `reads the version, the notes and the builds`() {
+    fun `reads the version and the builds`() {
         val release = ReleaseFeed.parse(feed)!!
 
         // The tag is written with a v and the installed version is not; they
@@ -56,10 +56,6 @@ class ReleaseFeedTest {
         assertEquals(3, release.assets.size)
         assertTrue(release.pageUrl.endsWith("/tag/v3.4"))
         // Markdown marks are off, the sentence is intact.
-        assertTrue(release.notes, "Per què" in release.notes)
-        assertTrue(release.notes, "Una cosa nova." in release.notes)
-        assertFalse(release.notes, "##" in release.notes)
-        assertFalse(release.notes, "**" in release.notes)
     }
 
     @Test

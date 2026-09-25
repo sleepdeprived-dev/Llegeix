@@ -4,9 +4,9 @@ import android.content.Context
 import androidx.core.content.edit
 
 /**
- * How the reader last chose to practise: which way round, and in which
- * language. Remembered so the Flashcards tab opens the way it was left rather
- * than asking the same two questions every time.
+ * Which way round the reader last chose to practise, so play offers it first.
+ * There is no language to remember: practice always shows a card's English and
+ * Romanian together.
  */
 class FlashcardPrefs(context: Context) {
 
@@ -17,14 +17,9 @@ class FlashcardPrefs(context: Context) {
         get() = StudyDirection.fromName(prefs.getString(KEY_DIRECTION, null))
         set(value) = prefs.edit { putString(KEY_DIRECTION, value.name) }
 
-    var language: MeaningLanguage
-        get() = MeaningLanguage.fromName(prefs.getString(KEY_LANGUAGE, null))
-        set(value) = prefs.edit { putString(KEY_LANGUAGE, value.name) }
-
     fun clear() = prefs.edit { clear() }
 
     private companion object {
         const val KEY_DIRECTION = "direction"
-        const val KEY_LANGUAGE = "language"
     }
 }

@@ -482,6 +482,8 @@ class CardEditorViewModel(
 
     fun onPictureSourceChange(source: PictureSource) = pictures.setSource(source)
 
+    fun onSearchPictures(text: String) = pictures.searchFor(text)
+
     fun onRetryPictures() = pictures.again()
 
     /** Put a suggested picture on the card; the credit comes with it. */

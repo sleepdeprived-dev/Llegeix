@@ -167,7 +167,6 @@ class UpdateRepository(private val context: Context) {
         UpdateCheck.Available(
             AvailableUpdate(
                 version = release.version,
-                notes = release.notes,
                 pageUrl = release.pageUrl,
                 downloadUrl = build.asset.url,
                 downloadBytes = build.asset.bytes,

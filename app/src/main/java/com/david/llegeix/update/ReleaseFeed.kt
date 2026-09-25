@@ -15,8 +15,6 @@ data class ReleaseAsset(
 data class PublishedRelease(
     /** The tag with a leading "v" taken off, so "v3.3" becomes "3.3". */
     val version: String,
-    /** What changed, as prose rather than as the markdown it was written in. */
-    val notes: String,
     val pageUrl: String,
     val assets: List<ReleaseAsset>,
 )
@@ -27,7 +25,6 @@ data class ChosenBuild(val asset: ReleaseAsset, val abi: String)
 /** A release, together with the one build of it this phone can install. */
 data class AvailableUpdate(
     val version: String,
-    val notes: String,
     val pageUrl: String,
     val downloadUrl: String,
     val downloadBytes: Long,
@@ -71,7 +68,6 @@ object ReleaseFeed {
 
         return PublishedRelease(
             version = version,
-            notes = ReleaseNotes.plain(json.optString("body")),
             // Dropped rather than kept when it is not a GitHub address: this
             // one is handed to ACTION_VIEW, and the app has a page of its own
             // to fall back to.

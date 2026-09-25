@@ -15,7 +15,6 @@ import com.david.llegeix.data.flashcards.CollectionTree
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.FlashcardBackup
 import com.david.llegeix.data.flashcards.FlashcardRepository
-import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -180,31 +179,9 @@ class FlashcardsViewModel(
     private val _direction = MutableStateFlow(flashcards.prefs.direction)
     val direction: StateFlow<StudyDirection> = _direction.asStateFlow()
 
-    /** Which language the meanings are practised in. */
-    private val _language = MutableStateFlow(flashcards.prefs.language)
-    val language: StateFlow<MeaningLanguage> = _language.asStateFlow()
-
     fun onChooseDirection(direction: StudyDirection) {
         _direction.value = direction
         flashcards.prefs.direction = direction
-    }
-
-    fun onChooseLanguage(language: MeaningLanguage) {
-        _language.value = language
-        flashcards.prefs.language = language
-    }
-
-    /**
-     * Both halves of "which languages, and which way round", set together.
-     *
-     * They were two controls and are now one menu of four, because they were
-     * never really two questions: nobody wants Catalan→English asked in
-     * Romanian. Setting them one at a time through the old pair meant passing
-     * through a combination nobody chose, however briefly.
-     */
-    fun onChoosePair(direction: StudyDirection, language: MeaningLanguage) {
-        onChooseDirection(direction)
-        onChooseLanguage(language)
     }
 
     fun setPinned(deck: DeckWithCount, pinned: Boolean) = viewModelScope.launch {
@@ -238,6 +215,17 @@ class FlashcardsViewModel(
         flashcards.deleteCollection(shelf.id)
         _openShelves.update { it - shelf.id }
         _message.value = UiText.of(R.string.flashcards_collection_deleted, shelf.collection.name)
+    }
+
+    /** Make a collection straight inside [parent], and open the way down to it. */
+    fun createCollectionInside(parent: DeckShelf, name: String) = viewModelScope.launch {
+        val check = flashcards.createCollection(name, parent.id)
+        if (check is DeckNames.Check.Ok) {
+            val parents = CollectionTree.parents(list.value?.allShelves.orEmpty().map { it.collection })
+            _openShelves.update { it + generateSequence(parent.id) { id -> parents[id] } }
+        } else {
+            report(check)
+        }
     }
 
     /** Put a deck on a shelf, or take it off one with null. */

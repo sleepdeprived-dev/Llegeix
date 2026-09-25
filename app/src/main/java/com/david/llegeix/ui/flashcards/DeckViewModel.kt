@@ -58,13 +58,11 @@ class DeckViewModel(
     }
 
     /**
-     * How many cards have no English meaning, when English is what is being
-     * practised — the cards an English session would quietly leave out.
-     * Zero when practising in Romanian, where it does not matter.
+     * How many cards have no English meaning — the cards practice shows with
+     * their Romanian alone, since every card shows both when it has both.
      */
     val missingEnglish: StateFlow<Int> = cards.map { list ->
-        if (flashcards.prefs.language != MeaningLanguage.ENGLISH) 0
-        else list.orEmpty().count { MeaningLanguage.ENGLISH.meaningOf(it) == null }
+        list.orEmpty().count { MeaningLanguage.ENGLISH.meaningOf(it) == null }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     private val _fillingEnglish = MutableStateFlow(false)

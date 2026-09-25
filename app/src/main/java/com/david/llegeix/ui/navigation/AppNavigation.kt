@@ -34,7 +34,6 @@ import com.david.llegeix.ui.flashcards.CardEditorScreen
 import com.david.llegeix.ui.flashcards.DeckScreen
 import com.david.llegeix.ui.flashcards.FlashcardsScreen
 import com.david.llegeix.ui.flashcards.StudyScreen
-import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.ui.folders.FolderDetailScreen
@@ -78,17 +77,16 @@ private object Routes {
      */
     const val FLASHCARD_STUDY =
         "flashcards/study?deckId={deckId}&collectionId={collectionId}" +
-            "&direction={direction}&language={language}"
+            "&direction={direction}"
 
     fun flashcardDeck(deckId: Long): String = "flashcards/deck/$deckId"
 
     fun flashcardStudy(
         scope: StudyScope,
         direction: StudyDirection,
-        language: MeaningLanguage,
     ): String = "flashcards/study?deckId=${scope.deckArgument}" +
         "&collectionId=${scope.collectionArgument}" +
-        "&direction=${direction.name}&language=${language.name}"
+        "&direction=${direction.name}"
 
     fun cardEditor(deckId: Long, cardId: Long? = null): String =
         "flashcards/card?deckId=$deckId&cardId=${cardId ?: -1}"
@@ -290,8 +288,8 @@ fun AppNavigation(modifier: Modifier = Modifier) {
             composable(Routes.FLASHCARDS) {
                 FlashcardsScreen(
                     onOpenDeck = { deckId -> navController.navigate(Routes.flashcardDeck(deckId)) },
-                    onStudy = { scope, direction, language ->
-                        navController.navigate(Routes.flashcardStudy(scope, direction, language))
+                    onStudy = { scope, direction ->
+                        navController.navigate(Routes.flashcardStudy(scope, direction))
                     },
                 )
             }
@@ -305,10 +303,6 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                         type = NavType.StringType
                         defaultValue = StudyDirection.Default.name
                     },
-                    navArgument("language") {
-                        type = NavType.StringType
-                        defaultValue = MeaningLanguage.Default.name
-                    },
                 ),
             ) { entry ->
                 StudyScreen(
@@ -317,7 +311,6 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                         collectionId = entry.arguments?.getLong("collectionId") ?: StudyScope.NONE,
                     ),
                     direction = StudyDirection.fromName(entry.arguments?.getString("direction")),
-                    language = MeaningLanguage.fromName(entry.arguments?.getString("language")),
                     onBack = { navController.popBackStack() },
                 )
             }

@@ -374,6 +374,7 @@ fun CardEditorScreen(
                         onPick = viewModel::onPickSuggestion,
                         onPickOwn = openPicker,
                         onRetry = viewModel::onRetryPictures,
+                        onSearch = viewModel::onSearchPictures,
                     )
                 }
             }

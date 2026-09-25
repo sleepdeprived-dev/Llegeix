@@ -9,7 +9,6 @@ import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.FlashcardSession
-import com.david.llegeix.data.flashcards.MeaningLanguage
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +26,11 @@ data class StudyUiState(
      */
     val scopeName: String? = null,
     val direction: StudyDirection = StudyDirection.Default,
-    val language: MeaningLanguage = MeaningLanguage.Default,
+    /**
+     * Whether this round is already the other way round from the one play
+     * started — so the end of it does not offer to turn round a second time.
+     */
+    val isTurnedRound: Boolean = false,
     /**
      * A round of extra practice: cards whether due or not, and answers not
      * recorded. See [FlashcardSession.extra] for why they are kept off the
@@ -50,8 +53,6 @@ data class StudyUiState(
     val missed: List<FlashcardEntity> = emptyList(),
     /** How many cards there are to practise at all, for when there are none. */
     val cardsInScope: Int = 0,
-    /** Cards left out because they have no meaning in the language chosen. */
-    val cardsWithoutMeaning: Int = 0,
 ) {
     val current: FlashcardEntity? get() = cards.getOrNull(index)
 
@@ -62,9 +63,6 @@ data class StudyUiState(
 
     val progress: Float
         get() = if (cards.isEmpty()) 0f else (index.toFloat() / cards.size).coerceIn(0f, 1f)
-
-    /** The card's meaning in the language being practised; dealt cards always have one. */
-    fun meaningOf(card: FlashcardEntity): String = language.meaningOf(card) ?: card.romanian
 }
 
 /**
@@ -73,8 +71,7 @@ data class StudyUiState(
  * Built like [com.david.llegeix.ui.practice.PracticeViewModel]: the same shape
  * of session, the same two answers, the same scheduler. Added are the
  * direction, which decides which side of the card is the question and which
- * half of its schedule an answer moves; the language the meaning is shown in;
- * and extra practice, which is what *Repeat these* deals at the end of a round.
+ * half of its schedule an answer moves; and extra practice, which is what *Repeat these* deals at the end of a round.
  *
  * "Every card" is the whole of it — see [FlashcardSession.everything]. The
  * schedule still orders the hand and still moves with the answers; it no longer
@@ -84,12 +81,9 @@ class StudyViewModel(
     private val flashcards: FlashcardRepository,
     private val scope: StudyScope,
     direction: StudyDirection,
-    language: MeaningLanguage,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(
-        StudyUiState(direction = direction, language = language),
-    )
+    private val _uiState = MutableStateFlow(StudyUiState(direction = direction))
     val uiState: StateFlow<StudyUiState> = _uiState.asStateFlow()
 
     init {
@@ -107,11 +101,12 @@ class StudyViewModel(
         val all = flashcards.cardsToStudy(scope)
         val state = _uiState.value
         val direction = state.direction
-        val language = state.language
+        // Every card has its Romanian, so every card is dealt; the English is
+        // shown beside it wherever the card has one.
         val dealt = if (state.isExtra) {
-            FlashcardSession.extra(all, direction, language = language)
+            FlashcardSession.extra(all, direction)
         } else {
-            FlashcardSession.everything(all, direction, language = language)
+            FlashcardSession.everything(all, direction)
         }
         _uiState.update {
             it.copy(
@@ -122,8 +117,7 @@ class StudyViewModel(
                 isRevealed = false,
                 correct = 0,
                 missed = emptyList(),
-                cardsInScope = all.count { card -> language.meaningOf(card) != null },
-                cardsWithoutMeaning = all.count { card -> language.meaningOf(card) == null },
+                cardsInScope = all.size,
             )
         }
     }
@@ -143,6 +137,18 @@ class StudyViewModel(
                 missed = emptyList(),
             )
         }
+    }
+
+    /**
+     * The same cards the other way round, as a session of its own: offered at
+     * the end of a round, because having recognised the Catalan, producing it
+     * is the natural next step — and the other way about.
+     */
+    fun onTurnRound() {
+        _uiState.update {
+            it.copy(direction = it.direction.other(), isTurnedRound = true, isExtra = false)
+        }
+        deal()
     }
 
     fun onReveal() {
@@ -178,12 +184,11 @@ class StudyViewModel(
         fun factory(
             scope: StudyScope,
             direction: StudyDirection,
-            language: MeaningLanguage,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                     as LlegeixApp
-                StudyViewModel(app.flashcardRepository, scope, direction, language)
+                StudyViewModel(app.flashcardRepository, scope, direction)
             }
         }
     }

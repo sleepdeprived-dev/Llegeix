@@ -880,7 +880,6 @@ private fun UpdateRows(
 
         is UpdateUiState.Available -> {
             UpdateHeadline(state.update)
-            ReleaseNotesBox(state.update.notes)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Space.sm),
                 verticalAlignment = Alignment.CenterVertically,
@@ -982,35 +981,6 @@ private fun UpdateNote(text: String) {
         modifier = Modifier.padding(top = Space.sm),
     )
 }
-
-/**
- * What changed, in a box of its own with a ceiling on it.
- *
- * Release notes for this app run to several paragraphs, and a settings screen
- * that grows by a page and a half the moment a version is found has lost the
- * button the reader came for. Bounded and scrolling, the card keeps its shape
- * whatever the notes say.
- */
-@Composable
-private fun ReleaseNotesBox(notes: String) {
-    if (notes.isBlank()) return
-    Text(
-        text = notes,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .padding(top = Space.md)
-            .fillMaxWidth()
-            .heightIn(max = NotesHeight)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Space.md, vertical = Space.sm),
-    )
-}
-
-/** As much of the notes as fits before they stop being a summary. */
-private val NotesHeight = 220.dp
 
 /**
  * Asks for the one permission this needs, and says what it is for.
