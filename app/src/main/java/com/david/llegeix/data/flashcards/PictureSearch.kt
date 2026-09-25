@@ -66,8 +66,10 @@ class PictureSearch(context: Context) {
     suspend fun search(source: PictureSource, catalan: String, english: String?): Outcome =
         withContext(Dispatchers.IO) {
             when (source) {
-                PictureSource.PICTOGRAMS -> searchPictograms(catalan, english)
-                PictureSource.PHOTOS -> searchPhotos(catalan, english ?: catalan)
+                PictureSource.PICTOGRAMS -> searchPictograms(catalan, english?.let(PictureResults::stripArticles))
+                PictureSource.PHOTOS ->
+                    searchPhotos(catalan, english?.let(PictureResults::stripArticles) ?: catalan)
+                PictureSource.EMOJI -> searchEmoji(catalan, english)
             }
         }
 
@@ -103,7 +105,6 @@ class PictureSearch(context: Context) {
             if (english != null) {
                 add(async { hitsFrom(PictureResults.arasaacSearchUrl(english, "en"), PictureResults::parseArasaac) })
                 add(globalSymbols(english, "eng"))
-                add(async { openMoji()?.let { PictureResults.openMojiMatches(it, english) } })
             }
         }
         found(shelves.map { it.await() })
@@ -182,6 +183,36 @@ class PictureSearch(context: Context) {
                 vouched = { it.id in vouched },
             ),
         )
+    }
+
+    /**
+     * Emoji for a word: Noto's first — one consistent, well-drawn set,
+     * searched by its Catalan names as well as its English ones — then
+     * OpenMoji's flatter drawings of the same things. Both catalogues are
+     * fetched once per run and searched on the phone, so no word leaves it.
+     */
+    private suspend fun searchEmoji(catalan: String, english: String?): Outcome = coroutineScope {
+        val noto = async { emojiCatalogue()?.let { PictureResults.emojiMatches(it, catalan, english) } }
+        val open = async {
+            english?.let { word ->
+                openMoji()?.let { PictureResults.openMojiMatches(it, PictureResults.stripArticles(word)) }
+            }
+        }
+        val found = listOf(noto.await(), open.await())
+        if (found.all { it == null }) return@coroutineScope Outcome.Offline
+        Outcome.Found(found.flatMap { it.orEmpty() })
+    }
+
+    private var emojiIndex: List<PictureResults.Emoji>? = null
+
+    private fun emojiCatalogue(): List<PictureResults.Emoji>? {
+        emojiIndex?.let { return it }
+        val english = textFrom(PictureResults.EMOJI_ENGLISH_URL) ?: return null
+        // Without the Catalan names the English still works.
+        val catalan = textFrom(PictureResults.EMOJI_CATALAN_URL).orEmpty()
+        val parsed = PictureResults.parseEmoji(english, catalan)
+        if (parsed.isNotEmpty() && catalan.isNotEmpty()) emojiIndex = parsed
+        return parsed
     }
 
     /** Only every shelf being unreachable is being offline; one failing is one fewer shelf. */

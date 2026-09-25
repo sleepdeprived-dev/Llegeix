@@ -344,8 +344,17 @@ does both after bumping the version in `app/build.gradle.kts`.
   word is about people (Flickr tags a bra "peach" and a green shirt "lime"),
   and logos, landscapes, rotten fruit and a fruit's tree or blossom go to the
   end. A search field over the grid searches for anything else instead, for
-  both kinds of picture. Pinterest is not a source: it has no public search
-  that works without an approved account and a key.
+  every kind of picture. A word the translator hands back unchanged —
+  *animals*, *hotel* — is taken as already English rather than as a failed
+  translation, and a verb's "to" is dropped before searching. Pinterest is not
+  a source: it has no public search that works without an approved account and
+  a key.
+
+  A third tab offers emoji: Google's Noto set, drawn large from 512-pixel
+  transparent images and kept transparent on the card (a picture with
+  see-through parts is stored as a PNG), then OpenMoji's. They are found by
+  their Catalan names from Unicode's CLDR as well as their English ones, from
+  catalogues downloaded once and searched on the phone.
   They are offered and never placed — a picture of the wrong sense of *banc* is
   worse than none — and the one chosen keeps its maker's credit on the card.
   Your own photos come through Android's photo picker, so the app is never given
@@ -365,13 +374,27 @@ does both after bumping the version in `app/build.gradle.kts`.
   and three right answers in ten minutes are not three days' learning. Saving a
   copy is a button in the corner.
 
+  Every word answered "Encara no" joins the *weak words*, a folder of its own
+  at the top of the tab that lists each word with the deck it is from.
+  Reviewing it plays exactly those words, each card saying its deck; answering
+  one right there takes it off, and so does its ✕.
+
+  The study card reads the same way on every side, top to bottom: the deck
+  (when the session mixes decks), the picture, the question, a short rule,
+  and the answer — the Catalan always with its pronunciation and speaker in
+  one pill under it, the meanings always English and Romanian behind their
+  flags. The tab and each deck have a sort button: by name, date, size, or —
+  for cards — least known first.
+
   Decks can be grouped into collections, and collections into collections, to
   any depth: *Vegetables*, *Fruit* and *At the market* on a shelf called *Food*,
   which folds open and shut at a tap on the row and has a play button of its own
-  that goes through everything under it. A collection is drawn as a small pile
-  of cards; folded shut it names what is inside it, and open it takes a hairline
-  of the accent while its contents hang under it on a guide line. Its ⋮ menu can
-  make a new collection straight inside it. Every deck and collection has *Move to…* in its ⋮ menu,
+  that goes through everything under it. A collection's square is the collection
+  mark rather than an initial (or its picture with a small collection badge);
+  folded shut it lists what is inside it as name chips, and open it takes a
+  hairline of the accent while its contents hang under it on a guide line. A
+  new collection is named and given its picture in the same sheet as a deck,
+  and its ⋮ menu can make a deck or a collection straight inside it. Every deck and collection has *Move to…* in its ⋮ menu,
   which opens the tree as a small map with where it is now lit; a collection is
   never offered a place inside itself. That button is the point of the feature —
   practising *food* is one session over every card on the shelf, dealt and

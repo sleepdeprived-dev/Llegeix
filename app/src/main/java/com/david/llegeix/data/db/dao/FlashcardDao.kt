@@ -1,6 +1,7 @@
 package com.david.llegeix.data.db.dao
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.Query
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
@@ -33,6 +34,12 @@ data class DeckWithCount(
     /** The Leitner boxes of its cards added up, one sum per direction, for how well it is known. */
     val boxTotal: Int,
     val reverseBoxTotal: Int,
+)
+
+/** A weak word and the deck it is from, since weak words are gathered from every deck. */
+data class WeakCard(
+    @Embedded val card: FlashcardEntity,
+    val deckName: String,
 )
 
 @Dao
@@ -246,6 +253,26 @@ interface FlashcardDao {
         """,
     )
     suspend fun recordReverse(id: Long, box: Int, dueAt: Long, reviewedAt: Long)
+
+    // ---- Weak words --------------------------------------------------------
+
+    @Query("UPDATE flashcards SET weakAt = :at WHERE id = :id")
+    suspend fun setWeak(id: Long, at: Long?)
+
+    /** The weak words, the most recently missed first. */
+    @Query("SELECT * FROM flashcards WHERE weakAt IS NOT NULL ORDER BY weakAt DESC")
+    suspend fun weakCards(): List<FlashcardEntity>
+
+    /** The same, with the deck each is from, for the weak words' own list. */
+    @Query(
+        """
+        SELECT c.*, d.name AS deckName FROM flashcards c
+        JOIN flashcard_decks d ON d.id = c.deckId
+        WHERE c.weakAt IS NOT NULL
+        ORDER BY c.weakAt DESC
+        """,
+    )
+    fun observeWeak(): Flow<List<WeakCard>>
 
     /**
      * Every picture anything points at — cards and deck covers alike — for the

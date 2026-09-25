@@ -4,12 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Matrix
 import android.net.Uri
 import android.util.LruCache
-import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -106,34 +103,40 @@ class FlashcardImages(context: Context) {
         val shaped = Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
         if (shaped !== decoded) decoded.recycle()
 
-        // JPEG has no transparency, and a transparent PNG saved as one turns its
-        // clear parts black. White is what a picture with a clear background was
-        // drawn to be seen against.
-        val opaque = if (shaped.hasAlpha()) {
-            createBitmap(shaped.width, shaped.height).also {
-                Canvas(it).apply {
-                    drawColor(Color.WHITE)
-                    drawBitmap(shaped, 0f, 0f, null)
-                }
-                shaped.recycle()
-            }
-        } else {
-            shaped
-        }
-
+        // A picture with see-through parts — an emoji, a pictogram — is kept
+        // as a PNG, so it can be drawn with nothing behind it. Everything else
+        // is a JPEG, which for a photograph is a fraction of the size.
+        val transparent = shaped.hasAlpha() && hasClearPixels(shaped)
         directory.mkdirs()
-        val name = "${UUID.randomUUID()}.jpg"
+        val name = "${UUID.randomUUID()}." + if (transparent) "png" else "jpg"
         // Written aside and renamed into place, so a card can never be saved
         // pointing at half a file.
         val partial = File(directory, "$name.part")
         try {
-            partial.outputStream().use { opaque.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
+            partial.outputStream().use {
+                if (transparent) {
+                    shaped.compress(Bitmap.CompressFormat.PNG, 100, it)
+                } else {
+                    shaped.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it)
+                }
+            }
             if (!partial.renameTo(File(directory, name))) throw IOException("cannot store picture")
         } finally {
             partial.delete()
-            opaque.recycle()
+            shaped.recycle()
         }
         "$IMAGE_DIRECTORY/$name"
+    }
+
+    /** Whether any pixel is less than fully opaque; an "alpha" PNG often has none. */
+    private fun hasClearPixels(bitmap: Bitmap): Boolean {
+        val w = bitmap.width
+        val row = IntArray(w)
+        for (y in 0 until bitmap.height) {
+            bitmap.getPixels(row, 0, w, 0, y, w, 1)
+            if (row.any { (it ushr 24) != 0xFF }) return true
+        }
+        return false
     }
 
     /**

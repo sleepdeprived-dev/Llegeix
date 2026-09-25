@@ -144,13 +144,13 @@ class PictureSuggester(
             val english = if (typed != null) typed else when (source) {
                 // Pictograms are found in Catalan; the English only widens the
                 // search, so it is not waited on for long.
-                PictureSource.PICTOGRAMS -> withTimeoutOrNull(PICTOGRAM_ENGLISH_WAIT_MS) {
+                PictureSource.PICTOGRAMS, PictureSource.EMOJI -> withTimeoutOrNull(PICTOGRAM_ENGLISH_WAIT_MS) {
                     englishQuery(request)
                 }
-                PictureSource.PHOTOS -> englishQuery(request) ?: run {
-                    _state.value = PictureSuggestions(PictureStatus.NO_ENGLISH, word = trimmed, source = source)
-                    return@launch
-                }
+                // With no English at all, the Catalan word itself is searched
+                // rather than nothing: Wikipedia is asked in Catalan anyway,
+                // and a great many words are spelt the same in both.
+                PictureSource.PHOTOS -> englishQuery(request) ?: trimmed
             }
             if (source == PictureSource.PHOTOS &&
                 (PictureSafety.isBlockedQuery(english.orEmpty()) || PictureSafety.isBlockedQuery(trimmed))
@@ -175,12 +175,25 @@ class PictureSuggester(
         }
     }
 
+    /**
+     * The English to search with.
+     *
+     * A translation that comes back as the word itself used to be taken as a
+     * failure — *pa* handed back as "pa" is the translator not knowing it —
+     * and with no Romanian to fall back on, photos were not searched at all.
+     * But *animals*, *hotel* and *taxi* come back as themselves because they
+     * *are* the English. So a word given back unchanged is only doubted when
+     * it is short enough to be a fragment, and otherwise kept.
+     */
     private suspend fun englishQuery(request: Request): String? {
         request.english?.let { return it }
-        englishFor(request.word)
-            ?.takeIf { !it.equals(request.word, ignoreCase = true) }
-            ?.let { return it }
-        return request.romanian?.let { englishFromRomanian(it) }
+        val translated = englishFor(request.word)
+        if (translated != null &&
+            (!translated.equals(request.word, ignoreCase = true) || request.word.length > SAME_WORD_MIN)
+        ) {
+            return translated
+        }
+        return request.romanian?.let { englishFromRomanian(it) } ?: translated
     }
 
     fun setSource(source: PictureSource) {
@@ -225,5 +238,8 @@ class PictureSuggester(
 
         /** A translator that has its model answers in well under this. */
         const val PICTOGRAM_ENGLISH_WAIT_MS = 2_500L
+
+        /** Longer than this, a word the translator hands back unchanged is taken as English already. */
+        const val SAME_WORD_MIN = 3
     }
 }

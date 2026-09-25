@@ -24,6 +24,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -73,7 +76,6 @@ import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.ui.common.EmptyState
-import com.david.llegeix.ui.common.IpaLine
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
 
@@ -121,7 +123,9 @@ fun StudyScreen(
                         Column {
                             Text(
                                 text = state.scopeName
-                                    ?: stringResource(R.string.flashcards_all_decks),
+                                    ?: stringResource(
+                                        if (state.isWeakReview) R.string.flashcards_weak_title else R.string.flashcards_all_decks,
+                                    ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -208,6 +212,7 @@ fun StudyScreen(
                     StudyCard(
                         card = card,
                         direction = state.direction,
+                        deckName = state.deckNames[card.deckId],
                         isRevealed = state.isRevealed,
                         onReveal = viewModel::onReveal,
                         onAnswer = viewModel::onAnswer,
@@ -221,20 +226,25 @@ fun StudyScreen(
 /**
  * One card, asked — and turned over when the reader has had a go.
  *
- * A real turn rather than the answer appearing underneath: a flashcard is a
- * thing with two sides, and the moment of turning it over is the moment of
- * finding out, so it should look like one. The back repeats the question
- * small at the top, because an answer read without its question is a fact
- * learned with nothing to hang it on.
+ * Every face is laid out the same way, top to bottom, so the eye always knows
+ * where to look: where the card is from, then the picture, then the question,
+ * a short rule, and the answer. The Catalan always carries its pronunciation
+ * and speaker in one pill right under it; the meanings are always the English
+ * and the Romanian, each behind its flag. The picture shows the meaning, so it
+ * is on the front only when the meaning is the question — anywhere else it
+ * would give the answer away.
  *
- * The whole card is the reveal, as in the practice deck: the gesture is "I
- * have had my go" and should not need aiming. The answers arrive at the
- * bottom, where a thumb is, into room kept for them so nothing jumps.
+ * A real turn rather than the answer appearing underneath: the moment of
+ * turning the card over is the moment of finding out, so it looks like one.
+ * The whole card is the reveal; the answers arrive at the bottom, where a
+ * thumb is, into room kept for them so nothing jumps.
  */
 @Composable
 private fun StudyCard(
     card: FlashcardEntity,
     direction: StudyDirection,
+    /** The deck the card is from, when the session mixes decks. */
+    deckName: String?,
     isRevealed: Boolean,
     onReveal: () -> Unit,
     onAnswer: (Boolean) -> Unit,
@@ -244,6 +254,7 @@ private fun StudyCard(
         animationSpec = tween(durationMillis = 420),
         label = "cardTurn",
     )
+    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -254,53 +265,53 @@ private fun StudyCard(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(top = Space.xl)
+                .padding(top = Space.lg)
                 .graphicsLayer {
                     rotationY = turn
                     cameraDistance = 14f * density
                 }
-                .shadow(elevation = 3.dp, shape = CardShape)
+                .shadow(elevation = 8.dp, shape = CardShape, spotColor = scheme.primary.copy(alpha = 0.25f))
                 .clip(CardShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .background(Brush.verticalGradient(listOf(scheme.surfaceContainerLowest, scheme.surfaceContainer)))
+                .border(1.dp, scheme.outlineVariant.copy(alpha = 0.6f), CardShape)
                 .clickable(enabled = !isRevealed, onClick = onReveal),
         ) {
-            if (turn <= 90f) {
-                Face {
-                    when (direction) {
-                        StudyDirection.CATALAN_TO_MEANING -> CatalanSide(card, asAnswer = false)
-                        StudyDirection.MEANING_TO_CATALAN -> MeaningSide(card, asAnswer = false)
+            val front = turn <= 90f
+            Face(
+                deckName = deckName,
+                modifier = if (front) Modifier else Modifier.graphicsLayer { rotationY = 180f },
+                hint = if (front) stringResource(R.string.practice_tap_to_reveal) else null,
+            ) {
+                val showPicture = !front || direction == StudyDirection.MEANING_TO_CATALAN
+                if (showPicture) {
+                    card.imagePath?.let { path ->
+                        FramedPicture(
+                            path = path,
+                            contentDescription = null,
+                            kind = PictureResults.kindOf(card.imageCredit),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(if (front) PictureHeight else PictureHeightSmall),
+                        )
+                        Spacer(Modifier.height(Space.xl))
                     }
-                    Text(
-                        text = stringResource(R.string.practice_tap_to_reveal),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = Space.xxl),
-                    )
                 }
-            } else {
-                // Drawn turned round once more, so the back reads the right way.
-                Face(modifier = Modifier.graphicsLayer { rotationY = 180f }) {
-                    // The question again, small, in a pill of its own above the
-                    // answer — so the answer is read with what it answers. When
-                    // the question was the Catalan it keeps its pronunciation and
-                    // its speaker: turning the card over is exactly when hearing
-                    // the word once more is worth a press.
-                    QuestionEcho {
-                        when (direction) {
-                            StudyDirection.CATALAN_TO_MEANING -> CatalanEcho(card)
-                            StudyDirection.MEANING_TO_CATALAN -> MeaningLines(
-                                card = card,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                flagWidth = 16.dp,
-                                modifier = Modifier.padding(vertical = Space.sm, horizontal = Space.sm),
-                            )
-                        }
+                when {
+                    front && direction == StudyDirection.CATALAN_TO_MEANING ->
+                        CatalanBlock(card, big = true)
+
+                    front -> MeaningBlock(card, big = true)
+
+                    direction == StudyDirection.CATALAN_TO_MEANING -> {
+                        CatalanBlock(card, big = false)
+                        AnswerRule()
+                        MeaningBlock(card, big = true, answer = true)
                     }
-                    Spacer(Modifier.height(Space.xl))
-                    when (direction) {
-                        StudyDirection.CATALAN_TO_MEANING -> MeaningSide(card, asAnswer = true)
-                        StudyDirection.MEANING_TO_CATALAN -> CatalanSide(card, asAnswer = true)
+
+                    else -> {
+                        MeaningBlock(card, big = false)
+                        AnswerRule()
+                        CatalanBlock(card, big = true, answer = true)
                     }
                 }
             }
@@ -344,18 +355,62 @@ private fun StudyCard(
     }
 }
 
-/** One side of the card: centred, and scrollable for a long answer on a small phone. */
+/**
+ * One side of the card: the deck it is from pinned to the top, the content
+ * centred in what is left, and — on the front — the hint pinned to the
+ * bottom. Scrolls, for a long answer on a small phone.
+ */
 @Composable
-private fun Face(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(Space.xl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        content = content,
-    )
+private fun Face(
+    deckName: String?,
+    hint: String?,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(modifier = modifier.fillMaxSize().padding(Space.xl)) {
+        if (deckName != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(horizontal = Space.md, vertical = 6.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_cards),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = deckName,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 6.dp),
+                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            content = content,
+        )
+        if (hint != null) {
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
 }
 
 /**
@@ -539,132 +594,105 @@ private fun TurnRoundOffer(
     }
 }
 
-/** A soft pill holding the question, on the back of the card. */
+/**
+ * The Catalan: the word, then one pill with its pronunciation and speaker.
+ *
+ * @param big the question on the front, or the answer on the back; small is
+ *   the question again above the answer, so the answer is read with it.
+ * @param answer drawn in the accent, as the thing just found out.
+ */
 @Composable
-private fun QuestionEcho(content: @Composable () -> Unit) {
+private fun CatalanBlock(card: FlashcardEntity, big: Boolean, answer: Boolean = false) {
+    val scheme = MaterialTheme.colorScheme
+    Text(
+        text = card.catalan,
+        style = if (big) {
+            MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold)
+        } else {
+            MaterialTheme.typography.titleLarge
+        },
+        color = when {
+            answer -> scheme.primary
+            big -> scheme.onSurface
+            else -> scheme.onSurfaceVariant
+        },
+        textAlign = TextAlign.Center,
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .padding(top = if (big) Space.md else Space.sm)
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(start = Space.lg, end = Space.xs),
-    ) { content() }
-}
-
-/** The Catalan asked about, with its pronunciation under it and its speaker beside it. */
-@Composable
-private fun CatalanEcho(card: FlashcardEntity) {
-    Column(modifier = Modifier.padding(vertical = Space.sm)) {
-        Text(
-            text = card.catalan,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+            .background(scheme.surfaceContainerHighest.copy(alpha = 0.7f))
+            .padding(start = if (card.ipa.isNullOrBlank()) Space.xs else Space.lg, end = Space.xs),
+    ) {
         card.ipa?.takeIf { it.isNotBlank() }?.let { ipa ->
             Text(
-                text = "[$ipa]" + if (card.ipaApproximate) "  " + stringResource(R.string.lookup_ipa_approximate) else "",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "[$ipa]",
+                style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurfaceVariant,
             )
+            if (card.ipaApproximate) {
+                Text(
+                    text = stringResource(R.string.lookup_ipa_approximate),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = scheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = Space.xs),
+                )
+            }
         }
+        // Takes its own press, so reaching for it never counts as the tap
+        // that turns the card over.
+        PronounceButton(text = card.catalan)
     }
-    PronounceButton(text = card.catalan)
-}
-
-/**
- * The Catalan, with how it sounds.
- *
- * The pronunciation and the speaker live on this side whichever way round the
- * card is asked, because both of them *are* the Catalan: shown on the question
- * side of a Romanian → Catalan card they would be the answer, given away.
- */
-@Composable
-private fun CatalanSide(card: FlashcardEntity, asAnswer: Boolean) {
-    Text(
-        text = card.catalan,
-        style = if (asAnswer) {
-            MaterialTheme.typography.headlineMedium
-        } else {
-            MaterialTheme.typography.headlineLarge
-        },
-        color = if (asAnswer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-        textAlign = TextAlign.Center,
-    )
-    card.ipa?.takeIf { it.isNotBlank() }?.let { ipa ->
-        IpaLine(
-            ipa = ipa,
-            isApproximate = card.ipaApproximate,
-            modifier = Modifier.padding(top = Space.sm),
-        )
-    }
-    // Takes its own press, so reaching for it never counts as the tap that
-    // turns the card over.
-    PronounceButton(text = card.catalan)
-}
-
-/**
- * The meaning — English and Romanian together — with the picture.
- *
- * The picture shows the meaning, so it goes with the meaning: a clue on the
- * question side of meaning → Catalan, and part of the answer the other way.
- */
-@Composable
-private fun MeaningSide(card: FlashcardEntity, asAnswer: Boolean) {
-    card.imagePath?.let { path ->
-        FramedPicture(
-            path = path,
-            contentDescription = null,
-            pictogram = PictureResults.isPictogram(card.imageCredit),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(PictureHeight),
-        )
-        Spacer(modifier = Modifier.height(Space.lg))
-    }
-    MeaningLines(
-        card = card,
-        style = if (asAnswer) {
-            MaterialTheme.typography.headlineMedium
-        } else {
-            MaterialTheme.typography.headlineLarge
-        },
-        color = if (asAnswer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-        flagWidth = 24.dp,
-    )
 }
 
 /**
  * Both of a card's meanings, each behind its own flag: the English, when the
  * card has one, then the Romanian. Always both, so one session teaches a word
- * in the two languages at once and there is nothing to choose between them.
+ * in the two languages at once.
  */
 @Composable
-private fun MeaningLines(
-    card: FlashcardEntity,
-    style: TextStyle,
-    color: Color,
-    flagWidth: Dp,
-    modifier: Modifier = Modifier,
-) {
+private fun MeaningBlock(card: FlashcardEntity, big: Boolean, answer: Boolean = false) {
+    val scheme = MaterialTheme.colorScheme
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Space.xs),
-        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(if (big) Space.sm else Space.xs),
     ) {
         for (language in listOf(MeaningLanguage.ENGLISH, MeaningLanguage.ROMANIAN)) {
             val meaning = language.meaningOf(card) ?: continue
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Flag(language.flagRes, flagWidth)
+                Flag(language.flagRes, if (big) 26.dp else 18.dp)
                 Text(
                     text = meaning,
-                    style = style,
-                    color = color,
+                    style = if (big) {
+                        MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Medium)
+                    } else {
+                        MaterialTheme.typography.titleMedium
+                    },
+                    color = when {
+                        answer -> scheme.primary
+                        big -> scheme.onSurface
+                        else -> scheme.onSurfaceVariant
+                    },
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(start = Space.sm),
+                    modifier = Modifier.padding(start = Space.md),
                 )
             }
         }
     }
+}
+
+/** A short rule between the question and the answer on the back of a card. */
+@Composable
+private fun AnswerRule() {
+    Box(
+        modifier = Modifier
+            .padding(vertical = Space.lg)
+            .size(width = 48.dp, height = 3.dp)
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+    )
 }
 
 /** Room kept for the two answers whether or not they are showing, so nothing jumps. */
@@ -675,4 +703,7 @@ private val AnswerButtonHeight = 56.dp
 private val CardShape = RoundedCornerShape(28.dp)
 
 /** Tall enough to read a photograph, short enough to leave the words on screen. */
-private val PictureHeight = 200.dp
+private val PictureHeight = 220.dp
+
+/** On the back, where the words underneath matter more. */
+private val PictureHeightSmall = 170.dp

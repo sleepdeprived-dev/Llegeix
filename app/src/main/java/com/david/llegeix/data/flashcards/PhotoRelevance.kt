@@ -152,6 +152,8 @@ object PhotoRelevance {
         if (words.any { it in BRANDS }) score -= 3
         if (words.any { it in SCENERY }) score -= 2
         if (words.any { it in UNAPPEALING }) score -= 2
+        if (words.any { it in ARTWORK }) score -= 2
+        if (!aboutPeople && words.any { it in EVENTS }) score -= 3
         if (words.any { it in CLEAN }) score += 1
         return score
     }
@@ -283,6 +285,19 @@ object PhotoRelevance {
         "disease", "diseased", "damaged", "damage", "pest", "pests", "blight", "fungus", "infection",
         "electrophoresis", "gel", "diagram", "chart", "graph", "micrograph", "microscope", "herbarium",
         "specimen", "dead", "waste", "garbage", "litter",
+    )
+
+    /** A picture *of* a picture or a carving of the thing, rather than the thing. */
+    private val ARTWORK = setOf(
+        "sculpture", "statue", "statues", "carving", "carvings", "relief", "painting", "paintings",
+        "manuscript", "museum", "mural", "fresco", "engraving", "stamp", "coin", "tapestry", "mosaic",
+        "monument", "pillar", "temple", "ruins", "tomb", "exhibit", "exhibition", "collage",
+    )
+
+    /** Somebody's event: a talk, a signing, a conference — people again, by another name. */
+    private val EVENTS = setOf(
+        "author", "reading", "signing", "book", "bookstore", "interview", "conference", "talk",
+        "lecture", "meeting", "speaker", "panel", "award", "ceremony", "premiere",
     )
 
     /** The thing shown plainly, as a card wants it. */

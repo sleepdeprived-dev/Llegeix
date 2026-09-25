@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.room.withTransaction
 import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.db.dao.DeckWithCount
+import com.david.llegeix.data.db.dao.WeakCard
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
@@ -50,7 +51,12 @@ class FlashcardRepository(
      * called *Food* are never in the same list, so they are not in each other's
      * way.
      */
-    suspend fun createCollection(name: String, parentId: Long? = null): DeckNames.Check =
+    suspend fun createCollection(
+        name: String,
+        parentId: Long? = null,
+        coverPath: String? = null,
+        coverCredit: String? = null,
+    ): DeckNames.Check =
         database.withTransaction {
             val all = dao.collections()
             val check = DeckNames.check(name, all.map { it.name })
@@ -61,6 +67,8 @@ class FlashcardRepository(
                         // Only a parent that exists; one deleted while the name
                         // was being typed leaves the new one at the top.
                         parentId = parentId?.takeIf { id -> all.any { it.id == id } },
+                        coverPath = coverPath,
+                        coverCredit = coverCredit.takeIf { coverPath != null },
                     ),
                 )
             }
@@ -151,6 +159,8 @@ class FlashcardRepository(
         name: String,
         coverPath: String? = null,
         coverCredit: String? = null,
+        /** The collection to make it in, or null for the top of the list. */
+        collectionId: Long? = null,
     ): DeckNames.Check = database.withTransaction {
         val check = DeckNames.check(name, dao.decks().map { it.name })
         if (check is DeckNames.Check.Ok) {
@@ -159,6 +169,7 @@ class FlashcardRepository(
                     name = check.name,
                     coverPath = coverPath,
                     coverCredit = coverCredit.takeIf { coverPath != null },
+                    collectionId = collectionId?.takeIf { id -> dao.collection(id) != null },
                 ),
             )
         }
@@ -268,7 +279,14 @@ class FlashcardRepository(
         StudyScope.Everything -> dao.allCards()
         is StudyScope.Deck -> dao.cardsInDeck(scope.id)
         is StudyScope.Collection -> dao.cardsInCollection(scope.id)
+        StudyScope.Weak -> dao.weakCards()
     }
+
+    /** The weak words with the deck each is from, for their own list. */
+    fun observeWeak(): Flow<List<WeakCard>> = dao.observeWeak()
+
+    /** Take a card off the weak words by hand. */
+    suspend fun forgetWeak(cardId: Long) = dao.setWeak(cardId, at = null)
 
     /**
      * Record an answer in [direction], and only there.
@@ -283,7 +301,17 @@ class FlashcardRepository(
         direction: StudyDirection,
         correct: Boolean,
         now: Long,
+        /** A review of the weak words, where a right answer takes a card off them. */
+        reviewingWeak: Boolean = false,
     ) {
+        // "Not yet" puts a word on the weak words from any session; only
+        // getting it right while reviewing them takes it off, so the list is
+        // exactly what the reader said they did not know.
+        if (!correct) {
+            dao.setWeak(card.id, now)
+        } else if (reviewingWeak) {
+            dao.setWeak(card.id, null)
+        }
         val next = direction.answer(card, correct, now)
         when (direction) {
             StudyDirection.CATALAN_TO_MEANING ->

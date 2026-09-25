@@ -119,6 +119,10 @@ fun DeckScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
+                actions = {
+                    val sort by viewModel.sort.collectAsStateWithLifecycle()
+                    CardSortMenu(selected = sort, onSelect = viewModel::onSort)
+                },
             )
         },
         floatingActionButton = {
@@ -245,7 +249,7 @@ private fun CardRow(
                 path = path,
                 maxEdge = ThumbnailPixels,
                 contentDescription = null,
-                pictogram = PictureResults.isPictogram(card.imageCredit),
+                kind = PictureResults.kindOf(card.imageCredit),
                 modifier = thumbnail,
             )
         } else {

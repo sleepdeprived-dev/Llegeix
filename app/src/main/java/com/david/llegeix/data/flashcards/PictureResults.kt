@@ -21,6 +21,26 @@ enum class PictureSource {
      * written in: "pa" finds Pennsylvania there, "bread" finds bread.
      */
     PHOTOS,
+
+    /**
+     * Emoji, drawn large: Google's Noto set as 512-pixel transparent PNGs,
+     * then OpenMoji's. Searched by their names and keywords in Catalan (from
+     * Unicode's CLDR) and in English, on the phone, from catalogues fetched
+     * once per run.
+     */
+    EMOJI,
+}
+
+/** How a picture is drawn, which follows from where it came from. */
+enum class PictureKind {
+    /** Fills its frame. */
+    PHOTO,
+
+    /** A drawing on white paper, shown whole with a little air. */
+    PICTOGRAM,
+
+    /** Shown whole and as large as fits, with nothing behind it. */
+    EMOJI,
 }
 
 /** One picture on offer. */
@@ -108,9 +128,15 @@ object PictureResults {
      * card keeps — the source a picture came from is not stored anywhere else,
      * and cards made before Global Symbols existed carry only ARASAAC's.
      */
-    fun isPictogram(credit: String?): Boolean =
-        credit != null &&
-            (credit.contains("ARASAAC") || credit.contains(GLOBAL_SYMBOLS) || credit.contains(OPENMOJI))
+    fun isPictogram(credit: String?): Boolean = kindOf(credit) == PictureKind.PICTOGRAM
+
+    /** How a picture with this credit is drawn; see [PictureKind]. */
+    fun kindOf(credit: String?): PictureKind = when {
+        credit == null -> PictureKind.PHOTO
+        credit.contains(NOTO_EMOJI) || credit.contains(OPENMOJI) -> PictureKind.EMOJI
+        credit.contains("ARASAAC") || credit.contains(GLOBAL_SYMBOLS) -> PictureKind.PICTOGRAM
+        else -> PictureKind.PHOTO
+    }
 
     /** ARASAAC in Catalan, or — for the words it has only labelled in English — "en". */
     fun arasaacSearchUrl(word: String, language: String = "ca"): String =
@@ -586,7 +612,7 @@ object PictureResults {
         return (named + tagged).take(OPENMOJI_MAX).map { emoji ->
             val url = OPENMOJI_PNG + emoji.hexcode + ".png"
             PictureHit(
-                source = PictureSource.PICTOGRAMS,
+                source = PictureSource.EMOJI,
                 id = "openmoji:" + emoji.hexcode,
                 thumbnailUrl = url,
                 fullUrl = url,
@@ -596,6 +622,122 @@ object PictureResults {
     }
 
     private const val OPENMOJI_MAX = 12
+
+    // ---- Noto emoji --------------------------------------------------------
+
+    const val NOTO_EMOJI = "Noto Emoji"
+    const val NOTO_CREDIT = "$NOTO_EMOJI · Google · Apache 2.0"
+
+    /** Every emoji with its English name and tags, from emojibase. */
+    const val EMOJI_ENGLISH_URL = "https://cdn.jsdelivr.net/npm/emojibase-data@16/en/compact.json"
+
+    /** Their Catalan names and keywords, from Unicode's CLDR. */
+    const val EMOJI_CATALAN_URL =
+        "https://cdn.jsdelivr.net/npm/cldr-annotations-full@46/annotations/ca/annotations.json"
+
+    private const val NOTO_PNG = "https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@v2.047/png/"
+
+    /** One emoji, with what it is called in both languages it is searched in. */
+    data class Emoji(
+        val hexcode: String,
+        val english: String,
+        val englishTags: List<String>,
+        val catalan: String,
+        val catalanKeywords: List<String>,
+        val order: Int,
+    )
+
+    /**
+     * The two catalogues, joined on the emoji itself. Skin-tone variants,
+     * components and flags are left out: flags are named differently in
+     * Noto's files, and the rest are the same picture again.
+     */
+    fun parseEmoji(englishJson: String, catalanJson: String): List<Emoji> {
+        val catalan = try {
+            JSONObject(catalanJson).optJSONObject("annotations")?.optJSONObject("annotations")
+        } catch (error: JSONException) {
+            null
+        }
+        val english = try {
+            JSONArray(englishJson)
+        } catch (error: JSONException) {
+            return emptyList()
+        }
+        return (0 until english.length()).mapNotNull { index ->
+            val entry = english.optJSONObject(index) ?: return@mapNotNull null
+            if (!entry.has("group")) return@mapNotNull null
+            val group = entry.optInt("group", -1)
+            if (group == 2 || group == 9) return@mapNotNull null
+            val char = entry.optString("unicode").replace("\uFE0F", "")
+            val hexcode = entry.optString("hexcode").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val names = catalan?.optJSONObject(char)
+            fun list(json: JSONArray?) = json?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+            Emoji(
+                hexcode = hexcode,
+                english = entry.optString("label"),
+                englishTags = list(entry.optJSONArray("tags")),
+                catalan = list(names?.optJSONArray("tts")).firstOrNull().orEmpty(),
+                catalanKeywords = list(names?.optJSONArray("default")),
+                order = entry.optInt("order", Int.MAX_VALUE),
+            )
+        }
+    }
+
+    /**
+     * The emoji for a word, best first: one *named* the word, in Catalan or in
+     * English, before one that only has it among its keywords — *poma
+     * vermella* before the fruit basket that lists *poma*.
+     */
+    fun emojiMatches(index: List<Emoji>, catalan: String, english: String?): List<PictureHit> {
+        fun stems(text: String) = PhotoRelevance.words(text).map(PhotoRelevance::stem)
+        val ca = stems(catalan)
+        val en = english?.let { stems(stripArticles(it)) }.orEmpty()
+        fun has(text: String, wanted: List<String>) =
+            wanted.isNotEmpty() && stems(text).toSet().containsAll(wanted)
+        fun equal(text: String, wanted: List<String>) = wanted.isNotEmpty() && stems(text) == wanted
+        return index.asSequence()
+            .map { emoji ->
+                val score = when {
+                    equal(emoji.catalan, ca) || equal(emoji.english, en) -> 6
+                    has(emoji.catalan, ca) || has(emoji.english, en) -> 4
+                    emoji.catalanKeywords.any { equal(it, ca) } || emoji.englishTags.any { equal(it, en) } -> 2
+                    emoji.catalanKeywords.any { has(it, ca) } -> 1
+                    else -> 0
+                }
+                emoji to score
+            }
+            .filter { it.second > 0 }
+            .sortedWith(compareByDescending<Pair<Emoji, Int>> { it.second }.thenBy { it.first.order })
+            .take(EMOJI_MAX)
+            .map { (emoji, _) ->
+                val name = emoji.hexcode.lowercase(Locale.ROOT).split('-').filter { it != "fe0f" }
+                    .joinToString("_")
+                PictureHit(
+                    source = PictureSource.EMOJI,
+                    id = "noto:" + emoji.hexcode,
+                    thumbnailUrl = NOTO_PNG + "128/emoji_u$name.png",
+                    fullUrl = NOTO_PNG + "512/emoji_u$name.png",
+                    credit = NOTO_CREDIT,
+                )
+            }
+            .toList()
+    }
+
+    private const val EMOJI_MAX = 30
+
+    /**
+     * "eat" from "to eat", "apple" from "an apple": the English meaning as a
+     * card holds it, without the words that only say what part of speech it
+     * is — which searched for literally find photos of the word "to".
+     */
+    fun stripArticles(english: String): String {
+        val trimmed = english.trim()
+        val lower = trimmed.lowercase(Locale.ROOT)
+        for (prefix in listOf("to ", "a ", "an ", "the ")) {
+            if (lower.startsWith(prefix) && trimmed.length > prefix.length) return trimmed.substring(prefix.length).trim()
+        }
+        return trimmed
+    }
 
     /** A path segment, where a space is %20 rather than the query string's +. */
     private fun encodePath(segment: String): String =

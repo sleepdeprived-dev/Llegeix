@@ -35,6 +35,9 @@ data class NewDeckUiState(
     val coverPath: String? = null,
     val coverCredit: String? = null,
     val isBusy: Boolean = false,
+    /** The collection it is being made inside, or null for the top of the list. */
+    val parentId: Long? = null,
+    val parentName: String? = null,
 )
 
 /**
@@ -95,32 +98,23 @@ class NewDeckViewModel(
      * choose before they have been asked anything. The choice is the first
      * thing in the sheet instead, where the name field is waiting either way.
      *
-     * A collection has no picture of its own: it wears the picture of the first
-     * deck on it, which is a picture the reader already chose once. So any
-     * picture picked before the switch is let go of here rather than quietly
-     * kept and thrown away at the end.
+     * Both are given their picture here, the same way, as they are named: a
+     * picture already chosen is kept across the switch, since it was chosen
+     * for the name, which has not changed.
      */
     fun onKindChange(kind: NewDeckKind) {
         if (_uiState.value.kind == kind) return
-        if (kind == NewDeckKind.COLLECTION) {
-            pictures.cancel()
-            discardCover()
-        }
-        _uiState.update {
-            it.copy(
-                kind = kind,
-                coverPath = null,
-                coverCredit = null,
-                check = DeckNames.check(it.name, takenNames(kind)),
-            )
-        }
-        if (kind == NewDeckKind.DECK) pictures.suggest(_uiState.value.name, pause = false)
+        _uiState.update { it.copy(kind = kind, check = DeckNames.check(it.name, takenNames(kind))) }
+    }
+
+    /** Make it inside [id], named [name] for the sheet's heading. */
+    fun setParent(id: Long?, name: String?) {
+        _uiState.update { it.copy(parentId = id, parentName = name) }
     }
 
     fun onNameChange(name: String) {
         _uiState.update { it.copy(name = name, check = DeckNames.check(name, takenNames(it.kind))) }
-        val state = _uiState.value
-        if (state.kind == NewDeckKind.DECK && state.coverPath == null) pictures.suggest(name)
+        if (_uiState.value.coverPath == null) pictures.suggest(name)
     }
 
     fun onSourceChange(source: PictureSource) = pictures.setSource(source)
@@ -164,9 +158,10 @@ class NewDeckViewModel(
         viewModelScope.launch {
             val result = when (state.kind) {
                 NewDeckKind.DECK ->
-                    flashcards.createDeck(state.name, state.coverPath, state.coverCredit)
+                    flashcards.createDeck(state.name, state.coverPath, state.coverCredit, state.parentId)
 
-                NewDeckKind.COLLECTION -> flashcards.createCollection(state.name)
+                NewDeckKind.COLLECTION ->
+                    flashcards.createCollection(state.name, state.parentId, state.coverPath, state.coverCredit)
             }
             if (result is DeckNames.Check.Ok) {
                 // The picture belongs to the deck now; nothing to clean up.

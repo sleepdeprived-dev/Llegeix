@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import com.david.llegeix.data.flashcards.PictureKind
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -42,7 +44,10 @@ import com.david.llegeix.LlegeixApp
  *
  * @param maxEdge roughly how many pixels across it is drawn at. A thumbnail
  *   asks for a fraction of the stored picture, and gets it decoded that small.
- * @param pictogram draw it as a pictogram, as above.
+ * An emoji is drawn with nothing behind it at all, whole and as large as its
+ * frame allows, since it is a transparent picture made to stand on anything.
+ *
+ * @param kind how to draw it; see [PictureKind].
  */
 @Composable
 fun CardImage(
@@ -51,13 +56,12 @@ fun CardImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
-    pictogram: Boolean = false,
+    kind: PictureKind = PictureKind.PHOTO,
 ) {
     val bitmap = rememberCardBitmap(path, maxEdge)
+    val whole = kind != PictureKind.PHOTO
     Box(
-        modifier = modifier.background(
-            if (pictogram) PictogramPaper else MaterialTheme.colorScheme.surfaceContainerHighest,
-        ),
+        modifier = modifier.background(backgroundFor(kind)),
         contentAlignment = Alignment.Center,
     ) {
         bitmap?.let {
@@ -66,10 +70,11 @@ fun CardImage(
                 contentDescription = contentDescription,
                 // A pictogram is always shown whole, with a little air: it is a
                 // drawing of one thing, and cropping cuts the thing.
-                contentScale = if (pictogram) ContentScale.Fit else contentScale,
+                contentScale = if (whole) ContentScale.Fit else contentScale,
+                filterQuality = FilterQuality.High,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(if (pictogram) PictogramInset else 0.dp),
+                    .padding(if (kind == PictureKind.PICTOGRAM) PictogramInset else 0.dp),
             )
         }
     }
@@ -88,11 +93,26 @@ fun CardImage(
 fun FramedPicture(
     path: String,
     contentDescription: String?,
-    pictogram: Boolean,
+    kind: PictureKind,
     modifier: Modifier = Modifier,
     maxEdge: Int = 1024,
 ) {
     val bitmap = rememberCardBitmap(path, maxEdge)
+    if (kind == PictureKind.EMOJI) {
+        // No frame, no shadow, no paper: the emoji itself, as big as fits.
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            bitmap?.let {
+                Image(
+                    bitmap = it,
+                    contentDescription = contentDescription,
+                    contentScale = ContentScale.Fit,
+                    filterQuality = FilterQuality.High,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        return
+    }
     val ratio = bitmap?.let { it.width.toFloat() / it.height }?.takeIf { it > 0f } ?: 1f
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         // As large as fits, at the picture's own proportions.
@@ -106,16 +126,17 @@ fun FramedPicture(
             modifier = frame
                 .shadow(elevation = 3.dp, shape = FrameShape)
                 .clip(FrameShape)
-                .background(if (pictogram) PictogramPaper else MaterialTheme.colorScheme.surfaceContainerHighest),
+                .background(backgroundFor(kind)),
         ) {
             bitmap?.let {
                 Image(
                     bitmap = it,
                     contentDescription = contentDescription,
                     contentScale = ContentScale.Fit,
+                    filterQuality = FilterQuality.High,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(if (pictogram) PictogramInset * 2 else 0.dp),
+                        .padding(if (kind == PictureKind.PICTOGRAM) PictogramInset * 2 else 0.dp),
                 )
             }
         }
@@ -127,6 +148,13 @@ fun FramedPicture(
  * narrower than its frame is framed in its own paper rather than in grey.
  */
 val PictogramPaper = Color.White
+
+@Composable
+private fun backgroundFor(kind: PictureKind): Color = when (kind) {
+    PictureKind.PICTOGRAM -> PictogramPaper
+    PictureKind.EMOJI -> Color.Transparent
+    PictureKind.PHOTO -> MaterialTheme.colorScheme.surfaceContainerHighest
+}
 
 @Composable
 private fun rememberCardBitmap(path: String, maxEdge: Int): ImageBitmap? {

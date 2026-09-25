@@ -10,6 +10,7 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.CardSearch
+import com.david.llegeix.data.flashcards.CardSort
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,8 +50,18 @@ class DeckViewModel(
      * accents and SQLite's `LIKE` cannot; a deck is small enough that this is
      * the cheaper of the two anyway.
      */
-    val shown: StateFlow<List<FlashcardEntity>?> = combine(cards, _query) { all, query ->
-        all?.let { CardSearch.filter(it, query) }
+    private val _sort = MutableStateFlow(flashcards.prefs.cardSort)
+    val sort: StateFlow<CardSort> = _sort.asStateFlow()
+
+    fun onSort(sort: CardSort) {
+        _sort.value = sort
+        flashcards.prefs.cardSort = sort
+    }
+
+    val shown: StateFlow<List<FlashcardEntity>?> = combine(cards, _query, _sort) { all, query, sort ->
+        // A search keeps its own order, best match first; the chosen order is
+        // for browsing.
+        all?.let { if (query.isBlank()) sort.sorted(it) else CardSearch.filter(it, query) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun onQueryChange(query: String) {

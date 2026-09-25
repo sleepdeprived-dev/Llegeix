@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -141,6 +142,7 @@ fun PictureGrid(
                 when (source) {
                     PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_credit_pictograms
                     PictureSource.PHOTOS -> R.string.flashcards_pictures_credit_photos
+                    PictureSource.EMOJI -> R.string.flashcards_pictures_credit_emoji
                 },
             ),
             style = MaterialTheme.typography.labelSmall,
@@ -162,6 +164,7 @@ private fun SourceSwitch(selected: PictureSource, onSelect: (PictureSource) -> U
                 when (source) {
                     PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_pictograms
                     PictureSource.PHOTOS -> R.string.flashcards_pictures_photos
+                    PictureSource.EMOJI -> R.string.flashcards_pictures_emoji
                 },
             )
             Pill(
@@ -169,24 +172,29 @@ private fun SourceSwitch(selected: PictureSource, onSelect: (PictureSource) -> U
                 onClick = { onSelect(source) },
                 label = name,
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = Space.sm, vertical = Space.sm),
+                contentPadding = PaddingValues(horizontal = Space.xs, vertical = Space.sm),
             ) {
-                Icon(
-                    painter = painterResource(
-                        when (source) {
-                            PictureSource.PICTOGRAMS -> R.drawable.ic_pictogram
-                            PictureSource.PHOTOS -> R.drawable.ic_photo
-                        },
-                    ),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    modifier = Modifier.padding(start = Space.sm),
-                )
+                // Icon over the name, so three of them fit across a phone
+                // with every name whole.
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        painter = painterResource(
+                            when (source) {
+                                PictureSource.PICTOGRAMS -> R.drawable.ic_pictogram
+                                PictureSource.PHOTOS -> R.drawable.ic_photo
+                                PictureSource.EMOJI -> R.drawable.ic_emoji
+                            },
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
             }
         }
     }
@@ -202,6 +210,7 @@ private fun StatusNote(suggestions: PictureSuggestions, source: PictureSource, o
             when (source) {
                 PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_none_pictograms
                 PictureSource.PHOTOS -> R.string.flashcards_pictures_none_photos
+                PictureSource.EMOJI -> R.string.flashcards_pictures_none_emoji
             },
             suggestions.word,
         )
@@ -263,9 +272,16 @@ private fun SuggestionTile(
     // A pictogram on white, the way it will look on the card once chosen
     // (see CardImage); a photo fills its square.
     val isPictogram = hit.source == PictureSource.PICTOGRAMS
+    val isEmoji = hit.source == PictureSource.EMOJI
     Box(
         modifier = modifier
-            .background(if (isPictogram) PictogramPaper else MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(
+                when {
+                    isPictogram -> PictogramPaper
+                    isEmoji -> MaterialTheme.colorScheme.surfaceContainer
+                    else -> MaterialTheme.colorScheme.surfaceContainerHighest
+                },
+            )
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -273,10 +289,18 @@ private fun SuggestionTile(
             Image(
                 bitmap = it,
                 contentDescription = stringResource(R.string.flashcards_picture_use),
-                contentScale = if (isPictogram) ContentScale.Fit else ContentScale.Crop,
+                contentScale = if (isPictogram || isEmoji) ContentScale.Fit else ContentScale.Crop,
+                // Scaled smoothly, so a small source image is not left blocky.
+                filterQuality = FilterQuality.High,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(if (isPictogram) Space.sm else 0.dp),
+                    .padding(
+                        when {
+                            isPictogram -> Space.sm
+                            isEmoji -> Space.md
+                            else -> 0.dp
+                        },
+                    ),
             )
         }
         if (isFetching) {

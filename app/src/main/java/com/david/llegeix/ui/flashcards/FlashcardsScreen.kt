@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.drawBehind
@@ -86,6 +88,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -135,6 +138,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun FlashcardsScreen(
     onOpenDeck: (deckId: Long) -> Unit,
+    onOpenWeak: () -> Unit,
     onStudy: (scope: StudyScope, direction: StudyDirection) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FlashcardsViewModel = viewModel(factory = FlashcardsViewModel.Factory),
@@ -143,6 +147,7 @@ fun FlashcardsScreen(
     val openShelves by viewModel.openShelves.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
+    val weakCount by viewModel.weakCount.collectAsStateWithLifecycle()
     val backupBusy by viewModel.backupBusy.collectAsStateWithLifecycle()
 
     // The system's own file screens, so the copy goes wherever the reader
@@ -192,6 +197,7 @@ fun FlashcardsScreen(
     // Play asks which way round every time; this is what it is asking about.
     var asking by remember { mutableStateOf<PlayRequest?>(null) }
     val everything = stringResource(R.string.flashcards_practise_all)
+    val weakTitle = stringResource(R.string.flashcards_weak_title)
     val practiseName = stringResource(R.string.flashcards_practise_name)
     fun play(scope: StudyScope, title: String) {
         asking = PlayRequest(scope, title)
@@ -213,6 +219,8 @@ fun FlashcardsScreen(
                     )
                 },
                 actions = {
+                    val sort by viewModel.sort.collectAsStateWithLifecycle()
+                    ListSortMenu(selected = sort, onSelect = viewModel::onSort)
                     IconButton(onClick = { showingBackup = true }) {
                         Icon(
                             painter = painterResource(R.drawable.ic_backup),
@@ -279,7 +287,7 @@ fun FlashcardsScreen(
                             indent = ShelfIndent * depth,
                             guides = depth,
                             modifier = Modifier.animateItem(),
-                            onNewInside = { creatingInside = shelf },
+                            onNewInside = { newDeckCount++; creatingInside = shelf },
                             onToggle = { viewModel.onToggleShelf(shelf.id) },
                             onPractise = {
                                 play(
@@ -333,6 +341,21 @@ fun FlashcardsScreen(
                             onMove = { moving = deck },
                             onRename = { renaming = deck },
                             onDelete = { deleting = deck },
+                        )
+                    }
+                }
+
+                // The weak words, like a folder of their own above the rest,
+                // only once there are some.
+                if (weakCount > 0) {
+                    item(key = "weak") {
+                        WeakRow(
+                            count = weakCount,
+                            onOpen = onOpenWeak,
+                            onPractise = {
+                                play(StudyScope.Weak, weakTitle)
+                            },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -442,19 +465,12 @@ fun FlashcardsScreen(
     }
 
     creatingInside?.let { parent ->
-        NameDialog(
-            title = stringResource(R.string.flashcards_new_collection_inside_title, parent.collection.name),
-            label = stringResource(R.string.flashcards_collection_name_label),
-            hint = stringResource(R.string.flashcards_collection_name_hint),
-            takenRes = R.string.flashcards_collection_exists,
-            confirmLabel = stringResource(R.string.action_create),
-            initialName = "",
-            check = { viewModel.checkCollectionName(it) },
+        NewDeckSheet(
+            key = newDeckCount,
+            parent = parent,
+            startKind = NewDeckKind.COLLECTION,
             onDismiss = { creatingInside = null },
-            onConfirm = { name ->
-                viewModel.createCollectionInside(parent, name)
-                creatingInside = null
-            },
+            onCreated = { id -> id?.let(viewModel::revealInside) },
         )
     }
 
@@ -605,6 +621,66 @@ private fun PractiseEverything(onStudy: () -> Unit) {
 }
 
 /**
+ * The weak words, as a row of their own at the top of the tab: a smart folder
+ * that fills itself with every word answered "Encara no", tinted so it is
+ * never mistaken for a collection the reader made. The row opens the list;
+ * its play button reviews exactly those words.
+ */
+@Composable
+private fun WeakRow(count: Int, onOpen: () -> Unit, onPractise: () -> Unit, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = Space.screen, vertical = 5.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(scheme.tertiaryContainer)
+            .clickable(onClick = onOpen)
+            .padding(Space.md),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(ShelfTile)
+                .clip(RoundedCornerShape(14.dp))
+                .background(scheme.tertiary),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_weak),
+                contentDescription = null,
+                tint = scheme.onTertiary,
+                modifier = Modifier.size(26.dp),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = Space.lg),
+        ) {
+            Text(
+                text = stringResource(R.string.flashcards_weak_title),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = scheme.onTertiaryContainer,
+            )
+            Text(
+                text = pluralStringResource(R.plurals.flashcards_card_count, count, count) + " · " +
+                    stringResource(R.string.flashcards_weak_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onTertiaryContainer.copy(alpha = 0.8f),
+                maxLines = 2,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        PlayButton(
+            onClick = onPractise,
+            contentDescription = stringResource(R.string.flashcards_weak_practise),
+            modifier = Modifier.padding(start = Space.sm),
+        )
+    }
+}
+
+/**
  * A collection, as the row that opens it.
  *
  * Pressing anywhere on it folds it open or shut, which is the thing the row is
@@ -649,7 +725,7 @@ private fun ShelfRow(
     )
     val rowShape = RoundedCornerShape(22.dp)
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .treeGuides(guides)
@@ -667,8 +743,8 @@ private fun ShelfRow(
                 onLongClick = { menuOpen = true },
             )
             .padding(Space.md),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         ShelfCover(shelf = shelf, isOpen = isOpen)
 
         Column(
@@ -689,34 +765,23 @@ private fun ShelfRow(
                 }
                 Text(
                     text = shelf.collection.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // How many cards are on the shelf, and only that.
-            //
-            // It said "3 decks · 124 cards", which is two numbers about the
-            // same pile — and the decks are about to be listed underneath, in
-            // full, so counting them was telling the reader something they
-            // were one tap from reading. The cards are the thing that cannot
-            // be seen by opening the row.
+            // What is in it, counted: folded shut the row cannot show its
+            // contents, so it says how much there is — the collections inside
+            // it, its decks, and the cards in all of them. Open, the contents
+            // are right underneath, and only the cards are worth a number.
             Text(
-                text = pluralStringResource(
-                    R.plurals.flashcards_card_count,
-                    shelf.cardCount,
-                    shelf.cardCount,
-                ),
-                style = MaterialTheme.typography.bodySmall,
+                text = shelfSummary(shelf, withContents = false),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp),
             )
-            // Folded shut, the row says what is inside it by name — the
-            // collections first, each behind the collection mark, then the
-            // decks — so a shelf can be found without opening every one.
-            if (!isOpen && !shelf.isEmpty) {
-                ShelfContents(shelf, modifier = Modifier.padding(top = 4.dp))
-            }
         }
 
         if (canPractise) {
@@ -786,6 +851,15 @@ private fun ShelfRow(
                 )
             }
         }
+    }
+    // Folded shut, what is inside it, by name, across the whole width of the
+    // row — collections first, each with the collection mark, then decks.
+    if (!isOpen && !shelf.isEmpty) {
+        ShelfContents(
+            shelf,
+            modifier = Modifier.padding(start = ShelfTile + 6.dp + Space.lg, top = Space.sm),
+        )
+    }
     }
 }
 
@@ -947,71 +1021,142 @@ private fun DeckRow(
 }
 
 /**
- * A collection's square: its picture or its initial, with two more squares
- * peeking out behind it, so a collection reads as a pile of things at a glance
- * and never as one more deck. Open, the pile fans out a little.
+ * A collection's square, told apart from a deck's at a glance: with no picture
+ * of its own it is the collection mark on the accent's container colour, never
+ * an initial like a deck's; with one, the picture wears a small collection
+ * badge in its corner. Open, the mark takes the accent itself.
  */
 @Composable
 private fun ShelfCover(shelf: DeckShelf, isOpen: Boolean) {
-    // Two sheets behind the cover, each a little narrower and a little
-    // higher, the way a pile of cards looks from the front. Open, they rise.
-    val rise by animateDpAsState(if (isOpen) 5.dp else 4.dp, label = "shelf rise")
     val scheme = MaterialTheme.colorScheme
-    val front = CoverSize - StackDepth
-    Box(
-        modifier = Modifier.size(CoverSize),
-        contentAlignment = Alignment.BottomCenter,
-    ) {
-        for (layer in 2 downTo 1) {
-            Box(
+    val fill by animateColorAsState(
+        if (isOpen) scheme.primary else scheme.primaryContainer,
+        label = "shelf mark",
+    )
+    val ink by animateColorAsState(
+        if (isOpen) scheme.onPrimary else scheme.onPrimaryContainer,
+        label = "shelf ink",
+    )
+    val image = shelf.collection.coverPath
+    Box(modifier = Modifier.size(ShelfTile + 6.dp)) {
+        if (image != null) {
+            CardImage(
+                path = image,
+                maxEdge = 192,
+                contentDescription = null,
+                kind = PictureResults.kindOf(shelf.collection.coverCredit),
                 modifier = Modifier
-                    .offset(y = -rise * layer)
-                    .size(width = front - 8.dp * layer, height = front)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(scheme.primary.copy(alpha = if (layer == 2) 0.14f else 0.28f)),
+                    .size(ShelfTile)
+                    .clip(RoundedCornerShape(16.dp)),
             )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(2.dp)
+                    .clip(CircleShape)
+                    .background(fill),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_collection),
+                    contentDescription = null,
+                    tint = ink,
+                    modifier = Modifier.size(13.dp),
+                )
+            }
+        } else {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(ShelfTile)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(fill),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_collection),
+                    contentDescription = null,
+                    tint = ink,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
-        Cover(
-            image = shelf.coverImage,
-            credit = shelf.coverCredit,
-            initial = shelf.collection.name,
-            size = front,
-            corner = 12.dp,
-        )
     }
 }
 
-/** How much of a collection's square the pile behind its cover takes. */
-private val StackDepth = 10.dp
+/** "2 collections · 3 decks · 124 cards", leaving out what there is none of. */
+@Composable
+private fun shelfSummary(shelf: DeckShelf, withContents: Boolean): String = buildList {
+    if (withContents) {
+        val inside = shelf.children.size
+        if (inside > 0) add(pluralStringResource(R.plurals.flashcards_collection_count, inside, inside))
+        val decks = shelf.decks.size
+        if (decks > 0) add(pluralStringResource(R.plurals.flashcards_deck_count, decks, decks))
+    }
+    add(pluralStringResource(R.plurals.flashcards_card_count, shelf.cardCount, shelf.cardCount))
+}.joinToString(" · ")
 
 /**
- * What a folded collection holds, by name, on one line: the collections inside
- * it behind the collection mark, then its decks.
+ * What a folded collection holds, by name, as chips: the collections inside
+ * it first, each with the collection mark, then its decks — three at most and
+ * a count of the rest, so the row stays one line tall however full it is.
  */
 @Composable
 private fun ShelfContents(shelf: DeckShelf, modifier: Modifier = Modifier) {
-    val color = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
-        if (shelf.children.isNotEmpty()) {
-            Icon(
-                painter = painterResource(R.drawable.ic_collection),
-                contentDescription = null,
-                tint = color,
+    val scheme = MaterialTheme.colorScheme
+    val names = shelf.children.map { it.collection.name to true } + shelf.decks.map { it.name to false }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.clipToBounds(),
+    ) {
+        names.take(ChipsShown).forEach { (name, isCollection) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .padding(end = 3.dp)
-                    .size(12.dp),
+                    .widthIn(max = 132.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(scheme.surfaceContainerHighest)
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                if (isCollection) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_collection),
+                        contentDescription = null,
+                        tint = scheme.primary,
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(12.dp),
+                    )
+                }
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        val more = names.size - ChipsShown
+        if (more > 0) {
+            Text(
+                text = "+$more",
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp),
             )
         }
-        Text(
-            text = (shelf.children.map { it.collection.name } + shelf.decks.map { it.name })
-                .joinToString(" · "),
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
+
+/** How many names a folded collection shows before "+2". */
+private const val ChipsShown = 3
+
+/** A collection's square: a step smaller than a deck's cover, with room for its badge. */
+private val ShelfTile = 54.dp
 
 /**
  * The tree's guide lines: one thin vertical rule for each level a row is
@@ -1054,7 +1199,7 @@ private fun Cover(
             path = image,
             maxEdge = 192,
             contentDescription = null,
-            pictogram = PictureResults.isPictogram(credit),
+            kind = PictureResults.kindOf(credit),
             modifier = Modifier
                 .size(size)
                 .clip(shape),
@@ -1276,8 +1421,20 @@ private fun MoveChoice(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
+private fun NewDeckSheet(
+    key: Int,
+    onDismiss: () -> Unit,
+    /** Make it inside this collection rather than at the top of the list. */
+    parent: DeckShelf? = null,
+    /** Which kind the sheet opens on. */
+    startKind: NewDeckKind = NewDeckKind.DECK,
+    onCreated: (parentId: Long?) -> Unit = {},
+) {
     val viewModel: NewDeckViewModel = viewModel(key = "new-deck-$key", factory = NewDeckViewModel.Factory)
+    LaunchedEffect(parent?.id, startKind) {
+        viewModel.setParent(parent?.id, parent?.collection?.name)
+        viewModel.onKindChange(startKind)
+    }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val suggestions by viewModel.pictures.state.collectAsStateWithLifecycle()
     val source by viewModel.pictures.source.collectAsStateWithLifecycle()
@@ -1290,7 +1447,12 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
         viewModel.onCancel()
         onDismiss()
     }
-    LaunchedEffect(created) { if (created) onDismiss() }
+    LaunchedEffect(created) {
+        if (created) {
+            onCreated(state.parentId)
+            onDismiss()
+        }
+    }
     // The name is the first thing asked, so the keyboard is already up for it.
     val nameFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { nameFocus.requestFocus() } }
@@ -1309,6 +1471,13 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
                 .navigationBarsPadding()
                 .imePadding(),
         ) {
+            state.parentName?.let { inside ->
+                Text(
+                    text = stringResource(R.string.flashcards_new_inside_title, inside),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = Space.md),
+                )
+            }
             PillGroup(modifier = Modifier.fillMaxWidth()) {
                 NewDeckKind.entries.forEach { kind ->
                     val name = stringResource(
@@ -1376,7 +1545,8 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
                     .focusRequester(nameFocus),
             )
 
-            if (isDeck) {
+            // A picture for either kind, found from the name as it is typed.
+            run {
                 Text(
                     text = stringResource(R.string.flashcards_picture),
                     style = MaterialTheme.typography.labelLarge,
@@ -1394,7 +1564,7 @@ private fun NewDeckSheet(key: Int, onDismiss: () -> Unit) {
                         path = cover,
                         maxEdge = 384,
                         contentDescription = stringResource(R.string.flashcards_picture_other),
-                        pictogram = PictureResults.isPictogram(state.coverCredit),
+                        kind = PictureResults.kindOf(state.coverCredit),
                         modifier = Modifier
                             .size(96.dp)
                             .clip(RoundedCornerShape(20.dp))

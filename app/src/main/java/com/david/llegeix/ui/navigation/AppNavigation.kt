@@ -34,6 +34,7 @@ import com.david.llegeix.ui.flashcards.CardEditorScreen
 import com.david.llegeix.ui.flashcards.DeckScreen
 import com.david.llegeix.ui.flashcards.FlashcardsScreen
 import com.david.llegeix.ui.flashcards.StudyScreen
+import com.david.llegeix.ui.flashcards.WeakWordsScreen
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.ui.folders.FolderDetailScreen
@@ -77,16 +78,19 @@ private object Routes {
      */
     const val FLASHCARD_STUDY =
         "flashcards/study?deckId={deckId}&collectionId={collectionId}" +
-            "&direction={direction}"
+            "&direction={direction}&weak={weak}"
 
     fun flashcardDeck(deckId: Long): String = "flashcards/deck/$deckId"
+
+    /** The weak words: every card last answered "not yet". */
+    const val FLASHCARD_WEAK = "flashcards/weak"
 
     fun flashcardStudy(
         scope: StudyScope,
         direction: StudyDirection,
     ): String = "flashcards/study?deckId=${scope.deckArgument}" +
         "&collectionId=${scope.collectionArgument}" +
-        "&direction=${direction.name}"
+        "&direction=${direction.name}&weak=${scope == StudyScope.Weak}"
 
     fun cardEditor(deckId: Long, cardId: Long? = null): String =
         "flashcards/card?deckId=$deckId&cardId=${cardId ?: -1}"
@@ -288,6 +292,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
             composable(Routes.FLASHCARDS) {
                 FlashcardsScreen(
                     onOpenDeck = { deckId -> navController.navigate(Routes.flashcardDeck(deckId)) },
+                    onOpenWeak = { navController.navigate(Routes.FLASHCARD_WEAK) },
                     onStudy = { scope, direction ->
                         navController.navigate(Routes.flashcardStudy(scope, direction))
                     },
@@ -303,15 +308,26 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                         type = NavType.StringType
                         defaultValue = StudyDirection.Default.name
                     },
+                    navArgument("weak") { type = NavType.BoolType; defaultValue = false },
                 ),
             ) { entry ->
                 StudyScreen(
                     scope = StudyScope.fromRoute(
                         deckId = entry.arguments?.getLong("deckId") ?: StudyScope.NONE,
                         collectionId = entry.arguments?.getLong("collectionId") ?: StudyScope.NONE,
+                        weak = entry.arguments?.getBoolean("weak") ?: false,
                     ),
                     direction = StudyDirection.fromName(entry.arguments?.getString("direction")),
                     onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.FLASHCARD_WEAK) {
+                WeakWordsScreen(
+                    onBack = { navController.popBackStack() },
+                    onStudy = { scope, direction ->
+                        navController.navigate(Routes.flashcardStudy(scope, direction))
+                    },
                 )
             }
 

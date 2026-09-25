@@ -15,6 +15,7 @@ import com.david.llegeix.data.flashcards.CollectionTree
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.FlashcardBackup
 import com.david.llegeix.data.flashcards.FlashcardRepository
+import com.david.llegeix.data.flashcards.ListSort
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -107,23 +109,39 @@ data class DeckList(
          * and a shelf whose parent has gone is at the top — nothing is ever
          * lost from the list because what held it went first.
          */
-        fun build(decks: List<DeckWithCount>, collections: List<FlashcardCollectionEntity>): DeckList {
+        fun build(
+            decks: List<DeckWithCount>,
+            collections: List<FlashcardCollectionEntity>,
+            sort: ListSort = ListSort.Default,
+        ): DeckList {
+            val deckOrder = sort.comparator<DeckWithCount>(
+                name = { it.name },
+                createdAt = { it.createdAt },
+                pinned = { it.isPinned },
+                cards = { it.cardCount },
+            )
+            val shelfOrder = sort.comparator<DeckShelf>(
+                name = { it.collection.name },
+                createdAt = { it.collection.createdAt },
+                pinned = { it.collection.isPinned },
+                cards = { it.cardCount },
+            )
             val known = collections.mapTo(HashSet()) { it.id }
             val byCollection = decks.groupBy { deck -> deck.collectionId?.takeIf { it in known } }
             val parents = CollectionTree.parents(collections)
             val childrenOf = collections.groupBy { parents[it.id] }
             fun shelf(collection: FlashcardCollectionEntity, depth: Int): DeckShelf = DeckShelf(
                 collection = collection,
-                decks = byCollection[collection.id].orEmpty(),
-                children = childrenOf[collection.id].orEmpty().map { shelf(it, depth + 1) },
+                decks = byCollection[collection.id].orEmpty().sortedWith(deckOrder),
+                children = childrenOf[collection.id].orEmpty().map { shelf(it, depth + 1) }.sortedWith(shelfOrder),
                 depth = depth,
             )
             return DeckList(
                 // A shelf with nothing on it is still listed: it was made on
                 // purpose, and a collection that vanished until something was
                 // put on it would look like the app having forgotten it.
-                shelves = childrenOf[null].orEmpty().map { shelf(it, 0) },
-                loose = byCollection[null].orEmpty(),
+                shelves = childrenOf[null].orEmpty().map { shelf(it, 0) }.sortedWith(shelfOrder),
+                loose = byCollection[null].orEmpty().sortedWith(deckOrder),
             )
         }
     }
@@ -162,10 +180,23 @@ class FlashcardsViewModel(
     val openShelves: StateFlow<Set<Long>> = _openShelves.asStateFlow()
 
     /** The decks grouped under the shelves they are on, in the order both are listed. */
-    val list: StateFlow<DeckList?> = combine(decks, collections) { decks, collections ->
+    private val _sort = MutableStateFlow(flashcards.prefs.listSort)
+    val sort: StateFlow<ListSort> = _sort.asStateFlow()
+
+    fun onSort(sort: ListSort) {
+        _sort.value = sort
+        flashcards.prefs.listSort = sort
+    }
+
+    val list: StateFlow<DeckList?> = combine(decks, collections, _sort) { decks, collections, sort ->
         if (decks == null || collections == null) return@combine null
-        DeckList.build(decks, collections)
+        DeckList.build(decks, collections, sort)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** How many weak words there are, for their row at the top of the tab. */
+    val weakCount: StateFlow<Int> = flashcards.observeWeak()
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     fun onToggleShelf(id: Long) {
         _openShelves.update { if (id in it) it - id else it + id }
@@ -217,15 +248,10 @@ class FlashcardsViewModel(
         _message.value = UiText.of(R.string.flashcards_collection_deleted, shelf.collection.name)
     }
 
-    /** Make a collection straight inside [parent], and open the way down to it. */
-    fun createCollectionInside(parent: DeckShelf, name: String) = viewModelScope.launch {
-        val check = flashcards.createCollection(name, parent.id)
-        if (check is DeckNames.Check.Ok) {
-            val parents = CollectionTree.parents(list.value?.allShelves.orEmpty().map { it.collection })
-            _openShelves.update { it + generateSequence(parent.id) { id -> parents[id] } }
-        } else {
-            report(check)
-        }
+    /** Open the way down to [id], after something was made inside it. */
+    fun revealInside(id: Long) {
+        val parents = CollectionTree.parents(list.value?.allShelves.orEmpty().map { it.collection })
+        _openShelves.update { it + generateSequence(id) { p -> parents[p] } }
     }
 
     /** Put a deck on a shelf, or take it off one with null. */

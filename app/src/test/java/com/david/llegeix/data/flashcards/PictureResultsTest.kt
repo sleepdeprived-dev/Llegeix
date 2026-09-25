@@ -152,7 +152,7 @@ class PictureResultsTest {
         )
         val hits = PictureResults.openMojiMatches(index, "Bread")
         assertEquals(listOf("openmoji:1F35E", "openmoji:1F96A"), hits.map { it.id })
-        assertTrue(PictureResults.isPictogram(hits.first().credit))
+        assertEquals(PictureKind.EMOJI, PictureResults.kindOf(hits.first().credit))
         assertTrue(hits.first().fullUrl.endsWith("/618x618/1F35E.png"))
     }
 

@@ -604,3 +604,13 @@ val MIGRATION_19_20 = object : Migration(19, 20) {
         db.execSQL("ALTER TABLE `flashcard_collections` ADD COLUMN `parentId` INTEGER")
     }
 }
+
+/**
+ * v4.4: weak words. One nullable column; no card starts as weak, because
+ * nobody has said "not yet" to anything under this rule.
+ */
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `flashcards` ADD COLUMN `weakAt` INTEGER")
+    }
+}

@@ -80,4 +80,13 @@ data class FlashcardEntity(
     val reverseDueAt: Long = 0,
     val reverseReviewCount: Int = 0,
     val reverseLastReviewedAt: Long? = null,
+
+    /**
+     * When the reader last answered "not yet" to this card, or null when it
+     * is not among their weak words. Set by any session; cleared when the card
+     * is answered right in a review of the weak words themselves — so that
+     * list is exactly the words the reader said they did not know, until they
+     * show they do.
+     */
+    val weakAt: Long? = null,
 )

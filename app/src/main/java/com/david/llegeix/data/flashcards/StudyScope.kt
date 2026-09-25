@@ -23,6 +23,9 @@ sealed interface StudyScope {
     /** Every deck on one shelf, as one session. */
     data class Collection(val id: Long) : StudyScope
 
+    /** The weak words: every card last answered "not yet", from whatever deck. */
+    data object Weak : StudyScope
+
     /** The deck id for a route, or -1 for "not a deck". */
     val deckArgument: Long get() = (this as? Deck)?.id ?: NONE
 
@@ -40,7 +43,8 @@ sealed interface StudyScope {
          * is the narrower answer and answering a narrower question than the one
          * asked is the less surprising of the two mistakes.
          */
-        fun fromRoute(deckId: Long, collectionId: Long): StudyScope = when {
+        fun fromRoute(deckId: Long, collectionId: Long, weak: Boolean = false): StudyScope = when {
+            weak -> Weak
             deckId >= 0 -> Deck(deckId)
             collectionId >= 0 -> Collection(collectionId)
             else -> Everything

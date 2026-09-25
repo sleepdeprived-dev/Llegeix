@@ -61,6 +61,8 @@ object FlashcardBackup {
         val reverseDueAt: Long = 0,
         val reverseReviewCount: Int = 0,
         val reverseLastReviewedAt: Long? = null,
+        /** When it became a weak word; optional, as older copies have none. */
+        val weakAt: Long? = null,
     )
 
     /**
@@ -176,6 +178,7 @@ object FlashcardBackup {
         .put("reverseDueAt", card.reverseDueAt)
         .put("reverseReviewCount", card.reverseReviewCount)
         .putOpt("reverseLastReviewedAt", card.reverseLastReviewedAt)
+        .putOpt("weakAt", card.weakAt)
 
     // ---- Reading -----------------------------------------------------------
 
@@ -268,6 +271,7 @@ object FlashcardBackup {
             reverseDueAt = card.optLong("reverseDueAt", 0),
             reverseReviewCount = card.optInt("reverseReviewCount", 0).coerceAtLeast(0),
             reverseLastReviewedAt = card.optLongOrNull("reverseLastReviewedAt"),
+            weakAt = card.optLongOrNull("weakAt"),
         )
     }
 
@@ -408,6 +412,7 @@ object FlashcardBackup {
         reverseDueAt = reverseDueAt,
         reverseReviewCount = reverseReviewCount,
         reverseLastReviewedAt = reverseLastReviewedAt,
+        weakAt = weakAt,
     )
 
     fun FlashcardEntity.toBackup(image: String?): Card = Card(
@@ -427,5 +432,6 @@ object FlashcardBackup {
         reverseDueAt = reverseDueAt,
         reverseReviewCount = reverseReviewCount,
         reverseLastReviewedAt = reverseLastReviewedAt,
+        weakAt = weakAt,
     )
 }

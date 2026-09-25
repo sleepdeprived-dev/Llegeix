@@ -17,9 +17,21 @@ class FlashcardPrefs(context: Context) {
         get() = StudyDirection.fromName(prefs.getString(KEY_DIRECTION, null))
         set(value) = prefs.edit { putString(KEY_DIRECTION, value.name) }
 
+    /** How the tab lists its collections and decks. */
+    var listSort: ListSort
+        get() = ListSort.fromName(prefs.getString(KEY_LIST_SORT, null))
+        set(value) = prefs.edit { putString(KEY_LIST_SORT, value.name) }
+
+    /** How a deck lists its cards. */
+    var cardSort: CardSort
+        get() = CardSort.fromName(prefs.getString(KEY_CARD_SORT, null))
+        set(value) = prefs.edit { putString(KEY_CARD_SORT, value.name) }
+
     fun clear() = prefs.edit { clear() }
 
     private companion object {
         const val KEY_DIRECTION = "direction"
+        const val KEY_LIST_SORT = "listSort"
+        const val KEY_CARD_SORT = "cardSort"
     }
 }

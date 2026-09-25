@@ -53,6 +53,14 @@ data class StudyUiState(
     val missed: List<FlashcardEntity> = emptyList(),
     /** How many cards there are to practise at all, for when there are none. */
     val cardsInScope: Int = 0,
+    /**
+     * Each card's deck, by name, when the session draws on more than one —
+     * the weak words, a collection, everything — so a card can say where it
+     * is from. Empty for a single deck, which says so in the title already.
+     */
+    val deckNames: Map<Long, String> = emptyMap(),
+    /** A review of the weak words, where a right answer takes a card off them. */
+    val isWeakReview: Boolean = false,
 ) {
     val current: FlashcardEntity? get() = cards.getOrNull(index)
 
@@ -83,7 +91,9 @@ class StudyViewModel(
     direction: StudyDirection,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(StudyUiState(direction = direction))
+    private val _uiState = MutableStateFlow(
+        StudyUiState(direction = direction, isWeakReview = scope == StudyScope.Weak),
+    )
     val uiState: StateFlow<StudyUiState> = _uiState.asStateFlow()
 
     init {
@@ -97,6 +107,12 @@ class StudyViewModel(
             StudyScope.Everything -> null
             is StudyScope.Deck -> flashcards.observeDeck(scope.id).first()?.name
             is StudyScope.Collection -> flashcards.collection(scope.id)?.name
+            StudyScope.Weak -> null
+        }
+        val deckNames = if (scope is StudyScope.Deck) {
+            emptyMap()
+        } else {
+            flashcards.observeDecks().first().associate { it.id to it.name }
         }
         val all = flashcards.cardsToStudy(scope)
         val state = _uiState.value
@@ -118,6 +134,7 @@ class StudyViewModel(
                 correct = 0,
                 missed = emptyList(),
                 cardsInScope = all.size,
+                deckNames = deckNames,
             )
         }
     }
@@ -145,10 +162,22 @@ class StudyViewModel(
      * is the natural next step — and the other way about.
      */
     fun onTurnRound() {
+        // The same cards, not a fresh deal: a weak-words round that was just
+        // answered right has taken some of them off the list, and turning
+        // round is going over *these* words the other way.
         _uiState.update {
-            it.copy(direction = it.direction.other(), isTurnedRound = true, isExtra = false)
+            val direction = it.direction.other()
+            it.copy(
+                direction = direction,
+                isTurnedRound = true,
+                isExtra = false,
+                cards = FlashcardSession.everything(it.cards, direction),
+                index = 0,
+                isRevealed = false,
+                correct = 0,
+                missed = emptyList(),
+            )
         }
-        deal()
     }
 
     fun onReveal() {
@@ -167,7 +196,13 @@ class StudyViewModel(
         val card = state.current ?: return
         if (!state.isExtra) {
             viewModelScope.launch {
-                flashcards.recordAnswer(card, state.direction, correct, System.currentTimeMillis())
+                flashcards.recordAnswer(
+                    card,
+                    state.direction,
+                    correct,
+                    System.currentTimeMillis(),
+                    reviewingWeak = state.isWeakReview,
+                )
             }
         }
         _uiState.update {

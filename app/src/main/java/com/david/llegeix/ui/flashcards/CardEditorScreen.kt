@@ -481,7 +481,7 @@ private fun ChosenPicture(path: String, credit: String?, onChange: () -> Unit) {
         FramedPicture(
             path = path,
             contentDescription = stringResource(R.string.flashcards_picture_other),
-            pictogram = PictureResults.isPictogram(credit),
+            kind = PictureResults.kindOf(credit),
             maxEdge = ImageSizing.MAX_EDGE,
             modifier = Modifier
                 .fillMaxWidth()
