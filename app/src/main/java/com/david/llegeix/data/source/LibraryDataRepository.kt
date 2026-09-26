@@ -37,6 +37,26 @@ class LibraryDataRepository(private val database: LlegeixDatabase) {
     private val tags = database.tagDao()
     private val folderRules = database.folderRuleDao()
 
+    // --- Forgetting what has left the library ------------------------------
+
+    /**
+     * Forget every document the library no longer has: its place in a
+     * collection, its star and read-later mark, its reading history, its page
+     * bookmarks and tags. A PDF that has been removed — its folder unwatched,
+     * its picked file let go, the file deleted — used to linger in all of those,
+     * as a row that opened nothing. Saved words are kept: they are vocabulary,
+     * and outlive the page they were read on by design.
+     *
+     * @param present every document the library can still reach.
+     * @return how many were forgotten.
+     */
+    suspend fun forgetMissing(present: Set<String>): Int {
+        val missing = documents.allUris().filterNot { it in present }
+        // SQLite takes at most 999 arguments to a statement.
+        missing.chunked(500).forEach { documents.deleteAll(it) }
+        return missing.size
+    }
+
     // --- Folders -----------------------------------------------------------
 
     fun observeFolders(): Flow<List<FolderEntity>> = folders.observeFolders()

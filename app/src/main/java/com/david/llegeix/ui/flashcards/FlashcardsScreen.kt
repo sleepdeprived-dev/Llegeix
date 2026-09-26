@@ -1,6 +1,13 @@
 package com.david.llegeix.ui.flashcards
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -144,7 +151,8 @@ fun FlashcardsScreen(
     viewModel: FlashcardsViewModel = viewModel(factory = FlashcardsViewModel.Factory),
 ) {
     val list by viewModel.list.collectAsStateWithLifecycle()
-    val openShelves by viewModel.openShelves.collectAsStateWithLifecycle()
+    val current by viewModel.current.collectAsStateWithLifecycle()
+    val layout by viewModel.layout.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
     val weakCount by viewModel.weakCount.collectAsStateWithLifecycle()
@@ -220,6 +228,7 @@ fun FlashcardsScreen(
                 },
                 actions = {
                     val sort by viewModel.sort.collectAsStateWithLifecycle()
+                    LayoutMenu(selected = layout, onSelect = viewModel::onLayout)
                     ListSortMenu(selected = sort, onSelect = viewModel::onSort)
                     IconButton(onClick = { showingBackup = true }) {
                         Icon(
@@ -257,130 +266,121 @@ fun FlashcardsScreen(
                 },
             )
 
-            else -> LazyColumn(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                // Room under the last deck for the + button.
-                contentPadding = PaddingValues(top = Space.xs, bottom = BottomClearance),
-            ) {
-                // Only once there is something to practise: asking which way
-                // round to go through decks that have nothing in them is a
-                // question with no answer.
-                if (loaded.hasCards && canPractise(loaded.allDecks)) {
-                    item(key = "practice") {
-                        PractiseEverything(
-                            onStudy = { play(StudyScope.Everything, everything) },
-                        )
-                    }
+            else -> {
+                // Inside a collection, the system's back goes up a level
+                // before it leaves the tab.
+                BackHandler(enabled = current != null) { viewModel.onUp() }
+                val here = current?.let(loaded::shelf)
+                val entries = here?.entries ?: loaded.entries
+                val actions = EntryActions(
+                    openShelf = { viewModel.onOpenShelf(it.id) },
+                    openDeck = { onOpenDeck(it.id) },
+                    playShelf = { play(StudyScope.Collection(it.id), practiseName.format(it.collection.name)) },
+                    playDeck = { play(StudyScope.Deck(it.id), practiseName.format(it.name)) },
+                    pinShelf = { viewModel.setCollectionPinned(it.id, !it.collection.isPinned) },
+                    pinDeck = { viewModel.setPinned(it, !it.isPinned) },
+                    pictureShelf = { picturingShelf = it },
+                    pictureDeck = { picturing = it },
+                    moveShelf = { movingShelf = it },
+                    moveDeck = { moving = it },
+                    newInside = { newDeckCount++; creatingInside = it },
+                    renameShelf = { renamingShelf = it },
+                    renameDeck = { renaming = it },
+                    deleteShelf = { deletingShelf = it },
+                    deleteDeck = { deleting = it },
+                )
+                fun practisable(entry: ListEntry) = when (entry) {
+                    is ListEntry.Shelf -> canPractise(entry.shelf.allDecks)
+                    is ListEntry.Deck -> canPractise(listOf(entry.deck))
                 }
-
-                // Shelves inside shelves are drawn by the same function,
-                // one step further in each time.
-                fun LazyListScope.shelf(shelf: DeckShelf) {
-                    val depth = shelf.depth.coerceAtMost(MaxDrawnDepth)
-                    item(key = "shelf-${shelf.id}") {
-                        ShelfRow(
-                            shelf = shelf,
-                            isOpen = shelf.id in openShelves,
-                            canPractise = canPractise(shelf.allDecks),
-                            indent = ShelfIndent * depth,
-                            guides = depth,
-                            modifier = Modifier.animateItem(),
-                            onNewInside = { newDeckCount++; creatingInside = shelf },
-                            onToggle = { viewModel.onToggleShelf(shelf.id) },
-                            onPractise = {
-                                play(
-                                    StudyScope.Collection(shelf.id),
-                                    practiseName.format(shelf.collection.name),
+                val columns = if (layout == ListLayout.GRID) 2 else 1
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize(),
+                    // Room under the last one for the + button; the grid's
+                    // own edges, since its cards carry their own margins.
+                    contentPadding = PaddingValues(top = Space.xs, bottom = BottomClearance),
+                ) {
+                    val full: (LazyGridItemSpanScope) -> GridItemSpan = { GridItemSpan(it.maxLineSpan) }
+                    val wide = Modifier
+                    if (here == null) {
+                        // Only once there is something to practise.
+                        if (loaded.hasCards && canPractise(loaded.allDecks)) {
+                            item(key = "practice", span = full) {
+                                Box(wide) {
+                                    PractiseEverything(onStudy = { play(StudyScope.Everything, everything) })
+                                }
+                            }
+                        }
+                        // The weak words, like a folder of their own above the
+                        // rest, only once there are some.
+                        if (weakCount > 0) {
+                            item(key = "weak", span = full) {
+                                Box(wide) {
+                                    WeakRow(
+                                        count = weakCount,
+                                        onOpen = onOpenWeak,
+                                        onPractise = { play(StudyScope.Weak, weakTitle) },
+                                        modifier = Modifier.animateItem(),
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        item(key = "header-${here.id}", span = full) {
+                            Box(wide) {
+                                CollectionHeader(
+                                    path = loaded.pathTo(here.id),
+                                    canPractise = canPractise(here.allDecks),
+                                    onGoTo = viewModel::onGoTo,
+                                    actions = actions,
                                 )
-                            },
-                            onPicture = { picturingShelf = shelf },
-                            onTogglePinned = {
-                                viewModel.setCollectionPinned(shelf.id, !shelf.collection.isPinned)
-                            },
-                            onMove = { movingShelf = shelf },
-                            onRename = { renamingShelf = shelf },
-                            onDelete = { deletingShelf = shelf },
-                        )
+                            }
+                        }
+                        if (here.isEmpty) {
+                            item(key = "empty-${here.id}", span = full) {
+                                Text(
+                                    text = stringResource(R.string.flashcards_collection_empty),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = wide.padding(horizontal = Space.screen, vertical = Space.lg),
+                                )
+                            }
+                        }
                     }
-                    if (shelf.id !in openShelves) return
-                    val inside = ShelfIndent * (depth + 1)
-                    if (shelf.isEmpty) {
-                        item(key = "shelf-${shelf.id}-empty") {
-                            Text(
-                                text = stringResource(R.string.flashcards_collection_empty),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
+                    when (layout) {
+                        ListLayout.LIST -> items(entries, key = { it.key }, span = { full(this) }) { entry ->
+                            EntryRow(entry, practisable(entry), actions, Modifier.animateItem())
+                        }
+                        ListLayout.COMPACT -> itemsIndexed(entries, key = { _, it -> it.key }, span = { _, _ -> full(this) }) { index, entry ->
+                            CompactRow(
+                                entry = entry,
+                                canPractise = practisable(entry),
+                                actions = actions,
+                                isFirst = index == 0,
+                                isLast = index == entries.lastIndex,
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                        ListLayout.GRID -> itemsIndexed(entries, key = { _, it -> it.key }) { index, entry ->
+                            // Each card pads itself out to the screen margin
+                            // on its own side of the grid.
+                            val edge = Space.screen - 6.dp
+                            EntryTile(
+                                entry,
+                                practisable(entry),
+                                actions,
+                                Modifier
                                     .animateItem()
-                                    .fillMaxWidth()
-                                    .treeGuides(depth + 1)
-                                    .padding(start = Space.screen + inside)
-                                    .padding(end = Space.screen, top = Space.xs, bottom = Space.md),
+                                    .padding(
+                                        start = if (index % 2 == 0) edge else 0.dp,
+                                        end = if (index % 2 == 1) edge else 0.dp,
+                                    ),
                             )
                         }
                     }
-                    // The shelves inside first, then its decks, the way the
-                    // top of the list puts shelves above loose decks.
-                    shelf.children.forEach { shelf(it) }
-                    items(shelf.decks, key = { "deck-${it.id}" }) { deck ->
-                        DeckRow(
-                            deck = deck,
-                            direction = direction,
-                            canPractise = canPractise(listOf(deck)),
-                            indent = inside,
-                            guides = depth + 1,
-                            modifier = Modifier.animateItem(),
-                            onOpen = { onOpenDeck(deck.id) },
-                            onPractise = {
-                                play(StudyScope.Deck(deck.id), practiseName.format(deck.name))
-                            },
-                            onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
-                            onPicture = { picturing = deck },
-                            onMove = { moving = deck },
-                            onRename = { renaming = deck },
-                            onDelete = { deleting = deck },
-                        )
-                    }
-                }
-
-                // The weak words, like a folder of their own above the rest,
-                // only once there are some.
-                if (weakCount > 0) {
-                    item(key = "weak") {
-                        WeakRow(
-                            count = weakCount,
-                            onOpen = onOpenWeak,
-                            onPractise = {
-                                play(StudyScope.Weak, weakTitle)
-                            },
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-                }
-
-                // The shelves first, then what is on no shelf. A reader who has
-                // never made a collection sees exactly the list they had before
-                // collections existed.
-                loaded.shelves.forEach { shelf(it) }
-
-                items(loaded.loose, key = { "deck-${it.id}" }) { deck ->
-                    DeckRow(
-                        deck = deck,
-                        modifier = Modifier.animateItem(),
-                        direction = direction,
-                        canPractise = canPractise(listOf(deck)),
-                        onOpen = { onOpenDeck(deck.id) },
-                        onPractise = {
-                            play(StudyScope.Deck(deck.id), practiseName.format(deck.name))
-                        },
-                        onTogglePinned = { viewModel.setPinned(deck, !deck.isPinned) },
-                        onPicture = { picturing = deck },
-                        onMove = { moving = deck },
-                        onRename = { renaming = deck },
-                        onDelete = { deleting = deck },
-                    )
                 }
             }
         }
@@ -444,7 +444,12 @@ fun FlashcardsScreen(
     if (creating) {
         // A fresh sheet each time it is opened, so the last attempt's name and
         // picture are not waiting in it.
-        NewDeckSheet(key = newDeckCount, onDismiss = { creating = false })
+        // Inside a collection, what the + makes goes inside it.
+        NewDeckSheet(
+            key = newDeckCount,
+            onDismiss = { creating = false },
+            parent = current?.let { id -> list?.shelf(id) },
+        )
     }
 
     renaming?.let { deck ->
@@ -642,7 +647,7 @@ private fun WeakRow(count: Int, onOpen: () -> Unit, onPractise: () -> Unit, modi
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(ShelfTile)
+                .size(56.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(scheme.tertiary),
         ) {
@@ -677,482 +682,6 @@ private fun WeakRow(count: Int, onOpen: () -> Unit, onPractise: () -> Unit, modi
             contentDescription = stringResource(R.string.flashcards_weak_practise),
             modifier = Modifier.padding(start = Space.sm),
         )
-    }
-}
-
-/**
- * A collection, as the row that opens it.
- *
- * Pressing anywhere on it folds it open or shut, which is the thing the row is
- * mostly for; the chevron turns to say which way it went. Its own play button
- * starts a session over every card on the shelf at once — the reason
- * collections exist at all, since practising *food* is a different session from
- * practising *vegetables* three times in a row.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ShelfRow(
-    shelf: DeckShelf,
-    isOpen: Boolean,
-    canPractise: Boolean,
-    onToggle: () -> Unit,
-    onPractise: () -> Unit,
-    onTogglePinned: () -> Unit,
-    onPicture: () -> Unit,
-    onMove: () -> Unit,
-    onNewInside: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit,
-    /** How far in from the margin, so a shelf inside a shelf reads as being in it. */
-    indent: Dp = 0.dp,
-    /** How many levels of the tree it is inside, for the guide lines on the left. */
-    guides: Int = 0,
-    modifier: Modifier = Modifier,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    val scheme = MaterialTheme.colorScheme
-    // Open is said by the row itself rather than by an arrow: it lifts a
-    // shade and takes a hairline of the accent, and what is inside hangs
-    // under it on a guide line. Not a fill of the accent's own container
-    // colour, which is the play button's, and swallowed it.
-    val tint by animateColorAsState(
-        if (isOpen) scheme.surfaceContainerHigh else scheme.surfaceContainer,
-        label = "shelf tint",
-    )
-    val edge by animateColorAsState(
-        if (isOpen) scheme.primary.copy(alpha = 0.45f) else Color.Transparent,
-        label = "shelf edge",
-    )
-    val rowShape = RoundedCornerShape(22.dp)
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .treeGuides(guides)
-            .padding(start = Space.screen + indent, end = Space.screen)
-            .padding(vertical = RowGap)
-            .clip(rowShape)
-            .background(tint)
-            .border(1.5.dp, edge, rowShape)
-            .combinedClickable(
-                onClickLabel = stringResource(
-                    if (isOpen) R.string.flashcards_hide_decks else R.string.flashcards_show_decks,
-                    shelf.collection.name,
-                ),
-                onClick = onToggle,
-                onLongClick = { menuOpen = true },
-            )
-            .padding(horizontal = Space.lg, vertical = RowInset),
-    ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        ShelfCover(shelf = shelf, isOpen = isOpen)
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = Space.lg),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (shelf.collection.isPinned) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_pin),
-                        contentDescription = stringResource(R.string.folders_pinned),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .padding(end = Space.xs)
-                            .size(16.dp),
-                    )
-                }
-                Text(
-                    text = shelf.collection.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            // What is in it, counted: folded shut the row cannot show its
-            // contents, so it says how much there is — the collections inside
-            // it, its decks, and the cards in all of them. Open, the contents
-            // are right underneath, and only the cards are worth a number.
-            Text(
-                text = shelfSummary(shelf, withContents = false),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-
-        if (canPractise) {
-            PlayButton(
-                onClick = onPractise,
-                contentDescription = stringResource(
-                    R.string.flashcards_practise_name,
-                    shelf.collection.name,
-                ),
-                modifier = Modifier.padding(start = Space.sm),
-            )
-        }
-
-        Box {
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_more),
-                    contentDescription = stringResource(
-                        R.string.document_actions,
-                        shelf.collection.name,
-                    ),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_new_collection)) },
-                    text = { Text(stringResource(R.string.flashcards_new_collection_inside)) },
-                    onClick = { onNewInside(); menuOpen = false },
-                )
-                HorizontalDivider()
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
-                    text = {
-                        Text(
-                            stringResource(
-                                if (shelf.collection.isPinned) {
-                                    R.string.folders_unpin
-                                } else {
-                                    R.string.folders_pin
-                                },
-                            ),
-                        )
-                    },
-                    onClick = { onTogglePinned(); menuOpen = false },
-                )
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
-                    text = { Text(stringResource(R.string.flashcards_deck_picture)) },
-                    onClick = { onPicture(); menuOpen = false },
-                )
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_move)) },
-                    text = { Text(stringResource(R.string.flashcards_move_to_collection)) },
-                    onClick = { onMove(); menuOpen = false },
-                )
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(Icons.Default.Edit) },
-                    text = { Text(stringResource(R.string.folders_rename)) },
-                    onClick = { onRename(); menuOpen = false },
-                )
-                HorizontalDivider()
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(Icons.Default.Delete) },
-                    text = { Text(stringResource(R.string.action_delete)) },
-                    onClick = { onDelete(); menuOpen = false },
-                )
-            }
-        }
-    }
-    }
-}
-
-/**
- * One deck, as a card of its own.
- *
- * Its cover is the picture the reader chose for it, or its first card's, or its
- * initial. Under the name, how well the deck is known this way round, as a bar
- * rather than a number. On the right, the deck's own round way into practice —
- * the same circle as everywhere else, whatever is or is not due, because going
- * through a deck again is never the wrong thing to want.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun DeckRow(
-    deck: DeckWithCount,
-    direction: StudyDirection,
-    /**
-     * Whether any of its cards can be asked in the language chosen. A deck with
-     * no English meanings has nothing to offer an English session, and a play
-     * button that led to an empty one would be a button that lies.
-     */
-    canPractise: Boolean,
-    onOpen: () -> Unit,
-    onPractise: () -> Unit,
-    onTogglePinned: () -> Unit,
-    onPicture: () -> Unit,
-    onMove: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit,
-    /** How far in from the margin, so a deck on a shelf reads as being on it. */
-    indent: Dp = 0.dp,
-    /** How many levels of the tree it is inside, for the guide lines on the left. */
-    guides: Int = 0,
-    modifier: Modifier = Modifier,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .treeGuides(guides)
-            .padding(start = Space.screen + indent, end = Space.screen)
-            .padding(vertical = RowGap)
-            .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .combinedClickable(onClick = onOpen, onLongClick = { menuOpen = true })
-            .padding(horizontal = Space.lg, vertical = RowInset),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Cover(
-            image = deck.coverImage,
-            credit = deck.coverCredit,
-            initial = deck.name,
-            size = CoverSize,
-            corner = 16.dp,
-        )
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = Space.lg),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (deck.isPinned) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_pin),
-                        contentDescription = stringResource(R.string.folders_pinned),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .padding(end = Space.xs)
-                            .size(16.dp),
-                    )
-                }
-                Text(
-                    text = deck.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                text = if (deck.cardCount == 0) {
-                    stringResource(R.string.flashcards_deck_no_cards)
-                } else {
-                    pluralStringResource(R.plurals.flashcards_card_count, deck.cardCount, deck.cardCount)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-            // No bar under the name.
-            //
-            // It drew the deck's Leitner boxes as a fraction of every card
-            // being in the last one, which is a number with no unit and no
-            // moment at which it is finished: a deck of new cards reads as
-            // nothing done, and one answered right all week creeps a
-            // millimetre. What it actually measured was a schedule, and since
-            // pressing play goes through every card whatever the schedule says,
-            // the bar was reporting on something the reader no longer steers
-            // by. The count of cards is the honest line, and it is the line
-            // above it.
-        }
-
-        if (canPractise) {
-            // A round mark reads at a glance; said out loud it needs the words.
-            PlayButton(
-                onClick = onPractise,
-                contentDescription = stringResource(
-                    R.string.flashcards_practise_name,
-                    deck.name,
-                ),
-                modifier = Modifier.padding(start = Space.sm),
-            )
-        }
-
-        Box {
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_more),
-                    contentDescription = stringResource(R.string.document_actions, deck.name),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
-                    text = {
-                        Text(
-                            stringResource(if (deck.isPinned) R.string.folders_unpin else R.string.folders_pin),
-                        )
-                    },
-                    onClick = { onTogglePinned(); menuOpen = false },
-                )
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
-                    text = { Text(stringResource(R.string.flashcards_deck_picture)) },
-                    onClick = { onPicture(); menuOpen = false },
-                )
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_move)) },
-                    text = { Text(stringResource(R.string.flashcards_move_to_collection)) },
-                    onClick = { onMove(); menuOpen = false },
-                )
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(Icons.Default.Edit) },
-                    text = { Text(stringResource(R.string.folders_rename)) },
-                    onClick = { onRename(); menuOpen = false },
-                )
-                HorizontalDivider()
-                DropdownMenuItem(
-                    leadingIcon = { MenuIcon(Icons.Default.Delete) },
-                    text = { Text(stringResource(R.string.action_delete)) },
-                    onClick = { onDelete(); menuOpen = false },
-                )
-            }
-        }
-    }
-}
-
-/**
- * A collection's square, told apart from a deck's at a glance: with no picture
- * of its own it is the collection mark on the accent's container colour, never
- * an initial like a deck's; with one, the picture wears a small collection
- * badge in its corner. Open, the mark takes the accent itself.
- */
-@Composable
-private fun ShelfCover(shelf: DeckShelf, isOpen: Boolean) {
-    val scheme = MaterialTheme.colorScheme
-    val fill by animateColorAsState(
-        if (isOpen) scheme.primary else scheme.primaryContainer,
-        label = "shelf mark",
-    )
-    val ink by animateColorAsState(
-        if (isOpen) scheme.onPrimary else scheme.onPrimaryContainer,
-        label = "shelf ink",
-    )
-    val image = shelf.collection.coverPath
-    Box(modifier = Modifier.size(ShelfTile + 6.dp)) {
-        if (image != null) {
-            CardImage(
-                path = image,
-                maxEdge = 192,
-                contentDescription = null,
-                kind = PictureResults.kindOf(shelf.collection.coverCredit),
-                modifier = Modifier
-                    .size(ShelfTile)
-                    .clip(RoundedCornerShape(16.dp)),
-            )
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(2.dp)
-                    .clip(CircleShape)
-                    .background(fill),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_collection),
-                    contentDescription = null,
-                    tint = ink,
-                    modifier = Modifier.size(13.dp),
-                )
-            }
-        } else {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(ShelfTile)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(fill),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_collection),
-                    contentDescription = null,
-                    tint = ink,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-        }
-    }
-}
-
-/** "2 collections · 3 decks · 124 cards", leaving out what there is none of. */
-@Composable
-private fun shelfSummary(shelf: DeckShelf, withContents: Boolean): String = buildList {
-    if (withContents) {
-        val inside = shelf.children.size
-        if (inside > 0) add(pluralStringResource(R.plurals.flashcards_collection_count, inside, inside))
-        val decks = shelf.decks.size
-        if (decks > 0) add(pluralStringResource(R.plurals.flashcards_deck_count, decks, decks))
-    }
-    add(pluralStringResource(R.plurals.flashcards_card_count, shelf.cardCount, shelf.cardCount))
-}.joinToString(" · ")
-
-/** A collection's square: a step smaller than a deck's cover, with room for its badge. */
-private val ShelfTile = 54.dp
-
-/**
- * The tree's guide lines: one thin vertical rule for each level a row is
- * inside, drawn in the gutter its indent leaves, so what is in a collection
- * hangs visibly from it. Drawn edge to edge of the item, so the rules of
- * rows one under another join into one line.
- */
-@Composable
-private fun Modifier.treeGuides(levels: Int): Modifier {
-    if (levels <= 0) return this
-    val color = MaterialTheme.colorScheme.outlineVariant
-    return drawBehind {
-        val width = 2.dp.toPx()
-        for (level in 0 until levels.coerceAtMost(MaxDrawnDepth + 1)) {
-            val x = (Space.screen + ShelfIndent * level + ShelfIndent / 2).toPx()
-            drawLine(color, Offset(x, 0f), Offset(x, size.height), strokeWidth = width, cap = StrokeCap.Round)
-        }
-    }
-}
-
-/**
- * The square that stands for a deck or a shelf: its picture, or its initial on
- * a tinted tile.
- *
- * One composable for both, because a shelf borrows the picture of the first
- * deck on it and two near-identical squares drawn by two different pieces of
- * code is how they stop being near-identical.
- */
-@Composable
-private fun Cover(
-    image: String?,
-    credit: String?,
-    initial: String,
-    size: Dp,
-    corner: Dp,
-) {
-    val shape = RoundedCornerShape(corner)
-    if (image != null) {
-        CardImage(
-            path = image,
-            maxEdge = 192,
-            contentDescription = null,
-            kind = PictureResults.kindOf(credit),
-            modifier = Modifier
-                .size(size)
-                .clip(shape),
-        )
-    } else {
-        Box(
-            modifier = Modifier
-                .size(size)
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = initial.trim().take(1).uppercase(),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-        }
     }
 }
 
@@ -1790,10 +1319,7 @@ private fun NameDialog(
     )
 }
 
-private val CoverSize = 60.dp
 
-/** How far a deck on a shelf sits in from the margin. */
-private val ShelfIndent = 20.dp
 
 /** Half the space between two rows of the tab: room to breathe between them. */
 private val RowGap = 8.dp

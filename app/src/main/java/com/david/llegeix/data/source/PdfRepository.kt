@@ -66,6 +66,13 @@ class PdfRepository(
     fun removePickedFile(uri: Uri) = pickedFileSource.releaseGrant(uri)
 
     /**
+     * Files picked one by one and still kept. Counted as present even when the
+     * scan could not read them — a cloud drive offline for a moment is not the
+     * reader removing the file, and must not cost it its place in a collection.
+     */
+    fun pickedUris(): Set<String> = pickedFileSource.grantedUris().toSet()
+
+    /**
      * Run both sources and merge them. The two run concurrently because the
      * device sweep is by far the slower of the pair and there is no reason to
      * make the folder walk wait behind it.

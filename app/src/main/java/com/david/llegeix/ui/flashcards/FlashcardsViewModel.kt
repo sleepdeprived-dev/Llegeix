@@ -37,11 +37,48 @@ import kotlinx.coroutines.launch
  * have already been loaded with theirs and a second query would have to repeat
  * the first one's cover logic word for word to get the same answers.
  */
+/**
+ * One thing in a list of the tab: a collection or a deck. They are listed
+ * together, in one order, so that "A to Z" is A to Z across both — collections
+ * used to come first whatever the order, and a sorted list that starts again
+ * from A halfway down reads as not sorted at all.
+ */
+sealed interface ListEntry {
+    val key: String
+
+    data class Shelf(val shelf: DeckShelf) : ListEntry {
+        override val key: String get() = "shelf-${shelf.id}"
+    }
+
+    data class Deck(val deck: DeckWithCount) : ListEntry {
+        override val key: String get() = "deck-${deck.id}"
+    }
+}
+
+/** How the tab lays its collections and decks out. */
+enum class ListLayout {
+    /** Rows with a cover, a name over two lines and the count: the default. */
+    LIST,
+
+    /** One tight row each, no cover — for many decks at once. */
+    COMPACT,
+
+    /** Two columns of cards, the cover large. */
+    GRID,
+    ;
+
+    companion object {
+        fun fromName(name: String?): ListLayout = entries.firstOrNull { it.name == name } ?: LIST
+    }
+}
+
 data class DeckShelf(
     val collection: FlashcardCollectionEntity,
     val decks: List<DeckWithCount>,
     /** The shelves directly inside this one, in the order they are listed. */
     val children: List<DeckShelf> = emptyList(),
+    /** [children] and [decks] together, in the order chosen. */
+    val entries: List<ListEntry> = emptyList(),
     /** How many shelves up the top of the list is: 0 for a shelf at the top. */
     val depth: Int = 0,
 ) {
@@ -93,7 +130,20 @@ data class DeckShelf(
 data class DeckList(
     val shelves: List<DeckShelf>,
     val loose: List<DeckWithCount>,
+    /** The top level — [shelves] and [loose] together, in the order chosen. */
+    val entries: List<ListEntry> = emptyList(),
 ) {
+    /** The shelf with [id], however deep, or null. */
+    fun shelf(id: Long): DeckShelf? = allShelves.firstOrNull { it.id == id }
+
+    /** The shelves from the top down to [id], inclusive: the breadcrumb. */
+    fun pathTo(id: Long): List<DeckShelf> {
+        val byId = allShelves.associateBy { it.id }
+        return generateSequence(byId[id]) { shelf -> shelf.collection.parentId?.let(byId::get) }
+            .toList()
+            .reversed()
+    }
+
     /** Every shelf, however deep, in the order the tree lists them. */
     val allShelves: List<DeckShelf> get() = shelves.flatMap { it.allShelves }
 
@@ -126,23 +176,40 @@ data class DeckList(
                 pinned = { it.collection.isPinned },
                 cards = { it.cardCount },
             )
+            val entryOrder = sort.comparator<ListEntry>(
+                name = { if (it is ListEntry.Shelf) it.shelf.collection.name else (it as ListEntry.Deck).deck.name },
+                createdAt = {
+                    if (it is ListEntry.Shelf) it.shelf.collection.createdAt else (it as ListEntry.Deck).deck.createdAt
+                },
+                pinned = {
+                    if (it is ListEntry.Shelf) it.shelf.collection.isPinned else (it as ListEntry.Deck).deck.isPinned
+                },
+                cards = { if (it is ListEntry.Shelf) it.shelf.cardCount else (it as ListEntry.Deck).deck.cardCount },
+            )
+            fun merged(shelves: List<DeckShelf>, decks: List<DeckWithCount>): List<ListEntry> =
+                (shelves.map { ListEntry.Shelf(it) } + decks.map { ListEntry.Deck(it) }).sortedWith(entryOrder)
             val known = collections.mapTo(HashSet()) { it.id }
             val byCollection = decks.groupBy { deck -> deck.collectionId?.takeIf { it in known } }
             val parents = CollectionTree.parents(collections)
             val childrenOf = collections.groupBy { parents[it.id] }
-            fun shelf(collection: FlashcardCollectionEntity, depth: Int): DeckShelf = DeckShelf(
-                collection = collection,
-                decks = byCollection[collection.id].orEmpty().sortedWith(deckOrder),
-                children = childrenOf[collection.id].orEmpty().map { shelf(it, depth + 1) }.sortedWith(shelfOrder),
-                depth = depth,
-            )
+            fun shelf(collection: FlashcardCollectionEntity, depth: Int): DeckShelf {
+                val decks = byCollection[collection.id].orEmpty().sortedWith(deckOrder)
+                val children = childrenOf[collection.id].orEmpty().map { shelf(it, depth + 1) }.sortedWith(shelfOrder)
+                return DeckShelf(
+                    collection = collection,
+                    decks = decks,
+                    children = children,
+                    entries = merged(children, decks),
+                    depth = depth,
+                )
+            }
             return DeckList(
                 // A shelf with nothing on it is still listed: it was made on
                 // purpose, and a collection that vanished until something was
                 // put on it would look like the app having forgotten it.
                 shelves = childrenOf[null].orEmpty().map { shelf(it, 0) }.sortedWith(shelfOrder),
                 loose = byCollection[null].orEmpty().sortedWith(deckOrder),
-            )
+            ).let { it.copy(entries = merged(it.shelves, it.loose)) }
         }
     }
 }
@@ -169,15 +236,39 @@ class FlashcardsViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
-     * Which shelves are open.
+     * The collection being looked inside, or null for the top of the tab.
      *
-     * Kept here rather than in the screen so that going into a deck and coming
-     * back does not fold everything shut again — which is the one thing that
-     * would make a shelf feel like a place you are put rather than one you
-     * opened.
+     * Collections are opened like folders in a file app — the list is replaced
+     * by what is inside, with the way back above it — rather than unfolded in
+     * place. Unfolding kept every level on one screen, indented and joined by
+     * guide lines, and with a few collections that was a lot to take in at
+     * once. Kept here, so going into a deck and back returns to the same place.
      */
-    private val _openShelves = MutableStateFlow<Set<Long>>(emptySet())
-    val openShelves: StateFlow<Set<Long>> = _openShelves.asStateFlow()
+    private val _current = MutableStateFlow<Long?>(null)
+    val current: StateFlow<Long?> = _current.asStateFlow()
+
+    fun onOpenShelf(id: Long) {
+        _current.value = id
+    }
+
+    /** Go to [id], or the top with null — the breadcrumb. */
+    fun onGoTo(id: Long?) {
+        _current.value = id
+    }
+
+    /** One level up: to the collection this one is in, or the top. */
+    fun onUp() {
+        val id = _current.value ?: return
+        _current.value = list.value?.shelf(id)?.collection?.parentId?.takeIf { list.value?.shelf(it) != null }
+    }
+
+    private val _layout = MutableStateFlow(ListLayout.fromName(flashcards.prefs.listLayout))
+    val layout: StateFlow<ListLayout> = _layout.asStateFlow()
+
+    fun onLayout(layout: ListLayout) {
+        _layout.value = layout
+        flashcards.prefs.listLayout = layout.name
+    }
 
     /** The decks grouped under the shelves they are on, in the order both are listed. */
     private val _sort = MutableStateFlow(flashcards.prefs.listSort)
@@ -197,10 +288,6 @@ class FlashcardsViewModel(
     val weakCount: StateFlow<Int> = flashcards.observeWeak()
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
-
-    fun onToggleShelf(id: Long) {
-        _openShelves.update { if (id in it) it - id else it + id }
-    }
 
     private val _message = MutableStateFlow<UiText?>(null)
     val message: StateFlow<UiText?> = _message.asStateFlow()
@@ -243,15 +330,15 @@ class FlashcardsViewModel(
      * about.
      */
     fun deleteCollection(shelf: DeckShelf) = viewModelScope.launch {
+        // Standing inside what is being deleted, go up out of it first.
+        if (_current.value == shelf.id) onUp()
         flashcards.deleteCollection(shelf.id)
-        _openShelves.update { it - shelf.id }
         _message.value = UiText.of(R.string.flashcards_collection_deleted, shelf.collection.name)
     }
 
-    /** Open the way down to [id], after something was made inside it. */
+    /** Go into [id], after something was made inside it. */
     fun revealInside(id: Long) {
-        val parents = CollectionTree.parents(list.value?.allShelves.orEmpty().map { it.collection })
-        _openShelves.update { it + generateSequence(id) { p -> parents[p] } }
+        _current.value = id
     }
 
     /** Put a deck on a shelf, or take it off one with null. */
@@ -267,20 +354,9 @@ class FlashcardsViewModel(
         if (flashcards.setCollectionParent(shelf.id, parentId)) revealAndSay(shelf.collection.name, parentId)
     }
 
-    /**
-     * Open the way down to where something was just put, and say where.
-     *
-     * Filing something into a shelf that is folded shut looks like it
-     * disappearing — and with shelves inside shelves, the one it went into may
-     * itself be inside a closed one — so every shelf above it opens.
-     */
+    /** Say where something was just put, since it has left the list on show. */
     private fun revealAndSay(name: String, target: Long?) {
         val shelves = list.value?.allShelves.orEmpty()
-        if (target != null) {
-            val parents = CollectionTree.parents(shelves.map { it.collection })
-            val path = generateSequence(target) { parents[it] }.toList()
-            _openShelves.update { it + path }
-        }
         val where = target?.let { id -> shelves.firstOrNull { it.id == id }?.collection?.name }
         _message.value = if (where == null) {
             UiText.of(R.string.flashcards_moved_to_top, name)

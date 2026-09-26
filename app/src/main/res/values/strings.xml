@@ -829,4 +829,9 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
         <item quantity="other">%1$d paraules avui</item>
     </plurals>
     <string name="collections_yours">Les teves col·leccions</string>
+    <string name="flashcards_practise_collection">Repassa-ho tot</string>
+    <string name="flashcards_layout">Vista</string>
+    <string name="flashcards_layout_list">Llista</string>
+    <string name="flashcards_layout_compact">Compacta</string>
+    <string name="flashcards_layout_grid">Quadrícula</string>
 </resources>

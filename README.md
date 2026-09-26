@@ -382,13 +382,17 @@ does both after bumping the version in `app/build.gradle.kts`.
   (when the session mixes decks), the picture, the question, a short rule,
   and the answer — the Catalan always with its pronunciation and speaker in
   one pill under it, the Romanian behind its flag. Play asks which way round
-  with two large tiles of flags and nothing else. The tab and each deck have a
+  with two large tiles of flags and nothing else. The tab has three views —
+  list, compact and a grid of cards — and a sort that runs across collections
+  and decks together. The tab and each deck have a
   sort button: by name, date, size, or —
   for cards — least known first.
 
   Decks can be grouped into collections, and collections into collections, to
   any depth: *Vegetables*, *Fruit* and *At the market* on a shelf called *Food*,
-  which folds open and shut at a tap on the row and has a play button of its own
+  which opens like a folder — the list is replaced by what is inside, with the
+  path back above it (Targetes › Menjar › Fruita), its full name and a button to
+  review all of it — and has a play button of its own
   that goes through everything under it. A collection's square is the collection
   mark rather than an initial (or its picture with a small collection badge);
   folded shut it lists what is inside it as name chips, and open it takes a
@@ -545,6 +549,15 @@ reading: it is vocabulary written by hand, in decks you make, and one of the
 main reasons to open the app. It sits last, after the three a reader meets
 first. Four is the ceiling: anything wanting a tab after this has to merge into
 one that exists.
+
+## Keeping the library tidy
+
+When a PDF leaves the library — its folder unwatched, its picked file let go,
+the file deleted — the app forgets it everywhere else too: its place in a
+collection, its star and read-later mark, its reading history, page bookmarks
+and tags. Saved words are kept. A scan that fails, or finds nothing while
+there are places to look, forgets nothing; a file picked from a cloud drive
+counts as present while it is still picked, even if the drive is offline.
 
 ## Language
 

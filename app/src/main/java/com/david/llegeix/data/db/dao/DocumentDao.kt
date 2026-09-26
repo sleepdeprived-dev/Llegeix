@@ -89,4 +89,14 @@ interface DocumentDao {
     /** Empties the table, for the "erase everything" action in Configuració. */
     @Query("DELETE FROM documents")
     suspend fun clear()
+
+    @Query("SELECT uriString FROM documents")
+    suspend fun allUris(): List<String>
+
+    /**
+     * Forget these documents. Their page bookmarks, reading history and tags
+     * go with them, by the foreign keys; saved words stay, set loose.
+     */
+    @Query("DELETE FROM documents WHERE uriString IN (:uris)")
+    suspend fun deleteAll(uris: List<String>)
 }

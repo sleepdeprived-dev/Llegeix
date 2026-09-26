@@ -26,6 +26,7 @@ import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.FolderRules
 import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.data.source.LibrarySnapshot
 import com.david.llegeix.data.source.applyFolderRules
 import com.david.llegeix.data.source.documentsIn
 import com.david.llegeix.data.source.foldersIn
@@ -370,6 +371,7 @@ class LibraryViewModel(
             runCatchingCancellable { repository.loadLibrary() }
                 .onSuccess { snapshot ->
                     allDocuments = snapshot.documents
+                    forgetRemoved(snapshot)
                     _uiState.update {
                         it.copy(
                             isScanning = false,
@@ -392,6 +394,22 @@ class LibraryViewModel(
                     }
                 }
         }
+    }
+
+    /**
+     * Forget, everywhere, the PDFs this scan no longer found — see
+     * [com.david.llegeix.data.source.LibraryDataRepository.forgetMissing].
+     *
+     * Not when the scan found nothing at all while there are places to look:
+     * that is far more likely a folder that could not be read this once than
+     * every PDF removed at the same moment, and forgetting on a guess would
+     * empty every collection.
+     */
+    private fun forgetRemoved(snapshot: LibrarySnapshot) {
+        val hasSources = snapshot.grantedFolders.isNotEmpty() || snapshot.deviceScanEnabled
+        if (snapshot.documents.isEmpty() && hasSources) return
+        val present = snapshot.documents.mapTo(HashSet()) { it.uriString } + repository.pickedUris()
+        viewModelScope.launch { libraryData.forgetMissing(present) }
     }
 
     fun onFolderPicked(treeUri: Uri) {

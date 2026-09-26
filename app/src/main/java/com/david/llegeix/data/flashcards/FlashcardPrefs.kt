@@ -27,11 +27,17 @@ class FlashcardPrefs(context: Context) {
         get() = CardSort.fromName(prefs.getString(KEY_CARD_SORT, null))
         set(value) = prefs.edit { putString(KEY_CARD_SORT, value.name) }
 
+    /** How the tab lays its collections and decks out, by name. */
+    var listLayout: String?
+        get() = prefs.getString(KEY_LIST_LAYOUT, null)
+        set(value) = prefs.edit { putString(KEY_LIST_LAYOUT, value) }
+
     fun clear() = prefs.edit { clear() }
 
     private companion object {
         const val KEY_DIRECTION = "direction"
         const val KEY_LIST_SORT = "listSort"
         const val KEY_CARD_SORT = "cardSort"
+        const val KEY_LIST_LAYOUT = "listLayout"
     }
 }

@@ -32,6 +32,9 @@ class PickedFilePdfSource(private val context: Context) : PdfSource {
     private val resolver get() = context.contentResolver
 
     /** Individually granted documents, i.e. every persisted grant that is not a tree. */
+    /** Every file still picked, whether or not its provider answers right now. */
+    fun grantedUris(): List<String> = grantedDocuments().map { it.toString() }
+
     private fun grantedDocuments(): List<Uri> =
         resolver.persistedUriPermissions
             .filter { it.isReadPermission && !DocumentsContract.isTreeUri(it.uri) }
