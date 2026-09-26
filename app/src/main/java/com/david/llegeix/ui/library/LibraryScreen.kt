@@ -58,6 +58,8 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.david.llegeix.ui.common.PillGroup
+import com.david.llegeix.ui.common.Pill
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -566,45 +568,48 @@ private fun LibraryControlsRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            // Narrower than the screen margin the rest of the library uses: a
-            // chip carries its own padding inside its outline, so lining the
-            // outline up with the text above it leaves the words indented.
-            .padding(horizontal = Space.md),
+            .padding(horizontal = Space.screen),
     ) {
-        LibraryView.entries.forEach { view ->
-            FilterChip(
-                selected = view == current,
-                onClick = { onViewChange(view) },
-                label = { Text(stringResource(view.labelRes)) },
-                modifier = Modifier.padding(end = Space.sm),
-            )
+        // The same pill control as every other "which of these" in the app,
+        // rather than two outlined filter chips.
+        PillGroup {
+            LibraryView.entries.forEach { view ->
+                val name = stringResource(view.labelRes)
+                Pill(
+                    selected = view == current,
+                    onClick = { onViewChange(view) },
+                    label = name,
+                ) {
+                    Text(name, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                }
+            }
         }
         Box(modifier = Modifier.weight(1f))
-        // "Sort by" rather than the order's own name.
-        //
-        // It carried the name of the order in force — "Recent", "Name" — which
-        // is genuinely useful and was read as something else entirely: sitting
-        // at the end of a row of filter chips, a chip saying *Recents* looks
-        // like a filter that has been switched on, not like the button that
-        // chooses an order. The name of the control wins over the value of it,
-        // and which order is in force is ticked in the sheet a tap away.
-        AssistChip(
-            onClick = onOpenSort,
-            label = {
-                Text(
-                    text = stringResource(R.string.library_sort_by),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.ic_sort),
-                    contentDescription = null,
-                    modifier = Modifier.size(AssistChipDefaults.IconSize),
-                )
-            },
-        )
+        // "Sort by" rather than the order's own name: at the end of this row a
+        // chip saying *Recents* reads as a filter switched on, not as the
+        // button that chooses an order. A soft tonal chip with no outline.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .clickable(onClick = onOpenSort)
+                .heightIn(min = 40.dp)
+                .padding(horizontal = Space.lg),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_sort),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = stringResource(R.string.library_sort_by),
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = Space.sm),
+            )
+        }
     }
 }
 
@@ -655,7 +660,7 @@ private fun SortSheet(
                     Column(modifier = Modifier.padding(start = Space.md)) {
                         Text(
                             text = stringResource(sort.labelRes),
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
                             text = stringResource(sort.summaryRes),
@@ -938,7 +943,7 @@ private fun LibraryFolderRow(
         ) {
             Text(
                 text = folder.name,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1425,7 +1430,7 @@ private fun AddDocumentsOption(
             )
         }
         Column(modifier = Modifier.padding(start = Space.lg)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(
                 text = body,
                 style = MaterialTheme.typography.bodySmall,
@@ -1555,7 +1560,7 @@ private fun FolderChoiceRow(
         ) {
             Text(
                 text = folder?.name ?: stringResource(R.string.library_no_folder),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

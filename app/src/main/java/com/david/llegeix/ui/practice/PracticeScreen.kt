@@ -213,6 +213,7 @@ private fun Card(
             if (!card.ipa.isNullOrBlank()) {
                 Text(
                     text = "[${card.ipa}]",
+                    fontFamily = com.david.llegeix.ui.theme.IpaFont,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

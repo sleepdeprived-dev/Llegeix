@@ -37,5 +37,5 @@ object Space {
      * each side, is the same height as the reader's find field so the two swap
      * without the screen jumping, and is still a step below Material's own.
      */
-    val topBar = 56.dp
+    val topBar = 64.dp
 }

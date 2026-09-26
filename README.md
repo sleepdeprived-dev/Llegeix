@@ -653,6 +653,11 @@ vowels, and no phrase-level assimilation.
 
 ## Credits
 
+The interface is set in [Figtree](https://github.com/erikdkennedy/figtree) by
+Erik Kennedy, under the SIL Open Font License (`tools/fonts/Figtree-OFL.txt`),
+bundled as one variable font. Phonetic transcriptions stay in the system font,
+which has the IPA symbols Figtree does not.
+
 The pictograms offered for flashcards come from two places. Those from
 [ARASAAC](https://arasaac.org) are the property of the Government of Aragón and
 were created by Sergio Palao, under the Creative Commons BY-NC-SA licence; the

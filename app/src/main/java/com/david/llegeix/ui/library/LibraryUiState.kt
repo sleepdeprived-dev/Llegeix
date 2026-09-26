@@ -84,9 +84,14 @@ data class LibraryUiState(
     val hasScanned: Boolean = false,
     val errorMessage: UiText? = null,
 ) {
-    /** True when at least one discovery path is set up. */
+    /**
+     * True when at least one discovery path is set up — a watched folder, the
+     * device scan, or files picked one by one. The last were left out, so a
+     * library made only of picked files sat on the welcome screen with its
+     * PDFs found and hidden.
+     */
     val hasAnySource: Boolean
-        get() = grantedFolders.isNotEmpty() || deviceScanEnabled
+        get() = grantedFolders.isNotEmpty() || deviceScanEnabled || totalFound > 0
 
     /**
      * Walking folders rather than showing a flat list.

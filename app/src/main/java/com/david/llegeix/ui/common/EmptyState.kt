@@ -13,6 +13,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,8 +60,8 @@ fun EmptyState(
         if (icon != null) {
             Box(
                 modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
+                    .size(88.dp)
+                    .clip(RoundedCornerShape(28.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
@@ -67,25 +69,24 @@ fun EmptyState(
                     painter = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.size(38.dp),
                 )
             }
         }
 
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
-            // The title takes the accent too, and the body underneath stays
-            // quiet: the heading is the line that says what is missing, and
-            // the paragraph is the one that says what to do about it.
-            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            // A strong heading and a quiet paragraph: the heading says what is
+            // missing, and the paragraph what to do about it.
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = if (icon != null) Space.xl else 0.dp),
         )
 
         Text(
             text = body,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             // Capped so a long line breaks into a readable column rather than

@@ -1702,6 +1702,7 @@ private fun WordLookupSheet(
                                 if (gloss.ipa.isNotBlank()) {
                                     Text(
                                         text = "[${gloss.ipa}]",
+                                        fontFamily = com.david.llegeix.ui.theme.IpaFont,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

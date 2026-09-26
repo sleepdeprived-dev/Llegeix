@@ -8,6 +8,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -37,16 +43,27 @@ fun ScreenTitle(
     modifier: Modifier = Modifier,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
-        Icon(
-            painter = painterResource(icon),
-            // Named by the title beside it; announcing both would read the
-            // screen's name out twice.
-            contentDescription = null,
-            tint = LocalContentColor.current,
-            modifier = Modifier.size(TitleIconSize),
-        )
+        // The mark in a soft tile of the accent, the way a modern app badges
+        // where you are, beside a title set large and bold.
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(TitleTile)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                // Named by the title beside it; announcing both would read the
+                // screen's name out twice.
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(TitleIconSize),
+            )
+        }
         Text(
             text = title,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = Space.md),
@@ -55,4 +72,6 @@ fun ScreenTitle(
 }
 
 /** Set against the app bar's title type rather than against an icon button. */
-private val TitleIconSize = 22.dp
+private val TitleIconSize = 20.dp
+
+private val TitleTile = 36.dp

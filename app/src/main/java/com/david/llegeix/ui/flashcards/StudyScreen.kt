@@ -626,6 +626,7 @@ private fun CatalanBlock(card: FlashcardEntity, big: Boolean, answer: Boolean = 
         card.ipa?.takeIf { it.isNotBlank() }?.let { ipa ->
             Text(
                 text = "[$ipa]",
+                fontFamily = com.david.llegeix.ui.theme.IpaFont,
                 style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
                 color = scheme.onSurfaceVariant,
             )

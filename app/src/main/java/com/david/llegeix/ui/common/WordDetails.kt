@@ -284,6 +284,7 @@ fun IpaLine(ipa: String, isApproximate: Boolean, modifier: Modifier = Modifier) 
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "[$ipa]",
+            fontFamily = com.david.llegeix.ui.theme.IpaFont,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
         )

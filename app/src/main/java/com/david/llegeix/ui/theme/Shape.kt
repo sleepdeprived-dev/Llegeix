@@ -15,13 +15,13 @@ import androidx.compose.ui.unit.dp
  */
 val Shapes = Shapes(
     // Menus, tooltips, text fields.
-    extraSmall = RoundedCornerShape(12.dp),
+    extraSmall = RoundedCornerShape(14.dp),
     // Chips, snackbars.
-    small = RoundedCornerShape(14.dp),
+    small = RoundedCornerShape(16.dp),
     // Cards.
-    medium = RoundedCornerShape(18.dp),
+    medium = RoundedCornerShape(22.dp),
     // Sheets' top corners, navigation drawers.
-    large = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(28.dp),
     // Dialogs.
-    extraLarge = RoundedCornerShape(30.dp),
+    extraLarge = RoundedCornerShape(32.dp),
 )

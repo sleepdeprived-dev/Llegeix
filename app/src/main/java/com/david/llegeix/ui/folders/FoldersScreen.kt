@@ -327,7 +327,7 @@ private fun AutomaticCollectionRow(
                 .weight(1f)
                 .padding(start = Space.lg),
         ) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(
                 text = when {
                     summary != null && count > 0 -> summary
@@ -400,7 +400,7 @@ private fun FolderRow(
                 .padding(start = Space.lg),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(folder.name, style = MaterialTheme.typography.bodyLarge)
+                Text(folder.name, style = MaterialTheme.typography.titleMedium)
                 if (folder.isBookmarked) {
                     Icon(
                         imageVector = Icons.Filled.Star,

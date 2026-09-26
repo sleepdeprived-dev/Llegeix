@@ -226,7 +226,7 @@ fun FolderDetailScreen(
                                         document.uriString,
                                         document.displayName,
                                     ),
-                                    style = MaterialTheme.typography.bodyLarge,
+                                    style = MaterialTheme.typography.titleMedium,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )

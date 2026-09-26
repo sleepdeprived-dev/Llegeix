@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -49,7 +50,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun PillGroup(
     modifier: Modifier = Modifier,
-    track: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    track: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     padding: Dp = 4.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -81,8 +82,8 @@ fun RowScope.Pill(
     onClick: () -> Unit,
     label: String,
     modifier: Modifier = Modifier,
-    selectedContainer: Color = MaterialTheme.colorScheme.primary,
-    selectedContent: Color = MaterialTheme.colorScheme.onPrimary,
+    selectedContainer: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    selectedContent: Color = MaterialTheme.colorScheme.onSurface,
     unselectedContent: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     contentPadding: PaddingValues = PaddingValues(horizontal = Space.lg, vertical = Space.sm),
     content: @Composable RowScope.() -> Unit,
@@ -104,10 +105,16 @@ fun RowScope.Pill(
     )
     val shape = RoundedCornerShape(corner)
 
+    // The chosen pill is a lifted chip on the track — a soft shadow, the
+    // page's own white — rather than a block of the accent: the modern
+    // segmented control, and quieter than a fill of colour for something
+    // that is merely "which one".
+    val lift by animateDpAsState(if (selected) 2.dp else 0.dp, label = "pill lift")
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
+            .shadow(lift, shape, clip = false)
             .clip(shape)
             .background(container)
             .selectable(
@@ -124,7 +131,7 @@ fun RowScope.Pill(
     }
 }
 
-private val PillTrackCorner = 22.dp
-private val PillCorner = 16.dp
-private val PillCornerSelected = 18.dp
-private val PillMinHeight = 38.dp
+private val PillTrackCorner = 50.dp
+private val PillCorner = 50.dp
+private val PillCornerSelected = 50.dp
+private val PillMinHeight = 40.dp

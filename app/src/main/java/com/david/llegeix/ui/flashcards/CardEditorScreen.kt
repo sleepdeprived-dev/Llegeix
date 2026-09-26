@@ -57,6 +57,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -287,6 +288,7 @@ fun CardEditorScreen(
                 OutlinedTextField(
                     value = state.ipa.text,
                     onValueChange = viewModel::onIpaChange,
+                    textStyle = LocalTextStyle.current.copy(fontFamily = com.david.llegeix.ui.theme.IpaFont),
                     label = { Text(stringResource(R.string.flashcards_field_ipa)) },
                     singleLine = true,
                     prefix = { Text("[") },

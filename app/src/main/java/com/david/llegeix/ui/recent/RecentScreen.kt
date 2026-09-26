@@ -290,7 +290,7 @@ fun RecentScreen(
                         Column(modifier = Modifier.padding(start = Space.lg)) {
                             Text(
                                 text = names.titleFor(recent.uriString, recent.displayName),
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )

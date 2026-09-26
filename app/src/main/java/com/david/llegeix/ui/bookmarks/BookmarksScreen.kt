@@ -703,6 +703,7 @@ private fun SavedWordRow(
                 if (!word.ipa.isNullOrBlank()) {
                     Text(
                         text = "[${word.ipa}]",
+                        fontFamily = com.david.llegeix.ui.theme.IpaFont,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 1.dp),
