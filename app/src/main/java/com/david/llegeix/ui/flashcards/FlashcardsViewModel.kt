@@ -91,7 +91,6 @@ data class DeckShelf(
     val allShelves: List<DeckShelf> get() = listOf(this) + children.flatMap { it.allShelves }
 
     val cardCount: Int get() = allDecks.sumOf { it.cardCount }
-    val englishCount: Int get() = allDecks.sumOf { it.englishCount }
 
     val isEmpty: Boolean get() = decks.isEmpty() && children.isEmpty()
 

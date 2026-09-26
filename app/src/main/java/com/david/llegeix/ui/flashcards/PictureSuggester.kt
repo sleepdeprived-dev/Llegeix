@@ -27,9 +27,6 @@ enum class PictureStatus {
     /** No network, or the service did not answer. */
     OFFLINE,
 
-    /** Photos are searched in English, and no English word could be had for this one. */
-    NO_ENGLISH,
-
     /** The word is on the safety list, so photos are not searched for it at all. */
     BLOCKED,
 }
@@ -43,9 +40,9 @@ data class PictureSuggestions(
     /** The suggestion being fetched after a tap, so its tile can say so. */
     val fetching: String? = null,
     /**
-     * What was actually searched for — the English, for photos — so the
-     * search field can show it and the reader can see why the grid is what it
-     * is, and change it.
+     * What was searched for, as the reader knows it — the word, or what they
+     * typed — so the search field can show it and they can change it. Never
+     * the English photos are looked up with behind the scenes.
      */
     val searched: String = "",
 )
@@ -62,9 +59,10 @@ data class PictureSuggestions(
  * ARASAAC's Catalan labels. Translating a lone Catalan word
  * into English is where a translator is weakest — *pa* comes back as "pa", and
  * the photos are of Pennsylvania — so the English is taken, in order, from:
- * the English the reader has on the card; the translator, if it actually
- * translated; or the translator again from the Romanian meaning, which the
- * reader has checked and which is a whole word rather than two letters.
+ * the translator, if it actually translated; or the translator again from the
+ * Romanian meaning, which the reader has checked and which is a whole word
+ * rather than two letters. The English is only ever the search's: it is
+ * never shown, and never kept on a card.
  *
  * @param englishFor Catalan to English on the phone, or null if it cannot.
  * @param englishFromRomanian Romanian to English on the phone, the fallback.
@@ -87,11 +85,10 @@ class PictureSuggester(
 
     /**
      * @param typed what the reader typed into the search field, which is
-     *   searched as it is, for both kinds of picture, in place of the word.
+     *   searched in place of the word, for every kind of picture.
      */
     private data class Request(
         val word: String,
-        val english: String?,
         val romanian: String?,
         val typed: String? = null,
     )
@@ -99,13 +96,11 @@ class PictureSuggester(
     /**
      * Look for pictures of [word], after a pause if [pause].
      *
-     * @param english the English meaning, if the reader has one on the card.
-     * @param romanian the Romanian meaning, for working one out if not.
+     * @param romanian the Romanian meaning, for working out the English photos need.
      */
-    fun suggest(word: String, english: String? = null, romanian: String? = null, pause: Boolean = true) {
+    fun suggest(word: String, romanian: String? = null, pause: Boolean = true) {
         val request = Request(
             word.trim(),
-            english?.trim()?.takeIf { it.isNotEmpty() },
             romanian?.trim()?.takeIf { it.isNotEmpty() },
         )
         // A search the reader typed stands until the word itself changes.
@@ -119,7 +114,7 @@ class PictureSuggester(
      * picture of orange juice.
      */
     fun searchFor(text: String) {
-        val base = last ?: Request(word = text.trim(), english = null, romanian = null)
+        val base = last ?: Request(word = text.trim(), romanian = null)
         run(base.copy(typed = text.trim().takeIf { it.isNotEmpty() }), pause = false)
     }
 
@@ -135,41 +130,43 @@ class PictureSuggester(
         job = scope.launch {
             if (pause) delay(PAUSE_MS)
             val typed = request.typed
+            val catalan = typed ?: trimmed
             _state.value = PictureSuggestions(
                 PictureStatus.SEARCHING,
                 word = trimmed,
                 source = source,
-                searched = typed.orEmpty(),
+                searched = catalan,
             )
-            val english = if (typed != null) typed else when (source) {
+            // What was typed is translated like the word it replaces; the
+            // Romanian meaning belongs to the word, so it only helps the word.
+            val query = if (typed != null) Request(word = typed, romanian = null) else request
+            val english = when (source) {
                 // Pictograms are found in Catalan; the English only widens the
                 // search, so it is not waited on for long.
                 PictureSource.PICTOGRAMS, PictureSource.EMOJI -> withTimeoutOrNull(PICTOGRAM_ENGLISH_WAIT_MS) {
-                    englishQuery(request)
+                    englishQuery(query)
                 }
-                // With no English at all, the Catalan word itself is searched
+                // With no English at all, the Catalan itself is searched
                 // rather than nothing: Wikipedia is asked in Catalan anyway,
                 // and a great many words are spelt the same in both.
-                PictureSource.PHOTOS -> englishQuery(request) ?: trimmed
+                PictureSource.PHOTOS -> englishQuery(query) ?: catalan
             }
             if (source == PictureSource.PHOTOS &&
-                (PictureSafety.isBlockedQuery(english.orEmpty()) || PictureSafety.isBlockedQuery(trimmed))
+                (PictureSafety.isBlockedQuery(english.orEmpty()) || PictureSafety.isBlockedQuery(catalan))
             ) {
                 _state.value = PictureSuggestions(PictureStatus.BLOCKED, word = trimmed, source = source)
                 return@launch
             }
-            val catalan = typed ?: trimmed
-            val searched = if (source == PictureSource.PHOTOS) english.orEmpty() else catalan
             _state.value = when (val outcome = search.search(source, catalan, english)) {
                 PictureSearch.Outcome.Offline ->
-                    PictureSuggestions(PictureStatus.OFFLINE, word = trimmed, source = source, searched = searched)
+                    PictureSuggestions(PictureStatus.OFFLINE, word = trimmed, source = source, searched = catalan)
 
                 is PictureSearch.Outcome.Found -> PictureSuggestions(
                     status = if (outcome.hits.isEmpty()) PictureStatus.NONE_FOUND else PictureStatus.FOUND,
                     hits = outcome.hits,
                     word = trimmed,
                     source = source,
-                    searched = searched,
+                    searched = catalan,
                 )
             }
         }
@@ -186,7 +183,6 @@ class PictureSuggester(
      * it is short enough to be a fragment, and otherwise kept.
      */
     private suspend fun englishQuery(request: Request): String? {
-        request.english?.let { return it }
         val translated = englishFor(request.word)
         if (translated != null &&
             (!translated.equals(request.word, ignoreCase = true) || request.word.length > SAME_WORD_MIN)

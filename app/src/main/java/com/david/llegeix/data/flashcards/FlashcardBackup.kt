@@ -45,7 +45,6 @@ object FlashcardBackup {
     data class Card(
         val catalan: String,
         val romanian: String,
-        val english: String? = null,
         val ipa: String? = null,
         val ipaApproximate: Boolean = false,
         /** The picture's name inside the zip, e.g. `images/3f2a.jpg`. */
@@ -179,7 +178,6 @@ object FlashcardBackup {
     private fun encodeCard(card: Card): JSONObject = JSONObject()
         .put("catalan", card.catalan)
         .put("romanian", card.romanian)
-        .putOpt("english", card.english)
         .putOpt("ipa", card.ipa)
         .put("ipaApproximate", card.ipaApproximate)
         .putOpt("image", card.image)
@@ -285,7 +283,6 @@ object FlashcardBackup {
         return Card(
             catalan = catalan,
             romanian = romanian,
-            english = card.optStringOrNull("english"),
             ipa = card.optStringOrNull("ipa"),
             ipaApproximate = card.optBoolean("ipaApproximate", false),
             image = card.optStringOrNull("image"),
@@ -425,7 +422,6 @@ object FlashcardBackup {
         deckId = deckId,
         catalan = catalan,
         romanian = romanian,
-        english = english,
         ipa = ipa,
         ipaApproximate = ipaApproximate,
         imagePath = imagePath,
@@ -446,7 +442,6 @@ object FlashcardBackup {
     fun FlashcardEntity.toBackup(image: String?): Card = Card(
         catalan = catalan,
         romanian = romanian,
-        english = english,
         ipa = ipa,
         ipaApproximate = ipaApproximate,
         image = image,

@@ -38,7 +38,7 @@ class FlashcardBackupTest {
             Deck(
                 "Menjar",
                 10,
-                listOf(pa.copy(english = "bread"), cotxe),
+                listOf(pa, cotxe),
                 isPinned = true,
                 cover = "images/menjar.jpg",
                 coverCredit = "Sergio Palao · ARASAAC · CC BY-NC-SA",
@@ -206,7 +206,7 @@ class FlashcardBackupTest {
     }
 
     @Test
-    fun `a copy written before English and deck pictures still reads`() {
+    fun `a copy written before deck pictures still reads`() {
         val json = """
             {"format":"llegeix-flashcards","version":1,"decks":[
               {"name":"Menjar","createdAt":1,"cards":[{"catalan":"pa","romanian":"pâine"}]}
@@ -215,7 +215,19 @@ class FlashcardBackupTest {
         val deck = FlashcardBackup.decode(json).single()
         assertEquals(false, deck.isPinned)
         assertNull(deck.cover)
-        assertNull(deck.cards.single().english)
+        assertEquals("pâine", deck.cards.single().romanian)
+    }
+
+    @Test
+    fun `English in an older copy is left behind`() {
+        val json = """
+            {"format":"llegeix-flashcards","version":1,"decks":[
+              {"name":"Menjar","createdAt":1,"cards":[{"catalan":"pa","romanian":"pâine","english":"bread"}]}
+            ]}
+        """.trimIndent()
+        val card = FlashcardBackup.decode(json).single().cards.single()
+        assertEquals(Card(catalan = "pa", romanian = "pâine"), card)
+        assertEquals(false, FlashcardBackup.encode(FlashcardBackup.decode(json), 0).contains("bread"))
     }
 
     @Test

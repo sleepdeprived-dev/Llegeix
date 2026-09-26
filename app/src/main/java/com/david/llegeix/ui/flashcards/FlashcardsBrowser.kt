@@ -79,9 +79,15 @@ class EntryActions(
 
 // ---- Shared pieces ---------------------------------------------------------
 
-/** "2 col·leccions · 3 baralles · 124 targetes", leaving out what there is none of. */
+/**
+ * "2 col·leccions · 3 baralles · 124 targetes", leaving out what there is none
+ * of — and just "Cap targeta" when there are no cards in it at all, however
+ * many empty decks or collections it holds.
+ */
 @Composable
-internal fun shelfSummary(shelf: DeckShelf): String = buildList {
+internal fun shelfSummary(shelf: DeckShelf): String = if (shelf.cardCount == 0) {
+    stringResource(R.string.flashcards_collection_no_cards)
+} else buildList {
     val inside = shelf.children.size
     if (inside > 0) add(pluralStringResource(R.plurals.flashcards_collection_count, inside, inside))
     val decks = shelf.decks.size
@@ -302,7 +308,7 @@ internal fun EntryRow(entry: ListEntry, canPractise: Boolean, actions: EntryActi
         ) {
             val name = if (entry is ListEntry.Shelf) entry.shelf.collection.name else (entry as ListEntry.Deck).deck.name
             val pinned = if (entry is ListEntry.Shelf) entry.shelf.collection.isPinned else (entry as ListEntry.Deck).deck.isPinned
-            EntryName(name, pinned, MaterialTheme.typography.titleMedium)
+            EntryName(name, pinned, MaterialTheme.typography.titleMedium.let { if (isShelf) it.copy(fontWeight = FontWeight.Bold) else it })
             Text(
                 text = when (entry) {
                     is ListEntry.Shelf -> shelfSummary(entry.shelf)
@@ -416,7 +422,13 @@ internal fun CompactRow(
             ) {
                 val name = if (entry is ListEntry.Shelf) entry.shelf.collection.name else (entry as ListEntry.Deck).deck.name
                 val pinned = if (entry is ListEntry.Shelf) entry.shelf.collection.isPinned else (entry as ListEntry.Deck).deck.isPinned
-                EntryName(name, pinned, MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+                EntryName(
+                    name,
+                    pinned,
+                    MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = if (entry is ListEntry.Shelf) FontWeight.Bold else FontWeight.Medium,
+                    ),
+                )
             }
             val count = if (entry is ListEntry.Shelf) entry.shelf.cardCount else (entry as ListEntry.Deck).deck.cardCount
             Text(
@@ -563,12 +575,20 @@ internal fun EntryTile(entry: ListEntry, canPractise: Boolean, actions: EntryAct
             ) {
                 val name = if (entry is ListEntry.Shelf) entry.shelf.collection.name else (entry as ListEntry.Deck).deck.name
                 val pinned = if (entry is ListEntry.Shelf) entry.shelf.collection.isPinned else (entry as ListEntry.Deck).deck.isPinned
-                EntryName(name, pinned, MaterialTheme.typography.titleSmall)
+                EntryName(
+                    name,
+                    pinned,
+                    MaterialTheme.typography.titleSmall.let {
+                        if (entry is ListEntry.Shelf) it.copy(fontWeight = FontWeight.Bold) else it
+                    },
+                )
                 Text(
                     text = when (entry) {
-                        is ListEntry.Shelf -> pluralStringResource(
-                            R.plurals.flashcards_card_count, entry.shelf.cardCount, entry.shelf.cardCount,
-                        )
+                        is ListEntry.Shelf -> if (entry.shelf.cardCount == 0) {
+                            stringResource(R.string.flashcards_collection_no_cards)
+                        } else {
+                            pluralStringResource(R.plurals.flashcards_card_count, entry.shelf.cardCount, entry.shelf.cardCount)
+                        }
                         is ListEntry.Deck -> deckSummary(entry.deck)
                     },
                     style = MaterialTheme.typography.bodySmall,

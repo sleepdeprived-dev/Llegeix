@@ -35,7 +35,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +51,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
@@ -115,11 +115,10 @@ fun Flag(@DrawableRes res: Int, width: Dp, modifier: Modifier = Modifier) {
     )
 }
 
-/** A language's flag: Romania's, or the United Kingdom's for English. */
+/** A language's flag. */
 val MeaningLanguage.flagRes: Int
     @DrawableRes get() = when (this) {
         MeaningLanguage.ROMANIAN -> R.drawable.ic_flag_ro
-        MeaningLanguage.ENGLISH -> R.drawable.ic_flag_uk
     }
 
 /** "Català → romanès", said in words, for screen readers. */
@@ -148,7 +147,8 @@ data class PlayRequest(
  * The title and two large tiles, and nothing else: the Senyera and Romania's
  * flag with an arrow between them, one way and the other. No words — the flags
  * say it faster — though each tile is still announced by name. The way used
- * last time wears the accent and a tick, so going again the same way is a tap
+ * last time wears the accent — its fill and an outline, no tick in the corner
+ * to sit off-centre against the flags — so going again the same way is a tap
  * on the obvious tile.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -189,8 +189,8 @@ fun PlayPairSheet(
                         onClick = {
                             if (chosen == null) {
                                 chosen = way
-                                // The tick moves first, then the sheet closes,
-                                // so the choice is seen being made.
+                                // The accent moves first, then the sheet
+                                // closes, so the choice is seen being made.
                                 scope.launch {
                                     delay(160)
                                     sheetState.hide()
@@ -207,7 +207,7 @@ fun PlayPairSheet(
     }
 }
 
-/** One way to practise: two big flags and an arrow on a rounded tile, ticked when it is the one. */
+/** One way to practise: two big flags and an arrow on a rounded tile, in the accent when it is the one. */
 @Composable
 private fun PairTile(
     direction: StudyDirection,
@@ -227,43 +227,22 @@ private fun PairTile(
     )
     val name = directionName(direction)
     Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
             .clip(shape)
             .background(fill)
             .border(2.dp, edge, shape)
             .clickable(onClick = onClick)
-            .semantics { contentDescription = name },
+            .semantics {
+                contentDescription = name
+                selected = isSelected
+            }
+            .padding(vertical = Space.xxl, horizontal = Space.md),
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = Space.xxl, horizontal = Space.md),
+        CompositionLocalProvider(
+            LocalContentColor provides if (isSelected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
         ) {
-            CompositionLocalProvider(
-                LocalContentColor provides if (isSelected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
-            ) {
-                DirectionFlags(direction = direction, flagWidth = 44.dp)
-            }
-        }
-        // In the tile's own corner, clear of the flags.
-        if (isSelected) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(scheme.primary),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = scheme.onPrimary,
-                    modifier = Modifier.size(14.dp),
-                )
-            }
+            DirectionFlags(direction = direction, flagWidth = 44.dp)
         }
     }
 }

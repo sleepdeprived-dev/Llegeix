@@ -21,8 +21,6 @@ data class DeckWithCount(
     val cardCount: Int,
     /** How many of its cards carry a picture, which deleting the deck also deletes. */
     val imageCount: Int,
-    /** How many of its cards have an English meaning, and so can be practised in English. */
-    val englishCount: Int,
     /**
      * The picture that stands for the deck: the one the reader chose, or
      * failing that the picture of its first illustrated card.
@@ -52,8 +50,6 @@ interface FlashcardDao {
         SELECT d.id AS id, d.name AS name, d.createdAt AS createdAt, d.isPinned AS isPinned,
                d.collectionId AS collectionId,
                COUNT(c.id) AS cardCount, COUNT(c.imagePath) AS imageCount,
-               COALESCE(SUM(CASE WHEN c.english IS NOT NULL AND TRIM(c.english) != ''
-                   THEN 1 ELSE 0 END), 0) AS englishCount,
                COALESCE(d.coverPath, (SELECT imagePath FROM flashcards
                 WHERE deckId = d.id AND imagePath IS NOT NULL
                 ORDER BY createdAt, id LIMIT 1)) AS coverImage,
@@ -225,13 +221,6 @@ interface FlashcardDao {
 
     @Query("SELECT * FROM flashcards")
     suspend fun allCards(): List<FlashcardEntity>
-
-    /** A deck's cards still without an English meaning, for filling them in. */
-    @Query("SELECT * FROM flashcards WHERE deckId = :deckId AND (english IS NULL OR TRIM(english) = '')")
-    suspend fun cardsWithoutEnglish(deckId: Long): List<FlashcardEntity>
-
-    @Query("UPDATE flashcards SET english = :english WHERE id = :id")
-    suspend fun setEnglish(id: Long, english: String)
 
     /** Record an answer Catalan → Romanian, leaving the other direction alone. */
     @Query(

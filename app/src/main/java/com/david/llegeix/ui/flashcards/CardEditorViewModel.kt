@@ -63,8 +63,6 @@ data class CardEditorUiState(
      */
     val catalanIsSuggestion: Boolean = false,
     val romanian: Suggested = Suggested(),
-    /** Optional: the meaning for practising against English. */
-    val english: Suggested = Suggested(),
     val ipa: Suggested = Suggested(),
     val imagePath: String? = null,
     /** Who made the picture, when it came from a search; null for the reader's own. */
@@ -73,9 +71,7 @@ data class CardEditorUiState(
     /** A save is being written; a second press must not make a second card. */
     val isSaving: Boolean = false,
     val romanianSuggestion: MeaningSuggestion = MeaningSuggestion.IDLE,
-    val englishSuggestion: MeaningSuggestion = MeaningSuggestion.IDLE,
     val romanianSource: MeaningSource = MeaningSource.TRANSLATOR,
-    val englishSource: MeaningSource = MeaningSource.TRANSLATOR,
     /** Anything differs from what was loaded, so leaving should ask first. */
     val isDirty: Boolean = false,
 ) {
@@ -90,8 +86,8 @@ data class CardEditorUiState(
  * ### What the app fills in
  *
  * The pronunciation is written the moment the Catalan is: it is generated from
- * the spelling and costs nothing. The two meanings wait for a pause in the
- * typing and then ask the on-device translator. All three go into their fields
+ * the spelling and costs nothing. The Romanian meaning waits for a pause in the
+ * typing and then asks the on-device translator. Both go into their fields
  * as [Suggested] values, marked as the app's, and stop moving the moment the
  * reader types in the field. A single word handed to a translator with no
  * sentence around it is exactly where a translator is weakest, so a suggestion
@@ -141,22 +137,19 @@ class CardEditorViewModel(
     private data class Baseline(
         val catalan: String = "",
         val romanian: String = "",
-        val english: String = "",
         val ipa: String = "",
         val imagePath: String? = null,
     )
 
     // Each translator is bound to its language pair, and each is only made
-    // when first needed: a form that never asks for English never loads it.
+    // when first needed. The two into English are the photo search's alone:
+    // photos are tagged in English, and the English is never shown or kept.
     private val toRomanian = Translator("ro")
     private val toEnglish = Translator("en")
     private val romanianToEnglish = Translator("en", source = "ro")
     private val romanianToCatalan = Translator("ca", source = "ro")
-    private val englishToCatalan = Translator("ca", source = "en")
-    private val englishToRomanian = Translator("ro", source = "en")
 
     private var romanianJob: Job? = null
-    private var englishJob: Job? = null
     private var fromMeaningJob: Job? = null
 
     val pictures = PictureSuggester(
@@ -182,7 +175,6 @@ class CardEditorViewModel(
                         deckName = deck?.name.orEmpty(),
                         catalan = card.catalan,
                         romanian = Suggested.owned(card.romanian),
-                        english = Suggested.owned(card.english),
                         ipa = savedPronunciation(card),
                         imagePath = card.imagePath,
                         imageCredit = card.imageCredit,
@@ -192,18 +184,12 @@ class CardEditorViewModel(
             baseline = Baseline(
                 catalan = card?.catalan.orEmpty(),
                 romanian = card?.romanian.orEmpty(),
-                english = card?.english.orEmpty(),
                 ipa = card?.ipa.orEmpty(),
                 imagePath = card?.imagePath,
             )
-            if (card != null) {
-                // An existing card with no English yet is offered one, the same
-                // way a new card is; it is only a suggestion until saved.
-                if (card.english.isNullOrBlank()) suggestEnglish(card.catalan.trim(), pause = false)
-                // One opened without a picture is offered some straight away;
-                // one that has a picture is not asked about until it is removed.
-                if (card.imagePath == null) suggestPictures(pause = false)
-            }
+            // One opened without a picture is offered some straight away;
+            // one that has a picture is not asked about until it is removed.
+            if (card != null && card.imagePath == null) suggestPictures(pause = false)
         }
     }
 
@@ -241,15 +227,9 @@ class CardEditorViewModel(
                     movedOn -> releaseStale(it.romanian, loaded?.romanian)
                     else -> it.romanian
                 },
-                english = when {
-                    text.isBlank() -> it.english.offer("")
-                    movedOn -> releaseStale(it.english, loaded?.english)
-                    else -> it.english
-                },
             )
         }
         suggestRomanian(text.trim())
-        suggestEnglish(text.trim())
         suggestPictures()
     }
 
@@ -289,12 +269,7 @@ class CardEditorViewModel(
 
     fun onRomanianChange(text: String) {
         updateForm { it.copy(romanian = it.romanian.typed(text)) }
-        suggestFromMeaning(text.trim(), from = "ro")
-    }
-
-    fun onEnglishChange(text: String) {
-        updateForm { it.copy(english = it.english.typed(text)) }
-        suggestFromMeaning(text.trim(), from = "en")
+        suggestFromMeaning(text.trim())
     }
 
     fun onIpaChange(text: String) {
@@ -302,30 +277,31 @@ class CardEditorViewModel(
     }
 
     /**
-     * The photos are searched with the English meaning, so a meaning the reader
-     * has just corrected is the moment to search again — once they stop.
+     * Photos are searched with an English worked out from the Romanian when the
+     * Catalan alone does not give one, so a meaning the reader has just
+     * corrected is the moment to search again — once they stop.
      */
     fun onMeaningEditingDone() {
         if (pictures.source.value == PictureSource.PHOTOS) suggestPictures(pause = false)
     }
 
     /**
-     * The card written the other way round: a meaning typed first fills in the
-     * Catalan — and with it the pronunciation and the pictures — and the other
-     * meaning, the same way typing the Catalan fills in the meanings.
+     * The card written the other way round: a Romanian meaning typed first
+     * fills in the Catalan — and with it the pronunciation and the pictures —
+     * the same way typing the Catalan fills in the meaning.
      *
      * Only into fields that are still waiting for a suggestion: an empty
      * Catalan, or one the app filled in itself; never one the reader typed.
-     * ARASAAC's people are asked first, from the language the meaning is in,
-     * and the translator only for words they have not labelled.
+     * ARASAAC's people are asked first, and the translator only for words
+     * they have not labelled.
      */
-    private fun suggestFromMeaning(word: String, from: String) {
+    private fun suggestFromMeaning(word: String) {
         fromMeaningJob?.cancel()
         val state = _uiState.value
         // And the same the other way round: a Catalan still exactly as it was
         // saved is a Catalan for the meaning that was saved with it, so
         // changing that meaning releases it. See [releaseStale].
-        val untouchedSince = state.catalan == loaded?.catalan && word != savedMeaning(from)
+        val untouchedSince = state.catalan == loaded?.catalan && word != loaded?.romanian?.trim().orEmpty()
         val catalanOpen = state.catalan.isBlank() || state.catalanIsSuggestion || untouchedSince
         if (!catalanOpen) return
         if (word.isEmpty()) {
@@ -335,49 +311,14 @@ class CardEditorViewModel(
         }
         fromMeaningJob = viewModelScope.launch {
             delay(SUGGEST_DELAY_MS)
-            val stillTyped = { current: CardEditorUiState ->
-                when (from) {
-                    "ro" -> current.romanian.text.trim() == word
-                    else -> current.english.text.trim() == word
-                }
-            }
-            val labelled = pictureSearch.labels(word, from)
+            val labelled = pictureSearch.labels(word, "ro")
             val catalan = labelled?.catalan
-                ?: when (from) {
-                    "ro" -> romanianToCatalan.translate(word)
-                    else -> englishToCatalan.translate(word)
-                }?.takeIf { !it.equals(word, ignoreCase = true) }
-            if (catalan != null && stillTyped(_uiState.value)) {
+                ?: romanianToCatalan.translate(word)?.takeIf { !it.equals(word, ignoreCase = true) }
+            if (catalan != null && _uiState.value.romanian.text.trim() == word) {
                 applyCatalanSuggestion(matchLeadingCase(word, catalan))
-            }
-            // And the other meaning, while the reader is still on this word.
-            if (from == "ro" && _uiState.value.english.acceptsSuggestions) {
-                val english = labelled?.english?.let { it to MeaningSource.DICTIONARY }
-                    ?: romanianToEnglish.translate(word)
-                        ?.takeIf { !it.equals(word, ignoreCase = true) }
-                        ?.let { matchLeadingCase(word, it) to MeaningSource.TRANSLATOR }
-                if (english != null && stillTyped(_uiState.value)) {
-                    updateForm { it.copy(english = it.english.offer(english.first), englishSource = english.second) }
-                }
-            }
-            if (from == "en" && _uiState.value.romanian.acceptsSuggestions) {
-                val romanian = labelled?.romanian?.let { it to MeaningSource.DICTIONARY }
-                    ?: englishToRomanian.translate(word)
-                        ?.takeIf { !it.equals(word, ignoreCase = true) }
-                        ?.let { matchLeadingCase(word, it) to MeaningSource.TRANSLATOR }
-                if (romanian != null && stillTyped(_uiState.value)) {
-                    updateForm { it.copy(romanian = it.romanian.offer(romanian.first), romanianSource = romanian.second) }
-                }
             }
         }
     }
-
-    /** What the card was saved with in the language a meaning was typed in. */
-    private fun savedMeaning(from: String): String =
-        when (from) {
-            "ro" -> loaded?.romanian
-            else -> loaded?.english
-        }?.trim().orEmpty()
 
     /**
      * Put a suggested Catalan in its field, with the pronunciation that goes
@@ -424,44 +365,6 @@ class CardEditorViewModel(
         }
     }
 
-    /**
-     * The same for English, with one fallback: a word the Catalan–English model
-     * hands back unchanged is tried again from the Romanian meaning, which is
-     * often a longer, plainer word — *pa* comes back as "pa", *pâine* as "bread".
-     */
-    private fun suggestEnglish(word: String, pause: Boolean = true) {
-        englishJob?.cancel()
-        if (word.isEmpty() || !_uiState.value.english.acceptsSuggestions) return
-        englishJob = viewModelScope.launch {
-            if (pause) delay(SUGGEST_DELAY_MS)
-            val labelled = pictureSearch.meanings(word)?.english?.let { matchLeadingCase(word, it) }
-            if (labelled != null) {
-                updateForm {
-                    if (it.catalan.trim() == word) {
-                        it.copy(english = it.english.offer(labelled), englishSource = MeaningSource.DICTIONARY)
-                    } else {
-                        it
-                    }
-                }
-                return@launch
-            }
-            val meaning = toEnglish.suggest(word) { status ->
-                _uiState.update { it.copy(englishSuggestion = status) }
-            } ?: _uiState.value.romanian.text.trim().takeIf { it.isNotEmpty() }?.let { romanian ->
-                romanianToEnglish.translate(romanian)
-                    ?.takeIf { !it.equals(romanian, ignoreCase = true) }
-                    ?.let { matchLeadingCase(word, it) }
-            } ?: return@launch
-            updateForm {
-                if (it.catalan.trim() == word) {
-                    it.copy(english = it.english.offer(meaning), englishSource = MeaningSource.TRANSLATOR)
-                } else {
-                    it
-                }
-            }
-        }
-    }
-
     // ---- The picture -------------------------------------------------------
 
     private fun suggestPictures(pause: Boolean = true) {
@@ -474,7 +377,6 @@ class CardEditorViewModel(
         }
         pictures.suggest(
             word = state.catalan,
-            english = state.english.text,
             romanian = state.romanian.text,
             pause = pause,
         )
@@ -545,7 +447,7 @@ class CardEditorViewModel(
         val card = (loaded ?: FlashcardEntity(deckId = deckId, catalan = "", romanian = "")).copy(
             catalan = state.catalan.trim(),
             romanian = state.romanian.text.trim(),
-            english = state.english.text.trim().ifEmpty { null },
+            english = null,
             ipa = ipa.ifEmpty { null },
             ipaApproximate = ipa.isNotEmpty() && state.ipa.isSuggestion && state.ipa.isApproximate,
             imagePath = state.imagePath,
@@ -565,7 +467,6 @@ class CardEditorViewModel(
 
             if (addAnother) {
                 romanianJob?.cancel()
-                englishJob?.cancel()
                 pictures.suggest("")
                 loaded = null
                 storedImage = null
@@ -600,7 +501,6 @@ class CardEditorViewModel(
             new.copy(
                 isDirty = new.catalan != baseline.catalan ||
                     new.romanian.text != baseline.romanian ||
-                    new.english.text != baseline.english ||
                     new.ipa.text != baseline.ipa ||
                     new.imagePath != baseline.imagePath,
             )
@@ -619,8 +519,6 @@ class CardEditorViewModel(
         toEnglish.close()
         romanianToEnglish.close()
         romanianToCatalan.close()
-        englishToCatalan.close()
-        englishToRomanian.close()
     }
 
     /**

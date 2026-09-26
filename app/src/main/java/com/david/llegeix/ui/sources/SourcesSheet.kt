@@ -1,6 +1,13 @@
 package com.david.llegeix.ui.sources
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,13 +16,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
@@ -23,7 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -35,7 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -46,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -54,7 +56,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,11 +79,13 @@ import com.david.llegeix.util.allFilesAccessIntents
  * source tiles at the top of the library is the way in now, and this is what
  * opens when one is pressed.
  *
- * Each source is one card that says what it holds — "48 PDFs · 12 folders" —
- * and opens to show the folders inside it, each with a tick. Unticking a folder
- * hides it and everything below it; ticking one inside an unticked folder
- * brings just that one back. Nothing is deleted from the phone by anything in
- * here, which the wording is careful to keep saying.
+ * A header says how much of the phone reaches the library; below it, the
+ * folders the reader added, then the whole-phone sweep and what it found. Each
+ * source is one card with a switch for all of it, that opens to show the
+ * folders inside as a tree — indented, with guide lines, a tick at the end of
+ * each. Unticking a folder hides it and everything below it; ticking one
+ * inside an unticked folder brings just that one back. Nothing is deleted from
+ * the phone by anything in here, which the wording is careful to keep saying.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,19 +127,12 @@ fun SourcesSheet(
         sheetState = sheetState,
         modifier = modifier,
     ) {
-        // A lazy list rather than a scrolling Column.
-        //
-        // It was a Column with verticalScroll, on the reasoning that a lazy
-        // list would take the whole height it was offered and leave a single
-        // source marooned at the top of a full-screen panel. It does not — a
-        // LazyColumn measures to its content and only stops at the height the
-        // sheet allows — and the Column cost something real: a sheet's height
-        // is its content's, so opening a source grew the sheet and moved its
-        // anchors while a scroll was in flight, and scrolling down through a
-        // long list of folders stuttered and snapped back. The lazy list is the
-        // scrolling container the sheet's own drag handling is written against,
-        // and it recycles rows besides, which is what a phone with a thousand
-        // PDFs in forty folders actually needs.
+        // A lazy list rather than a scrolling Column: a sheet's height is its
+        // content's, so a Column grew the sheet and moved its anchors while a
+        // scroll was in flight when a source was opened. The lazy list is the
+        // scrolling container the sheet's own drag handling is written
+        // against, and it recycles rows, which a phone with forty folders of
+        // PDFs needs.
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -146,49 +142,19 @@ fun SourcesSheet(
                 end = Space.screen,
                 bottom = Space.xxl,
             ),
-            verticalArrangement = Arrangement.spacedBy(Space.md),
+            verticalArrangement = Arrangement.spacedBy(Space.sm),
         ) {
-            // The same disc and title the library's own sources card carries,
-            // so opening it reads as going into that card rather than as
-            // arriving somewhere new. A sheet that repeats the thing you
-            // pressed is a sheet you can tell you are inside.
             item(key = "header") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.secondaryContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_folder),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.library_sources),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(start = Space.lg),
-                    )
-                }
-            }
-
-            item(key = "explainer") {
-                Text(
-                    text = stringResource(R.string.sources_explainer),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = Space.sm),
+                val shown = state.groups.sumOf { it.visibleCount } +
+                    if (state.deviceScanEnabled) state.deviceGroups.sumOf { it.visibleCount } else 0
+                SheetHeader(
+                    shown = shown,
+                    isScanning = state.isScanning,
                 )
             }
 
-            if (state.isScanning) {
-                item(key = "scanning") {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
+            if (state.groups.isNotEmpty()) {
+                item(key = "granted-label") { SectionLabel(stringResource(R.string.sources_section_granted)) }
             }
 
             // Keyed by position rather than by name: two granted folders can
@@ -206,6 +172,11 @@ fun SourcesSheet(
                 )
             }
 
+            // The sweep and what it found, as one section of their own: the
+            // same cards as the granted folders, but a different kind of
+            // place, so a heading says whose they are.
+            item(key = "device-label") { SectionLabel(stringResource(R.string.sources_section_device)) }
+
             item(key = "device-scan") {
                 DeviceScanCard(
                     permitted = state.deviceScanPermitted,
@@ -213,17 +184,7 @@ fun SourcesSheet(
                     count = state.deviceScanCount,
                     onOpenSettings = ::openDeviceScanSettings,
                     onSetEnabled = viewModel::onSetDeviceScan,
-                    modifier = Modifier.padding(top = Space.sm),
                 )
-            }
-
-            if (state.deviceScanEnabled && state.deviceGroups.isNotEmpty()) {
-                // Without this the sweep's folders look like more granted
-                // sources: the same card, in the same column, meaning something
-                // quite different. One quiet line says whose they are.
-                item(key = "scan-label") {
-                    SectionLabel(stringResource(R.string.sources_found_by_scan))
-                }
             }
 
             if (state.deviceScanEnabled) {
@@ -244,23 +205,27 @@ fun SourcesSheet(
                 }
             }
 
-            // Where new sources come from, said rather than offered.
-            //
-            // This card used to carry the two buttons that add one — a folder,
-            // and single files — and they were the same two the + in the
-            // library opens. Two controls for one decision, on two screens, one
-            // of which is a *settings* sheet: pressing Fonts to add a source is
-            // the kind of thing a reader learns once and then cannot unlearn,
-            // and it made this sheet about two jobs at once. It is about one
-            // now — which of the places you have given the app actually count —
-            // and the + is about the other.
+            // Where new sources come from, said rather than offered: the + in
+            // the library adds them, and this sheet is only about which of
+            // the places already given actually count.
             item(key = "add-hint") {
-                Text(
-                    text = stringResource(R.string.sources_add_elsewhere),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = Space.lg),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = Space.lg, start = Space.xs, end = Space.xs),
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.sources_add_elsewhere),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = Space.sm),
+                    )
+                }
             }
         }
     }
@@ -295,11 +260,71 @@ fun SourcesSheet(
 }
 
 /**
- * One granted source: what it is, how much of it counts, and what is inside.
+ * The top of the sheet: its name, how much of the phone reaches the library,
+ * the one line on what unticking does, and a thin bar while a scan runs.
+ */
+@Composable
+private fun SheetHeader(shown: Int, isScanning: Boolean) {
+    val scheme = MaterialTheme.colorScheme
+    Column(modifier = Modifier.padding(bottom = Space.sm)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(scheme.primaryContainer),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_folder),
+                    contentDescription = null,
+                    tint = scheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = Space.lg),
+            ) {
+                Text(
+                    text = stringResource(R.string.library_sources),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                )
+                Text(
+                    text = pluralStringResource(R.plurals.sources_shown_total, shown, shown),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.sources_explainer),
+            style = MaterialTheme.typography.bodySmall,
+            color = scheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Space.md),
+        )
+        if (isScanning) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Space.md)
+                    .clip(CircleShape),
+            )
+        }
+    }
+}
+
+/**
+ * One source: what it is, how much of it counts, and — opened — the folders
+ * inside it as a tree.
  *
- * Folded shut unless someone opens it. A source is one line about a place —
- * "Documents, 48 PDFs in 12 folders" — and only becomes forty rows of folders
- * when that is the question being asked.
+ * The header is a switch for the whole source, all or nothing, because that
+ * is the fastest way to say "not this one at all"; the tree below is where the
+ * finer answer lives, and the summary under the name says when only part of
+ * it is shown. Pressing the header opens and closes it. Folded shut unless
+ * someone opens it: a source is one line about a place, and only becomes
+ * forty rows of folders when that is the question being asked.
  */
 @Composable
 private fun SourceCard(
@@ -311,120 +336,135 @@ private fun SourceCard(
     /** Null for a source that cannot be given back, such as the device sweep. */
     onRemove: (() -> Unit)?,
 ) {
+    val scheme = MaterialTheme.colorScheme
     val root = group.folder.label
     val subfolders = (group.tree.size - 1).coerceAtLeast(0)
-    val isOpen = root in expanded
-    // Three states, because two cannot say "most of this source, but not all".
-    // Without the middle one, a library quietly missing a folder looks exactly
-    // like a library showing everything.
-    val checkedState = when {
-        group.totalCount == 0 -> if (group.rootVisible) {
-            ToggleableState.On
-        } else {
-            ToggleableState.Off
-        }
-        group.visibleCount == group.totalCount -> ToggleableState.On
-        group.visibleCount == 0 -> ToggleableState.Off
-        else -> ToggleableState.Indeterminate
-    }
+    val canOpen = subfolders > 0 || onRemove != null
+    val isOpen = canOpen && root in expanded
+    // On while any of it reaches the library. "Most of it, but not all" is
+    // said in words under the name rather than by a third state of the switch.
+    val isOn = if (group.totalCount == 0) group.rootVisible else group.visibleCount > 0
+    val arrow by animateFloatAsState(if (isOpen) 90f else 0f, label = "source arrow")
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(vertical = Space.sm),
+            .clip(RoundedCornerShape(24.dp))
+            .background(scheme.surfaceContainer),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (subfolders > 0) {
-                        Modifier.clickable { onToggleExpanded(root) }
-                    } else {
-                        Modifier
-                    },
-                )
-                .padding(start = Space.sm, end = Space.sm)
-                .padding(vertical = Space.sm),
+                .then(if (canOpen) Modifier.clickable { onToggleExpanded(root) } else Modifier)
+                .padding(start = Space.md, end = Space.lg, top = Space.md, bottom = Space.md),
         ) {
-            // The root box is all-or-nothing on purpose: it is the fastest way
-            // to say "not this one at all", and the folders below it are where
-            // the finer answer lives.
-            val includeLabel = stringResource(R.string.sources_include, root)
-            TriStateCheckbox(
-                state = checkedState,
-                onClick = {
-                    onSetSourceVisible(root, checkedState != ToggleableState.On)
-                },
-                // Named, because on its own a tick box in a row of its own says
-                // "on or off" without ever saying what of.
-                modifier = Modifier.semantics { contentDescription = includeLabel },
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = group.folder.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(if (isOn) scheme.secondaryContainer else scheme.surfaceContainerHighest),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_folder),
+                    contentDescription = null,
+                    tint = if (isOn) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
                 )
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = Space.md, end = Space.sm),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = root,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (isOn) scheme.onSurface else scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (canOpen) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = stringResource(
+                                if (isOpen) R.string.sources_hide_folders else R.string.sources_show_folders,
+                                root,
+                            ),
+                            tint = scheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(start = 2.dp)
+                                .size(20.dp)
+                                .rotate(arrow),
+                        )
+                    }
+                }
                 Text(
                     text = sourceSummary(group, subfolders),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = scheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
-            if (subfolders > 0) {
-                Icon(
-                    imageVector = if (isOpen) {
-                        Icons.Default.KeyboardArrowDown
-                    } else {
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight
-                    },
-                    contentDescription = stringResource(
-                        if (isOpen) R.string.sources_hide_folders else R.string.sources_show_folders,
-                        root,
-                    ),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = Space.sm),
-                )
-            }
-            if (onRemove != null) {
-                IconButton(onClick = onRemove) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = stringResource(
-                            R.string.source_stop_watching,
-                            group.folder.label,
-                        ),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            val includeLabel = stringResource(R.string.sources_include, root)
+            Switch(
+                checked = isOn,
+                onCheckedChange = { onSetSourceVisible(root, it) },
+                // Named, because on its own a switch says "on or off" without
+                // ever saying what of.
+                modifier = Modifier.semantics { contentDescription = includeLabel },
+            )
         }
 
-        // Only the folders below the root, and only those the reader has opened
-        // their way down to. A source with sixty folders should not arrive as
-        // sixty rows.
         if (isOpen) {
-            group.tree
-                .filter { it.depth > 0 && isReachable(it.path, root, expanded) }
-                .forEach { folder ->
-                    FolderRow(
-                        folder = folder,
-                        hasChildren = group.tree.any { it.path.startsWith("${folder.path}/") },
-                        isOpen = folder.path in expanded,
-                        onToggleExpanded = { onToggleExpanded(folder.path) },
-                        onSetVisible = { onSetVisible(folder.path, it) },
+            // Only the folders below the root, and only those the reader has
+            // opened their way down to.
+            val shown = group.tree.filter { it.depth > 0 && isReachable(it.path, root, expanded) }
+            if (shown.isNotEmpty()) {
+                HorizontalDivider(
+                    color = scheme.outlineVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(horizontal = Space.lg),
+                )
+                Column(modifier = Modifier.padding(vertical = Space.xs)) {
+                    shown.forEach { folder ->
+                        FolderRow(
+                            folder = folder,
+                            hasChildren = group.tree.any { it.path.startsWith("${folder.path}/") },
+                            isOpen = folder.path in expanded,
+                            onToggleExpanded = { onToggleExpanded(folder.path) },
+                            onSetVisible = { onSetVisible(folder.path, it) },
+                        )
+                    }
+                }
+            }
+            if (onRemove != null) {
+                HorizontalDivider(
+                    color = scheme.outlineVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(horizontal = Space.lg),
+                )
+                TextButton(
+                    onClick = onRemove,
+                    modifier = Modifier.padding(horizontal = Space.sm, vertical = Space.xs),
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.sources_remove_confirm),
+                        modifier = Modifier.padding(start = Space.sm),
                     )
                 }
+            }
         }
     }
 }
 
-/** "48 PDFs · 12 folders", or what is left of that once things are hidden. */
+/** "48 PDF · 12 carpetes", or what is left of that once things are hidden. */
 @Composable
 private fun sourceSummary(group: SourceGroup, subfolders: Int): String {
     val documents = when {
@@ -458,13 +498,28 @@ private fun isReachable(path: String, root: String, expanded: Set<String>): Bool
     return true
 }
 
+/** How far each level of the tree steps in. */
+private val TreeIndent = 20.dp
+
+/** The width of the arrow's slot, whose centre each guide line drops from. */
+private val ArrowSlot = 32.dp
+
+/** Where the tree starts inside the card. */
+private val TreeStart = Space.sm
+
 /**
- * One folder inside a source.
+ * One folder inside a source, as a line of a tree.
  *
- * The whole row is the tick, not just the little box: the question the row asks
- * is "does this folder count", and answering it should not require hitting an
- * 18dp target. Opening a folder to see what is under it is the separate,
- * smaller gesture, so it keeps the arrow to itself.
+ * Indented by depth, with a faint guide line dropping from each folder above
+ * it, so which folder is inside which is seen rather than worked out from the
+ * indentation alone. An arrow opens it when it has folders of its own; a
+ * folder mark, its name and how many PDFs it holds follow; and the tick sits
+ * at the end, where every tick in the tree lines up in one column.
+ *
+ * The whole row is the tick: the question it asks is "does this folder
+ * count", and answering it should not need a small target. Opening a folder is
+ * the separate, smaller gesture, so it keeps the arrow to itself. A hidden
+ * folder is drawn faded, so what is left out shows at a glance.
  */
 @Composable
 private fun FolderRow(
@@ -474,6 +529,10 @@ private fun FolderRow(
     onToggleExpanded: () -> Unit,
     onSetVisible: (Boolean) -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val guide = scheme.outlineVariant
+    val levels = folder.depth - 1
+    val arrow by animateFloatAsState(if (isOpen) 90f else 0f, label = "folder arrow")
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -483,59 +542,66 @@ private fun FolderRow(
                 role = Role.Checkbox,
                 onValueChange = onSetVisible,
             )
-            .heightIn(min = 44.dp)
-            .padding(
-                // Indented by depth, so the shape of the folder tree is the
-                // thing you see first.
-                start = Space.xs + (Space.lg * (folder.depth - 1)),
-                end = Space.lg,
-            ),
-    ) {
-        if (hasChildren) {
-            IconButton(onClick = onToggleExpanded, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    imageVector = if (isOpen) {
-                        Icons.Default.KeyboardArrowDown
-                    } else {
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight
-                    },
-                    contentDescription = stringResource(
-                        if (isOpen) R.string.sources_hide_folders else R.string.sources_show_folders,
-                        folder.name,
-                    ),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
+            .drawBehind {
+                val stroke = 1.dp.toPx()
+                for (level in 0 until levels) {
+                    val x = (TreeStart + TreeIndent * level + ArrowSlot / 2).toPx()
+                    drawLine(guide, Offset(x, 0f), Offset(x, size.height), stroke)
+                }
             }
-        } else {
-            Spacer(modifier = Modifier.width(40.dp))
+            .heightIn(min = 48.dp)
+            .padding(start = TreeStart + TreeIndent * levels, end = Space.sm),
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(ArrowSlot)) {
+            if (hasChildren) {
+                IconButton(onClick = onToggleExpanded, modifier = Modifier.size(ArrowSlot)) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = stringResource(
+                            if (isOpen) R.string.sources_hide_folders else R.string.sources_show_folders,
+                            folder.name,
+                        ),
+                        tint = scheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(arrow),
+                    )
+                }
+            }
         }
-        Checkbox(checked = folder.visible, onCheckedChange = null)
+        val fade = if (folder.visible) 1f else 0.5f
+        Icon(
+            painter = painterResource(R.drawable.ic_folder),
+            contentDescription = null,
+            tint = if (folder.visible) scheme.primary else scheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(20.dp)
+                .alpha(fade),
+        )
         Text(
             text = folder.name,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (folder.decidedHere) FontWeight.Medium else null,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = if (folder.decidedHere) FontWeight.SemiBold else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            color = if (folder.visible) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            color = scheme.onSurface,
             modifier = Modifier
                 .weight(1f)
-                .padding(start = Space.sm),
+                .padding(start = Space.md)
+                .alpha(fade),
         )
         Text(
-            text = pluralStringResource(
-                R.plurals.folders_pdf_count,
-                folder.total,
-                folder.total,
-            ),
+            text = "${folder.total}",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = Space.sm),
+            color = scheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(start = Space.sm)
+                .clip(CircleShape)
+                .background(scheme.surfaceContainerHigh)
+                .padding(horizontal = Space.sm, vertical = 2.dp)
+                .alpha(fade),
         )
+        Checkbox(checked = folder.visible, onCheckedChange = null, modifier = Modifier.padding(start = Space.xs))
     }
 }
 
@@ -557,38 +623,39 @@ private fun DeviceScanCard(
     onSetEnabled: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val isOn = permitted && enabled
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clip(RoundedCornerShape(24.dp))
+            .background(scheme.surfaceContainer)
             .then(if (permitted) Modifier else Modifier.clickable(onClick = onOpenSettings))
-            .padding(start = Space.lg, end = if (permitted) Space.md else Space.lg)
-            .padding(vertical = Space.md),
+            .padding(start = Space.md, end = Space.lg, top = Space.md, bottom = Space.md),
     ) {
         Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(if (isOn) scheme.secondaryContainer else scheme.surfaceContainerHighest),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_device),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (isOn) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
             )
         }
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = Space.lg),
+                .padding(start = Space.md, end = Space.sm),
         ) {
             Text(
                 text = stringResource(R.string.action_scan_device),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             )
             Text(
                 text = when {
@@ -597,7 +664,7 @@ private fun DeviceScanCard(
                     else -> stringResource(R.string.sources_scan_paused)
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = scheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
@@ -607,7 +674,7 @@ private fun DeviceScanCard(
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = scheme.onSurfaceVariant,
             )
         }
     }
@@ -618,8 +685,8 @@ private fun DeviceScanCard(
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = Space.xs, top = Space.sm, bottom = Space.xs),
+        modifier = Modifier.padding(start = Space.xs, top = Space.md, bottom = Space.xs),
     )
 }

@@ -17,14 +17,12 @@ class FlashcardSessionTest {
         reverseDueAt: Long = 0,
         box: Int = 0,
         reverseBox: Int = 0,
-        english: String? = null,
     ) =
         FlashcardEntity(
             id = nextId++,
             deckId = 1,
             catalan = "c$nextId",
             romanian = "r$nextId",
-            english = english,
             box = box,
             dueAt = dueAt,
             reverseBox = reverseBox,
@@ -136,27 +134,6 @@ class FlashcardSessionTest {
     }
 
     @Test
-    fun `an English session leaves out cards with no English meaning`() {
-        val both = card(english = "bread")
-        val romanianOnly = card()
-        val blank = card(english = "  ")
-        val cards = listOf(both, romanianOnly, blank)
-        assertEquals(
-            listOf(both),
-            FlashcardSession.everything(
-                cards,
-                StudyDirection.CATALAN_TO_MEANING,
-                language = MeaningLanguage.ENGLISH,
-            ),
-        )
-        assertEquals(
-            "a Romanian session has every card",
-            3,
-            FlashcardSession.everything(cards, StudyDirection.CATALAN_TO_MEANING).size,
-        )
-    }
-
-    @Test
     fun `extra practice takes cards that are not due`() {
         val later = card(dueAt = now + 86_400_000)
         val due = card(dueAt = now - 1)
@@ -188,13 +165,9 @@ class FlashcardSessionTest {
     }
 
     @Test
-    fun `extra practice respects the language and its limit`() {
-        val cards = List(80) { card(english = if (it % 2 == 0) "x" else null) }
+    fun `extra practice respects its limit`() {
+        val cards = List(80) { card() }
         assertEquals(50, FlashcardSession.extra(cards, StudyDirection.CATALAN_TO_MEANING).size)
-        assertEquals(
-            40,
-            FlashcardSession.extra(cards, StudyDirection.CATALAN_TO_MEANING, language = MeaningLanguage.ENGLISH).size,
-        )
     }
 
 }

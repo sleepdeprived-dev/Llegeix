@@ -66,9 +66,13 @@ does both after bumping the version in `app/build.gradle.kts`.
   of detail, with room around it. It was briefly built like the folder rows under
   it, on the grounds that it is a place you go into, and that was the mistake —
   it is not one of the reader's own folders and should not sit among them looking
-  like one. It opens every source and every folder inside it as a tree of tick
-  boxes, under the same disc and title that were pressed to get there, so the
-  sheet reads as the inside of that card rather than as somewhere new. When part
+  like one. It opens a sheet headed with how many PDFs reach the library, the
+  folders you added in one section and the whole-phone scan with what it found
+  in another. Each source is a card with a switch for all of it; pressed, it
+  opens its folders as a tree — indented, with faint guide lines dropping from
+  each folder above, an arrow that turns to open a folder, its PDF count, and a
+  tick at the end of the row, every tick in one column. A hidden folder is drawn
+  faded, and giving a source back is a button inside its card. When part
   of a source is switched off the card reads "31 of 48 PDFs shown", in the
   accent, because a library quietly missing a folder otherwise looks exactly like
   a library showing everything.
@@ -311,16 +315,18 @@ does both after bumping the version in `app/build.gradle.kts`.
   the Catalan on one side of a card and the Romanian on the other, with a
   picture if one helps. Writing a card fills in what the app can and says that
   it did: the pronunciation is worked out from the spelling as you type, marked
-  *approx.* where the spelling cannot settle a vowel, and the translator on the
-  phone suggests a meaning, in Romanian and, optionally, in English — each
-  follows the word until you type in the field, and is yours from then on.
+  *approx.* where the spelling cannot settle a vowel, with no note under it,
+  and the translator on the
+  phone suggests the Romanian meaning, which follows the word until you type in
+  the field and is yours from then on. The form reads in the order a card does:
+  Catalan, Romanian, the pronunciation, then the picture — each word a label over
+  its text and a line that takes the accent while it is typed in.
   A meaning is taken first from ARASAAC, whose pictograms are labelled by people
   in every language they cover — *poma* is *măr* there, where a translator
   handed the one word says "apple" — and from the translator only for words
   ARASAAC has not labelled. The field says which of the two it came from. It
-  works the other way round too: a card can be started from its Romanian or its
-  English, and the Catalan, its pronunciation and the other meaning are filled
-  in from there. Every picture is shown exactly as it is, background and all: a
+  works the other way round too: a card can be started from its Romanian, and
+  the Catalan and its pronunciation are filled in from there. Every picture is shown exactly as it is, background and all: a
   pictogram keeps its own white paper, because cutting the paper away also took
   every pale part of the drawing with it.
   Pictures are offered as the word is typed, as a grid of everything that was
@@ -328,9 +334,10 @@ does both after bumping the version in `app/build.gradle.kts`.
   Global Symbols — an index over three dozen other freely licensed symbol sets —
   searched in Catalan and again in English, plus OpenMoji's open emoji; or
   openly licensed photographs from Wikimedia Commons, Wikipedia's article
-  pictures (in Catalan and in English) and Openverse, searched with the card's
-  English meaning, since the lone Catalan word is too thin a thing to translate
-  and *pa* on its own comes back as Pennsylvania. The sources are asked in parallel
+  pictures (in Catalan and in English) and Openverse. Photos are searched in
+  English worked out on the phone — from the Catalan, or from the Romanian when
+  the lone Catalan word is too thin a thing to translate and *pa* on its own
+  comes back as Pennsylvania — and that English is never shown or kept. The sources are asked in parallel
   and the answers interleaved, with the same picture never offered twice: the
   shelves overlap, and a grid half made of pairs is half a grid. Photos are held
   to three safety checks: the source's own adult flag or the file's categories,
@@ -343,8 +350,9 @@ does both after bumping the version in `app/build.gradle.kts`.
   its source says it shows. People posing and underwear are left out unless the
   word is about people (Flickr tags a bra "peach" and a green shirt "lime"),
   and logos, landscapes, rotten fruit and a fruit's tree or blossom go to the
-  end. A search field over the grid searches for anything else instead, for
-  every kind of picture. A word the translator hands back unchanged —
+  end. A search field over the grid, showing the word as you wrote it, searches
+  for anything else instead, for every kind of picture; a search that finds
+  nothing says *Cap resultat trobat*. A word the translator hands back unchanged —
   *animals*, *hotel* — is taken as already English rather than as a failed
   translation, and a verb's "to" is dropped before searching. Pinterest is not
   a source: it has no public search that works without an approved account and
@@ -357,7 +365,8 @@ does both after bumping the version in `app/build.gradle.kts`.
   catalogues downloaded once and searched on the phone.
   They are offered and never placed — a picture of the wrong sense of *banc* is
   worse than none — and the one chosen keeps its maker's credit on the card.
-  Your own photos come through Android's photo picker, so the app is never given
+  Your own photos come through Android's photo picker — the round button beside
+  the search, *Afegeix foto* — so the app is never given
   the gallery. Either way a picture is copied in shrunk and upright, so a card
   keeps it after the original is gone. A deck is searched with its accents
   ignored, because the word you half remember is typed on whichever keyboard is
@@ -367,8 +376,8 @@ does both after bumping the version in `app/build.gradle.kts`.
   from the same grid, or its first card's — a bar for how well it is known and
   its own way into practice. Decks can be pinned to the top. The decks are the
   choice, so there is no second list of them to choose from. Practice is Catalan and
-  Romanian only, one way or the other: *poma* turns over to *măr*. A card may
-  still carry an English word, which is only used to search for photos. Going through cards again when none are due is always one press
+  Romanian only, one way or the other: *poma* turns over to *măr*. Cards carry
+  no English at all; v4.4.5 emptied what older cards had. Going through cards again when none are due is always one press
   away, as extra practice that does not move the schedule — repetition helps,
   and three right answers in ten minutes are not three days' learning. Saving a
   copy is a button in the corner.
@@ -394,7 +403,9 @@ does both after bumping the version in `app/build.gradle.kts`.
   path back above it (Targetes › Menjar › Fruita), its full name and a button to
   review all of it — and has a play button of its own
   that goes through everything under it. A collection's square is the collection
-  mark rather than an initial (or its picture with a small collection badge);
+  mark rather than an initial (or its picture with a small collection badge),
+  its name is set in bold, and one with no cards anywhere in it says just
+  *Cap targeta*;
   folded shut it lists what is inside it as name chips, and open it takes a
   hairline of the accent while its contents hang under it on a guide line. A
   new collection is named and given its picture in the same sheet as a deck,
@@ -428,9 +439,9 @@ does both after bumping the version in `app/build.gradle.kts`.
   each other are shuffled so a deck never becomes a recitation. Those same boxes
   fill the bar on each deck.
 
-  Which way round is asked every time play is pressed: Catalan → English ·
-  Romanian, or the way back, with last time's lit so going again the same way
-  is one tap. At the end of a round the app offers the other way round straight
+  Which way round is asked every time play is pressed: Catalan → Romanian, or
+  the way back, with last time's in the accent — its fill and an outline, no
+  tick — so going again the same way is one tap. At the end of a round the app offers the other way round straight
   away, once. Each direction keeps its own half of the schedule. That question replaced a panel headed *14 cards to
   review*, then a strip of pills, then a menu in the app bar. Below the bar there is one thing left, and it is the only thing there
   that is not about a particular deck: *Practise them all*.

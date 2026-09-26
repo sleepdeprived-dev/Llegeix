@@ -629,3 +629,14 @@ val MIGRATION_21_22 = object : Migration(21, 22) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_learned_words_learnedAt` ON `learned_words` (`learnedAt`)")
     }
 }
+
+/**
+ * v4.4.5: cards are Catalan and Romanian only, so the English meanings saved
+ * on them are emptied. The column stays, empty, rather than rebuilding the
+ * table to drop it.
+ */
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE `flashcards` SET `english` = NULL")
+    }
+}

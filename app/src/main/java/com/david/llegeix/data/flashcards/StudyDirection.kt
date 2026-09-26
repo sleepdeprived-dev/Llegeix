@@ -11,9 +11,8 @@ import com.david.llegeix.data.practice.Leitner
  * produce it from *pâine*.
  *
  * The other side is "the meaning" rather than a language, because the schedule
- * is about the Catalan: recognising it, or producing it. That is the same skill
- * whether the meaning is shown in Romanian or in English, so the language is a
- * separate choice ([MeaningLanguage]) and does not split the schedule in two.
+ * is about the Catalan: recognising it, or producing it; the meaning is its
+ * Romanian ([MeaningLanguage]).
  */
 enum class StudyDirection {
     /** The Catalan is shown; the meaning is the answer. Recognition. */

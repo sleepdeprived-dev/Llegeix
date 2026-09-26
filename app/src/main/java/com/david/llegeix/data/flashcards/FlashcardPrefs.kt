@@ -5,8 +5,7 @@ import androidx.core.content.edit
 
 /**
  * Which way round the reader last chose to practise, so play offers it first.
- * There is no language to remember: practice always shows a card's English and
- * Romanian together.
+ * There is no language to remember: a card's meaning is always its Romanian.
  */
 class FlashcardPrefs(context: Context) {
 

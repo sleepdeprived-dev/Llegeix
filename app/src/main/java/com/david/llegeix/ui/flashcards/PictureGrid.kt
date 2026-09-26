@@ -2,7 +2,6 @@ package com.david.llegeix.ui.flashcards
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,9 +14,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -52,13 +50,15 @@ import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
 
 /**
- * Choosing a picture: a switch between pictograms and photos, and a grid of
- * what was found, with the reader's own photos as the first square.
+ * Choosing a picture: a switch between pictograms, photos and emoji, a search
+ * with a way to add a photo of the reader's own beside it, and a grid of what
+ * was found.
  *
  * A grid of three across rather than a strip, so nine choices are seen at once
- * without flicking sideways past most of them; and the reader's own photos in
- * the grid rather than as a button under it, because "one of these, or one of
- * mine" is one choice, made in one place.
+ * without flicking sideways past most of them. The reader's own photo is a
+ * round button at the end of the search row, where "look for another, or use
+ * mine" is one line — it used to be the grid's first square, labelled in small
+ * type, where it read as one more result.
  */
 @Composable
 fun PictureGrid(
@@ -78,33 +78,47 @@ fun PictureGrid(
         // What was searched, and room to search for something else: the
         // word's own pictures are not always the ones wanted, and a grid with
         // no way to ask again is a grid you can only accept or leave. It
-        // shows what was actually asked — for photos the English — so a
-        // strange grid explains itself. Submitted with the keyboard's search
-        // key; each kind of picture is searched for the same text.
+        // shows the word as the reader wrote it, never the English photos are
+        // looked up with. Submitted with the keyboard's search key; each kind
+        // of picture is searched for the same text.
         var text by remember(suggestions.searched) { mutableStateOf(suggestions.searched) }
         val focus = LocalFocusManager.current
-        SearchField(
-            query = text,
-            placeholder = stringResource(R.string.flashcards_pictures_search),
-            onQueryChange = { text = it },
-            onSubmit = {
-                focus.clearFocus()
-                onSearch(text)
-            },
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Space.sm),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = Space.md),
-        )
+        ) {
+            SearchField(
+                query = text,
+                placeholder = stringResource(R.string.flashcards_pictures_search),
+                onQueryChange = { text = it },
+                onSubmit = {
+                    focus.clearFocus()
+                    onSearch(text)
+                },
+                modifier = Modifier.weight(1f),
+            )
+            FilledTonalIconButton(
+                onClick = onPickOwn,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_add_photo),
+                    contentDescription = stringResource(R.string.flashcards_picture_from_gallery),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
 
         val showing = suggestions.source == source
         val hits = if (showing && suggestions.status == PictureStatus.FOUND) suggestions.hits else emptyList()
-        val placeholders = if (showing && suggestions.status == PictureStatus.SEARCHING) 5 else 0
 
-        // The reader's own photo first, then what was found, then grey squares
-        // while a search is on its way — so the grid has its shape before the
-        // answer arrives, and nothing jumps when it does.
+        // What was found, then grey squares while a search is on its way —
+        // so the grid has its shape before the answer arrives, and nothing
+        // jumps when it does.
         val tiles = buildList<@Composable (Modifier) -> Unit> {
-            add { m -> OwnPhotoTile(onPickOwn, m) }
             // Every picture the search came back with, from every source: a
             // grid that stopped at a round number was throwing away pictures
             // the services had already found.
@@ -119,11 +133,11 @@ fun PictureGrid(
                     )
                 }
             }
-            repeat(placeholders) {
+            repeat(if (showing && suggestions.status == PictureStatus.SEARCHING) PLACEHOLDERS else 0) {
                 add { m -> Box(m.background(MaterialTheme.colorScheme.surfaceContainerHighest)) }
             }
         }
-        Column(
+        if (tiles.isNotEmpty()) Column(
             verticalArrangement = Arrangement.spacedBy(Space.sm),
             modifier = Modifier.padding(top = Space.md),
         ) {
@@ -206,53 +220,31 @@ private fun StatusNote(suggestions: PictureSuggestions, source: PictureSource, o
     if (suggestions.source != source) return
     val note = when (suggestions.status) {
         PictureStatus.WAITING -> stringResource(R.string.flashcards_pictures_waiting)
-        PictureStatus.NONE_FOUND -> stringResource(
-            when (source) {
-                PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_none_pictograms
-                PictureSource.PHOTOS -> R.string.flashcards_pictures_none_photos
-                PictureSource.EMOJI -> R.string.flashcards_pictures_none_emoji
-            },
-            suggestions.word,
-        )
+        PictureStatus.NONE_FOUND -> stringResource(R.string.flashcards_pictures_none)
         PictureStatus.OFFLINE -> stringResource(R.string.flashcards_pictures_offline)
-        PictureStatus.NO_ENGLISH -> stringResource(R.string.flashcards_pictures_no_english, suggestions.word)
         PictureStatus.BLOCKED -> stringResource(R.string.flashcards_pictures_blocked)
         PictureStatus.SEARCHING, PictureStatus.FOUND -> null
     } ?: return
-    Text(
-        text = note,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = Space.md),
-    )
-    if (suggestions.status == PictureStatus.OFFLINE) {
-        TextButton(onClick = onRetry) { Text(stringResource(R.string.flashcards_pictures_retry)) }
-    }
-}
-
-@Composable
-private fun OwnPhotoTile(onClick: () -> Unit, modifier: Modifier) {
+    // Where the grid would be, centred, so an empty search reads as an
+    // answer rather than as a line of small print under nothing.
     Column(
-        modifier = modifier
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, TileShape)
-            .clickable(onClick = onClick)
-            .padding(Space.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = Space.md)
+            .clip(TileShape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = Space.lg, vertical = Space.xl),
     ) {
-        Icon(
-            Icons.Default.Add,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(28.dp),
-        )
         Text(
-            text = stringResource(R.string.flashcards_picture_from_gallery),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
+            text = note,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = Space.xs),
         )
+        if (suggestions.status == PictureStatus.OFFLINE) {
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.flashcards_pictures_retry)) }
+        }
     }
 }
 
@@ -317,5 +309,8 @@ private fun SuggestionTile(
 }
 
 private const val COLUMNS = 3
+
+/** Grey squares while a search is on its way: two rows' worth. */
+private const val PLACEHOLDERS = 6
 
 private val TileShape = RoundedCornerShape(14.dp)

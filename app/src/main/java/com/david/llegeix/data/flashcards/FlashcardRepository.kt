@@ -215,27 +215,6 @@ class FlashcardRepository(
         if (old != null && old != path) images.delete(listOf(old))
     }
 
-    /**
-     * Fill in English for a deck's cards that have none, with [translate].
-     *
-     * Returns how many were filled. A card the translator cannot do — or hands
-     * back unchanged, which is it not knowing the word — is left without, to
-     * be written by hand, rather than given a guess dressed as an answer.
-     */
-    suspend fun fillEnglish(deckId: Long, translate: suspend (String) -> String?): Int {
-        var filled = 0
-        for (card in dao.cardsWithoutEnglish(deckId)) {
-            val english = translate(card.catalan)?.trim()
-                ?.takeIf { it.isNotEmpty() && !it.equals(card.catalan.trim(), ignoreCase = true) }
-                ?: continue
-            dao.setEnglish(card.id, matchLeadingCase(card.catalan, english))
-            filled++
-        }
-        return filled
-    }
-
-    suspend fun cardsWithoutEnglish(deckId: Long): Int = dao.cardsWithoutEnglish(deckId).size
-
     // ---- Cards -------------------------------------------------------------
 
     /** A deck's cards in Catalan alphabetical order. */

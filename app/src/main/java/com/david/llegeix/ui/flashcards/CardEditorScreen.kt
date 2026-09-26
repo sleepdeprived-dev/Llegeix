@@ -1,6 +1,17 @@
 package com.david.llegeix.ui.flashcards
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import com.david.llegeix.data.flashcards.Suggested
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.filled.Refresh
@@ -57,10 +68,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -96,11 +105,11 @@ import com.david.llegeix.ui.common.resolved
 /**
  * One card, being written.
  *
- * The fields are in the order the card is thought about: the Catalan word, how
- * it sounds, what it means, and a picture if one helps. The app fills in the
- * two it can — the pronunciation from the spelling, a meaning from the
- * translator on the phone — and says under each field that it did, so a guess
- * is never mistaken for something the reader wrote.
+ * The fields are in the order the card is read: the Catalan word, what it
+ * means in Romanian, how it sounds, and a picture if one helps. The app fills
+ * in the two it can — the pronunciation from the spelling, a meaning from the
+ * translator on the phone — and says under the meaning when it did, so a
+ * guess is never mistaken for something the reader wrote.
  *
  * The buttons sit at the foot of the screen and ride up with the keyboard,
  * because the moment somebody finishes typing is the moment they want them.
@@ -258,98 +267,58 @@ fun CardEditorScreen(
                 .padding(horizontal = Space.screen, vertical = Space.md),
             verticalArrangement = Arrangement.spacedBy(Space.md),
         ) {
-            // The word, and how it sounds.
+            // The words, in the order a card is read: the Catalan, what it
+            // means in Romanian, and how it sounds. One quiet panel, each
+            // field a label over its text and a line that takes the accent
+            // while it is being typed in — no boxes drawn round every field.
             FormSection {
-                OutlinedTextField(
+                CardField(
+                    label = stringResource(R.string.flashcards_field_catalan),
                     value = state.catalan,
                     onValueChange = viewModel::onCatalanChange,
-                    label = { Text(stringResource(R.string.flashcards_field_catalan)) },
-                    textStyle = MaterialTheme.typography.headlineSmall,
-                    singleLine = true,
-                    leadingIcon = { LanguageFlag(R.drawable.ic_flag_ca) },
-                    supportingText = if (state.catalanIsSuggestion && state.catalan.isNotBlank()) {
-                        { Text(stringResource(R.string.flashcards_catalan_suggested)) }
+                    textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                    mark = { LanguageFlag(R.drawable.ic_flag_ca) },
+                    note = if (state.catalanIsSuggestion && state.catalan.isNotBlank()) {
+                        stringResource(R.string.flashcards_catalan_suggested)
                     } else {
                         null
                     },
                     // Hearing it is the check the transcription cannot give.
                     // The button only speaks on a press, like everywhere else.
-                    trailingIcon = if (state.catalan.isNotBlank()) {
+                    trailing = if (state.catalan.isNotBlank()) {
                         { PronounceButton(text = state.catalan) }
                     } else {
                         null
                     },
-                    keyboardOptions = WordKeyboard,
-                    shape = FieldShape,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(catalanFocus),
+                    focusRequester = catalanFocus,
                 )
-                OutlinedTextField(
-                    value = state.ipa.text,
-                    onValueChange = viewModel::onIpaChange,
-                    textStyle = LocalTextStyle.current.copy(fontFamily = com.david.llegeix.ui.theme.IpaFont),
-                    label = { Text(stringResource(R.string.flashcards_field_ipa)) },
-                    singleLine = true,
-                    prefix = { Text("[") },
-                    suffix = { Text("]") },
-                    // No "approx." here any more.
-                    //
-                    // It said that the spelling does not settle whether a
-                    // stressed e or o is open or closed, which is true, and on
-                    // a card being written it was a paragraph of phonology in
-                    // answer to a question nobody had asked. The line that
-                    // remains already says the transcription was worked out by
-                    // the app and can be changed, which is the whole of what
-                    // somebody writing a card needs to know about it. The
-                    // dictionary still marks it, where a reader has gone
-                    // looking for the pronunciation itself.
-                    supportingText = when {
-                        state.ipa.text.isBlank() -> null
-                        state.ipa.isSuggestion -> {
-                            { Text(stringResource(R.string.flashcards_ipa_generated)) }
-                        }
-
-                        else -> null
-                    },
-                    keyboardOptions = WordKeyboard,
-                    shape = FieldShape,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = Space.sm),
-                )
-            }
-
-            // What it means: Romanian, which every card has, and English, which
-            // it may. One section, because they are one fact in two languages.
-            FormSection(title = stringResource(R.string.flashcards_section_meaning)) {
-                OutlinedTextField(
+                CardField(
+                    label = stringResource(R.string.flashcards_field_romanian),
                     value = state.romanian.text,
                     onValueChange = viewModel::onRomanianChange,
-                    label = { Text(stringResource(R.string.flashcards_field_romanian)) },
                     textStyle = MaterialTheme.typography.titleLarge,
-                    singleLine = true,
-                    leadingIcon = { LanguageFlag(R.drawable.ic_flag_ro) },
-                    supportingText = meaningNote(state.romanian, state.romanianSuggestion, state.romanianSource)?.let { { Text(it) } },
-                    keyboardOptions = WordKeyboard,
-                    shape = FieldShape,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { if (!it.isFocused) viewModel.onMeaningEditingDone() },
+                    mark = { LanguageFlag(R.drawable.ic_flag_ro) },
+                    note = meaningNote(state.romanian, state.romanianSuggestion, state.romanianSource),
+                    onFocusLost = viewModel::onMeaningEditingDone,
                 )
-                OutlinedTextField(
-                    value = state.english.text,
-                    onValueChange = viewModel::onEnglishChange,
-                    label = { Text(stringResource(R.string.flashcards_field_english)) },
-                    singleLine = true,
-                    leadingIcon = { LanguageFlag(R.drawable.ic_flag_uk) },
-                    supportingText = meaningNote(state.english, state.englishSuggestion, state.englishSource)?.let { { Text(it) } },
+                // Filled in from the spelling without a word said about it:
+                // the field is there to be corrected by whoever knows better,
+                // and the brackets and the typeface already say what it is.
+                CardField(
+                    label = stringResource(R.string.flashcards_field_ipa),
+                    value = state.ipa.text,
+                    onValueChange = viewModel::onIpaChange,
+                    textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = com.david.llegeix.ui.theme.IpaFont),
+                    mark = {
+                        Text(
+                            text = "ə",
+                            style = MaterialTheme.typography.titleSmall.copy(fontFamily = com.david.llegeix.ui.theme.IpaFont),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    visualTransformation = BracketTransformation,
                     keyboardOptions = WordKeyboard.copy(imeAction = ImeAction.Done),
-                    shape = FieldShape,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = Space.sm)
-                        .onFocusChanged { if (!it.isFocused) viewModel.onMeaningEditingDone() },
+                    isLast = true,
                 )
             }
 
@@ -431,7 +400,7 @@ private fun meaningNote(field: Suggested, status: MeaningSuggestion, source: Mea
 
 /**
  * A group of fields on its own quiet surface, with a small heading when the
- * group needs one, so the form reads as three parts rather than six boxes.
+ * group needs one, so the form reads as two parts rather than a stack of boxes.
  */
 @Composable
 private fun FormSection(title: String? = null, content: @Composable ColumnScope.() -> Unit) {
@@ -451,6 +420,91 @@ private fun FormSection(title: String? = null, content: @Composable ColumnScope.
             )
         }
         content()
+    }
+}
+
+/**
+ * One of the card's words: a small mark and label over the text, and a hairline
+ * under it that turns to the accent, and thickens, while the field has focus.
+ */
+@Composable
+private fun CardField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    textStyle: TextStyle,
+    mark: @Composable () -> Unit,
+    note: String? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    focusRequester: FocusRequester? = null,
+    onFocusLost: (() -> Unit)? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = WordKeyboard,
+    isLast: Boolean = false,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    Column(modifier = Modifier.padding(bottom = if (isLast) 0.dp else Space.lg)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(width = 24.dp, height = 18.dp)) { mark() }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (focused) scheme.primary else scheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = Space.sm),
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.heightIn(min = 48.dp),
+        ) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = textStyle.copy(color = scheme.onSurface),
+                cursorBrush = SolidColor(scheme.primary),
+                keyboardOptions = keyboardOptions,
+                visualTransformation = visualTransformation,
+                interactionSource = interaction,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = Space.sm)
+                    .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
+                    .onFocusChanged { if (!it.isFocused) onFocusLost?.invoke() },
+            )
+            trailing?.invoke()
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (focused) 2.dp else 1.dp)
+                .background(if (focused) scheme.primary else scheme.outlineVariant),
+        )
+        note?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Space.xs),
+            )
+        }
+    }
+}
+
+/** The pronunciation between square brackets, drawn but not typed. */
+private val BracketTransformation = VisualTransformation { text ->
+    if (text.isEmpty()) {
+        TransformedText(text, OffsetMapping.Identity)
+    } else {
+        TransformedText(
+            AnnotatedString("[") + text + AnnotatedString("]"),
+            object : OffsetMapping {
+                override fun originalToTransformed(offset: Int): Int = offset + 1
+                override fun transformedToOriginal(offset: Int): Int = (offset - 1).coerceIn(0, text.length)
+            },
+        )
     }
 }
 

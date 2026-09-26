@@ -10,7 +10,7 @@ class DeckListOrderTest {
 
     private fun deck(id: Long, name: String, collection: Long? = null, pinned: Boolean = false) = DeckWithCount(
         id = id, name = name, createdAt = id, isPinned = pinned, collectionId = collection, cardCount = 1,
-        imageCount = 0, englishCount = 0, coverImage = null, chosenCover = null, coverCredit = null,
+        imageCount = 0, coverImage = null, chosenCover = null, coverCredit = null,
         boxTotal = 0, reverseBoxTotal = 0,
     )
 

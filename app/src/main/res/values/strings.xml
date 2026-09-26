@@ -50,7 +50,6 @@
     <string name="sources_show_folders">Mostra les carpetes de %1$s</string>
     <string name="sources_hide_folders">Amaga les carpetes de %1$s</string>
     <string name="sources_include">Mostra %1$s a la biblioteca</string>
-    <string name="sources_found_by_scan">Carpetes que ha trobat l\'escaneig</string>
     <string name="sources_add_folder_body">Vigila una carpeta i tot el que hi ha dins</string>
     <string name="sources_add_files_body">Tria PDF concrets, també els del núvol</string>
     <string name="library_device_scan_off">Cal accés a tots els fitxers</string>
@@ -92,7 +91,6 @@
     <string name="document_add_bookmark">Afegeix un marcador a aquest PDF</string>
     <string name="document_remove_read_later">Treu de \"Per llegir més tard\"</string>
     <string name="document_move_to_folder">Mou a una col·lecció…</string>
-    <string name="source_stop_watching">Deixa de vigilar %1$s</string>
 
     <!-- Etiquetes -->
     <string name="tags_title">Etiquetes</string>
@@ -612,6 +610,7 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
         <item quantity="many">També se suprimeixen les %1$d targetes que conté.</item>
         <item quantity="other">També se suprimeixen les %1$d targetes que conté.</item>
     </plurals>
+    <string name="flashcards_collection_no_cards">Cap targeta</string>
     <string name="flashcards_deck_no_cards">Encara no té targetes</string>
     <plurals name="flashcards_card_count">
         <item quantity="one">%1$d targeta</item>
@@ -632,7 +631,6 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_field_catalan">Català</string>
     <string name="flashcards_field_ipa">Pronúncia (AFI)</string>
     <string name="flashcards_field_romanian">Romanès</string>
-    <string name="flashcards_ipa_generated">Deduïda de l\'ortografia. Canvia-la si en saps més.</string>
     <string name="flashcards_meaning_suggested">Suggeriment del traductor del telèfon. Canvia\'l si no és correcte.</string>
     <string name="flashcards_meaning_downloading">Baixant el model de romanès, una sola vegada, per Wi-Fi…</string>
     <string name="flashcards_meaning_needs_model">Encara no hi ha suggeriment: el model de romanès es baixa una sola vegada, per Wi-Fi.</string>
@@ -688,24 +686,20 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_pictures_pictograms">Pictogrames</string>
     <string name="flashcards_pictures_photos">Fotos</string>
     <string name="flashcards_pictures_waiting">Escriu la paraula i n\'apareixeran imatges aquí.</string>
-    <string name="flashcards_pictures_none_pictograms">No hi ha pictogrames per a «%1$s». Prova amb Fotos.</string>
-    <string name="flashcards_pictures_none_photos">No hi ha fotos per a «%1$s». Prova amb Pictogrames.</string>
     <string name="flashcards_pictures_offline">Sense connexió, no es poden suggerir imatges.</string>
+    <string name="flashcards_pictures_none">Cap resultat trobat</string>
     <string name="flashcards_pictures_search">Cerca altres imatges</string>
     <string name="flashcards_pictures_emoji">Emojis</string>
-    <string name="flashcards_pictures_none_emoji">No hi ha emojis per a «%1$s». Prova amb Pictogrames.</string>
     <string name="flashcards_pictures_credit_emoji">Emojis del joc Noto de Google (Apache 2.0) i d\'OpenMoji (CC BY-SA 4.0).</string>
     <string name="flashcards_pictures_retry">Torna-ho a provar</string>
     <string name="flashcards_pictures_credit_pictograms">Pictogrames d\'ARASAAC (Sergio Palao, CC BY-NC-SA) i Global Symbols, amb el crèdit a cada targeta.</string>
     <string name="flashcards_pictures_credit_photos">Fotos de Wikimedia Commons, la Viquipèdia, iNaturalist i Openverse, cadascuna amb la seva llicència lliure.</string>
     <string name="flashcards_picture_use">Fes servir aquesta imatge</string>
     <string name="flashcards_picture_other">Tria\'n una altra</string>
-    <string name="flashcards_picture_from_gallery">De les teves fotos</string>
+    <string name="flashcards_picture_from_gallery">Afegeix foto</string>
     <string name="flashcards_picture_fetch_failed">No s\'ha pogut baixar aquesta imatge. Prova\'n una altra.</string>
     <string name="flashcards_study_missed">Per tornar-hi</string>
     <string name="flashcards_study_perfect">Totes encertades.</string>
-    <string name="flashcards_section_meaning">Significat</string>
-    <string name="flashcards_field_english">Anglès (opcional, per cercar imatges)</string>
     <string name="flashcards_direction_from_catalan">Català → %1$s</string>
     <string name="flashcards_direction_to_catalan">%1$s → català</string>
     <string name="flashcards_repeat_these">Repeteix-les</string>
@@ -714,13 +708,7 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_deck_picture">Imatge…</string>
     <string name="flashcards_deck_picture_title">Una imatge per a «%1$s»</string>
     <string name="flashcards_deck_picture_remove">Treu la imatge triada</string>
-    <string name="flashcards_pictures_no_english">Les fotos es cerquen en anglès, i no s\'ha trobat cap paraula anglesa per a «%1$s». Afegeix el significat en anglès o prova amb Pictogrames.</string>
     <string name="flashcards_pictures_blocked">Per seguretat, aquesta paraula no es cerca a Fotos. Prova amb Pictogrames.</string>
-    <plurals name="flashcards_english_filled">
-        <item quantity="one">S\'ha omplert l\'anglès de %1$d targeta. Revisa-ho a la targeta.</item>
-        <item quantity="many">S\'ha omplert l\'anglès de %1$d targetes. Revisa-ho a les targetes.</item>
-        <item quantity="other">S\'ha omplert l\'anglès de %1$d targetes. Revisa-ho a les targetes.</item>
-    </plurals>
     <string name="flashcards_meaning_from_dictionary">Del diccionari d\'ARASAAC, escrit per persones per a aquesta paraula. Canvia\'l si vols dir una altra cosa.</string>
     <string name="flashcards_catalan_suggested">Deduït del significat. Canvia-ho si vols dir una altra paraula.</string>
     <string name="flashcards_kind_deck">Baralla</string>
@@ -807,6 +795,13 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
     <string name="flashcards_practise_name">Repassa %1$s</string>
     <string name="flashcards_collection_picture_remove">Fes servir la imatge de la primera baralla</string>
     <string name="reader_tint_warm_dark">Càlid fosc</string>
+    <string name="sources_section_granted">Carpetes que has afegit</string>
+    <string name="sources_section_device">Tot el telèfon</string>
+    <plurals name="sources_shown_total">
+        <item quantity="one">%1$d PDF a la biblioteca</item>
+        <item quantity="many">%1$d PDF a la biblioteca</item>
+        <item quantity="other">%1$d PDF a la biblioteca</item>
+    </plurals>
     <string name="sources_add_elsewhere">Per afegir una altra carpeta o fitxer, fes servir el botó + de la biblioteca.</string>
     <string name="learned_title">Paraules que he après avui</string>
     <string name="learned_add">Afegeix una paraula apresa</string>

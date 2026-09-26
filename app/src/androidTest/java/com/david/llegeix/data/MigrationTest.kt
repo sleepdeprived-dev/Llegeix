@@ -26,6 +26,7 @@ import com.david.llegeix.data.db.MIGRATION_18_19
 import com.david.llegeix.data.db.MIGRATION_19_20
 import com.david.llegeix.data.db.MIGRATION_20_21
 import com.david.llegeix.data.db.MIGRATION_21_22
+import com.david.llegeix.data.db.MIGRATION_22_23
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1111,16 +1112,39 @@ class MigrationTest {
         }
     }
 
+    /** Catalan and Romanian only: the English goes, and the rest of the card stays. */
+    @Test
+    fun migrate22To23_emptiesEnglishAndKeepsTheCard() {
+        helper.createDatabase(TEST_DB, 22).use { db ->
+            db.execSQL("INSERT INTO flashcard_decks (id, name, createdAt, isPinned) VALUES (1, 'Menjar', 1, 0)")
+            db.execSQL(
+                "INSERT INTO flashcards (id, deckId, catalan, romanian, english, ipaApproximate, createdAt, box, " +
+                    "dueAt, reviewCount, reverseBox, reverseDueAt, reverseReviewCount) " +
+                    "VALUES (1, 1, 'poma', 'măr', 'apple', 0, 1, 2, 0, 3, 0, 0, 0)",
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 23, true, MIGRATION_22_23)
+
+        db.query("SELECT catalan, romanian, box, english FROM flashcards").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("poma", cursor.getString(0))
+            assertEquals("măr", cursor.getString(1))
+            assertEquals("its schedule kept", 2, cursor.getInt(2))
+            assertTrue("the English is gone", cursor.isNull(3))
+        }
+    }
+
     /** Every step in order, which is what an old install actually runs. */
     @Test
-    fun migrate1To22_runsEveryStepInSequence() {
+    fun migrate1To23_runsEveryStepInSequence() {
         helper.createDatabase(TEST_DB, 1).use { db ->
             db.execSQL("INSERT INTO folders (id, name, createdAt) VALUES (1, 'Vell', 100)")
         }
 
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            22,
+            23,
             true,
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -1143,6 +1167,7 @@ class MigrationTest {
             MIGRATION_19_20,
             MIGRATION_20_21,
             MIGRATION_21_22,
+            MIGRATION_22_23,
         )
 
         db.query("SELECT name FROM folders").use { cursor ->
