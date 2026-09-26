@@ -828,4 +828,5 @@ L\'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés 
         <item quantity="many">%1$d paraules avui</item>
         <item quantity="other">%1$d paraules avui</item>
     </plurals>
+    <string name="collections_yours">Les teves col·leccions</string>
 </resources>

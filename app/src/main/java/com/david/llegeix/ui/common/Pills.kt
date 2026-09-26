@@ -82,8 +82,8 @@ fun RowScope.Pill(
     onClick: () -> Unit,
     label: String,
     modifier: Modifier = Modifier,
-    selectedContainer: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
-    selectedContent: Color = MaterialTheme.colorScheme.onSurface,
+    selectedContainer: Color = MaterialTheme.colorScheme.primary,
+    selectedContent: Color = MaterialTheme.colorScheme.onPrimary,
     unselectedContent: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     contentPadding: PaddingValues = PaddingValues(horizontal = Space.lg, vertical = Space.sm),
     content: @Composable RowScope.() -> Unit,
@@ -105,10 +105,8 @@ fun RowScope.Pill(
     )
     val shape = RoundedCornerShape(corner)
 
-    // The chosen pill is a lifted chip on the track — a soft shadow, the
-    // page's own white — rather than a block of the accent: the modern
-    // segmented control, and quieter than a fill of colour for something
-    // that is merely "which one".
+    // The chosen pill is filled with the reader's accent and lifted a little
+    // off the track: the accent is the "you are here" the eye looks for.
     val lift by animateDpAsState(if (selected) 2.dp else 0.dp, label = "pill lift")
     Row(
         horizontalArrangement = Arrangement.Center,

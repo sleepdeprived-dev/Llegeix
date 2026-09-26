@@ -34,6 +34,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -164,6 +167,14 @@ fun CollectionsPane(
                 }
             }
         } else {
+            item(key = "yours") {
+                Text(
+                    text = stringResource(R.string.collections_yours),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Space.screen).padding(bottom = Space.xs),
+                )
+            }
             items(folders, key = { it.id }) { folder ->
                 FolderRow(
                     folder = folder,
@@ -267,90 +278,94 @@ private fun AutomaticCollections(
     onOpenReadLater: () -> Unit,
     onOpenRecent: () -> Unit,
 ) {
-    Column(
+    // Three tiles side by side, like the smart folders of a modern file app:
+    // each its own colour and mark, its count large, its name under it — so
+    // the three shelves the app keeps are told apart at a glance and read as a
+    // different kind of thing from the collections the reader made below.
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Space.md),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Space.screen)
-            .padding(top = Space.sm, bottom = Space.lg)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            .padding(top = Space.md, bottom = Space.xl),
     ) {
-        AutomaticCollectionRow(
-            icon = { tint ->
-                Icon(Icons.Filled.Star, contentDescription = null, tint = tint)
-            },
+        SmartTile(
+            icon = { Icon(Icons.Filled.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp)) },
+            colour = StarredColour,
             title = stringResource(R.string.bookmarked_collection_title),
             count = bookmarkedCount,
             onClick = onOpenBookmarked,
+            modifier = Modifier.weight(1f),
         )
-        AutomaticCollectionRow(
-            icon = { tint ->
-                Icon(painterResource(R.drawable.ic_bookmark), contentDescription = null, tint = tint)
+        SmartTile(
+            icon = {
+                Icon(painterResource(R.drawable.ic_bookmark), contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             },
+            colour = MaterialTheme.colorScheme.primary,
             title = stringResource(R.string.read_later_collection_title),
             count = readLaterCount,
             onClick = onOpenReadLater,
+            modifier = Modifier.weight(1f),
         )
-        AutomaticCollectionRow(
-            icon = { tint ->
-                Icon(painterResource(R.drawable.ic_recent), contentDescription = null, tint = tint)
+        SmartTile(
+            icon = {
+                Icon(painterResource(R.drawable.ic_recent), contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             },
+            colour = RecentColour,
             title = stringResource(R.string.recent_title),
             count = recentCount,
-            // The history is a list of visits rather than a shelf of PDFs, so
-            // it says what it holds instead of counting PDFs: "3 PDFs" on a
-            // reading history would be counting the wrong noun.
-            summary = stringResource(R.string.recent_collection_summary),
             onClick = onOpenRecent,
+            modifier = Modifier.weight(1f),
         )
     }
 }
 
+/** One of the app's own shelves: a coloured mark, its count large, its name. */
 @Composable
-private fun AutomaticCollectionRow(
-    icon: @Composable (Color) -> Unit,
+private fun SmartTile(
+    icon: @Composable () -> Unit,
+    colour: Color,
     title: String,
     count: Int,
     onClick: () -> Unit,
-    summary: String? = null,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = onClick)
-            .padding(horizontal = Space.lg, vertical = Space.lg),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(Space.md),
     ) {
-        icon(MaterialTheme.colorScheme.primary)
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = Space.lg),
-        ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = when {
-                    summary != null && count > 0 -> summary
-                    count == 0 -> stringResource(R.string.folders_bookmarked_auto)
-                    else -> pluralStringResource(R.plurals.folders_pdf_count, count, count)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-        // The count only where the second line is not already carrying it: the
-        // history says what it holds rather than counting PDFs, so it is the
-        // one row with room for a number at the end.
-        if (summary != null && count > 0) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(colour),
+            ) { icon() }
+            Spacer(Modifier.weight(1f))
             Text(
                 text = "$count",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            minLines = 2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = Space.md),
+        )
     }
 }
+
+private val StarredColour = Color(0xFFE9A100)
+private val RecentColour = Color(0xFF1A9E8A)
 
 @Composable
 private fun FolderRow(
@@ -365,14 +380,18 @@ private fun FolderRow(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
 
+    // A collection with no colour of its own wears the accent, not grey.
     val tint = folder.colorArgb?.let { HighlightColors.compose(it) }
-        ?: MaterialTheme.colorScheme.onSurfaceVariant
+        ?: MaterialTheme.colorScheme.primary
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = Space.screen, vertical = 6.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .clickable(onClick = onClick)
-            .padding(start = Space.screen, top = Space.row, bottom = Space.row),
+            .padding(start = Space.lg, top = Space.md, bottom = Space.md, end = Space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // The colour as a disc behind the icon rather than on the glyph itself.
@@ -381,16 +400,16 @@ private fun FolderRow(
         // was doing almost none of the telling-apart it was picked for.
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(tint.copy(alpha = 0.16f)),
+                .size(48.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(tint.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_collection),
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
 
@@ -400,7 +419,23 @@ private fun FolderRow(
                 .padding(start = Space.lg),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(folder.name, style = MaterialTheme.typography.titleMedium)
+                if (folder.isPinned) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_pin),
+                        contentDescription = stringResource(R.string.folders_pinned),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(end = Space.xs)
+                            .size(16.dp),
+                    )
+                }
+                Text(
+                    folder.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
                 if (folder.isBookmarked) {
                     Icon(
                         imageVector = Icons.Filled.Star,
@@ -414,7 +449,6 @@ private fun FolderRow(
             }
             Text(
                 text = listOfNotNull(
-                    stringResource(R.string.folders_pinned).takeIf { folder.isPinned },
                     if (folder.documentCount == 0) {
                         stringResource(R.string.folders_empty_count)
                     } else {
@@ -425,7 +459,7 @@ private fun FolderRow(
                         )
                     },
                 ).joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp),
             )
