@@ -22,6 +22,11 @@ compose.desktop {
             // Skia's native library; Java otherwise warns on every launch.
             "--enable-native-access=ALL-UNNAMED",
         )
+        // While developing, the translator from tools/macos/build-bergamot.sh.
+        // A packaged app carries its own copy.
+        jvmArgs += "-Dllegeix.bergamot=" + rootProject.file(
+            "tools/macos/build/bergamot-translator/build/app/bergamot",
+        ).path
         nativeDistributions {
             targetFormats(TargetFormat.Dmg)
             packageName = "Llegeix"

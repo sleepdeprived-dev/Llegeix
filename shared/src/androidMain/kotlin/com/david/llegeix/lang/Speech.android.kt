@@ -34,10 +34,10 @@ import java.util.concurrent.atomic.AtomicLong
  *    that the reader has plainly moved on;
  *  - leaving the screen stops it.
  */
-class Speech(context: Context) {
+actual class Speech(context: Context) {
 
     /** Whether there is a Catalan voice on this device, and what to do if not. */
-    enum class Status {
+    actual enum class Status {
         /** The engine has not answered yet. Buttons show; presses are held. */
         STARTING,
 
@@ -58,11 +58,11 @@ class Speech(context: Context) {
     private val appContext = context.applicationContext
 
     private val _status = MutableStateFlow(Status.STARTING)
-    val status: StateFlow<Status> = _status.asStateFlow()
+    actual val status: StateFlow<Status> = _status.asStateFlow()
 
     /** The text currently being said, or null. Drives the button's own state. */
     private val _speaking = MutableStateFlow<String?>(null)
-    val speaking: StateFlow<String?> = _speaking.asStateFlow()
+    actual val speaking: StateFlow<String?> = _speaking.asStateFlow()
 
     private val ids = AtomicLong(0)
 
@@ -145,7 +145,7 @@ class Speech(context: Context) {
      * from the reader's side: whatever they do with the button, there is never
      * more than one voice, and it is always the one they last asked for.
      */
-    fun speak(text: String) {
+    actual fun speak(text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return
         if (_speaking.value == trimmed) {
@@ -178,7 +178,7 @@ class Speech(context: Context) {
     }
 
     /** Silence, now: leaving the screen, or pressing the word being said. */
-    fun stop() {
+    actual fun stop() {
         pending = null
         currentId = null
         _speaking.value = null
@@ -192,10 +192,10 @@ class Speech(context: Context) {
      * knows Catalan and merely lacks the files — which is a thing the reader can
      * fix in about four taps and could not possibly guess at otherwise.
      */
-    fun requestVoice(from: Context) {
+    actual fun requestVoice() {
         val intent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { from.startActivity(intent) }
+        runCatching { appContext.startActivity(intent) }
     }
 
     /**
@@ -214,7 +214,7 @@ class Speech(context: Context) {
     }
 
     /** For the process going away; the engine otherwise lives as long as the app. */
-    fun shutdown() {
+    actual fun shutdown() {
         stop()
         runCatching { engine.shutdown() }
     }

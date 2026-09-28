@@ -8,20 +8,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.david.llegeix.LlegeixApp
 import com.david.llegeix.lang.Speech
+import com.david.llegeix.platform.Services
 import com.david.llegeix.resources.*
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /** The app's one speech engine, shared so it is started at most once. */
 @Composable
-fun rememberSpeech(): Speech {
-    val context = LocalContext.current
-    return remember(context) { (context.applicationContext as LlegeixApp).speech }
-}
+fun rememberSpeech(): Speech = remember { Services.app.speech }
 
 /**
  * Say this word out loud.
@@ -41,7 +37,6 @@ fun PronounceButton(text: String, modifier: Modifier = Modifier) {
     val speech = rememberSpeech()
     val status by speech.status.collectAsStateWithLifecycle()
     val speaking by speech.speaking.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val word = text.trim()
 
     // A word still being said after the sheet that asked for it has closed is
@@ -63,7 +58,7 @@ fun PronounceButton(text: String, modifier: Modifier = Modifier) {
     IconButton(
         onClick = {
             if (status == Speech.Status.MISSING_VOICE) {
-                speech.requestVoice(context)
+                speech.requestVoice()
             } else {
                 speech.speak(word)
             }

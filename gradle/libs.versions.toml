@@ -10,6 +10,9 @@ materialIcons = "1.7.8"
 composeMultiplatform = "1.10.3"
 composeMultiplatformMaterial3 = "1.9.0"
 composeMultiplatformIcons = "1.7.3"
+# The lifecycle release paired with Compose Multiplatform 1.10; on Android it
+# points at androidx lifecycle 2.9, below the 2.11 the app already uses.
+composeMultiplatformLifecycle = "2.9.6"
 
 coreKtx = "1.19.0"
 activityCompose = "1.13.0"
@@ -68,6 +71,8 @@ compose-mp-animation = { group = "org.jetbrains.compose.animation", name = "anim
 compose-mp-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "composeMultiplatform" }
 compose-mp-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "composeMultiplatformMaterial3" }
 compose-mp-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "composeMultiplatform" }
+compose-mp-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "composeMultiplatformLifecycle" }
+compose-mp-lifecycle-viewmodel-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "composeMultiplatformLifecycle" }
 compose-mp-material-icons-core = { group = "org.jetbrains.compose.material", name = "material-icons-core", version.ref = "composeMultiplatformIcons" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }

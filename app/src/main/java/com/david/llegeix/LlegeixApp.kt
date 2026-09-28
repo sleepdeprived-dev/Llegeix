@@ -8,6 +8,8 @@ import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.lang.ApertureLexicon
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.Speech
+import com.david.llegeix.platform.AppServices
+import com.david.llegeix.platform.Services
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
 import com.david.llegeix.data.DataEraser
@@ -31,13 +33,14 @@ import java.io.File
  * handful of objects once the translation pipeline lands, this is the seam to
  * swap for Hilt without touching call sites.
  */
-class LlegeixApp : Application() {
+class LlegeixApp : Application(), AppServices {
 
     override fun onCreate() {
         super.onCreate()
+        Services.app = this
         // The transcriber is a plain object so it can be unit tested without a
         // context; this is where the device hands it the word list.
-        CatalanIpa.useLexicon(ApertureLexicon.get(this))
+        CatalanIpa.useLexicon(ApertureLexicon.get())
         deleteStaleExamFiles()
     }
 
@@ -113,7 +116,7 @@ class LlegeixApp : Application() {
     }
 
     /** Theme, accent, language and reading preferences. */
-    val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
+    override val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
 
     /** What the reader has searched for lately, in the library and in a page. */
     val searchHistoryRepository: SearchHistoryRepository by lazy {
@@ -129,7 +132,7 @@ class LlegeixApp : Application() {
      * followed by another one and paying the start-up cost per lookup would put
      * a pause in front of the first press every time.
      */
-    val speech: Speech by lazy { Speech(this) }
+    override val speech: Speech by lazy { Speech(this) }
 
     /** The app's only way of learning that a newer version of itself exists. */
     val updateRepository: UpdateRepository by lazy { UpdateRepository(this) }

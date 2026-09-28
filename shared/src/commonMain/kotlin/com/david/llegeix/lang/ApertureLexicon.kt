@@ -1,13 +1,13 @@
 package com.david.llegeix.lang
 
-import android.content.Context
-import java.io.IOException
+import com.david.llegeix.resources.Res
+import kotlinx.coroutines.runBlocking
 
 /**
  * Which way a word's stressed e or o opens, for the words spelling cannot say.
  *
- * Backed by `assets/catalan-aperture.tsv`. The lookup does a little morphology
- * before giving up: Catalan inflection is regular enough that listing *terra*
+ * Backed by `files/catalan-aperture.tsv` in the shared resources. The lookup
+ * does a little morphology before giving up: Catalan inflection is regular enough that listing *terra*
  * should also answer *terres*, and listing *portar* should answer *portava*, so
  * the loader strips common endings rather than making the file carry every
  * form. That keeps the list small enough to stay trustworthy — which matters,
@@ -40,7 +40,7 @@ class ApertureLexicon private constructor(
     }
 
     companion object {
-        private const val ASSET = "catalan-aperture.tsv"
+        private const val ASSET = "files/catalan-aperture.tsv"
 
         /**
          * Endings stripped when looking for a listed base form.
@@ -59,36 +59,43 @@ class ApertureLexicon private constructor(
         @Volatile
         private var instance: ApertureLexicon? = null
 
-        /** Loaded once and shared; the file is small and read on first lookup. */
-        fun get(context: Context): ApertureLexicon =
+        /**
+         * Loaded once and shared; the file is small and read at start-up. It
+         * travels in the shared resources, so the phone and the Mac read the
+         * same list.
+         */
+        fun get(): ApertureLexicon =
             instance ?: synchronized(this) {
-                instance ?: load(context).also { instance = it }
+                instance ?: load().also { instance = it }
             }
 
-        private fun load(context: Context): ApertureLexicon {
-            val entries = HashMap<String, String>(256)
-            try {
-                context.applicationContext.assets.open(ASSET).bufferedReader().useLines { lines ->
-                    for (raw in lines) {
-                        val line = raw.trim()
-                        if (line.isEmpty() || line.startsWith("#")) continue
-                        val parts = line.split('\t')
-                        if (parts.size != 2) continue
-                        val quality = parts[1].trim()
-                        if (quality in VALID) entries[parts[0].trim().lowercase()] = quality
-                    }
-                }
-            } catch (error: IOException) {
-                // A missing or unreadable asset costs accuracy, not function:
+        private fun load(): ApertureLexicon {
+            val text = try {
+                runBlocking { Res.readBytes(ASSET) }.decodeToString()
+            } catch (error: Exception) {
+                // A missing or unreadable file costs accuracy, not function:
                 // every word simply falls back to the marked-approximate guess.
                 return ApertureLexicon(emptyMap())
+            }
+            return parse(text.lineSequence())
+        }
+
+        internal fun parse(lines: Sequence<String>): ApertureLexicon {
+            val entries = HashMap<String, String>(256)
+            for (raw in lines) {
+                val line = raw.trim()
+                if (line.isEmpty() || line.startsWith("#")) continue
+                val parts = line.split('\t')
+                if (parts.size != 2) continue
+                val quality = parts[1].trim()
+                if (quality in VALID) entries[parts[0].trim().lowercase()] = quality
             }
             return ApertureLexicon(entries)
         }
 
         private val VALID = setOf("e", "ɛ", "o", "ɔ")
 
-        /** Test seam, so the rules can be exercised without an Android context. */
+        /** Test seam, so the rules can be exercised without the file. */
         internal fun of(entries: Map<String, String>): ApertureLexicon =
             ApertureLexicon(entries)
     }

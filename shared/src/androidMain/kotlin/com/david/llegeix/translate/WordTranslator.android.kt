@@ -26,9 +26,9 @@ import kotlin.coroutines.resumeWithException
  * separate from [translate] and the UI reports downloading as its own state
  * rather than leaving the user staring at a spinner.
  */
-class WordTranslator(
-    val targetLanguage: String = TranslateLanguage.ENGLISH,
-    sourceLanguage: String = TranslateLanguage.CATALAN,
+actual class WordTranslator actual constructor(
+    actual val targetLanguage: String,
+    sourceLanguage: String,
 ) : AutoCloseable {
 
     private val translator = Translation.getClient(
@@ -45,7 +45,7 @@ class WordTranslator(
     private var modelReady = false
 
     /** True once the models are present, so the UI can skip the download notice. */
-    val isModelReady: Boolean get() = modelReady
+    actual val isModelReady: Boolean get() = modelReady
 
     /**
      * Fetch the language models if they are not already present.
@@ -60,7 +60,7 @@ class WordTranslator(
      *   lookup of every session for a model that had been on the phone for
      *   weeks, which is a sentence that teaches the reader to distrust the app.
      */
-    suspend fun ensureModel(requireWifi: Boolean = true, onDownloading: () -> Unit = {}) {
+    actual suspend fun ensureModel(requireWifi: Boolean, onDownloading: () -> Unit) {
         if (modelReady) return
         downloadLock.withLock {
             if (modelReady) return
@@ -86,7 +86,7 @@ class WordTranslator(
      * Translate a single word. Callers should have awaited [ensureModel]; ML Kit
      * fails rather than downloading implicitly here.
      */
-    suspend fun translate(text: String): String = translator.translate(text).await()
+    actual suspend fun translate(text: String): String = translator.translate(text).await()
 
     /**
      * What [word] means in [line], when that can be established.
@@ -101,7 +101,7 @@ class WordTranslator(
      * its own, including when it merely agrees with it: the sheet has no room
      * for a second line saying the same thing twice.
      */
-    suspend fun translateInContext(
+    actual suspend fun translateInContext(
         word: String,
         line: String,
         lineTranslation: String,
@@ -113,17 +113,8 @@ class WordTranslator(
         return span.takeIf { !it.equals(plainTranslation.trim(), ignoreCase = true) }
     }
 
-    override fun close() {
+    actual override fun close() {
         translator.close()
-    }
-
-    private companion object {
-        /**
-         * Long enough that confirming a model already on the device stays
-         * silent, short enough that a real download is announced before the
-         * reader concludes nothing is happening.
-         */
-        const val DOWNLOAD_NOTICE_DELAY_MS = 600L
     }
 }
 

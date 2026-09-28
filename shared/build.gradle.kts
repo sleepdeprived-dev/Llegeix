@@ -46,9 +46,14 @@ kotlin {
             // The database. `api` because the app reaches the DAOs and
             // entities directly, as it did when they lived there.
             api(libs.androidx.room.runtime)
+            implementation(libs.compose.mp.lifecycle.runtime.compose)
+            api(libs.compose.mp.lifecycle.viewmodel.compose)
             // Android has org.json built in, and a second copy in the APK trips
             // lint's DuplicatePlatformClasses. Only the Mac app bundles it.
             compileOnly(libs.json)
+        }
+        androidMain.dependencies {
+            implementation(libs.mlkit.translate)
         }
         val desktopMain by getting {
             dependencies {
@@ -89,4 +94,13 @@ compose.resources {
     publicResClass = true
     packageOfResClass = "com.david.llegeix.resources"
     generateResClass = always
+}
+
+// The Mac's translator in tests: the development build from tools/macos, and the
+// models already fetched there, so the suite neither downloads nor touches the
+// real Application Support. The tests skip when that build is absent.
+tasks.withType<Test>().configureEach {
+    val tools = rootProject.layout.projectDirectory.dir("tools/macos/build").asFile
+    systemProperty("llegeix.bergamot", tools.resolve("bergamot-translator/build/app/bergamot").path)
+    systemProperty("llegeix.testModels", tools.resolve("models").path)
 }
