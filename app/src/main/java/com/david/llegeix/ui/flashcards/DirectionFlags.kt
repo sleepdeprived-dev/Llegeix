@@ -1,6 +1,5 @@
 package com.david.llegeix.ui.flashcards
 
-import androidx.annotation.DrawableRes
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
@@ -48,15 +47,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -77,7 +76,7 @@ fun DirectionFlags(
         modifier = modifier.clearAndSetSemantics { contentDescription = name },
     ) {
         when (direction) {
-            StudyDirection.CATALAN_TO_MEANING -> Flag(R.drawable.ic_flag_ca, flagWidth)
+            StudyDirection.CATALAN_TO_MEANING -> Flag(Res.drawable.ic_flag_ca, flagWidth)
             StudyDirection.MEANING_TO_CATALAN -> MeaningFlags(flagWidth)
         }
         Icon(
@@ -90,7 +89,7 @@ fun DirectionFlags(
         )
         when (direction) {
             StudyDirection.CATALAN_TO_MEANING -> MeaningFlags(flagWidth)
-            StudyDirection.MEANING_TO_CATALAN -> Flag(R.drawable.ic_flag_ca, flagWidth)
+            StudyDirection.MEANING_TO_CATALAN -> Flag(Res.drawable.ic_flag_ca, flagWidth)
         }
     }
 }
@@ -102,7 +101,7 @@ private fun MeaningFlags(width: Dp) {
 }
 
 @Composable
-fun Flag(@DrawableRes res: Int, width: Dp, modifier: Modifier = Modifier) {
+fun Flag(res: DrawableResource, width: Dp, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(width / 8)
     Image(
         painter = painterResource(res),
@@ -117,9 +116,9 @@ fun Flag(@DrawableRes res: Int, width: Dp, modifier: Modifier = Modifier) {
 }
 
 /** A language's flag. */
-val MeaningLanguage.flagRes: Int
-    @DrawableRes get() = when (this) {
-        MeaningLanguage.ROMANIAN -> R.drawable.ic_flag_ro
+val MeaningLanguage.flagRes: DrawableResource
+    get() = when (this) {
+        MeaningLanguage.ROMANIAN -> Res.drawable.ic_flag_ro
     }
 
 /** "Català → romanès", said in words, for screen readers. */

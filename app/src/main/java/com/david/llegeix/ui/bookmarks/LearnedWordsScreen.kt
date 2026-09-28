@@ -44,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,7 +55,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.LearnedWordEntity
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureSearch
@@ -67,6 +65,7 @@ import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.flashcards.Flag
 import com.david.llegeix.util.runCatchingCancellable
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.Job
@@ -240,7 +239,7 @@ fun LearnedWordsScreen(
             list.isEmpty() -> EmptyState(
                 title = stringResource(Res.string.learned_empty_title),
                 body = stringResource(Res.string.learned_empty_body),
-                icon = painterResource(R.drawable.ic_dictionary),
+                icon = painterResource(Res.drawable.ic_dictionary),
                 modifier = Modifier.padding(padding),
             )
             else -> LazyColumn(
@@ -370,7 +369,7 @@ private fun AddLearnedSheet(viewModel: LearnedWordsViewModel, onDismiss: () -> U
                 value = draft.catalan,
                 onValueChange = viewModel::onCatalanChange,
                 label = { Text(stringResource(Res.string.flashcards_field_catalan)) },
-                leadingIcon = { Flag(R.drawable.ic_flag_ca, 24.dp) },
+                leadingIcon = { Flag(Res.drawable.ic_flag_ca, 24.dp) },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -380,7 +379,7 @@ private fun AddLearnedSheet(viewModel: LearnedWordsViewModel, onDismiss: () -> U
                 value = draft.romanian,
                 onValueChange = viewModel::onRomanianChange,
                 label = { Text(stringResource(Res.string.flashcards_field_romanian)) },
-                leadingIcon = { Flag(R.drawable.ic_flag_ro, 24.dp) },
+                leadingIcon = { Flag(Res.drawable.ic_flag_ro, 24.dp) },
                 singleLine = true,
                 supportingText = if (draft.suggested) {
                     { Text(stringResource(Res.string.learned_suggested)) }

@@ -107,14 +107,12 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.settings.PageTint
 import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.data.settings.TranslationTarget
@@ -136,6 +134,7 @@ import com.david.llegeix.ui.common.VerbDetails
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 import kotlin.math.abs
@@ -774,14 +773,14 @@ private fun ReaderBar(
             if (hasOutline) {
                 IconButton(onClick = onOutline, enabled = canUseTools) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_toc),
+                        painter = painterResource(Res.drawable.ic_toc),
                         contentDescription = stringResource(Res.string.reader_contents),
                     )
                 }
             }
             IconButton(onClick = onDisplay, enabled = canUseTools) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_display),
+                    painter = painterResource(Res.drawable.ic_display),
                     contentDescription = stringResource(Res.string.reader_display),
                 )
             }

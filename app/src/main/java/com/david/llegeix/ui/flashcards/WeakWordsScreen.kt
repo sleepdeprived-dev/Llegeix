@@ -34,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -45,7 +44,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.WeakCard
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureResults
@@ -54,6 +52,7 @@ import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -144,7 +143,7 @@ fun WeakWordsScreen(
             list.isEmpty() -> EmptyState(
                 title = stringResource(Res.string.flashcards_weak_empty_title),
                 body = stringResource(Res.string.flashcards_weak_empty_body),
-                icon = painterResource(R.drawable.ic_weak),
+                icon = painterResource(Res.drawable.ic_weak),
                 modifier = Modifier.padding(padding),
             )
             else -> LazyColumn(
@@ -243,7 +242,7 @@ private fun WeakRow(item: WeakCard, onForget: () -> Unit, modifier: Modifier = M
                     .padding(horizontal = Space.sm, vertical = 2.dp),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_cards),
+                    painter = painterResource(Res.drawable.ic_cards),
                     contentDescription = null,
                     tint = scheme.onSecondaryContainer,
                     modifier = Modifier.size(12.dp),

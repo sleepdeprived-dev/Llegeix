@@ -50,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -59,13 +58,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.TextButton
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.data.source.SourceFolder
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.allFilesAccessIntents
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -277,7 +276,7 @@ private fun SheetHeader(shown: Int, isScanning: Boolean) {
                     .background(scheme.primaryContainer),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_folder),
+                    painter = painterResource(Res.drawable.ic_folder),
                     contentDescription = null,
                     tint = scheme.onPrimaryContainer,
                     modifier = Modifier.size(24.dp),
@@ -368,7 +367,7 @@ private fun SourceCard(
                     .background(if (isOn) scheme.secondaryContainer else scheme.surfaceContainerHighest),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_folder),
+                    painter = painterResource(Res.drawable.ic_folder),
                     contentDescription = null,
                     tint = if (isOn) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp),
@@ -572,7 +571,7 @@ private fun FolderRow(
         }
         val fade = if (folder.visible) 1f else 0.5f
         Icon(
-            painter = painterResource(R.drawable.ic_folder),
+            painter = painterResource(Res.drawable.ic_folder),
             contentDescription = null,
             tint = if (folder.visible) scheme.primary else scheme.onSurfaceVariant,
             modifier = Modifier
@@ -643,7 +642,7 @@ private fun DeviceScanCard(
                 .background(if (isOn) scheme.secondaryContainer else scheme.surfaceContainerHighest),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_device),
+                painter = painterResource(Res.drawable.ic_device),
                 contentDescription = null,
                 tint = if (isOn) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),

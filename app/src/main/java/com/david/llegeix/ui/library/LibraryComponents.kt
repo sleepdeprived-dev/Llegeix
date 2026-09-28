@@ -41,10 +41,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.CoverAspectRatio
@@ -56,6 +54,7 @@ import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.formatSize
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -310,7 +309,7 @@ private fun SwipeMark(starring: Boolean, on: Boolean, label: String) {
             )
         } else {
             Icon(
-                painter = painterResource(R.drawable.ic_bookmark),
+                painter = painterResource(Res.drawable.ic_bookmark),
                 contentDescription = null,
                 tint = tint,
             )
@@ -374,7 +373,7 @@ private fun DocumentMenu(
             },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_bookmark)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_bookmark)) },
             text = {
                 Text(
                     stringResource(
@@ -392,7 +391,7 @@ private fun DocumentMenu(
             },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_folder)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_folder)) },
             text = { Text(stringResource(Res.string.document_move_to_folder)) },
             onClick = {
                 onMoveToFolder()
@@ -400,7 +399,7 @@ private fun DocumentMenu(
             },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_tag)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_tag)) },
             text = { Text(stringResource(Res.string.tags_open)) },
             onClick = {
                 onEditTags()

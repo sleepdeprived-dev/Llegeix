@@ -18,11 +18,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -98,7 +97,7 @@ fun RecentSearches(
                     .heightIn(min = 48.dp)
                     .padding(start = Space.screen, end = Space.sm, top = Space.sm, bottom = Space.sm),
             ) {
-                MenuIcon(painterResource(R.drawable.ic_recent))
+                MenuIcon(painterResource(Res.drawable.ic_recent))
                 Text(
                     text = past,
                     style = MaterialTheme.typography.bodyLarge,

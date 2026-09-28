@@ -1,6 +1,5 @@
 package com.david.llegeix.ui.common
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,9 +15,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * A top bar's title, with the mark the tab is known by beside it.
@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun ScreenTitle(
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     title: String,
     modifier: Modifier = Modifier,
 ) {

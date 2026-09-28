@@ -14,9 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.annotation.DrawableRes
-import androidx.compose.ui.res.painterResource
-import com.david.llegeix.R
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -44,7 +41,9 @@ import com.david.llegeix.ui.reader.ReaderScreen
 import com.david.llegeix.ui.recent.RecentScreen
 import com.david.llegeix.ui.saved.SavedScreen
 import com.david.llegeix.ui.settings.SettingsScreen
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private object Routes {
@@ -136,7 +135,7 @@ private object Routes {
 private data class TopLevelDestination(
     val route: String,
     val labelRes: StringResource,
-    @param:DrawableRes val iconRes: Int,
+    val iconRes: DrawableResource,
 )
 
 /**
@@ -168,10 +167,10 @@ private data class TopLevelDestination(
  * by merging, not add a fifth.
  */
 private val topLevelDestinations = listOf(
-    TopLevelDestination(Routes.LIBRARY, Res.string.nav_library, R.drawable.ic_library),
-    TopLevelDestination(Routes.DICTIONARY, Res.string.nav_dictionary, R.drawable.ic_dictionary),
-    TopLevelDestination(Routes.SAVED, Res.string.nav_saved, R.drawable.ic_bookmark),
-    TopLevelDestination(Routes.FLASHCARDS, Res.string.nav_flashcards, R.drawable.ic_flashcards),
+    TopLevelDestination(Routes.LIBRARY, Res.string.nav_library, Res.drawable.ic_library),
+    TopLevelDestination(Routes.DICTIONARY, Res.string.nav_dictionary, Res.drawable.ic_dictionary),
+    TopLevelDestination(Routes.SAVED, Res.string.nav_saved, Res.drawable.ic_bookmark),
+    TopLevelDestination(Routes.FLASHCARDS, Res.string.nav_flashcards, Res.drawable.ic_flashcards),
 )
 
 @Composable

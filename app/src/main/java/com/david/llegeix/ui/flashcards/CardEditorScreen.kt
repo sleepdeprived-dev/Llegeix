@@ -20,7 +20,6 @@ import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.LlegeixApp
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.ImageBitmap
@@ -32,7 +31,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
-import androidx.annotation.DrawableRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -94,13 +92,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.ImageSizing
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -278,7 +277,7 @@ fun CardEditorScreen(
                     value = state.catalan,
                     onValueChange = viewModel::onCatalanChange,
                     textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                    mark = { LanguageFlag(R.drawable.ic_flag_ca) },
+                    mark = { LanguageFlag(Res.drawable.ic_flag_ca) },
                     note = if (state.catalanIsSuggestion && state.catalan.isNotBlank()) {
                         stringResource(Res.string.flashcards_catalan_suggested)
                     } else {
@@ -298,7 +297,7 @@ fun CardEditorScreen(
                     value = state.romanian.text,
                     onValueChange = viewModel::onRomanianChange,
                     textStyle = MaterialTheme.typography.titleLarge,
-                    mark = { LanguageFlag(R.drawable.ic_flag_ro) },
+                    mark = { LanguageFlag(Res.drawable.ic_flag_ro) },
                     note = meaningNote(state.romanian, state.romanianSuggestion, state.romanianSource),
                     onFocusLost = viewModel::onMeaningEditingDone,
                 )
@@ -510,7 +509,7 @@ private val BracketTransformation = VisualTransformation { text ->
 }
 
 @Composable
-private fun LanguageFlag(@DrawableRes res: Int) {
+private fun LanguageFlag(res: DrawableResource) {
     Image(
         painter = painterResource(res),
         contentDescription = null,

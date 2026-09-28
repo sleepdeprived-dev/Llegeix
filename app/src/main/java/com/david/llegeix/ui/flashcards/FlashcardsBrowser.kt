@@ -43,16 +43,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -126,7 +125,7 @@ private fun ShelfMark(shelf: DeckShelf, modifier: Modifier, glyph: androidx.comp
             modifier = modifier.background(MaterialTheme.colorScheme.primaryContainer),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_collection),
+                painter = painterResource(Res.drawable.ic_collection),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(glyph),
@@ -168,7 +167,7 @@ private fun EntryName(name: String, pinned: Boolean, style: androidx.compose.ui.
     Row(verticalAlignment = Alignment.Top) {
         if (pinned) {
             Icon(
-                painter = painterResource(R.drawable.ic_pin),
+                painter = painterResource(Res.drawable.ic_pin),
                 contentDescription = stringResource(Res.string.folders_pinned),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
@@ -184,7 +183,7 @@ private fun EntryName(name: String, pinned: Boolean, style: androidx.compose.ui.
 private fun MoreButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     IconButton(onClick = onClick, modifier = modifier) {
         Icon(
-            painter = painterResource(R.drawable.ic_more),
+            painter = painterResource(Res.drawable.ic_more),
             contentDescription = stringResource(Res.string.document_actions, name),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -196,25 +195,25 @@ private fun MoreButton(name: String, onClick: () -> Unit, modifier: Modifier = M
 internal fun ShelfMenu(shelf: DeckShelf, expanded: Boolean, onDismiss: () -> Unit, actions: EntryActions) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_new_collection)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_new_collection)) },
             text = { Text(stringResource(Res.string.flashcards_new_collection_inside)) },
             onClick = { onDismiss(); actions.newInside(shelf) },
         )
         HorizontalDivider()
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_pin)) },
             text = {
                 Text(stringResource(if (shelf.collection.isPinned) Res.string.folders_unpin else Res.string.folders_pin))
             },
             onClick = { onDismiss(); actions.pinShelf(shelf) },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_image)) },
             text = { Text(stringResource(Res.string.flashcards_deck_picture)) },
             onClick = { onDismiss(); actions.pictureShelf(shelf) },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_move)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_move)) },
             text = { Text(stringResource(Res.string.flashcards_move_to_collection)) },
             onClick = { onDismiss(); actions.moveShelf(shelf) },
         )
@@ -237,17 +236,17 @@ internal fun ShelfMenu(shelf: DeckShelf, expanded: Boolean, onDismiss: () -> Uni
 private fun DeckMenu(deck: DeckWithCount, expanded: Boolean, onDismiss: () -> Unit, actions: EntryActions) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_pin)) },
             text = { Text(stringResource(if (deck.isPinned) Res.string.folders_unpin else Res.string.folders_pin)) },
             onClick = { onDismiss(); actions.pinDeck(deck) },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_image)) },
             text = { Text(stringResource(Res.string.flashcards_deck_picture)) },
             onClick = { onDismiss(); actions.pictureDeck(deck) },
         )
         DropdownMenuItem(
-            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_move)) },
+            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_move)) },
             text = { Text(stringResource(Res.string.flashcards_move_to_collection)) },
             onClick = { onDismiss(); actions.moveDeck(deck) },
         )
@@ -537,7 +536,7 @@ internal fun EntryTile(entry: ListEntry, canPractise: Boolean, actions: EntryAct
                         .background(scheme.surface.copy(alpha = 0.9f)),
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_collection),
+                        painter = painterResource(Res.drawable.ic_collection),
                         contentDescription = null,
                         tint = scheme.primary,
                         modifier = Modifier.size(14.dp),
@@ -723,9 +722,9 @@ internal fun LayoutMenu(selected: ListLayout, onSelect: (ListLayout) -> Unit) {
             Icon(
                 painter = painterResource(
                     when (selected) {
-                        ListLayout.GRID -> R.drawable.ic_grid
-                        ListLayout.COMPACT -> R.drawable.ic_compact
-                        ListLayout.LIST -> R.drawable.ic_list
+                        ListLayout.GRID -> Res.drawable.ic_grid
+                        ListLayout.COMPACT -> Res.drawable.ic_compact
+                        ListLayout.LIST -> Res.drawable.ic_list
                     },
                 ),
                 contentDescription = stringResource(Res.string.flashcards_layout),
@@ -733,9 +732,9 @@ internal fun LayoutMenu(selected: ListLayout, onSelect: (ListLayout) -> Unit) {
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             listOf(
-                ListLayout.LIST to (Res.string.flashcards_layout_list to R.drawable.ic_list),
-                ListLayout.COMPACT to (Res.string.flashcards_layout_compact to R.drawable.ic_compact),
-                ListLayout.GRID to (Res.string.flashcards_layout_grid to R.drawable.ic_grid),
+                ListLayout.LIST to (Res.string.flashcards_layout_list to Res.drawable.ic_list),
+                ListLayout.COMPACT to (Res.string.flashcards_layout_compact to Res.drawable.ic_compact),
+                ListLayout.GRID to (Res.string.flashcards_layout_grid to Res.drawable.ic_grid),
             ).forEach { (layout, labelAndIcon) ->
                 val isSelected = layout == selected
                 DropdownMenuItem(

@@ -38,17 +38,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -136,7 +135,7 @@ fun PracticeScreen(
                     } else {
                         stringResource(Res.string.practice_all_done_body)
                     },
-                    icon = painterResource(R.drawable.ic_cards),
+                    icon = painterResource(Res.drawable.ic_cards),
                 )
 
                 state.isFinished -> EmptyState(
@@ -146,7 +145,7 @@ fun PracticeScreen(
                         state.correct,
                         state.cards.size,
                     ),
-                    icon = painterResource(R.drawable.ic_check_circle),
+                    icon = painterResource(Res.drawable.ic_check_circle),
                     primaryAction = {
                         Button(onClick = { viewModel.deal() }) {
                             Text(stringResource(Res.string.practice_again))

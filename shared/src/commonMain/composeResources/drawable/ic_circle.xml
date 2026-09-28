@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A filled disc, for "Colour…".
+
+    The same shape as the swatches in the colour picker itself, so the menu row
+    and the thing it opens are recognisably about one subject. A palette glyph
+    would be busier and, tinted to a single colour, would lose the one thing
+    that makes a palette read as a palette.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3A9,9 0 1,0 12,21 A9,9 0 1,0 12,3z" />
+</vector>

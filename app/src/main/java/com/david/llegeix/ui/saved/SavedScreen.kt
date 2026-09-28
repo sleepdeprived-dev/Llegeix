@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.bookmarks.BookmarksViewModel
 import com.david.llegeix.ui.bookmarks.PagesPane
@@ -112,7 +111,7 @@ fun SavedScreen(
                 expandedHeight = Space.topBar,
                 title = {
                     ScreenTitle(
-                        icon = R.drawable.ic_bookmark,
+                        icon = Res.drawable.ic_bookmark,
                         title = stringResource(Res.string.nav_saved),
                     )
                 },

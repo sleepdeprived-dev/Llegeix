@@ -48,14 +48,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.MenuIcon
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.width
 import com.david.llegeix.ui.common.CoverAspectRatio
@@ -69,6 +67,7 @@ import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.data.practice.Leitner
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -97,7 +96,7 @@ fun PagesPane(
         EmptyState(
             title = stringResource(Res.string.bookmarks_pages_empty_title),
             body = stringResource(Res.string.bookmarks_pages_empty_body),
-            icon = painterResource(R.drawable.ic_bookmark),
+            icon = painterResource(Res.drawable.ic_bookmark),
             modifier = modifier,
         )
     } else {
@@ -175,7 +174,7 @@ fun WordsPane(
             EmptyState(
                 title = stringResource(Res.string.bookmarks_words_empty_title),
                 body = stringResource(Res.string.bookmarks_words_empty_body),
-                icon = painterResource(R.drawable.ic_bookmark),
+                icon = painterResource(Res.drawable.ic_bookmark),
             )
         }
         return
@@ -259,7 +258,7 @@ private fun LearnedFolderRow(todayCount: Int, onOpen: () -> Unit) {
                 .background(scheme.secondary),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_folder),
+                painter = painterResource(Res.drawable.ic_folder),
                 contentDescription = null,
                 tint = scheme.onSecondary,
                 modifier = Modifier.size(22.dp),
@@ -614,7 +613,7 @@ private fun WordControls(
                 .padding(top = Space.sm, end = Space.screen),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_sort),
+                painter = painterResource(Res.drawable.ic_sort),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
             )
@@ -753,7 +752,7 @@ private fun SavedWordRow(
                     // silently does nothing is worse than one that is absent.
                     if (word.documentUri != null) {
                         DropdownMenuItem(
-                            leadingIcon = { MenuIcon(painterResource(R.drawable.ic_library)) },
+                            leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_library)) },
                             text = { Text(stringResource(Res.string.words_open_source)) },
                             onClick = { menuOpen = false; onOpen() },
                         )
@@ -915,7 +914,7 @@ internal fun BookmarkRow(
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 onEditTags?.let { edit ->
                     DropdownMenuItem(
-                        leadingIcon = { MenuIcon(painterResource(R.drawable.ic_tag)) },
+                        leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_tag)) },
                         text = { Text(stringResource(Res.string.tags_open)) },
                         onClick = { menuOpen = false; edit() },
                     )

@@ -27,14 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.DocumentEntity
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.res.painterResource
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.pdfTitle
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -98,7 +97,7 @@ fun BookmarkedCollectionScreen(
             EmptyState(
                 title = stringResource(Res.string.bookmarked_collection_empty_title),
                 body = stringResource(Res.string.bookmarked_collection_empty_body),
-                icon = painterResource(R.drawable.ic_bookmark),
+                icon = painterResource(Res.drawable.ic_bookmark),
                 modifier = Modifier.padding(innerPadding),
             )
         } else {

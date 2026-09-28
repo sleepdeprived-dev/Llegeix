@@ -38,16 +38,15 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -106,7 +105,7 @@ fun PictureGrid(
                 modifier = Modifier.size(48.dp),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_add_photo),
+                    painter = painterResource(Res.drawable.ic_add_photo),
                     contentDescription = stringResource(Res.string.flashcards_picture_from_gallery),
                     modifier = Modifier.size(22.dp),
                 )
@@ -195,9 +194,9 @@ private fun SourceSwitch(selected: PictureSource, onSelect: (PictureSource) -> U
                     Icon(
                         painter = painterResource(
                             when (source) {
-                                PictureSource.PICTOGRAMS -> R.drawable.ic_pictogram
-                                PictureSource.PHOTOS -> R.drawable.ic_photo
-                                PictureSource.EMOJI -> R.drawable.ic_emoji
+                                PictureSource.PICTOGRAMS -> Res.drawable.ic_pictogram
+                                PictureSource.PHOTOS -> Res.drawable.ic_photo
+                                PictureSource.EMOJI -> Res.drawable.ic_emoji
                             },
                         ),
                         contentDescription = null,

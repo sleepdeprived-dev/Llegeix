@@ -13,12 +13,6 @@ dependencies {
     implementation(libs.json)
 }
 
-// Figtree is the phone's font file, used as it is rather than copied. It moves
-// into the shared module's resources along with the strings.
-sourceSets.main {
-    resources.srcDir("../app/src/main/res/font")
-}
-
 compose.desktop {
     application {
         mainClass = "com.david.llegeix.desktop.MainKt"

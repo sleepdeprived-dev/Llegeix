@@ -52,7 +52,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +65,7 @@ import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**

@@ -14,12 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.CardSort
 import com.david.llegeix.data.flashcards.ListSort
 import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -33,7 +32,7 @@ private fun <T> SortMenu(options: List<Pair<T, String>>, selected: T, onSelect: 
     Box {
         IconButton(onClick = { open = true }) {
             Icon(
-                painter = painterResource(R.drawable.ic_sort),
+                painter = painterResource(Res.drawable.ic_sort),
                 contentDescription = stringResource(Res.string.flashcards_sort),
             )
         }

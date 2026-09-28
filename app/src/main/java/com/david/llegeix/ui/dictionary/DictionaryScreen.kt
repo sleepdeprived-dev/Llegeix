@@ -40,12 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.DictionaryCard
@@ -59,6 +57,7 @@ import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.TranslationTargetFlags
 import com.david.llegeix.ui.common.VerbDetails
 import com.david.llegeix.ui.common.resolved
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -103,7 +102,7 @@ fun DictionaryScreen(
                 expandedHeight = Space.topBar,
                 title = {
                     ScreenTitle(
-                        icon = R.drawable.ic_dictionary,
+                        icon = Res.drawable.ic_dictionary,
                         title = stringResource(Res.string.dictionary_title),
                     )
                 },
@@ -153,7 +152,7 @@ fun DictionaryScreen(
                     EmptyState(
                         title = stringResource(Res.string.dictionary_empty_title),
                         body = stringResource(Res.string.dictionary_empty_body),
-                        icon = painterResource(R.drawable.ic_dictionary),
+                        icon = painterResource(Res.drawable.ic_dictionary),
                     )
                 }
 

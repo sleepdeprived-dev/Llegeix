@@ -71,7 +71,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,7 +80,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.data.db.dao.RecentDocument
@@ -106,6 +104,7 @@ import com.david.llegeix.ui.common.resolved
 import com.david.llegeix.ui.folders.FolderNameDialog
 import com.david.llegeix.ui.sources.SourcesSheet
 import com.david.llegeix.util.allFilesAccessIntents
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.launch
@@ -599,7 +598,7 @@ private fun LibraryControlsRow(
                 .padding(horizontal = Space.lg),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_sort),
+                painter = painterResource(Res.drawable.ic_sort),
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
             )
@@ -689,7 +688,7 @@ private fun LayoutButton(layout: LibraryLayout, onClick: () -> Unit) {
     IconButton(onClick = onClick) {
         Icon(
             painter = painterResource(
-                if (layout == LibraryLayout.GRID) R.drawable.ic_list else R.drawable.ic_grid,
+                if (layout == LibraryLayout.GRID) Res.drawable.ic_list else Res.drawable.ic_grid,
             ),
             contentDescription = stringResource(
                 if (layout == LibraryLayout.GRID) {
@@ -718,7 +717,7 @@ private fun SettingsButton(updateWaiting: Boolean, onClick: () -> Unit) {
     Box {
         IconButton(onClick = onClick) {
             Icon(
-                painter = painterResource(R.drawable.ic_settings),
+                painter = painterResource(Res.drawable.ic_settings),
                 contentDescription = if (updateWaiting) {
                     "$settingsLabel · $waitingLabel"
                 } else {
@@ -834,7 +833,7 @@ private fun PathBar(
     ) {
         IconButton(onClick = onUp) {
             Icon(
-                painter = painterResource(R.drawable.ic_arrow_up),
+                painter = painterResource(Res.drawable.ic_arrow_up),
                 contentDescription = stringResource(Res.string.library_folder_up),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
@@ -931,7 +930,7 @@ private fun LibraryFolderRow(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_folder),
+                painter = painterResource(Res.drawable.ic_folder),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
@@ -1022,7 +1021,7 @@ private fun LibraryBody(
         !state.hasAnySource -> EmptyState(
             title = stringResource(Res.string.library_welcome_title),
             body = stringResource(Res.string.library_welcome_body),
-            icon = painterResource(R.drawable.ic_library),
+            icon = painterResource(Res.drawable.ic_library),
             modifier = modifier,
             primaryAction = {
                 Button(onClick = onAddDocuments) {
@@ -1060,7 +1059,7 @@ private fun LibraryBody(
             EmptyState(
                 title = stringResource(Res.string.library_empty_title),
                 body = stringResource(Res.string.library_empty_body),
-                icon = painterResource(R.drawable.ic_library),
+                icon = painterResource(Res.drawable.ic_library),
                 // Weighted rather than filling: the shelves above have already
                 // taken height, and an empty state that insists on the whole
                 // screen would centre itself half off the bottom of it.
@@ -1372,20 +1371,20 @@ private fun AddDocumentsSheet(
                     .padding(top = Space.xs, bottom = Space.md),
             )
             AddDocumentsOption(
-                icon = painterResource(R.drawable.ic_folder),
+                icon = painterResource(Res.drawable.ic_folder),
                 title = stringResource(Res.string.action_add_folder),
                 body = stringResource(Res.string.sources_add_folder_body),
                 onClick = onAddFolder,
             )
             AddDocumentsOption(
-                icon = painterResource(R.drawable.ic_file),
+                icon = painterResource(Res.drawable.ic_file),
                 title = stringResource(Res.string.library_add_files),
                 body = stringResource(Res.string.sources_add_files_body),
                 onClick = onAddFiles,
             )
             if (!deviceScanEnabled) {
                 AddDocumentsOption(
-                    icon = painterResource(R.drawable.ic_device),
+                    icon = painterResource(Res.drawable.ic_device),
                     title = stringResource(Res.string.action_scan_device),
                     body = stringResource(Res.string.sources_add_device_body),
                     onClick = onScanDevice,

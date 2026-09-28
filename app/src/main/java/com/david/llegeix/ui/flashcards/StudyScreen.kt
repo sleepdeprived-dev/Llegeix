@@ -61,13 +61,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.ImageSizing
 import com.david.llegeix.data.flashcards.PictureResults
@@ -77,6 +75,7 @@ import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -191,7 +190,7 @@ fun StudyScreen(
                 state.isEmpty && state.cardsInScope == 0 -> EmptyState(
                     title = stringResource(Res.string.flashcards_study_no_cards_title),
                     body = stringResource(Res.string.flashcards_study_no_cards_body),
-                    icon = painterResource(R.drawable.ic_flashcards),
+                    icon = painterResource(Res.drawable.ic_flashcards),
                     primaryAction = {
                         OutlinedButton(onClick = onBack) {
                             Text(stringResource(Res.string.practice_done))
@@ -378,7 +377,7 @@ private fun Face(
                     .padding(horizontal = Space.md, vertical = 6.dp),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_cards),
+                    painter = painterResource(Res.drawable.ic_cards),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(14.dp),
@@ -583,7 +582,7 @@ private fun TurnRoundOffer(
             onClick = onTurnRound,
             modifier = Modifier.padding(top = Space.md),
         ) {
-            Icon(painterResource(R.drawable.ic_swap), contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(painterResource(Res.drawable.ic_swap), contentDescription = null, modifier = Modifier.size(18.dp))
             Text(
                 stringResource(Res.string.flashcards_turn_round_action),
                 modifier = Modifier.padding(start = Space.sm),

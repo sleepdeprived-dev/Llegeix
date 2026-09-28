@@ -9,12 +9,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.lang.Speech
 import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /** The app's one speech engine, shared so it is started at most once. */
@@ -72,7 +71,7 @@ fun PronounceButton(text: String, modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_speaker),
+            painter = painterResource(Res.drawable.ic_speaker),
             contentDescription = stringResource(
                 when {
                     status == Speech.Status.MISSING_VOICE -> Res.string.pronounce_get_voice

@@ -1,6 +1,5 @@
 package com.david.llegeix.ui.settings
 
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.filled.CheckCircle
@@ -87,6 +86,7 @@ import com.david.llegeix.update.AvailableUpdate
 import com.david.llegeix.ui.theme.hslColor
 import com.david.llegeix.ui.theme.isDark
 import com.david.llegeix.ui.theme.swatchOrNull
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**

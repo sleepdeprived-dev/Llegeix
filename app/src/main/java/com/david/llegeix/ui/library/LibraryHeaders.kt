@@ -32,17 +32,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -103,7 +102,7 @@ fun SourcesRow(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_folder),
+                painter = painterResource(Res.drawable.ic_folder),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(22.dp),

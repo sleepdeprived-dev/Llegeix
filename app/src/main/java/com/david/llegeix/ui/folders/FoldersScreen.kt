@@ -47,11 +47,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.HighlightColors
@@ -60,6 +58,7 @@ import com.david.llegeix.ui.common.resolved
 import androidx.compose.foundation.layout.PaddingValues
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -300,7 +299,7 @@ private fun AutomaticCollections(
         )
         SmartTile(
             icon = {
-                Icon(painterResource(R.drawable.ic_bookmark), contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(painterResource(Res.drawable.ic_bookmark), contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             },
             colour = MaterialTheme.colorScheme.primary,
             title = stringResource(Res.string.read_later_collection_title),
@@ -310,7 +309,7 @@ private fun AutomaticCollections(
         )
         SmartTile(
             icon = {
-                Icon(painterResource(R.drawable.ic_recent), contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(painterResource(Res.drawable.ic_recent), contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             },
             colour = RecentColour,
             title = stringResource(Res.string.recent_title),
@@ -407,7 +406,7 @@ private fun FolderRow(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_collection),
+                painter = painterResource(Res.drawable.ic_collection),
                 contentDescription = null,
                 tint = tint,
                 modifier = Modifier.size(24.dp),
@@ -422,7 +421,7 @@ private fun FolderRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (folder.isPinned) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_pin),
+                        painter = painterResource(Res.drawable.ic_pin),
                         contentDescription = stringResource(Res.string.folders_pinned),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
@@ -469,7 +468,7 @@ private fun FolderRow(
         Box {
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_more),
+                    painter = painterResource(Res.drawable.ic_more),
                     contentDescription = stringResource(
                         Res.string.document_actions,
                         folder.name,
@@ -485,7 +484,7 @@ private fun FolderRow(
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
+                    leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_pin)) },
                     text = {
                         Text(
                             stringResource(
@@ -515,7 +514,7 @@ private fun FolderRow(
                     onClick = { onToggleBookmarked(); menuOpen = false },
                 )
                 DropdownMenuItem(
-                    leadingIcon = { MenuIcon(painterResource(R.drawable.ic_circle)) },
+                    leadingIcon = { MenuIcon(painterResource(Res.drawable.ic_circle)) },
                     text = { Text(stringResource(Res.string.folders_colour)) },
                     onClick = { onPickColor(); menuOpen = false },
                 )

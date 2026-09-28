@@ -91,14 +91,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.PictureResults
@@ -116,6 +114,7 @@ import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import java.time.LocalDate
@@ -224,7 +223,7 @@ fun FlashcardsScreen(
                 expandedHeight = Space.topBar,
                 title = {
                     ScreenTitle(
-                        icon = R.drawable.ic_flashcards,
+                        icon = Res.drawable.ic_flashcards,
                         title = stringResource(Res.string.nav_flashcards),
                     )
                 },
@@ -234,7 +233,7 @@ fun FlashcardsScreen(
                     ListSortMenu(selected = sort, onSelect = viewModel::onSort)
                     IconButton(onClick = { showingBackup = true }) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_backup),
+                            painter = painterResource(Res.drawable.ic_backup),
                             contentDescription = stringResource(Res.string.flashcards_backup_title),
                         )
                     }
@@ -256,7 +255,7 @@ fun FlashcardsScreen(
             loaded.isEmpty -> EmptyState(
                 title = stringResource(Res.string.flashcards_empty_title),
                 body = stringResource(Res.string.flashcards_empty_body),
-                icon = painterResource(R.drawable.ic_flashcards),
+                icon = painterResource(Res.drawable.ic_flashcards),
                 modifier = Modifier.padding(innerPadding),
                 // A new phone, or the app put back after an uninstall, starts
                 // here — which is exactly when a saved copy is wanted, so the
@@ -654,7 +653,7 @@ private fun WeakRow(count: Int, onOpen: () -> Unit, onPractise: () -> Unit, modi
                 .background(scheme.tertiary),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_weak),
+                painter = painterResource(Res.drawable.ic_weak),
                 contentDescription = null,
                 tint = scheme.onTertiary,
                 modifier = Modifier.size(26.dp),
@@ -749,7 +748,7 @@ private fun MoveSheet(
                         .background(MaterialTheme.colorScheme.primaryContainer),
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_move),
+                        painter = painterResource(Res.drawable.ic_move),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(20.dp),
@@ -775,7 +774,7 @@ private fun MoveSheet(
             }
             Spacer(Modifier.height(Space.sm))
             MoveChoice(
-                icon = painterResource(R.drawable.ic_flashcards),
+                icon = painterResource(Res.drawable.ic_flashcards),
                 name = stringResource(Res.string.flashcards_move_none),
                 detail = stringResource(Res.string.flashcards_move_top_hint),
                 depth = 0,
@@ -784,7 +783,7 @@ private fun MoveSheet(
             )
             shelves.forEach { shelf ->
                 MoveChoice(
-                    icon = painterResource(R.drawable.ic_collection),
+                    icon = painterResource(Res.drawable.ic_collection),
                     name = shelf.collection.name,
                     detail = null,
                     // The top level is depth 0, so a shelf at the top is one in.
