@@ -1,7 +1,7 @@
 package com.david.llegeix.data.flashcards
 
-import android.content.Context
-import android.net.Uri
+import com.david.llegeix.platform.AppFiles
+import com.david.llegeix.platform.ContentRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedOutputStream
@@ -36,9 +36,7 @@ import java.util.zip.ZipOutputStream
  *    photo from the picker is, so what reaches the cards folder is always a
  *    JPEG this app wrote itself.
  */
-class FlashcardBackupFiles(context: Context) {
-
-    private val appContext = context.applicationContext
+class FlashcardBackupFiles(private val files: AppFiles) {
 
     /** A copy opened up in the cache, until [discard] is called on it. */
     class Unpacked(
@@ -48,8 +46,8 @@ class FlashcardBackupFiles(context: Context) {
         internal val folder: File,
     )
 
-    suspend fun write(uri: Uri, json: String, images: Map<String, File>) = withContext(Dispatchers.IO) {
-        val out = appContext.contentResolver.openOutputStream(uri, "wt")
+    suspend fun write(uri: ContentRef, json: String, images: Map<String, File>) = withContext(Dispatchers.IO) {
+        val out = files.openOutput(uri)
             ?: throw IOException("cannot write $uri")
         ZipOutputStream(BufferedOutputStream(out)).use { zip ->
             zip.putNextEntry(ZipEntry(FlashcardBackup.JSON_NAME))
@@ -72,10 +70,10 @@ class FlashcardBackupFiles(context: Context) {
      * Throws [FlashcardBackup.UnreadableException] if there is no flashcards
      * JSON in it at all, and [IOException] if it cannot be read or is too big.
      */
-    suspend fun read(uri: Uri): Unpacked = withContext(Dispatchers.IO) {
-        val folder = File(appContext.cacheDir, "restore-${UUID.randomUUID()}").apply { mkdirs() }
+    suspend fun read(uri: ContentRef): Unpacked = withContext(Dispatchers.IO) {
+        val folder = File(files.cacheDir, "restore-${UUID.randomUUID()}").apply { mkdirs() }
         try {
-            val input = appContext.contentResolver.openInputStream(uri)
+            val input = files.openInput(uri)
                 ?: throw IOException("cannot open $uri")
             var json: String? = null
             val images = LinkedHashMap<String, File>()

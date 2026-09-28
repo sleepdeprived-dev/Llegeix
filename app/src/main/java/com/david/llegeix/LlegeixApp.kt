@@ -8,6 +8,8 @@ import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.lang.ApertureLexicon
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.Speech
+import com.david.llegeix.platform.AndroidAppFiles
+import com.david.llegeix.platform.AppFiles
 import com.david.llegeix.platform.AppServices
 import com.david.llegeix.platform.Services
 import com.david.llegeix.data.source.LibraryDataRepository
@@ -71,6 +73,8 @@ class LlegeixApp : Application(), AppServices {
     }
 
     /** What is on the device. */
+    private val appFiles: AppFiles by lazy { AndroidAppFiles(this) }
+
     val pdfRepository: PdfRepository by lazy { PdfRepository(this, settingsRepository) }
 
     /**
@@ -92,13 +96,13 @@ class LlegeixApp : Application(), AppServices {
         FlashcardRepository(
             database,
             FlashcardImages(this),
-            FlashcardBackupFiles(this),
+            FlashcardBackupFiles(appFiles),
             FlashcardPrefs(this),
         )
     }
 
     /** Pictures for a flashcard, from ARASAAC and Openverse, only while a card is being written. */
-    val pictureSearch: PictureSearch by lazy { PictureSearch(this) }
+    val pictureSearch: PictureSearch by lazy { PictureSearch(appFiles) }
 
     /** First-page covers for the library, shared so the cache outlives a screen. */
     val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(this) }

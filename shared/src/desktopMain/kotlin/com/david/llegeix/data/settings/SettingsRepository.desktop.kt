@@ -19,5 +19,6 @@ private class PreferencesStore(private val node: Preferences) : SettingsStore {
     override fun putString(key: String, value: String) = node.put(key, value).also { node.flush() }
     override fun putBoolean(key: String, value: Boolean) = node.putBoolean(key, value).also { node.flush() }
     override fun putInt(key: String, value: Int) = node.putInt(key, value).also { node.flush() }
+    override fun remove(key: String) = node.remove(key).also { node.flush() }
     override fun clear() = node.clear().also { node.flush() }
 }

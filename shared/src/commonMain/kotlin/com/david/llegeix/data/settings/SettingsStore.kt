@@ -12,5 +12,6 @@ interface SettingsStore {
     fun putString(key: String, value: String)
     fun putBoolean(key: String, value: Boolean)
     fun putInt(key: String, value: Int)
+    fun remove(key: String)
     fun clear()
 }

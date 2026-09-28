@@ -21,7 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import com.david.llegeix.data.flashcards.PictureKind
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
@@ -163,7 +162,7 @@ private fun rememberCardBitmap(path: String, maxEdge: Int): ImageBitmap? {
         (context.applicationContext as LlegeixApp).flashcardRepository
     }
     val bitmap by produceState<ImageBitmap?>(initialValue = null, path, maxEdge) {
-        value = flashcards.loadImage(path, maxEdge)?.asImageBitmap()
+        value = flashcards.loadImage(path, maxEdge)
     }
     return bitmap
 }

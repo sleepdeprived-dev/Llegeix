@@ -16,6 +16,7 @@ import com.david.llegeix.data.flashcards.FlashcardBackup
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.ListSort
 import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.platform.ContentRef
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -407,12 +408,12 @@ class FlashcardsViewModel(
     val backupBusy: StateFlow<Boolean> = _backupBusy.asStateFlow()
 
     fun onExport(uri: Uri) = backup {
-        val cards = flashcards.exportTo(uri)
+        val cards = flashcards.exportTo(ContentRef(uri))
         UiText.ofPlural(Res.plurals.flashcards_backup_saved, cards)
     }
 
     fun onRestore(uri: Uri) = backup {
-        val result = flashcards.restoreFrom(uri)
+        val result = flashcards.restoreFrom(ContentRef(uri))
         if (result.added == 0) {
             UiText.Joined(
                 listOfNotNull(

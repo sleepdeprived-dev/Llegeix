@@ -12,6 +12,7 @@ import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.data.flashcards.PictureSource
+import com.david.llegeix.platform.ContentRef
 import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.UiText
@@ -80,7 +81,7 @@ class CollectionPictureViewModel(
     }
 
     fun onPickOwn(uri: Uri) = setCover {
-        flashcards.setCollectionCover(collectionId, flashcards.importImage(uri), credit = null)
+        flashcards.setCollectionCover(collectionId, flashcards.importImage(ContentRef(uri)), credit = null)
     }
 
     /** Back to the first deck's picture, or the initial. */

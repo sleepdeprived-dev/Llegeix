@@ -5,8 +5,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.net.Uri
 import android.util.LruCache
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import com.david.llegeix.platform.ContentRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -41,7 +43,7 @@ import java.util.concurrent.TimeUnit
  * because lint's objection lands on the import line, where nothing can answer it.
  */
 @SuppressLint("ExifInterface")
-class FlashcardImages(context: Context) {
+actual class FlashcardImages(context: Context) {
 
     private val appContext = context.applicationContext
     private val directory: File get() = File(appContext.filesDir, IMAGE_DIRECTORY)
@@ -62,21 +64,21 @@ class FlashcardImages(context: Context) {
      * Returns the stored path. Throws if the file cannot be read as a picture,
      * which the form reports rather than saving a card with a hole in it.
      */
-    suspend fun import(uri: Uri): String = withContext(Dispatchers.IO) {
+    actual suspend fun import(uri: ContentRef): String = withContext(Dispatchers.IO) {
         val resolver = appContext.contentResolver
 
         // Reading only the size always returns null — the answer is written
         // into the options — so whether the file opened is checked on the
         // stream itself, and whether it is a picture on the size it reported.
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        val stream = resolver.openInputStream(uri) ?: throw IOException("cannot open $uri")
+        val stream = resolver.openInputStream(uri.uri) ?: throw IOException("cannot open $uri")
         stream.use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw IOException("not a picture")
 
         val options = BitmapFactory.Options().apply {
             inSampleSize = ImageSizing.sampleSize(bounds.outWidth, bounds.outHeight)
         }
-        val decoded = resolver.openInputStream(uri)?.use {
+        val decoded = resolver.openInputStream(uri.uri)?.use {
             BitmapFactory.decodeStream(it, null, options)
         } ?: throw IOException("cannot decode $uri")
 
@@ -84,7 +86,7 @@ class FlashcardImages(context: Context) {
         // way up it was meant to be. Without this, half of all portraits would
         // arrive on their side.
         val orientation = runCatching {
-            resolver.openInputStream(uri)?.use {
+            resolver.openInputStream(uri.uri)?.use {
                 android.media.ExifInterface(it).getAttributeInt(
                     android.media.ExifInterface.TAG_ORIENTATION,
                     android.media.ExifInterface.ORIENTATION_NORMAL,
@@ -143,9 +145,9 @@ class FlashcardImages(context: Context) {
      * The picture at [path], decoded to about [maxEdge] across, or null if it
      * is missing or unreadable — a card still works without its picture.
      */
-    suspend fun load(path: String, maxEdge: Int): Bitmap? {
+    actual suspend fun load(path: String, maxEdge: Int): ImageBitmap? {
         val key = "$path@$maxEdge"
-        cache.get(key)?.let { return it }
+        cache.get(key)?.let { return it.asImageBitmap() }
         return withContext(Dispatchers.IO) {
             val file = fileOf(path)
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -154,11 +156,11 @@ class FlashcardImages(context: Context) {
             val options = BitmapFactory.Options().apply {
                 inSampleSize = ImageSizing.sampleSize(bounds.outWidth, bounds.outHeight, maxEdge)
             }
-            BitmapFactory.decodeFile(file.path, options)?.also { cache.put(key, it) }
+            BitmapFactory.decodeFile(file.path, options)?.also { cache.put(key, it) }?.asImageBitmap()
         }
     }
 
-    suspend fun delete(paths: Collection<String>) = withContext(Dispatchers.IO) {
+    actual suspend fun delete(paths: Collection<String>): Unit = withContext(Dispatchers.IO) {
         for (path in paths) deleteNow(path)
     }
 
@@ -168,7 +170,7 @@ class FlashcardImages(context: Context) {
      * For a form being thrown away, whose coroutines are already cancelled by
      * the time it hears about it. One small file is not worth a thread.
      */
-    fun deleteNow(path: String) {
+    actual fun deleteNow(path: String) {
         runCatching { fileOf(path).delete() }
     }
 
@@ -180,7 +182,7 @@ class FlashcardImages(context: Context) {
      * picture nothing can reach. Anything younger than [SWEEP_GRACE_MS] is left
      * alone, because it may belong to a card still being written.
      */
-    suspend fun sweep(referenced: Set<String>, now: Long = System.currentTimeMillis()) =
+    actual suspend fun sweep(referenced: Set<String>, now: Long): Unit =
         withContext(Dispatchers.IO) {
             val files = directory.listFiles() ?: return@withContext
             for (file in files) {
@@ -192,13 +194,13 @@ class FlashcardImages(context: Context) {
         }
 
     /** Every picture, and the folder that holds them. */
-    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+    actual suspend fun deleteAll(): Unit = withContext(Dispatchers.IO) {
         cache.evictAll()
         runCatching { directory.deleteRecursively() }
     }
 
     /** Where a stored picture is on disk, for copying it into a backup. */
-    fun fileOf(path: String): File = File(appContext.filesDir, path)
+    actual fun fileOf(path: String): File = File(appContext.filesDir, path)
 
     private fun Matrix.applyOrientation(orientation: Int) {
         when (orientation) {
@@ -219,15 +221,9 @@ class FlashcardImages(context: Context) {
         }
     }
 
-    companion object {
-        /** Where card pictures are kept, under the app's files directory. */
-        const val IMAGE_DIRECTORY = "flashcards"
+    private companion object {
+        const val CACHE_BYTES = 24 * 1024 * 1024
 
-        /** High enough that a photo of a word's meaning shows no blocks. */
-        private const val JPEG_QUALITY = 85
-
-        private const val CACHE_BYTES = 24 * 1024 * 1024
-
-        private val SWEEP_GRACE_MS = TimeUnit.HOURS.toMillis(1)
+        val SWEEP_GRACE_MS = TimeUnit.HOURS.toMillis(1)
     }
 }

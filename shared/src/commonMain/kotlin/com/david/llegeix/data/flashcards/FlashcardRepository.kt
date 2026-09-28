@@ -1,8 +1,6 @@
 package com.david.llegeix.data.flashcards
 
-import android.graphics.Bitmap
-import android.net.Uri
-import androidx.room.withTransaction
+import androidx.compose.ui.graphics.ImageBitmap
 import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.dao.WeakCard
@@ -10,8 +8,11 @@ import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.db.entity.LearnedWordEntity
+import com.david.llegeix.data.db.inTransaction
 import com.david.llegeix.data.flashcards.FlashcardBackup.toBackup
 import com.david.llegeix.data.flashcards.FlashcardBackup.toEntity
+import com.david.llegeix.platform.ContentRef
+import com.david.llegeix.platform.contentRefOf
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -58,7 +59,7 @@ class FlashcardRepository(
         coverPath: String? = null,
         coverCredit: String? = null,
     ): DeckNames.Check =
-        database.withTransaction {
+        database.inTransaction {
             val all = dao.collections()
             val check = DeckNames.check(name, all.map { it.name })
             if (check is DeckNames.Check.Ok) {
@@ -77,7 +78,7 @@ class FlashcardRepository(
         }
 
     suspend fun renameCollection(id: Long, name: String): DeckNames.Check =
-        database.withTransaction {
+        database.inTransaction {
             val others = dao.collections().filter { it.id != id }.map { it.name }
             val check = DeckNames.check(name, others)
             if (check is DeckNames.Check.Ok) dao.renameCollection(id, check.name)
@@ -113,8 +114,8 @@ class FlashcardRepository(
      * is no longer there.
      */
     suspend fun deleteCollection(id: Long) {
-        val cover = database.withTransaction {
-            val shelf = dao.collection(id) ?: return@withTransaction null
+        val cover = database.inTransaction {
+            val shelf = dao.collection(id) ?: return@inTransaction null
             val parent = CollectionTree.parents(dao.collections())[id]
             dao.moveDecksBetween(from = id, to = parent)
             dao.moveChildCollections(from = id, to = parent)
@@ -132,10 +133,10 @@ class FlashcardRepository(
      * into a loop that nothing could reach.
      */
     suspend fun setCollectionParent(id: Long, parentId: Long?): Boolean =
-        database.withTransaction {
+        database.inTransaction {
             val all = dao.collections()
-            if (!CollectionTree.canMove(id, parentId, all)) return@withTransaction false
-            if (parentId != null && all.none { it.id == parentId }) return@withTransaction false
+            if (!CollectionTree.canMove(id, parentId, all)) return@inTransaction false
+            if (parentId != null && all.none { it.id == parentId }) return@inTransaction false
             dao.setCollectionParent(id, parentId)
             true
         }
@@ -162,7 +163,7 @@ class FlashcardRepository(
         coverCredit: String? = null,
         /** The collection to make it in, or null for the top of the list. */
         collectionId: Long? = null,
-    ): DeckNames.Check = database.withTransaction {
+    ): DeckNames.Check = database.inTransaction {
         val check = DeckNames.check(name, dao.decks().map { it.name })
         if (check is DeckNames.Check.Ok) {
             dao.insertDeck(
@@ -177,7 +178,7 @@ class FlashcardRepository(
         check
     }
 
-    suspend fun renameDeck(id: Long, name: String): DeckNames.Check = database.withTransaction {
+    suspend fun renameDeck(id: Long, name: String): DeckNames.Check = database.inTransaction {
         val others = dao.decks().filter { it.id != id }.map { it.name }
         val check = DeckNames.check(name, others)
         if (check is DeckNames.Check.Ok) dao.renameDeck(id, check.name)
@@ -193,7 +194,7 @@ class FlashcardRepository(
      * pointing at a deleted picture is a card that has lost part of itself.
      */
     suspend fun deleteDeck(id: Long) {
-        val paths = database.withTransaction {
+        val paths = database.inTransaction {
             val paths = dao.imagePathsInDeck(id) + listOfNotNull(dao.deck(id)?.coverPath)
             dao.deleteDeck(id)
             paths
@@ -320,9 +321,9 @@ class FlashcardRepository(
     // ---- Pictures ----------------------------------------------------------
 
     /** Copy a picked photo in, shrunk. Returns its stored path. */
-    suspend fun importImage(uri: Uri): String = images.import(uri)
+    suspend fun importImage(uri: ContentRef): String = images.import(uri)
 
-    suspend fun loadImage(path: String, maxEdge: Int): Bitmap? =
+    suspend fun loadImage(path: String, maxEdge: Int): ImageBitmap? =
         images.load(path, maxEdge)
 
     suspend fun deleteImage(path: String) = images.delete(listOf(path))
@@ -350,7 +351,7 @@ class FlashcardRepository(
      * stored, under their own file names, since those are already names this
      * app made up.
      */
-    suspend fun exportTo(uri: Uri, now: Long = System.currentTimeMillis()): Int {
+    suspend fun exportTo(uri: ContentRef, now: Long = System.currentTimeMillis()): Int {
         val cardsByDeck = dao.allCards().groupBy { it.deckId }
         val shelves = dao.collections()
         val collectionNames = shelves.associate { it.id to it.name }
@@ -417,7 +418,7 @@ class FlashcardRepository(
      * Throws [FlashcardBackup.UnreadableException] for a file that is not a
      * copy this version understands.
      */
-    suspend fun restoreFrom(uri: Uri, now: Long = System.currentTimeMillis()): RestoreResult {
+    suspend fun restoreFrom(uri: ContentRef, now: Long = System.currentTimeMillis()): RestoreResult {
         val unpacked = backupFiles.read(uri)
         try {
             val incoming = FlashcardBackup.decode(unpacked.json)
@@ -434,7 +435,7 @@ class FlashcardRepository(
             // one already on the phone keeps whatever it has chosen since.
             val covers = plan.decks.filter { it.existingId == null && it.cover != null }.associate { deck ->
                 val stored = unpacked.images[deck.cover]?.let { file ->
-                    runCatchingCancellable { images.import(Uri.fromFile(file)) }.getOrNull()
+                    runCatchingCancellable { images.import(contentRefOf(file)) }.getOrNull()
                 }
                 if (stored == null) picturesLost++ else broughtIn += stored
                 deck.name to stored
@@ -451,7 +452,7 @@ class FlashcardRepository(
                 .mapNotNull { shelf ->
                     val entry = shelf.cover ?: return@mapNotNull null
                     val stored = unpacked.images[entry]?.let { file ->
-                        runCatchingCancellable { images.import(Uri.fromFile(file)) }.getOrNull()
+                        runCatchingCancellable { images.import(contentRefOf(file)) }.getOrNull()
                     }
                     if (stored == null) {
                         picturesLost++
@@ -467,7 +468,7 @@ class FlashcardRepository(
                 deck to deck.cards.map { card ->
                     val source = card.image?.let { unpacked.images[it] }
                     val stored = source?.let { file ->
-                        runCatchingCancellable { images.import(Uri.fromFile(file)) }.getOrNull()
+                        runCatchingCancellable { images.import(contentRefOf(file)) }.getOrNull()
                     }
                     // Named in the copy but missing from it, or not a picture:
                     // the card still comes back, without it, and the count says so.
@@ -478,7 +479,7 @@ class FlashcardRepository(
             }
 
             try {
-                database.withTransaction {
+                database.inTransaction {
                     // Shelves named by the copy, found or made once each, and
                     // keyed the way deck names are compared so a copy saying
                     // "Menjar" joins the "menjar" already here.
@@ -561,7 +562,7 @@ class FlashcardRepository(
 
     /** Every deck, card and picture, for the wipe in Configuració. */
     suspend fun eraseEverything() {
-        database.withTransaction {
+        database.inTransaction {
             dao.clearCards()
             dao.clearDecks()
             dao.clearCollections()

@@ -35,7 +35,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -259,7 +258,7 @@ private fun SuggestionTile(
     val context = LocalContext.current
     val search = remember(context) { (context.applicationContext as LlegeixApp).pictureSearch }
     val thumbnail by produceState<ImageBitmap?>(initialValue = null, hit.thumbnailUrl) {
-        value = search.thumbnail(hit.thumbnailUrl)?.asImageBitmap()
+        value = search.thumbnail(hit.thumbnailUrl)
     }
     // A pictogram on white, the way it will look on the card once chosen
     // (see CardImage); a photo fills its square.

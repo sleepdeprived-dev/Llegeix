@@ -17,6 +17,7 @@ import com.david.llegeix.data.flashcards.Suggested
 import com.david.llegeix.data.flashcards.matchLeadingCase
 import com.david.llegeix.data.flashcards.tidyIpa
 import com.david.llegeix.lang.CatalanIpa
+import com.david.llegeix.platform.ContentRef
 import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.UiText
@@ -407,7 +408,7 @@ class CardEditorViewModel(
     fun onImagePicked(uri: Uri) {
         _uiState.update { it.copy(isImporting = true) }
         viewModelScope.launch {
-            val imported = runCatchingCancellable { flashcards.importImage(uri) }
+            val imported = runCatchingCancellable { flashcards.importImage(ContentRef(uri)) }
             imported.onSuccess { path ->
                 discardUnsavedImage()
                 // The reader's own photo: nobody else to credit.

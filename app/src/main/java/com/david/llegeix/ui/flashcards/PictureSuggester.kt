@@ -1,6 +1,5 @@
 package com.david.llegeix.ui.flashcards
 
-import android.net.Uri
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSafety
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import com.david.llegeix.platform.contentRefOf
 
 /** How the row of suggested pictures stands. */
 enum class PictureStatus {
@@ -215,7 +215,7 @@ class PictureSuggester(
         try {
             val file = search.download(hit)
             try {
-                return flashcards.importImage(Uri.fromFile(file))
+                return flashcards.importImage(contentRefOf(file))
             } finally {
                 file.delete()
             }

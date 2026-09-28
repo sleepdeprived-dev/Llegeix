@@ -1,9 +1,10 @@
 package com.david.llegeix.data.flashcards
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.util.LruCache
+import androidx.compose.ui.graphics.ImageBitmap
+import com.david.llegeix.platform.AppFiles
+import com.david.llegeix.platform.byteCount
+import com.david.llegeix.platform.decodeImage
+import com.david.llegeix.util.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -39,9 +40,7 @@ import java.util.UUID
  * reader. This only happens while a card is open
  * in the form, and a picture only reaches a card when the reader taps it.
  */
-class PictureSearch(context: Context) {
-
-    private val appContext = context.applicationContext
+class PictureSearch(private val files: AppFiles) {
 
     /** How a search went, told apart as far as the form can say something useful. */
     sealed interface Outcome {
@@ -52,8 +51,8 @@ class PictureSearch(context: Context) {
     }
 
     /** Decoded thumbnails, so flicking between the two sources does not refetch them. */
-    private val thumbnails = object : LruCache<String, Bitmap>(THUMBNAIL_CACHE_BYTES) {
-        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    private val thumbnails = object : LruCache<String, ImageBitmap>(THUMBNAIL_CACHE_BYTES) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int = value.byteCount()
     }
 
     /**
@@ -366,19 +365,12 @@ class PictureSearch(context: Context) {
     private val thumbnailGate = Semaphore(THUMBNAILS_AT_ONCE)
 
     /** A thumbnail, or null if it could not be fetched; the row leaves a blank tile. */
-    suspend fun thumbnail(url: String): Bitmap? {
+    suspend fun thumbnail(url: String): ImageBitmap? {
         thumbnails.get(url)?.let { return it }
         return thumbnailGate.withPermit { withContext(Dispatchers.IO) {
             val bytes = runCatching { fetch(url, MAX_THUMBNAIL_BYTES) }.getOrNull()
                 ?: return@withContext null
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            if (bounds.outWidth <= 0) return@withContext null
-            val options = BitmapFactory.Options().apply {
-                inSampleSize = ImageSizing.sampleSize(bounds.outWidth, bounds.outHeight, THUMBNAIL_EDGE)
-            }
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-                ?.also { thumbnails.put(url, it) }
+            decodeImage(bytes, THUMBNAIL_EDGE)?.also { thumbnails.put(url, it) }
         } }
     }
 
@@ -398,7 +390,7 @@ class PictureSearch(context: Context) {
             if (hit.thumbnailUrl == hit.fullUrl) throw error
             fetch(hit.thumbnailUrl, MAX_PICTURE_BYTES)
         }
-        File(appContext.cacheDir, "picture-${UUID.randomUUID()}").apply { writeBytes(bytes) }
+        File(files.cacheDir, "picture-${UUID.randomUUID()}").apply { writeBytes(bytes) }
     }
 
     private fun fetch(url: String, limit: Long, acceptEmpty: Boolean = false): ByteArray {
@@ -437,14 +429,6 @@ class PictureSearch(context: Context) {
     }
 
     private companion object {
-        /**
-         * Who is asking, with somewhere to find out more — which is what
-         * Wikimedia's policy asks of every client, and what it throttles
-         * clients for not saying. A bare "Llegeix" had searches coming back
-         * empty after a few words typed in quick succession.
-         */
-        const val USER_AGENT =
-            "Llegeix (Android vocabulary app; https://github.com/sleepdeprived-dev/Llegeix-releases)"
         const val TIMEOUT_MS = 12_000
 
         /** A page of search results is tens of kilobytes. */
@@ -470,3 +454,11 @@ class PictureSearch(context: Context) {
         const val THUMBNAIL_CACHE_BYTES = 48 * 1024 * 1024
     }
 }
+
+/**
+ * Who is asking, with somewhere to find out more — which is what Wikimedia's
+ * policy asks of every client, and what it throttles clients for not saying. A
+ * bare "Llegeix" had searches coming back empty after a few words typed in
+ * quick succession. The phone and the Mac each say which they are.
+ */
+internal expect val USER_AGENT: String

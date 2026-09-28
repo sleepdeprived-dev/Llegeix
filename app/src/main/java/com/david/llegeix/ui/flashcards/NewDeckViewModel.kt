@@ -13,6 +13,7 @@ import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.data.flashcards.PictureSource
+import com.david.llegeix.platform.ContentRef
 import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.UiText
@@ -125,7 +126,7 @@ class NewDeckViewModel(
 
     fun onPick(hit: PictureHit) = choose(hit.credit) { pictures.fetch(hit) }
 
-    fun onPickOwn(uri: Uri) = choose(credit = null) { flashcards.importImage(uri) }
+    fun onPickOwn(uri: Uri) = choose(credit = null) { flashcards.importImage(ContentRef(uri)) }
 
     /** Back to the suggestions, and the copy made for the last choice deleted. */
     fun onRemoveCover() {

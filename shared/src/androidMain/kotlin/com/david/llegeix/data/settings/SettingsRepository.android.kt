@@ -13,12 +13,14 @@ fun SettingsRepository(context: Context): SettingsRepository = SettingsRepositor
     ),
 )
 
-private class SharedPreferencesStore(private val prefs: SharedPreferences) : SettingsStore {
+/** SharedPreferences as a [SettingsStore], writing with apply() as the app always has. */
+internal class SharedPreferencesStore(private val prefs: SharedPreferences) : SettingsStore {
     override fun getString(key: String, default: String?): String? = prefs.getString(key, default)
     override fun getBoolean(key: String, default: Boolean): Boolean = prefs.getBoolean(key, default)
     override fun getInt(key: String, default: Int): Int = prefs.getInt(key, default)
     override fun putString(key: String, value: String) = prefs.edit().putString(key, value).apply()
     override fun putBoolean(key: String, value: Boolean) = prefs.edit().putBoolean(key, value).apply()
     override fun putInt(key: String, value: Int) = prefs.edit().putInt(key, value).apply()
+    override fun remove(key: String) = prefs.edit().remove(key).apply()
     override fun clear() = prefs.edit().clear().apply()
 }
