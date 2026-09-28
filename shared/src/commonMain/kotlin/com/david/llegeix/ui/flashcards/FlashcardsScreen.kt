@@ -1,15 +1,11 @@
 package com.david.llegeix.ui.flashcards
 
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.activity.compose.BackHandler
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -113,6 +109,10 @@ import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import com.david.llegeix.ui.platform.PlatformBackHandler
+import com.david.llegeix.ui.platform.rememberDocumentCreator
+import com.david.llegeix.ui.platform.rememberDocumentOpener
+import com.david.llegeix.ui.platform.rememberPicturePicker
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
@@ -162,18 +162,14 @@ fun FlashcardsScreen(
     // The system's own file screens, so the copy goes wherever the reader
     // keeps things — Downloads, a memory card, a cloud drive they chose — and
     // the app is never given more than the one file.
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(BACKUP_MIME_TYPE),
-    ) { uri -> uri?.let(viewModel::onExport) }
-    val restoreLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri -> uri?.let(viewModel::onRestore) }
+    val exportLauncher = rememberDocumentCreator(BACKUP_MIME_TYPE, viewModel::onExport)
+    val restoreLauncher = rememberDocumentOpener(viewModel::onRestore)
     val backupName = stringResource(
         Res.string.flashcards_backup_filename,
         LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
     )
-    val onExport = { exportLauncher.launch(backupName) }
-    val onRestore = { restoreLauncher.launch(BACKUP_OPEN_TYPES) }
+    val onExport = { exportLauncher(backupName) }
+    val onRestore = { restoreLauncher(BACKUP_OPEN_TYPES) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     var creating by remember { mutableStateOf(false) }
@@ -270,7 +266,7 @@ fun FlashcardsScreen(
             else -> {
                 // Inside a collection, the system's back goes up a level
                 // before it leaves the tab.
-                BackHandler(enabled = current != null) { viewModel.onUp() }
+                PlatformBackHandler(enabled = current != null) { viewModel.onUp() }
                 val here = current?.let(loaded::shelf)
                 val entries = here?.entries ?: loaded.entries
                 val actions = EntryActions(
@@ -905,9 +901,7 @@ private fun NewDeckSheet(
     val source by viewModel.pictures.source.collectAsStateWithLifecycle()
     val created by viewModel.created.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
-    val pickOwn = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        uri?.let(viewModel::onPickOwn)
-    }
+    val pickOwn = rememberPicturePicker(viewModel::onPickOwn)
     val close = {
         viewModel.onCancel()
         onDismiss()
@@ -1045,7 +1039,7 @@ private fun NewDeckSheet(
                         onSourceChange = viewModel::onSourceChange,
                         onPick = viewModel::onPick,
                         onPickOwn = {
-                            pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            pickOwn()
                         },
                         onRetry = viewModel::onRetry,
                         onSearch = viewModel::onSearchPictures,
@@ -1093,9 +1087,7 @@ private fun DeckPictureSheet(deck: DeckWithCount, onDismiss: () -> Unit) {
     val source by viewModel.pictures.source.collectAsStateWithLifecycle()
     val done by viewModel.done.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
-    val pickOwn = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        uri?.let(viewModel::onPickOwn)
-    }
+    val pickOwn = rememberPicturePicker(viewModel::onPickOwn)
     LaunchedEffect(done) { if (done) onDismiss() }
 
     AppBottomSheet(
@@ -1128,7 +1120,7 @@ private fun DeckPictureSheet(deck: DeckWithCount, onDismiss: () -> Unit) {
                 onSourceChange = viewModel::onSourceChange,
                 onPick = viewModel::onPick,
                 onPickOwn = {
-                    pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    pickOwn()
                 },
                 onRetry = viewModel::onRetry,
                 onSearch = viewModel::onSearchPictures,
@@ -1159,9 +1151,7 @@ private fun CollectionPictureSheet(shelf: DeckShelf, onDismiss: () -> Unit) {
     val source by viewModel.pictures.source.collectAsStateWithLifecycle()
     val done by viewModel.done.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
-    val pickOwn = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        uri?.let(viewModel::onPickOwn)
-    }
+    val pickOwn = rememberPicturePicker(viewModel::onPickOwn)
     LaunchedEffect(done) { if (done) onDismiss() }
 
     AppBottomSheet(
@@ -1197,7 +1187,7 @@ private fun CollectionPictureSheet(shelf: DeckShelf, onDismiss: () -> Unit) {
                 onSourceChange = viewModel::onSourceChange,
                 onPick = viewModel::onPick,
                 onPickOwn = {
-                    pickOwn.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    pickOwn()
                 },
                 onRetry = viewModel::onRetry,
                 onSearch = viewModel::onSearchPictures,

@@ -1,19 +1,18 @@
 package com.david.llegeix.ui.flashcards
 
-import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.flashcards.DeckNames
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.platform.ContentRef
+import com.david.llegeix.platform.Services
+import com.david.llegeix.platform.logWarning
 import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.UiText
@@ -126,7 +125,7 @@ class NewDeckViewModel(
 
     fun onPick(hit: PictureHit) = choose(hit.credit) { pictures.fetch(hit) }
 
-    fun onPickOwn(uri: Uri) = choose(credit = null) { flashcards.importImage(ContentRef(uri)) }
+    fun onPickOwn(uri: ContentRef) = choose(credit = null) { flashcards.importImage(uri) }
 
     /** Back to the suggestions, and the copy made for the last choice deleted. */
     fun onRemoveCover() {
@@ -145,7 +144,7 @@ class NewDeckViewModel(
                     _uiState.update { it.copy(coverPath = path, coverCredit = credit, isBusy = false) }
                 }
                 .onFailure { error ->
-                    Log.w(TAG, "Could not bring in a picture for a new deck", error)
+                    logWarning(TAG, "Could not bring in a picture for a new deck", error)
                     _uiState.update { it.copy(isBusy = false) }
                     _message.value = UiText.of(Res.string.flashcards_picture_fetch_failed)
                 }
@@ -213,8 +212,7 @@ class NewDeckViewModel(
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 NewDeckViewModel(app.flashcardRepository, app.pictureSearch)
             }
         }

@@ -54,6 +54,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.mlkit.translate)
+            implementation(libs.androidx.activity.compose)
         }
         val desktopMain by getting {
             dependencies {

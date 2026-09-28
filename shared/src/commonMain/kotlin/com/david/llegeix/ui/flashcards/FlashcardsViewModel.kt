@@ -1,13 +1,10 @@
 package com.david.llegeix.ui.flashcards
 
-import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.flashcards.CollectionTree
@@ -17,6 +14,8 @@ import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.ListSort
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.platform.ContentRef
+import com.david.llegeix.platform.Services
+import com.david.llegeix.platform.logWarning
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -407,13 +406,13 @@ class FlashcardsViewModel(
     private val _backupBusy = MutableStateFlow(false)
     val backupBusy: StateFlow<Boolean> = _backupBusy.asStateFlow()
 
-    fun onExport(uri: Uri) = backup {
-        val cards = flashcards.exportTo(ContentRef(uri))
+    fun onExport(uri: ContentRef) = backup {
+        val cards = flashcards.exportTo(uri)
         UiText.ofPlural(Res.plurals.flashcards_backup_saved, cards)
     }
 
-    fun onRestore(uri: Uri) = backup {
-        val result = flashcards.restoreFrom(ContentRef(uri))
+    fun onRestore(uri: ContentRef) = backup {
+        val result = flashcards.restoreFrom(uri)
         if (result.added == 0) {
             UiText.Joined(
                 listOfNotNull(
@@ -461,7 +460,7 @@ class FlashcardsViewModel(
                     },
                 )
             } catch (error: Exception) {
-                Log.w(TAG, "Backup failed", error)
+                logWarning(TAG, "Backup failed", error)
                 UiText.of(Res.string.flashcards_backup_failed)
             } finally {
                 _backupBusy.value = false
@@ -478,8 +477,7 @@ class FlashcardsViewModel(
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 FlashcardsViewModel(app.flashcardRepository)
             }
         }

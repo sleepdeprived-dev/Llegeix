@@ -1,18 +1,17 @@
 package com.david.llegeix.ui.flashcards
 
-import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.platform.ContentRef
+import com.david.llegeix.platform.Services
+import com.david.llegeix.platform.logWarning
 import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.UiText
@@ -23,17 +22,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Choosing a deck's own picture.
+ * Choosing a collection's own picture.
  *
- * The same search as a card's, asked with the deck's name — *Menjar* brings
- * up food, *Viatges* suitcases — and the same ways in: a suggestion, or one of
- * the reader's own photos. Unlike a card, nothing is half-chosen here: the
- * picture is put on the deck the moment it is picked, and the sheet closes.
+ * Deliberately the same as [DeckPictureViewModel] in every way that shows: the
+ * same search, asked with the shelf's name, the same grid of suggestions, the
+ * same route in from the reader's own photos, and the same rule that the
+ * picture is put on the moment it is picked and the sheet closes. A shelf and a
+ * deck are two kinds of thing to the database and one kind of thing to the
+ * person giving one a picture.
+ *
+ * Removing the picture is not "no picture" here but "back to borrowing one":
+ * a shelf with nothing chosen wears the picture of the first deck on it.
  */
-class DeckPictureViewModel(
+class CollectionPictureViewModel(
     private val flashcards: FlashcardRepository,
     pictureSearch: PictureSearch,
-    private val deckId: Long,
+    private val collectionId: Long,
 ) : ViewModel() {
 
     private var english: WordTranslator? = null
@@ -57,9 +61,9 @@ class DeckPictureViewModel(
 
     init {
         viewModelScope.launch {
-            flashcards.observeDecks().collect { decks ->
-                decks.firstOrNull { it.id == deckId }?.let { deck ->
-                    if (!pictures.isFor(deck.name)) pictures.suggest(deck.name, pause = false)
+            flashcards.observeCollections().collect { collections ->
+                collections.firstOrNull { it.id == collectionId }?.let { shelf ->
+                    if (!pictures.isFor(shelf.name)) pictures.suggest(shelf.name, pause = false)
                 }
             }
         }
@@ -72,16 +76,16 @@ class DeckPictureViewModel(
     fun onRetry() = pictures.again()
 
     fun onPick(hit: PictureHit) = setCover {
-        flashcards.setDeckCover(deckId, pictures.fetch(hit), hit.credit)
+        flashcards.setCollectionCover(collectionId, pictures.fetch(hit), hit.credit)
     }
 
-    fun onPickOwn(uri: Uri) = setCover {
-        flashcards.setDeckCover(deckId, flashcards.importImage(ContentRef(uri)), credit = null)
+    fun onPickOwn(uri: ContentRef) = setCover {
+        flashcards.setCollectionCover(collectionId, flashcards.importImage(uri), credit = null)
     }
 
-    /** Back to the first card's picture, or the initial. */
+    /** Back to the first deck's picture, or the initial. */
     fun onRemove() = setCover {
-        flashcards.setDeckCover(deckId, path = null, credit = null)
+        flashcards.setCollectionCover(collectionId, path = null, credit = null)
     }
 
     private fun setCover(job: suspend () -> Unit) {
@@ -91,7 +95,7 @@ class DeckPictureViewModel(
             runCatchingCancellable { job() }
                 .onSuccess { _done.value = true }
                 .onFailure { error ->
-                    Log.w(TAG, "Could not set the deck's picture", error)
+                    logWarning(TAG, "Could not set the collection's picture", error)
                     _message.value = UiText.of(Res.string.flashcards_picture_fetch_failed)
                 }
             _busy.value = false
@@ -115,13 +119,16 @@ class DeckPictureViewModel(
     }
 
     companion object {
-        private const val TAG = "DeckPicture"
+        private const val TAG = "CollectionPicture"
 
-        fun factory(deckId: Long): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(collectionId: Long): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
-                DeckPictureViewModel(app.flashcardRepository, app.pictureSearch, deckId)
+                val app = Services.app
+                CollectionPictureViewModel(
+                    app.flashcardRepository,
+                    app.pictureSearch,
+                    collectionId,
+                )
             }
         }
     }

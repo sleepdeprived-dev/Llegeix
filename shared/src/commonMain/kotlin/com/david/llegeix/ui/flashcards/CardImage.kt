@@ -22,10 +22,9 @@ import androidx.compose.ui.graphics.FilterQuality
 import com.david.llegeix.data.flashcards.PictureKind
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
 
 /**
  * A card's picture, read off the main thread at about the size it is drawn.
@@ -157,10 +156,7 @@ private fun backgroundFor(kind: PictureKind): Color = when (kind) {
 
 @Composable
 private fun rememberCardBitmap(path: String, maxEdge: Int): ImageBitmap? {
-    val context = LocalContext.current
-    val flashcards = remember(context) {
-        (context.applicationContext as LlegeixApp).flashcardRepository
-    }
+    val flashcards = remember { Services.app.flashcardRepository }
     val bitmap by produceState<ImageBitmap?>(initialValue = null, path, maxEdge) {
         value = flashcards.loadImage(path, maxEdge)
     }

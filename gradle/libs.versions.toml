@@ -13,6 +13,10 @@ composeMultiplatformIcons = "1.7.3"
 # The lifecycle release paired with Compose Multiplatform 1.10; on Android it
 # points at androidx lifecycle 2.9, below the 2.11 the app already uses.
 composeMultiplatformLifecycle = "2.9.6"
+# Navigation for the Mac app, the release built against that lifecycle.
+composeMultiplatformNavigation = "2.9.2"
+# The Mac's main thread for coroutines, at the version Compose already resolves.
+coroutinesSwing = "1.9.0"
 
 coreKtx = "1.19.0"
 activityCompose = "1.13.0"
@@ -73,6 +77,9 @@ compose-mp-material3 = { group = "org.jetbrains.compose.material3", name = "mate
 compose-mp-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "composeMultiplatform" }
 compose-mp-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "composeMultiplatformLifecycle" }
 compose-mp-lifecycle-viewmodel-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "composeMultiplatformLifecycle" }
+compose-mp-navigation-compose = { group = "org.jetbrains.androidx.navigation", name = "navigation-compose", version.ref = "composeMultiplatformNavigation" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesSwing" }
+kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "coroutinesSwing" }
 compose-mp-material-icons-core = { group = "org.jetbrains.compose.material", name = "material-icons-core", version.ref = "composeMultiplatformIcons" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }

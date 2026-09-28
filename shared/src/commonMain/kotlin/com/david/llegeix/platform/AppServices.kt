@@ -1,5 +1,7 @@
 package com.david.llegeix.platform
 
+import com.david.llegeix.data.flashcards.FlashcardRepository
+import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.lang.Speech
 
@@ -14,6 +16,8 @@ import com.david.llegeix.lang.Speech
 interface AppServices {
     val settingsRepository: SettingsRepository
     val speech: Speech
+    val flashcardRepository: FlashcardRepository
+    val pictureSearch: PictureSearch
 }
 
 object Services {

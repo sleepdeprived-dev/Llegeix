@@ -1,5 +1,6 @@
 package com.david.llegeix.data.settings
 
+import com.david.llegeix.platform.desktopPrefsRoot
 import java.util.prefs.Preferences
 
 /**
@@ -7,7 +8,7 @@ import java.util.prefs.Preferences
  * ~/Library/Preferences, which is where a Mac app's settings belong.
  */
 fun desktopSettingsRepository(): SettingsRepository = SettingsRepository(
-    javaPrefsStore(Preferences.userRoot().node("com/david/llegeix").node(SettingsRepository.PREFS_NAME)),
+    javaPrefsStore(desktopPrefsRoot.node(SettingsRepository.PREFS_NAME)),
 )
 
 internal fun javaPrefsStore(node: Preferences): SettingsStore = PreferencesStore(node)

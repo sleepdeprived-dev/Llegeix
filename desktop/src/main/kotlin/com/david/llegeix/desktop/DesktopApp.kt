@@ -2,9 +2,20 @@ package com.david.llegeix.desktop
 
 import com.david.llegeix.data.db.LlegeixDatabase
 import com.david.llegeix.data.db.openDesktop
+import com.david.llegeix.data.flashcards.FlashcardBackupFiles
+import com.david.llegeix.data.flashcards.FlashcardImages
+import com.david.llegeix.data.flashcards.FlashcardRepository
+import com.david.llegeix.data.flashcards.PictureSearch
+import com.david.llegeix.data.flashcards.desktopFlashcardPrefs
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.desktopSettingsRepository
-import java.io.File
+import com.david.llegeix.lang.ApertureLexicon
+import com.david.llegeix.lang.CatalanIpa
+import com.david.llegeix.lang.Speech
+import com.david.llegeix.platform.AppServices
+import com.david.llegeix.platform.DesktopAppFiles
+import com.david.llegeix.platform.Services
+import com.david.llegeix.platform.desktopDataDirectory
 
 /**
  * What the Mac app keeps for its lifetime, as LlegeixApp does on the phone.
@@ -12,14 +23,32 @@ import java.io.File
  * The library, saved words and flashcards live in Application Support, where
  * a Mac app's own data belongs; the settings in the user's preferences.
  */
-object DesktopApp {
+object DesktopApp : AppServices {
 
-    val dataDirectory: File =
-        File(System.getProperty("user.home"), "Library/Application Support/Llegeix")
-
-    val settings: SettingsRepository by lazy { desktopSettingsRepository() }
-
-    val database: LlegeixDatabase by lazy {
-        LlegeixDatabase.openDesktop(dataDirectory.resolve("llegeix.db"))
+    /** First thing at start-up, as LlegeixApp.onCreate does on the phone. */
+    fun start() {
+        Services.app = this
+        CatalanIpa.useLexicon(ApertureLexicon.get())
     }
+
+    private val files by lazy { DesktopAppFiles() }
+
+    private val database: LlegeixDatabase by lazy {
+        LlegeixDatabase.openDesktop(desktopDataDirectory.resolve("llegeix.db"))
+    }
+
+    override val settingsRepository: SettingsRepository by lazy { desktopSettingsRepository() }
+
+    override val speech: Speech by lazy { Speech() }
+
+    override val flashcardRepository: FlashcardRepository by lazy {
+        FlashcardRepository(
+            database,
+            FlashcardImages(files),
+            FlashcardBackupFiles(files),
+            desktopFlashcardPrefs(),
+        )
+    }
+
+    override val pictureSearch: PictureSearch by lazy { PictureSearch(files) }
 }

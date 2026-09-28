@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import com.david.llegeix.platform.Services
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.SearchField
 import androidx.compose.ui.platform.LocalFocusManager
@@ -36,10 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.ui.common.Pill
@@ -255,8 +254,7 @@ private fun SuggestionTile(
     onClick: () -> Unit,
     modifier: Modifier,
 ) {
-    val context = LocalContext.current
-    val search = remember(context) { (context.applicationContext as LlegeixApp).pictureSearch }
+    val search = remember { Services.app.pictureSearch }
     val thumbnail by produceState<ImageBitmap?>(initialValue = null, hit.thumbnailUrl) {
         value = search.thumbnail(hit.thumbnailUrl)
     }

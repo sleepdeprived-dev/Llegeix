@@ -10,7 +10,24 @@ dependencies {
     implementation(project(":shared"))
     implementation(compose.desktop.currentOs)
     implementation(libs.compose.mp.material3)
+    implementation(libs.compose.mp.navigation.compose)
+    // Dispatchers.Main on the Mac is the Swing event thread; the ViewModels run on it.
+    implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.json)
+
+    testImplementation(compose.desktop.uiTestJUnit4)
+    testImplementation(libs.junit)
+    testImplementation(libs.compose.mp.lifecycle.runtime.compose)
+    testImplementation(libs.kotlinx.coroutines.test)
+}
+
+// The Mac's screens under test use the development translator from tools/macos
+// and the models already fetched there, in a scratch data folder.
+tasks.withType<Test>().configureEach {
+    val tools = rootProject.layout.projectDirectory.dir("tools/macos/build").asFile
+    systemProperty("llegeix.bergamot", tools.resolve("bergamot-translator/build/app/bergamot").path)
+    systemProperty("llegeix.testModels", tools.resolve("models").path)
+    systemProperty("llegeix.screenshots", layout.buildDirectory.dir("screenshots").get().asFile.path)
 }
 
 compose.desktop {

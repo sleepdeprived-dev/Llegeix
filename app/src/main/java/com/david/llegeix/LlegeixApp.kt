@@ -92,7 +92,7 @@ class LlegeixApp : Application(), AppServices {
     }
 
     /** The reader's own decks of vocabulary cards, and their pictures. */
-    val flashcardRepository: FlashcardRepository by lazy {
+    override val flashcardRepository: FlashcardRepository by lazy {
         FlashcardRepository(
             database,
             FlashcardImages(this),
@@ -102,7 +102,7 @@ class LlegeixApp : Application(), AppServices {
     }
 
     /** Pictures for a flashcard, from ARASAAC and Openverse, only while a card is being written. */
-    val pictureSearch: PictureSearch by lazy { PictureSearch(appFiles) }
+    override val pictureSearch: PictureSearch by lazy { PictureSearch(appFiles) }
 
     /** First-page covers for the library, shared so the cache outlives a screen. */
     val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(this) }

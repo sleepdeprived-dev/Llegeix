@@ -1,6 +1,5 @@
 package com.david.llegeix.ui.flashcards
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.heightIn
@@ -19,8 +18,6 @@ import androidx.compose.material3.FilledTonalButton
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.data.flashcards.PictureHit
-import com.david.llegeix.LlegeixApp
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
@@ -31,9 +28,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -98,6 +92,8 @@ import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import com.david.llegeix.ui.platform.PlatformBackHandler
+import com.david.llegeix.ui.platform.rememberPicturePicker
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -135,13 +131,9 @@ fun CardEditorScreen(
     var confirmingDiscard by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
 
-    val pickPicture = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri -> uri?.let(viewModel::onImagePicked) }
+    val pickPicture = rememberPicturePicker(viewModel::onImagePicked)
     val openPicker = {
-        pickPicture.launch(
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-        )
+        pickPicture()
     }
 
     LaunchedEffect(finished) { if (finished) onBack() }
@@ -160,7 +152,7 @@ fun CardEditorScreen(
     }
 
     val leave = { if (state.isDirty) confirmingDiscard = true else onBack() }
-    BackHandler(enabled = state.isDirty) { confirmingDiscard = true }
+    PlatformBackHandler(enabled = state.isDirty) { confirmingDiscard = true }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),

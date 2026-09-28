@@ -1,13 +1,10 @@
 package com.david.llegeix.ui.flashcards
 
-import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureHit
@@ -18,6 +15,8 @@ import com.david.llegeix.data.flashcards.matchLeadingCase
 import com.david.llegeix.data.flashcards.tidyIpa
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.platform.ContentRef
+import com.david.llegeix.platform.Services
+import com.david.llegeix.platform.logWarning
 import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.UiText
@@ -399,22 +398,22 @@ class CardEditorViewModel(
                     updateForm { it.copy(imagePath = path, imageCredit = hit.credit) }
                 }
                 .onFailure { error ->
-                    Log.w(TAG, "Could not fetch picture ${hit.fullUrl}", error)
+                    logWarning(TAG, "Could not fetch picture ${hit.fullUrl}", error)
                     _message.value = UiText.of(Res.string.flashcards_picture_fetch_failed)
                 }
         }
     }
 
-    fun onImagePicked(uri: Uri) {
+    fun onImagePicked(uri: ContentRef) {
         _uiState.update { it.copy(isImporting = true) }
         viewModelScope.launch {
-            val imported = runCatchingCancellable { flashcards.importImage(ContentRef(uri)) }
+            val imported = runCatchingCancellable { flashcards.importImage(uri) }
             imported.onSuccess { path ->
                 discardUnsavedImage()
                 // The reader's own photo: nobody else to credit.
                 updateForm { it.copy(imagePath = path, imageCredit = null, isImporting = false) }
             }.onFailure { error ->
-                Log.w(TAG, "Could not import picture $uri", error)
+                logWarning(TAG, "Could not import picture $uri", error)
                 _uiState.update { it.copy(isImporting = false) }
                 _message.value = UiText.of(Res.string.flashcards_image_failed)
             }
@@ -578,8 +577,7 @@ class CardEditorViewModel(
 
         fun factory(deckId: Long, cardId: Long?): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 CardEditorViewModel(app.flashcardRepository, app.pictureSearch, deckId, cardId)
             }
         }
