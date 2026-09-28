@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,8 +39,8 @@ import java.util.Locale
 /**
  * Llegeix for the Mac: for now, the shell.
  *
- * A window in the phone's own theme, with the four sections the phone has. The
- * accent is the Mac's own until there are settings to choose another. Everything in it comes from the shared module; the sections fill in
+ * A window in the phone's own theme, following the saved settings (the Mac's
+ * own accent until another is chosen), with the four sections the phone has. Everything in it comes from the shared module; the sections fill in
  * as their screens move there.
  */
 fun main() {
@@ -56,7 +57,12 @@ private fun ApplicationScope.App() {
         title = stringResource(Res.string.app_name),
         state = rememberWindowState(size = DpSize(1000.dp, 720.dp)),
     ) {
-        LlegeixTheme {
+        val settings by DesktopApp.settings.settings.collectAsState()
+        LlegeixTheme(
+            themeMode = settings.themeMode,
+            accent = settings.accent,
+            customAccent = settings.customAccent,
+        ) {
             Shell()
         }
     }

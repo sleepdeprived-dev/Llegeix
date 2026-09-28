@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
 }
 
 /**
@@ -41,6 +43,9 @@ kotlin {
             // The app's strings. `api` because the phone and the Mac both name
             // them (Res.string.…) and read them (stringResource) directly.
             api(libs.compose.mp.resources)
+            // The database. `api` because the app reaches the DAOs and
+            // entities directly, as it did when they lived there.
+            api(libs.androidx.room.runtime)
             // Android has org.json built in, and a second copy in the APK trips
             // lint's DuplicatePlatformClasses. Only the Mac app bundles it.
             compileOnly(libs.json)
@@ -48,6 +53,7 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation(libs.json)
+                implementation(libs.androidx.sqlite.bundled)
             }
         }
         val desktopTest by getting {
@@ -60,6 +66,18 @@ kotlin {
             }
         }
     }
+}
+
+// Room's compiler, once per platform: each gets its own generated DAOs.
+dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspDesktop", libs.androidx.room.compiler)
+}
+
+// The exported schemas are the baseline every migration is checked against,
+// so they stay where they have always been.
+room {
+    schemaDirectory("$projectDir/../app/schemas")
 }
 
 /**

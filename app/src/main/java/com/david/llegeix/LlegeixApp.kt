@@ -2,6 +2,7 @@ package com.david.llegeix
 
 import android.app.Application
 import com.david.llegeix.data.db.LlegeixDatabase
+import com.david.llegeix.data.db.build
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.lang.ApertureLexicon

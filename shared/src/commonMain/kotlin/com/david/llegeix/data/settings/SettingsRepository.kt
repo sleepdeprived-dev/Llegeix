@@ -1,23 +1,19 @@
 package com.david.llegeix.data.settings
 
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * The three preferences behind the Settings screen.
+ * The preferences behind the Settings screen, kept in a [SettingsStore]:
+ * SharedPreferences on the phone, java.util.prefs on the Mac.
  *
- * SharedPreferences rather than the Room database or DataStore: the language
- * has to be readable synchronously from [android.app.Activity.attachBaseContext],
+ * A plain key-value store rather than the Room database or DataStore: the
+ * language has to be readable synchronously from Android's attachBaseContext,
  * which runs before any coroutine scope exists, and a suspending read there
  * would mean the first frame renders in the wrong language.
  */
-class SettingsRepository(context: Context) {
-
-    private val prefs: SharedPreferences = preferences(context)
+class SettingsRepository(private val prefs: SettingsStore) {
 
     private val _settings = MutableStateFlow(read(prefs))
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
@@ -25,65 +21,65 @@ class SettingsRepository(context: Context) {
     val current: AppSettings get() = _settings.value
 
     fun setThemeMode(mode: ThemeMode) {
-        prefs.edit { putString(KEY_THEME, mode.key) }
+        prefs.putString(KEY_THEME, mode.key)
         _settings.value = current.copy(themeMode = mode)
     }
 
     fun setAccent(accent: AccentColor) {
-        prefs.edit { putString(KEY_ACCENT, accent.key) }
+        prefs.putString(KEY_ACCENT, accent.key)
         _settings.value = current.copy(accent = accent)
     }
 
     fun setLibraryLayout(layout: LibraryLayout) {
-        prefs.edit { putString(KEY_LAYOUT, layout.key) }
+        prefs.putString(KEY_LAYOUT, layout.key)
         _settings.value = current.copy(libraryLayout = layout)
     }
 
     /** Open or folded shut. See [ContinueShelf]. */
     fun setContinueShelf(shelf: ContinueShelf) {
-        prefs.edit { putString(KEY_CONTINUE_SHELF, shelf.key) }
+        prefs.putString(KEY_CONTINUE_SHELF, shelf.key)
         _settings.value = current.copy(continueShelf = shelf)
     }
 
     fun setCustomAccent(argb: Int) {
-        prefs.edit { putInt(KEY_CUSTOM_ACCENT, argb) }
+        prefs.putInt(KEY_CUSTOM_ACCENT, argb)
         _settings.value = current.copy(customAccent = argb, accent = AccentColor.CUSTOM)
     }
 
 
     fun setFlag(flag: AppFlag) {
-        prefs.edit { putString(KEY_FLAG, flag.key) }
+        prefs.putString(KEY_FLAG, flag.key)
         _settings.value = current.copy(flag = flag)
     }
 
     fun setTranslationTarget(target: TranslationTarget) {
-        prefs.edit { putString(KEY_TRANSLATION, target.code) }
+        prefs.putString(KEY_TRANSLATION, target.code)
         _settings.value = current.copy(translationTarget = target)
     }
 
     fun setPageTint(tint: PageTint) {
-        prefs.edit { putString(KEY_PAGE_TINT, tint.key) }
+        prefs.putString(KEY_PAGE_TINT, tint.key)
         _settings.value = current.copy(pageTint = tint)
     }
 
     fun setCropMargins(crop: Boolean) {
-        prefs.edit { putBoolean(KEY_CROP_MARGINS, crop) }
+        prefs.putBoolean(KEY_CROP_MARGINS, crop)
         _settings.value = current.copy(cropMargins = crop)
     }
 
     fun setMarkSavedWords(mark: Boolean) {
-        prefs.edit { putBoolean(KEY_MARK_SAVED, mark) }
+        prefs.putBoolean(KEY_MARK_SAVED, mark)
         _settings.value = current.copy(markSavedWords = mark)
     }
 
     fun setReadingMode(mode: ReadingMode) {
-        prefs.edit { putString(KEY_READING_MODE, mode.key) }
+        prefs.putString(KEY_READING_MODE, mode.key)
         _settings.value = current.copy(readingMode = mode)
     }
 
     /** Whether the whole-device sweep is switched off in Fonts. */
     fun setDeviceScanOptOut(optOut: Boolean) {
-        prefs.edit { putBoolean(KEY_DEVICE_SCAN_OPT_OUT, optOut) }
+        prefs.putBoolean(KEY_DEVICE_SCAN_OPT_OUT, optOut)
         _settings.value = read(prefs)
     }
 
@@ -94,12 +90,13 @@ class SettingsRepository(context: Context) {
      * language behind would not be the clean slate the dialog promises.
      */
     fun resetToDefaults() {
-        prefs.edit { clear() }
+        prefs.clear()
         _settings.value = read(prefs)
     }
 
     companion object {
-        private const val PREFS_NAME = "llegeix.settings"
+        /** The file the phone has always kept them in, and the Mac's node name. */
+        const val PREFS_NAME = "llegeix.settings"
         private const val KEY_THEME = "theme_mode"
         private const val KEY_ACCENT = "accent"
         private const val KEY_LAYOUT = "library_layout"
@@ -114,10 +111,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_CUSTOM_ACCENT = "custom_accent"
         private const val KEY_FLAG = "flag"
 
-        private fun preferences(context: Context): SharedPreferences =
-            context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-        private fun read(prefs: SharedPreferences): AppSettings = AppSettings(
+        private fun read(prefs: SettingsStore): AppSettings = AppSettings(
             themeMode = ThemeMode.fromKey(prefs.getString(KEY_THEME, null)),
             accent = AccentColor.fromKey(prefs.getString(KEY_ACCENT, null)),
             libraryLayout = LibraryLayout.fromKey(prefs.getString(KEY_LAYOUT, null)),

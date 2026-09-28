@@ -3,7 +3,6 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
 }
 
 // Release signing credentials come from gitignored local.properties, falling
@@ -99,10 +98,8 @@ android {
     }
 }
 
-// Emit the schema JSON so feature-3 migrations have a baseline to diff against.
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
+// The database now lives in :shared, whose Room compiler writes the schema JSON
+// into this module's schemas/ as before.
 
 // Room's schema-bundle serializers are compiled against kotlinx-serialization
 // 1.8.x, but a transitive BOM pins -core to 1.7.3 while -json resolves to 1.8.1.
@@ -146,7 +143,6 @@ dependencies {
     implementation(libs.mlkit.text.recognition)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))

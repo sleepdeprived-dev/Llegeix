@@ -1,9 +1,9 @@
 package com.david.llegeix.data.db
 
-import android.content.Context
+import androidx.room.ConstructedBy
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import com.david.llegeix.data.db.dao.BookmarkDao
 import com.david.llegeix.data.db.dao.DocumentDao
 import com.david.llegeix.data.db.dao.FlashcardDao
@@ -43,6 +43,7 @@ import com.david.llegeix.data.db.entity.LearnedWordEntity
     version = 23,
     exportSchema = true,
 )
+@ConstructedBy(LlegeixDatabaseConstructor::class)
 abstract class LlegeixDatabase : RoomDatabase() {
 
     abstract fun folderDao(): FolderDao
@@ -54,20 +55,12 @@ abstract class LlegeixDatabase : RoomDatabase() {
     abstract fun folderRuleDao(): FolderRuleDao
     abstract fun flashcardDao(): FlashcardDao
 
-    companion object {
-        fun build(context: Context): LlegeixDatabase =
-            Room.databaseBuilder(
-                context.applicationContext,
-                LlegeixDatabase::class.java,
-                "llegeix.db",
-            ).addMigrations(
-                MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
-                MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
-                MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-                MIGRATION_22_23,
-            )
-                .build()
-    }
+    /** Opened per platform: [build] on the phone, [openDesktop] on the Mac. */
+    companion object
+}
+
+/** Room's generated constructor, which is what lets the Mac open it without reflection. */
+@Suppress("KotlinNoActualForExpect")
+expect object LlegeixDatabaseConstructor : RoomDatabaseConstructor<LlegeixDatabase> {
+    override fun initialize(): LlegeixDatabase
 }

@@ -711,7 +711,7 @@ private fun SavedWordRow(
                 }
                 if (!word.translation.isNullOrBlank()) {
                     Text(
-                        text = word.translation,
+                        text = word.translation.orEmpty(),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = Space.xs),
@@ -732,7 +732,7 @@ private fun SavedWordRow(
                         modifier = Modifier.padding(top = Space.sm),
                     )
                     Text(
-                        text = word.senseTranslation,
+                        text = word.senseTranslation.orEmpty(),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -776,7 +776,7 @@ private fun SavedWordRow(
                     .padding(horizontal = Space.md, vertical = Space.sm),
             ) {
                 Text(
-                    text = word.context,
+                    text = word.context.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 3,
@@ -787,7 +787,7 @@ private fun SavedWordRow(
                 // learning is the sentence it was doing a job in.
                 if (!word.contextTranslation.isNullOrBlank()) {
                     Text(
-                        text = word.contextTranslation,
+                        text = word.contextTranslation.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                         maxLines = 3,
