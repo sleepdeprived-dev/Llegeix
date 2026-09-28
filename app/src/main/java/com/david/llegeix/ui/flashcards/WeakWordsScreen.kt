@@ -35,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -52,8 +51,10 @@ import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -107,7 +108,7 @@ fun WeakWordsScreen(
     val weak by viewModel.weak.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
     var asking by remember { mutableStateOf(false) }
-    val title = stringResource(R.string.flashcards_weak_title)
+    val title = stringResource(Res.string.flashcards_weak_title)
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -120,7 +121,7 @@ fun WeakWordsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -132,7 +133,7 @@ fun WeakWordsScreen(
                 ExtendedFloatingActionButton(
                     onClick = { asking = true },
                     icon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
-                    text = { Text(stringResource(R.string.flashcards_weak_practise)) },
+                    text = { Text(stringResource(Res.string.flashcards_weak_practise)) },
                 )
             }
         },
@@ -141,8 +142,8 @@ fun WeakWordsScreen(
         when {
             list == null -> Box(Modifier.padding(padding))
             list.isEmpty() -> EmptyState(
-                title = stringResource(R.string.flashcards_weak_empty_title),
-                body = stringResource(R.string.flashcards_weak_empty_body),
+                title = stringResource(Res.string.flashcards_weak_empty_title),
+                body = stringResource(Res.string.flashcards_weak_empty_body),
                 icon = painterResource(R.drawable.ic_weak),
                 modifier = Modifier.padding(padding),
             )
@@ -154,7 +155,7 @@ fun WeakWordsScreen(
             ) {
                 item(key = "intro") {
                     Text(
-                        text = stringResource(R.string.flashcards_weak_intro),
+                        text = stringResource(Res.string.flashcards_weak_intro),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = Space.screen, vertical = Space.sm),
@@ -260,7 +261,7 @@ private fun WeakRow(item: WeakCard, onForget: () -> Unit, modifier: Modifier = M
         IconButton(onClick = onForget) {
             Icon(
                 Icons.Default.Close,
-                contentDescription = stringResource(R.string.flashcards_weak_forget, card.catalan),
+                contentDescription = stringResource(Res.string.flashcards_weak_forget, card.catalan),
                 tint = scheme.onSurfaceVariant,
             )
         }

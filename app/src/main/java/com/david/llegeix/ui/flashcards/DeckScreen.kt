@@ -2,7 +2,6 @@ package com.david.llegeix.ui.flashcards
 
 import com.david.llegeix.data.flashcards.PictureResults
 import androidx.compose.foundation.Image
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -47,19 +46,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardEntity
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The cards in one deck, in Catalan alphabetical order.
@@ -106,7 +107,7 @@ fun DeckScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -125,7 +126,7 @@ fun DeckScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddCard) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.flashcards_add_card))
+                Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.flashcards_add_card))
             }
         },
     ) { innerPadding ->
@@ -134,8 +135,8 @@ fun DeckScreen(
             list == null -> Box(Modifier.padding(innerPadding))
 
             list.isEmpty() -> EmptyState(
-                title = stringResource(R.string.flashcards_deck_empty_title),
-                body = stringResource(R.string.flashcards_deck_empty_body),
+                title = stringResource(Res.string.flashcards_deck_empty_title),
+                body = stringResource(Res.string.flashcards_deck_empty_body),
                 icon = painterResource(R.drawable.ic_flashcards),
                 modifier = Modifier.padding(innerPadding),
             )
@@ -150,7 +151,7 @@ fun DeckScreen(
                 // through it, not before.
                 SearchField(
                     query = query,
-                    placeholder = stringResource(R.string.flashcards_search_deck),
+                    placeholder = stringResource(Res.string.flashcards_search_deck),
                     onQueryChange = viewModel::onQueryChange,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -160,7 +161,7 @@ fun DeckScreen(
                 val found = shown.orEmpty()
                 if (found.isEmpty() && query.isNotBlank()) {
                     Text(
-                        text = stringResource(R.string.flashcards_search_none, query.trim()),
+                        text = stringResource(Res.string.flashcards_search_none, query.trim()),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = Space.screen, vertical = Space.xl),
@@ -278,20 +279,20 @@ private fun CardRow(
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_more),
-                    contentDescription = stringResource(R.string.document_actions, card.catalan),
+                    contentDescription = stringResource(Res.string.document_actions, card.catalan),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(Icons.Default.Edit) },
-                    text = { Text(stringResource(R.string.flashcards_edit_card)) },
+                    text = { Text(stringResource(Res.string.flashcards_edit_card)) },
                     onClick = { onOpen(); menuOpen = false },
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(Icons.Default.Delete) },
-                    text = { Text(stringResource(R.string.action_delete)) },
+                    text = { Text(stringResource(Res.string.action_delete)) },
                     onClick = { onDelete(); menuOpen = false },
                 )
             }
@@ -309,23 +310,23 @@ internal fun DeleteCardDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.flashcards_delete_card_title, word)) },
+        title = { Text(stringResource(Res.string.flashcards_delete_card_title, word)) },
         text = {
             Text(
                 stringResource(
                     if (hasPicture) {
-                        R.string.flashcards_delete_card_body_picture
+                        Res.string.flashcards_delete_card_body_picture
                     } else {
-                        R.string.flashcards_delete_card_body
+                        Res.string.flashcards_delete_card_body
                     },
                 ),
             )
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_delete)) }
+            TextButton(onClick = onConfirm) { Text(stringResource(Res.string.action_delete)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

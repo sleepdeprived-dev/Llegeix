@@ -24,12 +24,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.lang.WordReference
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * How far a lookup in the bundled references has got.
@@ -124,16 +124,16 @@ fun DictionaryCard(
     selected: String,
     modifier: Modifier = Modifier,
 ) {
-    DetailCard(title = stringResource(R.string.lookup_dictionary), modifier = modifier) {
+    DetailCard(title = stringResource(Res.string.lookup_dictionary), modifier = modifier) {
         when {
             entry.status == DictionaryStatus.LOADING -> Text(
-                text = stringResource(R.string.lookup_dictionary_loading),
+                text = stringResource(Res.string.lookup_dictionary_loading),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             entry.entries.isEmpty() -> Text(
-                text = stringResource(R.string.lookup_dictionary_none),
+                text = stringResource(Res.string.lookup_dictionary_none),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -178,7 +178,7 @@ fun DictionaryCard(
 
                 if (word.senses.isNotEmpty()) {
                     DictionarySection(
-                        label = stringResource(R.string.lookup_synonyms),
+                        label = stringResource(Res.string.lookup_synonyms),
                         // Two groups, not one. The groups are separate senses
                         // and the sources do not agree on their order, so
                         // showing only the first can print the synonyms for
@@ -203,7 +203,7 @@ fun DictionaryCard(
                 }
                 if (word.antonyms.isNotEmpty()) {
                     DictionarySection(
-                        label = stringResource(R.string.lookup_antonyms),
+                        label = stringResource(Res.string.lookup_antonyms),
                         lines = listOf(
                             word.antonyms.take(MAX_SYNONYMS_SHOWN).joinToString(" · "),
                         ),
@@ -245,7 +245,7 @@ private fun DictionarySection(
             modifier = Modifier.padding(top = Space.xs),
         )
         if (leading) {
-            val mark = stringResource(R.string.lookup_sense_likely)
+            val mark = stringResource(Res.string.lookup_sense_likely)
             val named = because.take(MAX_SUPPORT_SHOWN)
             Text(
                 text = if (named.isEmpty()) mark else named.joinToString(" · ", "$mark · "),
@@ -263,12 +263,12 @@ private fun DictionarySection(
 /** The dictionary's part-of-speech code, in the reader's own language. */
 @Composable
 private fun partOfSpeechLabel(code: String): String? = when (code) {
-    "nom" -> stringResource(R.string.pos_nom)
-    "verb" -> stringResource(R.string.pos_verb)
-    "adj" -> stringResource(R.string.pos_adj)
-    "adv" -> stringResource(R.string.pos_adv)
-    "interj" -> stringResource(R.string.pos_interj)
-    "loc" -> stringResource(R.string.pos_loc)
+    "nom" -> stringResource(Res.string.pos_nom)
+    "verb" -> stringResource(Res.string.pos_verb)
+    "adj" -> stringResource(Res.string.pos_adj)
+    "adv" -> stringResource(Res.string.pos_adv)
+    "interj" -> stringResource(Res.string.pos_interj)
+    "loc" -> stringResource(Res.string.pos_loc)
     else -> null
 }
 
@@ -290,7 +290,7 @@ fun IpaLine(ipa: String, isApproximate: Boolean, modifier: Modifier = Modifier) 
         )
         if (isApproximate) {
             Text(
-                text = stringResource(R.string.lookup_ipa_approximate),
+                text = stringResource(Res.string.lookup_ipa_approximate),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = Space.sm),

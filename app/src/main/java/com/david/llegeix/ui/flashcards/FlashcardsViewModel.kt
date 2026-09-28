@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.db.entity.FlashcardCollectionEntity
 import com.david.llegeix.data.flashcards.CollectionTree
@@ -17,6 +16,7 @@ import com.david.llegeix.data.flashcards.FlashcardBackup
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.ListSort
 import com.david.llegeix.data.flashcards.StudyDirection
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -332,7 +332,7 @@ class FlashcardsViewModel(
         // Standing inside what is being deleted, go up out of it first.
         if (_current.value == shelf.id) onUp()
         flashcards.deleteCollection(shelf.id)
-        _message.value = UiText.of(R.string.flashcards_collection_deleted, shelf.collection.name)
+        _message.value = UiText.of(Res.string.flashcards_collection_deleted, shelf.collection.name)
     }
 
     /** Go into [id], after something was made inside it. */
@@ -358,9 +358,9 @@ class FlashcardsViewModel(
         val shelves = list.value?.allShelves.orEmpty()
         val where = target?.let { id -> shelves.firstOrNull { it.id == id }?.collection?.name }
         _message.value = if (where == null) {
-            UiText.of(R.string.flashcards_moved_to_top, name)
+            UiText.of(Res.string.flashcards_moved_to_top, name)
         } else {
-            UiText.of(R.string.flashcards_moved_to, name, where)
+            UiText.of(Res.string.flashcards_moved_to, name, where)
         }
     }
 
@@ -387,7 +387,7 @@ class FlashcardsViewModel(
 
     fun deleteDeck(deck: DeckWithCount) = viewModelScope.launch {
         flashcards.deleteDeck(deck.id)
-        _message.value = UiText.of(R.string.flashcards_deck_deleted, deck.name)
+        _message.value = UiText.of(Res.string.flashcards_deck_deleted, deck.name)
     }
 
     /**
@@ -396,7 +396,7 @@ class FlashcardsViewModel(
      */
     private fun report(check: DeckNames.Check) {
         if (check is DeckNames.Check.Taken) {
-            _message.value = UiText.of(R.string.flashcards_deck_exists, check.existing)
+            _message.value = UiText.of(Res.string.flashcards_deck_exists, check.existing)
         }
     }
 
@@ -408,7 +408,7 @@ class FlashcardsViewModel(
 
     fun onExport(uri: Uri) = backup {
         val cards = flashcards.exportTo(uri)
-        UiText.ofPlural(R.plurals.flashcards_backup_saved, cards)
+        UiText.ofPlural(Res.plurals.flashcards_backup_saved, cards)
     }
 
     fun onRestore(uri: Uri) = backup {
@@ -416,19 +416,19 @@ class FlashcardsViewModel(
         if (result.added == 0) {
             UiText.Joined(
                 listOfNotNull(
-                    UiText.of(R.string.flashcards_backup_nothing_new),
+                    UiText.of(Res.string.flashcards_backup_nothing_new),
                     result.skipped.takeIf { it > 0 }
-                        ?.let { UiText.ofPlural(R.plurals.flashcards_backup_skipped, it) },
+                        ?.let { UiText.ofPlural(Res.plurals.flashcards_backup_skipped, it) },
                 ),
             )
         } else {
             UiText.Joined(
                 listOfNotNull(
-                    UiText.ofPlural(R.plurals.flashcards_backup_added, result.added),
+                    UiText.ofPlural(Res.plurals.flashcards_backup_added, result.added),
                     result.skipped.takeIf { it > 0 }
-                        ?.let { UiText.ofPlural(R.plurals.flashcards_backup_skipped, it) },
+                        ?.let { UiText.ofPlural(Res.plurals.flashcards_backup_skipped, it) },
                     result.picturesLost.takeIf { it > 0 }
-                        ?.let { UiText.ofPlural(R.plurals.flashcards_backup_pictures_lost, it) },
+                        ?.let { UiText.ofPlural(Res.plurals.flashcards_backup_pictures_lost, it) },
                 ),
             )
         }
@@ -453,15 +453,15 @@ class FlashcardsViewModel(
                 UiText.of(
                     when (error.reason) {
                         FlashcardBackup.UnreadableException.Reason.NOT_A_BACKUP ->
-                            R.string.flashcards_backup_not_a_copy
+                            Res.string.flashcards_backup_not_a_copy
 
                         FlashcardBackup.UnreadableException.Reason.TOO_NEW ->
-                            R.string.flashcards_backup_too_new
+                            Res.string.flashcards_backup_too_new
                     },
                 )
             } catch (error: Exception) {
                 Log.w(TAG, "Backup failed", error)
-                UiText.of(R.string.flashcards_backup_failed)
+                UiText.of(Res.string.flashcards_backup_failed)
             } finally {
                 _backupBusy.value = false
             }

@@ -88,7 +88,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,10 +96,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.ImageSizing
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * One card, being written.
@@ -174,7 +175,7 @@ fun CardEditorScreen(
                     IconButton(onClick = leave) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
@@ -183,9 +184,9 @@ fun CardEditorScreen(
                         Text(
                             text = stringResource(
                                 if (state.isNew) {
-                                    R.string.flashcards_new_card
+                                    Res.string.flashcards_new_card
                                 } else {
-                                    R.string.flashcards_edit_card_title
+                                    Res.string.flashcards_edit_card_title
                                 },
                             ),
                             maxLines = 1,
@@ -206,7 +207,7 @@ fun CardEditorScreen(
                         IconButton(onClick = { confirmingDelete = true }) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.action_delete),
+                                contentDescription = stringResource(Res.string.action_delete),
                             )
                         }
                     }
@@ -238,7 +239,7 @@ fun CardEditorScreen(
                             modifier = Modifier.weight(1.6f),
                         ) {
                             Text(
-                                stringResource(R.string.flashcards_save_and_add),
+                                stringResource(Res.string.flashcards_save_and_add),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -248,7 +249,7 @@ fun CardEditorScreen(
                         onClick = viewModel::onSave,
                         enabled = state.canSave,
                         modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.flashcards_save)) }
+                    ) { Text(stringResource(Res.string.flashcards_save)) }
                 }
             }
         },
@@ -273,13 +274,13 @@ fun CardEditorScreen(
             // while it is being typed in — no boxes drawn round every field.
             FormSection {
                 CardField(
-                    label = stringResource(R.string.flashcards_field_catalan),
+                    label = stringResource(Res.string.flashcards_field_catalan),
                     value = state.catalan,
                     onValueChange = viewModel::onCatalanChange,
                     textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
                     mark = { LanguageFlag(R.drawable.ic_flag_ca) },
                     note = if (state.catalanIsSuggestion && state.catalan.isNotBlank()) {
-                        stringResource(R.string.flashcards_catalan_suggested)
+                        stringResource(Res.string.flashcards_catalan_suggested)
                     } else {
                         null
                     },
@@ -293,7 +294,7 @@ fun CardEditorScreen(
                     focusRequester = catalanFocus,
                 )
                 CardField(
-                    label = stringResource(R.string.flashcards_field_romanian),
+                    label = stringResource(Res.string.flashcards_field_romanian),
                     value = state.romanian.text,
                     onValueChange = viewModel::onRomanianChange,
                     textStyle = MaterialTheme.typography.titleLarge,
@@ -305,7 +306,7 @@ fun CardEditorScreen(
                 // the field is there to be corrected by whoever knows better,
                 // and the brackets and the typeface already say what it is.
                 CardField(
-                    label = stringResource(R.string.flashcards_field_ipa),
+                    label = stringResource(Res.string.flashcards_field_ipa),
                     value = state.ipa.text,
                     onValueChange = viewModel::onIpaChange,
                     textStyle = MaterialTheme.typography.titleMedium.copy(fontFamily = com.david.llegeix.ui.theme.IpaFont),
@@ -322,7 +323,7 @@ fun CardEditorScreen(
                 )
             }
 
-            FormSection(title = stringResource(R.string.flashcards_picture)) {
+            FormSection(title = stringResource(Res.string.flashcards_picture)) {
                 val imagePath = state.imagePath
                 when {
                     state.isImporting -> Box(
@@ -355,19 +356,19 @@ fun CardEditorScreen(
     if (confirmingDiscard) {
         AlertDialog(
             onDismissRequest = { confirmingDiscard = false },
-            title = { Text(stringResource(R.string.flashcards_discard_title)) },
-            text = { Text(stringResource(R.string.flashcards_discard_body)) },
+            title = { Text(stringResource(Res.string.flashcards_discard_title)) },
+            text = { Text(stringResource(Res.string.flashcards_discard_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirmingDiscard = false
                         onBack()
                     },
-                ) { Text(stringResource(R.string.flashcards_discard)) }
+                ) { Text(stringResource(Res.string.flashcards_discard)) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmingDiscard = false }) {
-                    Text(stringResource(R.string.flashcards_keep_editing))
+                    Text(stringResource(Res.string.flashcards_keep_editing))
                 }
             },
         )
@@ -390,11 +391,11 @@ fun CardEditorScreen(
 @Composable
 private fun meaningNote(field: Suggested, status: MeaningSuggestion, source: MeaningSource): String? = when {
     field.isSuggestion && field.text.isNotBlank() && source == MeaningSource.DICTIONARY ->
-        stringResource(R.string.flashcards_meaning_from_dictionary)
-    status == MeaningSuggestion.DOWNLOADING -> stringResource(R.string.flashcards_meaning_downloading)
-    field.isSuggestion && field.text.isNotBlank() -> stringResource(R.string.flashcards_meaning_suggested)
+        stringResource(Res.string.flashcards_meaning_from_dictionary)
+    status == MeaningSuggestion.DOWNLOADING -> stringResource(Res.string.flashcards_meaning_downloading)
+    field.isSuggestion && field.text.isNotBlank() -> stringResource(Res.string.flashcards_meaning_suggested)
     status == MeaningSuggestion.NEEDS_MODEL && field.text.isBlank() ->
-        stringResource(R.string.flashcards_meaning_needs_model)
+        stringResource(Res.string.flashcards_meaning_needs_model)
     else -> null
 }
 
@@ -536,7 +537,7 @@ private fun ChosenPicture(path: String, credit: String?, onChange: () -> Unit) {
         // kept for whoever is listening rather than looking.
         FramedPicture(
             path = path,
-            contentDescription = stringResource(R.string.flashcards_picture_other),
+            contentDescription = stringResource(Res.string.flashcards_picture_other),
             kind = PictureResults.kindOf(credit),
             maxEdge = ImageSizing.MAX_EDGE,
             modifier = Modifier
@@ -544,7 +545,7 @@ private fun ChosenPicture(path: String, credit: String?, onChange: () -> Unit) {
                 .aspectRatio(4f / 3f)
                 .clip(FieldShape)
                 .clickable(
-                    onClickLabel = stringResource(R.string.flashcards_picture_other),
+                    onClickLabel = stringResource(Res.string.flashcards_picture_other),
                     onClick = onChange,
                 ),
         )

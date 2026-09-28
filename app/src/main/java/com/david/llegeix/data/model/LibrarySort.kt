@@ -1,7 +1,9 @@
 package com.david.llegeix.data.model
 
-import androidx.annotation.StringRes
-import com.david.llegeix.R
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.StringResource
+
+
 
 /**
  * How the library list is ordered.
@@ -14,24 +16,24 @@ import com.david.llegeix.R
  * order actually does rather than making the reader try it to find out.
  */
 enum class LibrarySort(
-    @param:StringRes val labelRes: Int,
-    @param:StringRes val shortLabelRes: Int,
-    @param:StringRes val summaryRes: Int,
+    val labelRes: StringResource,
+    val shortLabelRes: StringResource,
+    val summaryRes: StringResource,
 ) {
     RECENT(
-        R.string.library_sort_recent,
-        R.string.library_sort_recent_short,
-        R.string.library_sort_recent_summary,
+        Res.string.library_sort_recent,
+        Res.string.library_sort_recent_short,
+        Res.string.library_sort_recent_summary,
     ),
     NAME(
-        R.string.library_sort_name,
-        R.string.library_sort_name,
-        R.string.library_sort_name_summary,
+        Res.string.library_sort_name,
+        Res.string.library_sort_name,
+        Res.string.library_sort_name_summary,
     ),
     SIZE(
-        R.string.library_sort_size,
-        R.string.library_sort_size,
-        R.string.library_sort_size_summary,
+        Res.string.library_sort_size,
+        Res.string.library_sort_size,
+        Res.string.library_sort_size_summary,
     ),
 
     /**
@@ -43,9 +45,9 @@ enum class LibrarySort(
      * the order matches what is on screen rather than something invisible.
      */
     TAG(
-        R.string.library_sort_tag,
-        R.string.library_sort_tag,
-        R.string.library_sort_tag_summary,
+        Res.string.library_sort_tag,
+        Res.string.library_sort_tag,
+        Res.string.library_sort_tag_summary,
     ),
     ;
 

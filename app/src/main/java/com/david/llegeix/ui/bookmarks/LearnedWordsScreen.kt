@@ -45,8 +45,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,12 +60,15 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.LearnedWordEntity
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureSearch
+import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.flashcards.Flag
 import com.david.llegeix.util.runCatchingCancellable
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -221,15 +222,15 @@ fun LearnedWordsScreen(
                 expandedHeight = Space.topBar,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.action_back))
                     }
                 },
-                title = { Text(stringResource(R.string.learned_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(stringResource(Res.string.learned_title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { adding = true }) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.learned_add))
+                Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.learned_add))
             }
         },
     ) { padding ->
@@ -237,8 +238,8 @@ fun LearnedWordsScreen(
         when {
             list == null -> Box(Modifier.padding(padding))
             list.isEmpty() -> EmptyState(
-                title = stringResource(R.string.learned_empty_title),
-                body = stringResource(R.string.learned_empty_body),
+                title = stringResource(Res.string.learned_empty_title),
+                body = stringResource(Res.string.learned_empty_body),
                 icon = painterResource(R.drawable.ic_dictionary),
                 modifier = Modifier.padding(padding),
             )
@@ -282,7 +283,7 @@ private fun DayCard(day: LearnedDay, onRemove: (LearnedWordEntity) -> Unit, modi
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = pluralStringResource(R.plurals.learned_count, day.words.size, day.words.size),
+                text = pluralStringResource(Res.plurals.learned_count, day.words.size, day.words.size),
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurfaceVariant,
             )
@@ -315,7 +316,7 @@ private fun DayCard(day: LearnedDay, onRemove: (LearnedWordEntity) -> Unit, modi
                     IconButton(onClick = { onRemove(word) }) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = stringResource(R.string.learned_remove, word.catalan),
+                            contentDescription = stringResource(Res.string.learned_remove, word.catalan),
                             tint = scheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.size(18.dp),
                         )
@@ -334,8 +335,8 @@ private fun dayTitle(date: LocalDate): String {
     val pattern = if (date.year == today.year) "d MMMM" else "d MMMM yyyy"
     val formatted = date.format(DateTimeFormatter.ofPattern(pattern, catalan))
     return when (date) {
-        today -> stringResource(R.string.learned_today, formatted)
-        today.minusDays(1) -> stringResource(R.string.learned_yesterday, formatted)
+        today -> stringResource(Res.string.learned_today, formatted)
+        today.minusDays(1) -> stringResource(Res.string.learned_yesterday, formatted)
         else -> formatted
     }
 }
@@ -361,14 +362,14 @@ private fun AddLearnedSheet(viewModel: LearnedWordsViewModel, onDismiss: () -> U
                 .imePadding(),
         ) {
             Text(
-                text = stringResource(R.string.learned_add),
+                text = stringResource(Res.string.learned_add),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = Space.md),
             )
             OutlinedTextField(
                 value = draft.catalan,
                 onValueChange = viewModel::onCatalanChange,
-                label = { Text(stringResource(R.string.flashcards_field_catalan)) },
+                label = { Text(stringResource(Res.string.flashcards_field_catalan)) },
                 leadingIcon = { Flag(R.drawable.ic_flag_ca, 24.dp) },
                 singleLine = true,
                 modifier = Modifier
@@ -378,11 +379,11 @@ private fun AddLearnedSheet(viewModel: LearnedWordsViewModel, onDismiss: () -> U
             OutlinedTextField(
                 value = draft.romanian,
                 onValueChange = viewModel::onRomanianChange,
-                label = { Text(stringResource(R.string.flashcards_field_romanian)) },
+                label = { Text(stringResource(Res.string.flashcards_field_romanian)) },
                 leadingIcon = { Flag(R.drawable.ic_flag_ro, 24.dp) },
                 singleLine = true,
                 supportingText = if (draft.suggested) {
-                    { Text(stringResource(R.string.learned_suggested)) }
+                    { Text(stringResource(Res.string.learned_suggested)) }
                 } else {
                     null
                 },
@@ -396,12 +397,12 @@ private fun AddLearnedSheet(viewModel: LearnedWordsViewModel, onDismiss: () -> U
                     .fillMaxWidth()
                     .padding(top = Space.md),
             ) {
-                TextButton(onClick = close) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = close) { Text(stringResource(Res.string.action_cancel)) }
                 Button(
                     onClick = { if (viewModel.onSave()) onDismiss() },
                     enabled = draft.catalan.isNotBlank() && draft.romanian.isNotBlank(),
                     modifier = Modifier.padding(start = Space.sm),
-                ) { Text(stringResource(R.string.learned_save)) }
+                ) { Text(stringResource(Res.string.learned_save)) }
             }
         }
     }

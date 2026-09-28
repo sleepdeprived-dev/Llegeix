@@ -33,18 +33,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.pdf.MATCH_LIMIT
 import com.david.llegeix.pdf.PdfMatch
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The strip under the find bar: how much was found, and the way into it.
@@ -72,7 +72,7 @@ internal fun SearchResultsBar(
         ) {
             Text(
                 text = pluralStringResource(
-                    R.plurals.reader_find_match_count,
+                    Res.plurals.reader_find_match_count,
                     matchCount,
                     matchCount,
                 ),
@@ -81,7 +81,7 @@ internal fun SearchResultsBar(
             )
             Text(
                 text = " · " + pluralStringResource(
-                    R.plurals.reader_find_page_count,
+                    Res.plurals.reader_find_page_count,
                     pageCount,
                     pageCount,
                 ),
@@ -96,7 +96,7 @@ internal fun SearchResultsBar(
                     Icons.Default.KeyboardArrowDown
                 },
                 contentDescription = stringResource(
-                    if (isOpen) R.string.reader_find_results_hide else R.string.reader_find_results_show,
+                    if (isOpen) Res.string.reader_find_results_hide else Res.string.reader_find_results_show,
                 ),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -133,8 +133,8 @@ internal fun SearchResultsPanel(
     Surface(color = MaterialTheme.colorScheme.surface, modifier = modifier) {
         if (search.matches.isEmpty()) {
             EmptyState(
-                title = stringResource(R.string.reader_find_empty_title),
-                body = stringResource(R.string.reader_find_empty_body, search.query),
+                title = stringResource(Res.string.reader_find_empty_title),
+                body = stringResource(Res.string.reader_find_empty_body, search.query),
             )
             return@Surface
         }
@@ -194,7 +194,7 @@ internal fun SearchResultsPanel(
             if (search.isAtLimit) {
                 item {
                     Text(
-                        text = stringResource(R.string.reader_find_limit, MATCH_LIMIT),
+                        text = stringResource(Res.string.reader_find_limit, MATCH_LIMIT),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(
@@ -213,7 +213,7 @@ internal fun SearchResultsPanel(
 @Composable
 private fun PageHeading(pageIndex: Int) {
     Text(
-        text = stringResource(R.string.reader_find_result_page, pageIndex + 1),
+        text = stringResource(Res.string.reader_find_result_page, pageIndex + 1),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(

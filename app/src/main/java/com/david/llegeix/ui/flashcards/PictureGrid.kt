@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.SearchField
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.runtime.setValue
@@ -38,7 +39,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.LlegeixApp
@@ -48,6 +48,7 @@ import com.david.llegeix.data.flashcards.PictureSource
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Choosing a picture: a switch between pictograms, photos and emoji, a search
@@ -92,7 +93,7 @@ fun PictureGrid(
         ) {
             SearchField(
                 query = text,
-                placeholder = stringResource(R.string.flashcards_pictures_search),
+                placeholder = stringResource(Res.string.flashcards_pictures_search),
                 onQueryChange = { text = it },
                 onSubmit = {
                     focus.clearFocus()
@@ -106,7 +107,7 @@ fun PictureGrid(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_add_photo),
-                    contentDescription = stringResource(R.string.flashcards_picture_from_gallery),
+                    contentDescription = stringResource(Res.string.flashcards_picture_from_gallery),
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -154,9 +155,9 @@ fun PictureGrid(
         Text(
             text = stringResource(
                 when (source) {
-                    PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_credit_pictograms
-                    PictureSource.PHOTOS -> R.string.flashcards_pictures_credit_photos
-                    PictureSource.EMOJI -> R.string.flashcards_pictures_credit_emoji
+                    PictureSource.PICTOGRAMS -> Res.string.flashcards_pictures_credit_pictograms
+                    PictureSource.PHOTOS -> Res.string.flashcards_pictures_credit_photos
+                    PictureSource.EMOJI -> Res.string.flashcards_pictures_credit_emoji
                 },
             ),
             style = MaterialTheme.typography.labelSmall,
@@ -176,9 +177,9 @@ private fun SourceSwitch(selected: PictureSource, onSelect: (PictureSource) -> U
         PictureSource.entries.forEach { source ->
             val name = stringResource(
                 when (source) {
-                    PictureSource.PICTOGRAMS -> R.string.flashcards_pictures_pictograms
-                    PictureSource.PHOTOS -> R.string.flashcards_pictures_photos
-                    PictureSource.EMOJI -> R.string.flashcards_pictures_emoji
+                    PictureSource.PICTOGRAMS -> Res.string.flashcards_pictures_pictograms
+                    PictureSource.PHOTOS -> Res.string.flashcards_pictures_photos
+                    PictureSource.EMOJI -> Res.string.flashcards_pictures_emoji
                 },
             )
             Pill(
@@ -219,10 +220,10 @@ private fun SourceSwitch(selected: PictureSource, onSelect: (PictureSource) -> U
 private fun StatusNote(suggestions: PictureSuggestions, source: PictureSource, onRetry: () -> Unit) {
     if (suggestions.source != source) return
     val note = when (suggestions.status) {
-        PictureStatus.WAITING -> stringResource(R.string.flashcards_pictures_waiting)
-        PictureStatus.NONE_FOUND -> stringResource(R.string.flashcards_pictures_none)
-        PictureStatus.OFFLINE -> stringResource(R.string.flashcards_pictures_offline)
-        PictureStatus.BLOCKED -> stringResource(R.string.flashcards_pictures_blocked)
+        PictureStatus.WAITING -> stringResource(Res.string.flashcards_pictures_waiting)
+        PictureStatus.NONE_FOUND -> stringResource(Res.string.flashcards_pictures_none)
+        PictureStatus.OFFLINE -> stringResource(Res.string.flashcards_pictures_offline)
+        PictureStatus.BLOCKED -> stringResource(Res.string.flashcards_pictures_blocked)
         PictureStatus.SEARCHING, PictureStatus.FOUND -> null
     } ?: return
     // Where the grid would be, centred, so an empty search reads as an
@@ -243,7 +244,7 @@ private fun StatusNote(suggestions: PictureSuggestions, source: PictureSource, o
             textAlign = TextAlign.Center,
         )
         if (suggestions.status == PictureStatus.OFFLINE) {
-            TextButton(onClick = onRetry) { Text(stringResource(R.string.flashcards_pictures_retry)) }
+            TextButton(onClick = onRetry) { Text(stringResource(Res.string.flashcards_pictures_retry)) }
         }
     }
 }
@@ -280,7 +281,7 @@ private fun SuggestionTile(
         thumbnail?.let {
             Image(
                 bitmap = it,
-                contentDescription = stringResource(R.string.flashcards_picture_use),
+                contentDescription = stringResource(Res.string.flashcards_picture_use),
                 contentScale = if (isPictogram || isEmoji) ContentScale.Fit else ContentScale.Crop,
                 // Scaled smoothly, so a small source image is not left blocky.
                 filterQuality = FilterQuality.High,

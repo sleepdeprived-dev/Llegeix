@@ -19,10 +19,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * What was searched for last, offered back.
@@ -71,7 +72,7 @@ fun RecentSearches(
                 .padding(start = Space.screen, end = Space.sm),
         ) {
             Text(
-                text = stringResource(R.string.search_recent),
+                text = stringResource(Res.string.search_recent),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
@@ -81,7 +82,7 @@ fun RecentSearches(
             // wants.
             TextButton(onClick = onClear) {
                 Text(
-                    text = stringResource(R.string.search_recent_clear),
+                    text = stringResource(Res.string.search_recent_clear),
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
@@ -107,7 +108,7 @@ fun RecentSearches(
                     modifier = Modifier.weight(1f),
                 )
                 if (onRemove != null) {
-                    val removeLabel = stringResource(R.string.search_recent_forget, past)
+                    val removeLabel = stringResource(Res.string.search_recent_forget, past)
                     IconButton(onClick = { onRemove(past) }) {
                         Icon(
                             imageVector = Icons.Default.Close,

@@ -25,15 +25,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.david.llegeix.resources.Res
+import com.david.llegeix.resources.app_name
+import com.david.llegeix.resources.desktop_section_pending
+import com.david.llegeix.resources.nav_dictionary
+import com.david.llegeix.resources.nav_flashcards
+import com.david.llegeix.resources.nav_library
+import com.david.llegeix.resources.nav_saved
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.theme.Shapes
 import com.david.llegeix.ui.theme.schemesFromSeed
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
+import java.util.Locale
 
 /**
  * Llegeix for the Mac: for now, the shell.
@@ -42,10 +53,18 @@ import com.david.llegeix.ui.theme.schemesFromSeed
  * phone has. Everything in it comes from the shared module; the sections fill in
  * as their screens move there.
  */
-fun main() = application {
+fun main() {
+    // Catalan whatever the Mac is set to, as on the phone: plurals follow the
+    // locale's rules ("1000000 de fonts"), and so do dates and numbers.
+    Locale.setDefault(Locale.forLanguageTag("ca"))
+    application { App() }
+}
+
+@Composable
+private fun ApplicationScope.App() {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "Llegeix",
+        title = stringResource(Res.string.app_name),
         state = rememberWindowState(size = DpSize(1000.dp, 720.dp)),
     ) {
         LlegeixDesktopTheme {
@@ -55,11 +74,11 @@ fun main() = application {
 }
 
 /** The four sections, in the phone's order. */
-private enum class Section(val label: String) {
-    LIBRARY("Biblioteca"),
-    DICTIONARY("Diccionari"),
-    SAVED("Desat"),
-    FLASHCARDS("Targetes"),
+private enum class Section(val label: StringResource) {
+    LIBRARY(Res.string.nav_library),
+    DICTIONARY(Res.string.nav_dictionary),
+    SAVED(Res.string.nav_saved),
+    FLASHCARDS(Res.string.nav_flashcards),
 }
 
 @Composable
@@ -72,18 +91,19 @@ private fun Shell() {
         ) {
             PillGroup {
                 Section.entries.forEach { entry ->
+                    val label = stringResource(entry.label)
                     Pill(
                         selected = entry == section,
                         onClick = { section = entry },
-                        label = entry.label,
+                        label = label,
                     ) {
-                        Text(entry.label, style = MaterialTheme.typography.labelLarge)
+                        Text(label, style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
             EmptyState(
-                title = section.label,
-                body = "Aquesta secció encara no és al Mac.",
+                title = stringResource(section.label),
+                body = stringResource(Res.string.desktop_section_pending),
             )
         }
     }

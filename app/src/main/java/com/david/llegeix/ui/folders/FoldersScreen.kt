@@ -48,19 +48,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.HighlightColors
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.resolved
 import androidx.compose.foundation.layout.PaddingValues
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The reader's own collections, as one pane of the Saved tab.
@@ -153,12 +154,12 @@ fun CollectionsPane(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = stringResource(R.string.collections_empty_title),
+                        text = stringResource(Res.string.collections_empty_title),
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center,
                     )
                     Text(
-                        text = stringResource(R.string.collections_empty_body),
+                        text = stringResource(Res.string.collections_empty_body),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -169,7 +170,7 @@ fun CollectionsPane(
         } else {
             item(key = "yours") {
                 Text(
-                    text = stringResource(R.string.collections_yours),
+                    text = stringResource(Res.string.collections_yours),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = Space.screen).padding(bottom = Space.xs),
@@ -212,8 +213,8 @@ fun CollectionsPane(
 
     renameTarget?.let { folder ->
         FolderNameDialog(
-            title = stringResource(R.string.folders_rename_title),
-            confirmLabel = stringResource(R.string.action_rename),
+            title = stringResource(Res.string.folders_rename_title),
+            confirmLabel = stringResource(Res.string.action_rename),
             initialName = folder.name,
             onDismiss = { renameTarget = null },
             onConfirm = { name ->
@@ -237,19 +238,19 @@ fun CollectionsPane(
     pendingDelete?.let { folderId ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text(stringResource(R.string.folders_delete_title)) },
-            text = { Text(stringResource(R.string.folders_delete_body)) },
+            title = { Text(stringResource(Res.string.folders_delete_title)) },
+            text = { Text(stringResource(Res.string.folders_delete_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.deleteFolder(folderId)
                         pendingDelete = null
                     },
-                ) { Text(stringResource(R.string.action_delete)) }
+                ) { Text(stringResource(Res.string.action_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             },
         )
@@ -292,7 +293,7 @@ private fun AutomaticCollections(
         SmartTile(
             icon = { Icon(Icons.Filled.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp)) },
             colour = StarredColour,
-            title = stringResource(R.string.bookmarked_collection_title),
+            title = stringResource(Res.string.bookmarked_collection_title),
             count = bookmarkedCount,
             onClick = onOpenBookmarked,
             modifier = Modifier.weight(1f),
@@ -302,7 +303,7 @@ private fun AutomaticCollections(
                 Icon(painterResource(R.drawable.ic_bookmark), contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             },
             colour = MaterialTheme.colorScheme.primary,
-            title = stringResource(R.string.read_later_collection_title),
+            title = stringResource(Res.string.read_later_collection_title),
             count = readLaterCount,
             onClick = onOpenReadLater,
             modifier = Modifier.weight(1f),
@@ -312,7 +313,7 @@ private fun AutomaticCollections(
                 Icon(painterResource(R.drawable.ic_recent), contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             },
             colour = RecentColour,
-            title = stringResource(R.string.recent_title),
+            title = stringResource(Res.string.recent_title),
             count = recentCount,
             onClick = onOpenRecent,
             modifier = Modifier.weight(1f),
@@ -422,7 +423,7 @@ private fun FolderRow(
                 if (folder.isPinned) {
                     Icon(
                         painter = painterResource(R.drawable.ic_pin),
-                        contentDescription = stringResource(R.string.folders_pinned),
+                        contentDescription = stringResource(Res.string.folders_pinned),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .padding(end = Space.xs)
@@ -439,7 +440,7 @@ private fun FolderRow(
                 if (folder.isBookmarked) {
                     Icon(
                         imageVector = Icons.Filled.Star,
-                        contentDescription = stringResource(R.string.document_bookmarked),
+                        contentDescription = stringResource(Res.string.document_bookmarked),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .padding(start = 6.dp)
@@ -450,10 +451,10 @@ private fun FolderRow(
             Text(
                 text = listOfNotNull(
                     if (folder.documentCount == 0) {
-                        stringResource(R.string.folders_empty_count)
+                        stringResource(Res.string.folders_empty_count)
                     } else {
                         pluralStringResource(
-                            R.plurals.folders_pdf_count,
+                            Res.plurals.folders_pdf_count,
                             folder.documentCount,
                             folder.documentCount,
                         )
@@ -470,7 +471,7 @@ private fun FolderRow(
                 Icon(
                     painter = painterResource(R.drawable.ic_more),
                     contentDescription = stringResource(
-                        R.string.document_actions,
+                        Res.string.document_actions,
                         folder.name,
                     ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -479,7 +480,7 @@ private fun FolderRow(
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(Icons.Default.Add) },
-                    text = { Text(stringResource(R.string.collections_add_action)) },
+                    text = { Text(stringResource(Res.string.collections_add_action)) },
                     onClick = { onAddDocuments(); menuOpen = false },
                 )
                 HorizontalDivider()
@@ -489,9 +490,9 @@ private fun FolderRow(
                         Text(
                             stringResource(
                                 if (folder.isPinned) {
-                                    R.string.folders_unpin
+                                    Res.string.folders_unpin
                                 } else {
-                                    R.string.folders_pin
+                                    Res.string.folders_pin
                                 },
                             ),
                         )
@@ -504,9 +505,9 @@ private fun FolderRow(
                         Text(
                             stringResource(
                                 if (folder.isBookmarked) {
-                                    R.string.document_remove_bookmark
+                                    Res.string.document_remove_bookmark
                                 } else {
-                                    R.string.folders_bookmark
+                                    Res.string.folders_bookmark
                                 },
                             ),
                         )
@@ -515,18 +516,18 @@ private fun FolderRow(
                 )
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(painterResource(R.drawable.ic_circle)) },
-                    text = { Text(stringResource(R.string.folders_colour)) },
+                    text = { Text(stringResource(Res.string.folders_colour)) },
                     onClick = { onPickColor(); menuOpen = false },
                 )
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(Icons.Default.Edit) },
-                    text = { Text(stringResource(R.string.folders_rename)) },
+                    text = { Text(stringResource(Res.string.folders_rename)) },
                     onClick = { onRename(); menuOpen = false },
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
                     leadingIcon = { MenuIcon(Icons.Default.Delete) },
-                    text = { Text(stringResource(R.string.action_delete)) },
+                    text = { Text(stringResource(Res.string.action_delete)) },
                     onClick = { onDelete(); menuOpen = false },
                 )
             }
@@ -542,7 +543,7 @@ private fun FolderColorDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.folders_colour_title)) },
+        title = { Text(stringResource(Res.string.folders_colour_title)) },
         text = {
             Column {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -578,11 +579,11 @@ private fun FolderColorDialog(
                 TextButton(
                     onClick = { onChoose(null) },
                     modifier = Modifier.padding(top = 12.dp),
-                ) { Text(stringResource(R.string.folders_no_colour)) }
+                ) { Text(stringResource(Res.string.folders_no_colour)) }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_done)) }
         },
     )
 }
@@ -592,8 +593,8 @@ fun FolderNameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
     initialName: String = "",
-    title: String = stringResource(R.string.collections_new),
-    confirmLabel: String = stringResource(R.string.action_create),
+    title: String = stringResource(Res.string.collections_new),
+    confirmLabel: String = stringResource(Res.string.action_create),
 ) {
     var name by remember { mutableStateOf(initialName) }
     AlertDialog(
@@ -603,7 +604,7 @@ fun FolderNameDialog(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(stringResource(R.string.folders_name_label)) },
+                label = { Text(stringResource(Res.string.folders_name_label)) },
                 singleLine = true,
             )
         },
@@ -613,7 +614,7 @@ fun FolderNameDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

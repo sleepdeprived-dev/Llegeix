@@ -51,8 +51,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -64,9 +62,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.data.source.SourceFolder
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.allFilesAccessIntents
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Where the library's documents come from, and which parts of it count.
@@ -154,7 +155,7 @@ fun SourcesSheet(
             }
 
             if (state.groups.isNotEmpty()) {
-                item(key = "granted-label") { SectionLabel(stringResource(R.string.sources_section_granted)) }
+                item(key = "granted-label") { SectionLabel(stringResource(Res.string.sources_section_granted)) }
             }
 
             // Keyed by position rather than by name: two granted folders can
@@ -175,7 +176,7 @@ fun SourcesSheet(
             // The sweep and what it found, as one section of their own: the
             // same cards as the granted folders, but a different kind of
             // place, so a heading says whose they are.
-            item(key = "device-label") { SectionLabel(stringResource(R.string.sources_section_device)) }
+            item(key = "device-label") { SectionLabel(stringResource(Res.string.sources_section_device)) }
 
             item(key = "device-scan") {
                 DeviceScanCard(
@@ -220,7 +221,7 @@ fun SourcesSheet(
                         modifier = Modifier.size(18.dp),
                     )
                     Text(
-                        text = stringResource(R.string.sources_add_elsewhere),
+                        text = stringResource(Res.string.sources_add_elsewhere),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = Space.sm),
@@ -233,19 +234,19 @@ fun SourcesSheet(
     removing?.let { folder ->
         AlertDialog(
             onDismissRequest = { removing = null },
-            title = { Text(stringResource(R.string.sources_remove_title, folder.label)) },
+            title = { Text(stringResource(Res.string.sources_remove_title, folder.label)) },
             // Two ways out, and the difference between them spelled out,
             // because they are not degrees of the same thing. Hiding is
             // reversible from this very list; forgetting means finding the
             // folder in the system picker again.
-            text = { Text(stringResource(R.string.sources_remove_body)) },
+            text = { Text(stringResource(Res.string.sources_remove_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.onSetSourceVisible(folder.label, false)
                         removing = null
                     },
-                ) { Text(stringResource(R.string.sources_hide_confirm)) }
+                ) { Text(stringResource(Res.string.sources_hide_confirm)) }
             },
             dismissButton = {
                 TextButton(
@@ -253,7 +254,7 @@ fun SourcesSheet(
                         viewModel.onForgetSource(folder)
                         removing = null
                     },
-                ) { Text(stringResource(R.string.sources_forget_confirm)) }
+                ) { Text(stringResource(Res.string.sources_forget_confirm)) }
             },
         )
     }
@@ -288,18 +289,18 @@ private fun SheetHeader(shown: Int, isScanning: Boolean) {
                     .padding(start = Space.lg),
             ) {
                 Text(
-                    text = stringResource(R.string.library_sources),
+                    text = stringResource(Res.string.library_sources),
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
                 )
                 Text(
-                    text = pluralStringResource(R.plurals.sources_shown_total, shown, shown),
+                    text = pluralStringResource(Res.plurals.sources_shown_total, shown, shown),
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant,
                 )
             }
         }
         Text(
-            text = stringResource(R.string.sources_explainer),
+            text = stringResource(Res.string.sources_explainer),
             style = MaterialTheme.typography.bodySmall,
             color = scheme.onSurfaceVariant,
             modifier = Modifier.padding(top = Space.md),
@@ -391,7 +392,7 @@ private fun SourceCard(
                         Icon(
                             Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = stringResource(
-                                if (isOpen) R.string.sources_hide_folders else R.string.sources_show_folders,
+                                if (isOpen) Res.string.sources_hide_folders else Res.string.sources_show_folders,
                                 root,
                             ),
                             tint = scheme.onSurfaceVariant,
@@ -409,7 +410,7 @@ private fun SourceCard(
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
-            val includeLabel = stringResource(R.string.sources_include, root)
+            val includeLabel = stringResource(Res.string.sources_include, root)
             Switch(
                 checked = isOn,
                 onCheckedChange = { onSetSourceVisible(root, it) },
@@ -455,7 +456,7 @@ private fun SourceCard(
                         modifier = Modifier.size(18.dp),
                     )
                     Text(
-                        text = stringResource(R.string.sources_remove_confirm),
+                        text = stringResource(Res.string.sources_remove_confirm),
                         modifier = Modifier.padding(start = Space.sm),
                     )
                 }
@@ -469,22 +470,22 @@ private fun SourceCard(
 private fun sourceSummary(group: SourceGroup, subfolders: Int): String {
     val documents = when {
         group.visibleCount == 0 && group.totalCount > 0 ->
-            stringResource(R.string.sources_none_shown)
+            stringResource(Res.string.sources_none_shown)
 
         group.visibleCount < group.totalCount -> stringResource(
-            R.string.sources_count_partial,
+            Res.string.sources_count_partial,
             group.visibleCount,
             group.totalCount,
         )
 
         else -> pluralStringResource(
-            R.plurals.folders_pdf_count,
+            Res.plurals.folders_pdf_count,
             group.totalCount,
             group.totalCount,
         )
     }
     if (subfolders == 0) return documents
-    val folders = pluralStringResource(R.plurals.sources_folder_count, subfolders, subfolders)
+    val folders = pluralStringResource(Res.plurals.sources_folder_count, subfolders, subfolders)
     return "$documents · $folders"
 }
 
@@ -558,7 +559,7 @@ private fun FolderRow(
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = stringResource(
-                            if (isOpen) R.string.sources_hide_folders else R.string.sources_show_folders,
+                            if (isOpen) Res.string.sources_hide_folders else Res.string.sources_show_folders,
                             folder.name,
                         ),
                         tint = scheme.onSurfaceVariant,
@@ -654,14 +655,14 @@ private fun DeviceScanCard(
                 .padding(start = Space.md, end = Space.sm),
         ) {
             Text(
-                text = stringResource(R.string.action_scan_device),
+                text = stringResource(Res.string.action_scan_device),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             )
             Text(
                 text = when {
-                    !permitted -> stringResource(R.string.library_device_scan_off)
-                    enabled -> pluralStringResource(R.plurals.folders_pdf_count, count, count)
-                    else -> stringResource(R.string.sources_scan_paused)
+                    !permitted -> stringResource(Res.string.library_device_scan_off)
+                    enabled -> pluralStringResource(Res.plurals.folders_pdf_count, count, count)
+                    else -> stringResource(Res.string.sources_scan_paused)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant,

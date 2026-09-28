@@ -11,7 +11,7 @@ import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.AppSettings
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.ThemeMode
-import com.david.llegeix.R
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.update.AvailableUpdate
 import com.david.llegeix.update.UpdateCheck
@@ -165,11 +165,11 @@ class SettingsViewModel(
             }
             _updateState.value = when {
                 file == null ->
-                    UpdateUiState.Trouble(UiText.of(R.string.settings_update_download_failed))
+                    UpdateUiState.Trouble(UiText.of(Res.string.settings_update_download_failed))
                 // Checked before the reader is shown a dialog about it, not
                 // after. See UpdateRepository.isOurBuild.
                 !updates.isOurBuild(file) ->
-                    UpdateUiState.Trouble(UiText.of(R.string.settings_update_not_ours))
+                    UpdateUiState.Trouble(UiText.of(Res.string.settings_update_not_ours))
                 else -> UpdateUiState.Ready(update, file)
             }
         }
@@ -214,15 +214,15 @@ class SettingsViewModel(
      * exactly why it would never be found any other way.
      */
     fun onCouldNotOpen() {
-        _updateState.value = UpdateUiState.Trouble(UiText.of(R.string.settings_update_cannot_open))
+        _updateState.value = UpdateUiState.Trouble(UiText.of(Res.string.settings_update_cannot_open))
     }
 
     private fun troubleText(reason: UpdateCheck.Reason): UiText = UiText.of(
         when (reason) {
-            UpdateCheck.Reason.OFFLINE -> R.string.settings_update_offline
-            UpdateCheck.Reason.RATE_LIMITED -> R.string.settings_update_rate_limited
-            UpdateCheck.Reason.NO_BUILD -> R.string.settings_update_no_build
-            UpdateCheck.Reason.UNREADABLE -> R.string.settings_update_unreadable
+            UpdateCheck.Reason.OFFLINE -> Res.string.settings_update_offline
+            UpdateCheck.Reason.RATE_LIMITED -> Res.string.settings_update_rate_limited
+            UpdateCheck.Reason.NO_BUILD -> Res.string.settings_update_no_build
+            UpdateCheck.Reason.UNREADABLE -> Res.string.settings_update_unreadable
         },
     )
 

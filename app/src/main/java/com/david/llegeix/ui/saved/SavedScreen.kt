@@ -1,6 +1,5 @@
 package com.david.llegeix.ui.saved
 
-import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,11 +31,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.bookmarks.BookmarksViewModel
 import com.david.llegeix.ui.bookmarks.PagesPane
 import com.david.llegeix.ui.bookmarks.WordsPane
@@ -47,6 +46,8 @@ import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.folders.CollectionsPane
 import com.david.llegeix.ui.folders.FoldersViewModel
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.launch
 
 /**
@@ -63,10 +64,10 @@ import kotlinx.coroutines.launch
  * pages you marked, the words you kept. The tab row carries counts because the
  * count is usually the reason to go to a tab at all.
  */
-private enum class SavedTab(@param:StringRes val labelRes: Int) {
-    COLLECTIONS(R.string.nav_collections),
-    PAGES(R.string.bookmarks_tab_pages),
-    WORDS(R.string.bookmarks_tab_words),
+private enum class SavedTab(val labelRes: StringResource) {
+    COLLECTIONS(Res.string.nav_collections),
+    PAGES(Res.string.bookmarks_tab_pages),
+    WORDS(Res.string.bookmarks_tab_words),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,7 +113,7 @@ fun SavedScreen(
                 title = {
                     ScreenTitle(
                         icon = R.drawable.ic_bookmark,
-                        title = stringResource(R.string.nav_saved),
+                        title = stringResource(Res.string.nav_saved),
                     )
                 },
             )
@@ -128,7 +129,7 @@ fun SavedScreen(
                 exit = fadeOut() + scaleOut(),
             ) {
                 FloatingActionButton(onClick = { showCreateDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.collections_new))
+                    Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.collections_new))
                 }
             }
         },

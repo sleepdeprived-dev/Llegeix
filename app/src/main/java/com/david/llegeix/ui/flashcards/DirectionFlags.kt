@@ -23,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import com.david.llegeix.data.flashcards.StudyScope
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import kotlinx.coroutines.launch
 import com.david.llegeix.data.flashcards.MeaningLanguage
@@ -48,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * A direction of study as two flags and an arrow: the side you are shown, then
@@ -124,10 +125,10 @@ val MeaningLanguage.flagRes: Int
 /** "Català → romanès", said in words, for screen readers. */
 @Composable
 fun directionName(direction: StudyDirection): String {
-    val meaning = stringResource(R.string.lookup_target_romanian)
+    val meaning = stringResource(Res.string.lookup_target_romanian)
     return when (direction) {
-        StudyDirection.CATALAN_TO_MEANING -> stringResource(R.string.flashcards_direction_from_catalan, meaning)
-        StudyDirection.MEANING_TO_CATALAN -> stringResource(R.string.flashcards_direction_to_catalan, meaning)
+        StudyDirection.CATALAN_TO_MEANING -> stringResource(Res.string.flashcards_direction_from_catalan, meaning)
+        StudyDirection.MEANING_TO_CATALAN -> stringResource(Res.string.flashcards_direction_to_catalan, meaning)
     }
 }
 

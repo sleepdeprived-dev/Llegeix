@@ -67,7 +67,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.semantics.contentDescription
@@ -76,9 +75,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.david.llegeix.R
 import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.ThemeMode
+import com.david.llegeix.resources.*
+import com.david.llegeix.ui.common.resolved
 import com.david.llegeix.ui.common.Space
 import kotlin.math.roundToInt
 import java.io.File
@@ -87,6 +87,7 @@ import com.david.llegeix.update.AvailableUpdate
 import com.david.llegeix.ui.theme.hslColor
 import com.david.llegeix.ui.theme.isDark
 import com.david.llegeix.ui.theme.swatchOrNull
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Three choices, one card each.
@@ -128,11 +129,11 @@ fun SettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
-                title = { Text(stringResource(R.string.settings_title)) },
+                title = { Text(stringResource(Res.string.settings_title)) },
             )
         },
     ) { innerPadding ->
@@ -143,17 +144,17 @@ fun SettingsScreen(
                 .padding(horizontal = Space.screen)
                 .padding(bottom = Space.xl),
         ) {
-            SectionHeader(stringResource(R.string.settings_appearance))
+            SectionHeader(stringResource(Res.string.settings_appearance))
 
             SettingsCard {
-                FieldLabel(stringResource(R.string.settings_theme))
+                FieldLabel(stringResource(Res.string.settings_theme))
                 ThemePicker(
                     current = settings.themeMode,
                     onChoose = viewModel::onThemeModeChange,
                 )
 
                 Spacer(modifier = Modifier.height(Space.xl))
-                FieldLabel(stringResource(R.string.settings_accent))
+                FieldLabel(stringResource(Res.string.settings_accent))
                 AccentPicker(
                     current = settings.accent,
                     themeMode = settings.themeMode,
@@ -169,7 +170,7 @@ fun SettingsScreen(
                 )
                 if (settings.accent == AccentColor.SYSTEM) {
                     Text(
-                        text = stringResource(R.string.settings_accent_system_summary),
+                        text = stringResource(Res.string.settings_accent_system_summary),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = Space.xs),
@@ -177,7 +178,7 @@ fun SettingsScreen(
                 }
             }
 
-            SectionHeader(stringResource(R.string.settings_privacy))
+            SectionHeader(stringResource(Res.string.settings_privacy))
 
             SettingsCard {
                 Row(
@@ -188,11 +189,11 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.settings_privacy_open),
+                            text = stringResource(Res.string.settings_privacy_open),
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            text = stringResource(R.string.settings_privacy_summary),
+                            text = stringResource(Res.string.settings_privacy_summary),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = Space.xs),
@@ -206,7 +207,7 @@ fun SettingsScreen(
                 }
             }
 
-            SectionHeader(stringResource(R.string.settings_data))
+            SectionHeader(stringResource(Res.string.settings_data))
 
             SettingsCard {
                 Row(
@@ -217,12 +218,12 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.settings_erase),
+                            text = stringResource(Res.string.settings_erase),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.error,
                         )
                         Text(
-                            text = stringResource(R.string.settings_erase_summary),
+                            text = stringResource(Res.string.settings_erase_summary),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = Space.xs),
@@ -236,7 +237,7 @@ fun SettingsScreen(
                 }
             }
 
-            SectionHeader(stringResource(R.string.settings_updates))
+            SectionHeader(stringResource(Res.string.settings_updates))
 
             SettingsCard {
                 UpdateRows(
@@ -262,7 +263,7 @@ fun SettingsScreen(
                 )
             }
 
-            SectionHeader(stringResource(R.string.settings_about))
+            SectionHeader(stringResource(Res.string.settings_about))
 
             SettingsCard {
                 AboutRows()
@@ -341,10 +342,10 @@ private fun EraseDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isErasing) onDismiss() },
-        title = { Text(stringResource(R.string.erase_title)) },
+        title = { Text(stringResource(Res.string.erase_title)) },
         text = {
             Text(
-                text = stringResource(R.string.erase_body),
+                text = stringResource(Res.string.erase_body),
                 style = MaterialTheme.typography.bodyMedium,
             )
         },
@@ -352,7 +353,7 @@ private fun EraseDialog(
             TextButton(onClick = onConfirm, enabled = !isErasing) {
                 Text(
                     text = stringResource(
-                        if (isErasing) R.string.erase_running else R.string.erase_confirm,
+                        if (isErasing) Res.string.erase_running else Res.string.erase_confirm,
                     ),
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -360,7 +361,7 @@ private fun EraseDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isErasing) {
-                Text(stringResource(R.string.action_cancel))
+                Text(stringResource(Res.string.action_cancel))
             }
         },
     )
@@ -370,15 +371,15 @@ private fun EraseDialog(
 private fun PrivacyDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.privacy_title)) },
+        title = { Text(stringResource(Res.string.privacy_title)) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = stringResource(R.string.privacy_body),
+                    text = stringResource(Res.string.privacy_body),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    text = stringResource(R.string.privacy_updated),
+                    text = stringResource(Res.string.privacy_updated),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = Space.lg),
@@ -386,7 +387,7 @@ private fun PrivacyDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_done)) }
         },
     )
 }
@@ -440,10 +441,10 @@ private fun FieldLabel(text: String) {
 @Composable
 private fun ThemePicker(current: ThemeMode, onChoose: (ThemeMode) -> Unit) {
     val labels = mapOf(
-        ThemeMode.SYSTEM to R.string.settings_theme_system_short,
-        ThemeMode.LIGHT to R.string.settings_theme_light_short,
-        ThemeMode.DARK to R.string.settings_theme_dark_short,
-        ThemeMode.AMOLED to R.string.settings_theme_amoled_short,
+        ThemeMode.SYSTEM to Res.string.settings_theme_system_short,
+        ThemeMode.LIGHT to Res.string.settings_theme_light_short,
+        ThemeMode.DARK to Res.string.settings_theme_dark_short,
+        ThemeMode.AMOLED to Res.string.settings_theme_amoled_short,
     )
     val systemIsDark = isSystemInDarkTheme()
 
@@ -591,7 +592,7 @@ private fun AccentPicker(
                         // your own" rather than as a seventh fixed colour.
                         isCustom = accent == AccentColor.CUSTOM,
                         contentDescription = if (selected) {
-                            stringResource(R.string.settings_accent_selected, label)
+                            stringResource(Res.string.settings_accent_selected, label)
                         } else {
                             label
                         },
@@ -731,14 +732,14 @@ private fun UpdateRows(
     val context = LocalContext.current
 
     Text(
-        text = stringResource(R.string.settings_version, installedVersion),
+        text = stringResource(Res.string.settings_version, installedVersion),
         style = MaterialTheme.typography.titleMedium,
     )
 
     when (state) {
         is UpdateUiState.Idle -> {
             Text(
-                text = stringResource(R.string.settings_update_manual),
+                text = stringResource(Res.string.settings_update_manual),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Space.xs),
@@ -747,7 +748,7 @@ private fun UpdateRows(
                 onClick = onCheck,
                 modifier = Modifier.padding(top = Space.md),
             ) {
-                Text(stringResource(R.string.settings_update_check))
+                Text(stringResource(Res.string.settings_update_check))
             }
         }
 
@@ -760,7 +761,7 @@ private fun UpdateRows(
                 modifier = Modifier.size(18.dp),
             )
             Text(
-                text = stringResource(R.string.settings_update_checking),
+                text = stringResource(Res.string.settings_update_checking),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = Space.md),
@@ -768,12 +769,12 @@ private fun UpdateRows(
         }
 
         is UpdateUiState.UpToDate -> {
-            UpdateNote(stringResource(R.string.settings_update_current))
+            UpdateNote(stringResource(Res.string.settings_update_current))
             Button(
                 onClick = onCheck,
                 modifier = Modifier.padding(top = Space.md),
             ) {
-                Text(stringResource(R.string.settings_update_check))
+                Text(stringResource(Res.string.settings_update_check))
             }
         }
 
@@ -785,17 +786,17 @@ private fun UpdateRows(
                 modifier = Modifier.padding(top = Space.md),
             ) {
                 Button(onClick = { onDownload(state.update) }) {
-                    Text(stringResource(R.string.settings_update_download))
+                    Text(stringResource(Res.string.settings_update_download))
                 }
                 TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.settings_update_dismiss))
+                    Text(stringResource(Res.string.settings_update_dismiss))
                 }
             }
             TextButton(
                 onClick = { onOpenPage(state.update) },
                 contentPadding = PaddingValues(0.dp),
             ) {
-                Text(stringResource(R.string.settings_update_open_page))
+                Text(stringResource(Res.string.settings_update_open_page))
             }
         }
 
@@ -812,7 +813,7 @@ private fun UpdateRows(
             )
             Text(
                 text = stringResource(
-                    R.string.settings_update_downloading,
+                    Res.string.settings_update_downloading,
                     (state.fraction * 100).roundToInt(),
                 ),
                 style = MaterialTheme.typography.bodySmall,
@@ -823,18 +824,18 @@ private fun UpdateRows(
 
         is UpdateUiState.Ready -> {
             UpdateHeadline(state.update)
-            UpdateNote(stringResource(R.string.settings_update_ready))
+            UpdateNote(stringResource(Res.string.settings_update_ready))
             Button(
                 onClick = { onInstall(state.file) },
                 modifier = Modifier.padding(top = Space.md),
             ) {
-                Text(stringResource(R.string.settings_update_install))
+                Text(stringResource(Res.string.settings_update_install))
             }
         }
 
         is UpdateUiState.Trouble -> {
             Text(
-                text = state.message.resolve(context),
+                text = state.message.resolved(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = Space.sm),
@@ -843,7 +844,7 @@ private fun UpdateRows(
                 onClick = onCheck,
                 modifier = Modifier.padding(top = Space.md),
             ) {
-                Text(stringResource(R.string.settings_update_check))
+                Text(stringResource(Res.string.settings_update_check))
             }
         }
     }
@@ -854,14 +855,14 @@ private fun UpdateRows(
 private fun UpdateHeadline(update: AvailableUpdate) {
     val context = LocalContext.current
     Text(
-        text = stringResource(R.string.settings_update_found, update.version),
+        text = stringResource(Res.string.settings_update_found, update.version),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(top = Space.sm),
     )
     Text(
         text = stringResource(
-            R.string.settings_update_size,
+            Res.string.settings_update_size,
             formatSize(context, update.downloadBytes),
             update.abi,
         ),
@@ -892,16 +893,16 @@ private fun UpdateNote(text: String) {
 private fun InstallPermissionDialog(onOpenSettings: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_update_permission_title)) },
-        text = { Text(stringResource(R.string.settings_update_permission_body)) },
+        title = { Text(stringResource(Res.string.settings_update_permission_title)) },
+        text = { Text(stringResource(Res.string.settings_update_permission_body)) },
         confirmButton = {
             TextButton(onClick = onOpenSettings) {
-                Text(stringResource(R.string.settings_update_permission_open))
+                Text(stringResource(Res.string.settings_update_permission_open))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
+                Text(stringResource(Res.string.action_cancel))
             }
         },
     )
@@ -919,12 +920,12 @@ private fun AboutRows() {
     // The name is a proper noun and never translated, so it comes straight from
     // the resource rather than from anything locale-dependent.
     Text(
-        text = stringResource(R.string.app_name),
+        text = stringResource(Res.string.app_name),
         style = MaterialTheme.typography.titleMedium,
     )
     if (version != null) {
         Text(
-            text = stringResource(R.string.settings_version, version),
+            text = stringResource(Res.string.settings_version, version),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = Space.xs),
@@ -933,7 +934,7 @@ private fun AboutRows() {
     // The synonym dictionary is CC BY 4.0, which asks for the credit to travel
     // with it. It is also simply the right place to say whose work this is.
     Text(
-        text = stringResource(R.string.settings_credits_thesaurus),
+        text = stringResource(Res.string.settings_credits_thesaurus),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = Space.md),

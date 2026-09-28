@@ -33,17 +33,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.RecentDocument
 import com.david.llegeix.data.source.DocumentNames
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 /**
@@ -114,7 +115,7 @@ fun SourcesRow(
                 .padding(start = Space.lg),
         ) {
             Text(
-                text = stringResource(R.string.library_sources),
+                text = stringResource(Res.string.library_sources),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -122,16 +123,16 @@ fun SourcesRow(
             Text(
                 text = listOf(
                     if (visibleCount < totalCount) {
-                        stringResource(R.string.sources_count_partial, visibleCount, totalCount)
+                        stringResource(Res.string.sources_count_partial, visibleCount, totalCount)
                     } else {
                         pluralStringResource(
-                            R.plurals.folders_pdf_count,
+                            Res.plurals.folders_pdf_count,
                             totalCount,
                             totalCount,
                         )
                     },
                     pluralStringResource(
-                        R.plurals.sources_source_count,
+                        Res.plurals.sources_source_count,
                         sourceCount,
                         sourceCount,
                     ),
@@ -224,9 +225,9 @@ fun ContinueReadingRow(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(
                         if (collapsed) {
-                            R.string.library_continue_expand
+                            Res.string.library_continue_expand
                         } else {
-                            R.string.library_continue_collapse
+                            Res.string.library_continue_collapse
                         },
                     ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -237,7 +238,7 @@ fun ContinueReadingRow(
                 )
                 Column(modifier = Modifier.padding(start = Space.xs)) {
                     Text(
-                        text = stringResource(R.string.library_continue_title),
+                        text = stringResource(Res.string.library_continue_title),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     // Only while folded. Expanded, the cards underneath are a
@@ -245,7 +246,7 @@ fun ContinueReadingRow(
                     if (collapsed) {
                         Text(
                             text = pluralStringResource(
-                                R.plurals.library_continue_count,
+                                Res.plurals.library_continue_count,
                                 entries.size,
                                 entries.size,
                             ),
@@ -258,7 +259,7 @@ fun ContinueReadingRow(
             // The rest of the history, open or folded: the shelf is only the
             // books part-read, and the full list is one press further.
             TextButton(onClick = onSeeAll) {
-                Text(stringResource(R.string.library_continue_history))
+                Text(stringResource(Res.string.library_continue_history))
             }
         }
         AnimatedVisibility(visible = !collapsed) {
@@ -336,13 +337,13 @@ private fun ContinueCard(
             Text(
                 text = if (total != null && fraction != null) {
                     stringResource(
-                        R.string.library_continue_position,
+                        Res.string.library_continue_position,
                         entry.lastPageIndex + 1,
                         total,
                         (fraction * 100).roundToInt(),
                     )
                 } else {
-                    stringResource(R.string.recent_page, entry.lastPageIndex + 1)
+                    stringResource(Res.string.recent_page, entry.lastPageIndex + 1)
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

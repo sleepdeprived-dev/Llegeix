@@ -31,11 +31,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The one search field in the app.
@@ -120,7 +120,7 @@ fun SearchField(
                     ) {
                         Icon(
                             Icons.Default.Clear,
-                            contentDescription = stringResource(R.string.library_clear_search),
+                            contentDescription = stringResource(Res.string.library_clear_search),
                             modifier = Modifier.size(18.dp),
                         )
                     }

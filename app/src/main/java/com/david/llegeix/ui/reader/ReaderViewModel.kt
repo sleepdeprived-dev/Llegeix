@@ -32,8 +32,8 @@ import com.david.llegeix.pdf.PageOcr
 import com.david.llegeix.pdf.PdfOutlineEntry
 import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.pdf.PdfSelection
+import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
-import com.david.llegeix.R
 import com.david.llegeix.ui.common.DictionaryState
 import com.david.llegeix.ui.common.DictionaryStatus
 import com.david.llegeix.ui.common.HighlightColors
@@ -624,7 +624,7 @@ class ReaderViewModel(
                         isOpening = false,
                         error = UiText.ofMessageOr(
                             error.message,
-                            R.string.reader_open_failed_message,
+                            Res.string.reader_open_failed_message,
                         ),
                     )
                 }
@@ -849,9 +849,9 @@ class ReaderViewModel(
                 val hasWords = hasTextLayer(pageIndex) ||
                     pageOcr.cached(pageIndex, renderedWidthPx)?.isEmpty == false
                 val message = if (hasWords) {
-                    R.string.lookup_no_word_there
+                    Res.string.lookup_no_word_there
                 } else {
-                    R.string.lookup_page_unreadable
+                    Res.string.lookup_page_unreadable
                 }
                 _uiState.update {
                     it.copy(
@@ -1077,9 +1077,9 @@ class ReaderViewModel(
                         canRetryOnAnyNetwork = requireWifi,
                         error = UiText.of(
                             if (requireWifi) {
-                                R.string.lookup_model_wifi_failed
+                                Res.string.lookup_model_wifi_failed
                             } else {
-                                R.string.lookup_model_failed
+                                Res.string.lookup_model_failed
                             },
                         ),
                     )
@@ -1104,7 +1104,7 @@ class ReaderViewModel(
                 updateLookup {
                     it.copy(
                         status = LookupStatus.FAILED,
-                        error = UiText.ofMessageOr(error.message, R.string.lookup_failed),
+                        error = UiText.ofMessageOr(error.message, Res.string.lookup_failed),
                     )
                 }
             }

@@ -15,11 +15,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.CardSort
 import com.david.llegeix.data.flashcards.ListSort
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * A sort button for a top bar: the sort icon, opening the orders on offer
@@ -33,7 +34,7 @@ private fun <T> SortMenu(options: List<Pair<T, String>>, selected: T, onSelect: 
         IconButton(onClick = { open = true }) {
             Icon(
                 painter = painterResource(R.drawable.ic_sort),
-                contentDescription = stringResource(R.string.flashcards_sort),
+                contentDescription = stringResource(Res.string.flashcards_sort),
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
@@ -62,11 +63,11 @@ private fun <T> SortMenu(options: List<Pair<T, String>>, selected: T, onSelect: 
 @Composable
 fun ListSortMenu(selected: ListSort, onSelect: (ListSort) -> Unit) = SortMenu(
     options = listOf(
-        ListSort.NAME to stringResource(R.string.flashcards_sort_name),
-        ListSort.NAME_DESCENDING to stringResource(R.string.flashcards_sort_name_desc),
-        ListSort.NEWEST to stringResource(R.string.flashcards_sort_newest),
-        ListSort.OLDEST to stringResource(R.string.flashcards_sort_oldest),
-        ListSort.MOST_CARDS to stringResource(R.string.flashcards_sort_most_cards),
+        ListSort.NAME to stringResource(Res.string.flashcards_sort_name),
+        ListSort.NAME_DESCENDING to stringResource(Res.string.flashcards_sort_name_desc),
+        ListSort.NEWEST to stringResource(Res.string.flashcards_sort_newest),
+        ListSort.OLDEST to stringResource(Res.string.flashcards_sort_oldest),
+        ListSort.MOST_CARDS to stringResource(Res.string.flashcards_sort_most_cards),
     ),
     selected = selected,
     onSelect = onSelect,
@@ -76,10 +77,10 @@ fun ListSortMenu(selected: ListSort, onSelect: (ListSort) -> Unit) = SortMenu(
 @Composable
 fun CardSortMenu(selected: CardSort, onSelect: (CardSort) -> Unit) = SortMenu(
     options = listOf(
-        CardSort.ALPHABETICAL to stringResource(R.string.flashcards_sort_name),
-        CardSort.NEWEST to stringResource(R.string.flashcards_sort_newest),
-        CardSort.OLDEST to stringResource(R.string.flashcards_sort_oldest),
-        CardSort.WEAKEST to stringResource(R.string.flashcards_sort_weakest),
+        CardSort.ALPHABETICAL to stringResource(Res.string.flashcards_sort_name),
+        CardSort.NEWEST to stringResource(Res.string.flashcards_sort_newest),
+        CardSort.OLDEST to stringResource(Res.string.flashcards_sort_oldest),
+        CardSort.WEAKEST to stringResource(Res.string.flashcards_sort_weakest),
     ),
     selected = selected,
     onSelect = onSelect,

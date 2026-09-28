@@ -108,7 +108,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
@@ -121,6 +120,7 @@ import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.pdf.DEFAULT_PAGE_ASPECT_RATIO
 import com.david.llegeix.pdf.PdfMatch
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.HighlightColors
@@ -136,6 +136,7 @@ import com.david.llegeix.ui.common.VerbDetails
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 import kotlin.math.abs
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -482,14 +483,14 @@ fun ReaderScreen(
                 state.isOpening -> CircularProgressIndicator()
 
                 state.error != null -> EmptyState(
-                    title = stringResource(R.string.reader_open_failed_title),
+                    title = stringResource(Res.string.reader_open_failed_title),
                     body = state.error?.resolved()
-                        ?: stringResource(R.string.reader_open_failed_body),
+                        ?: stringResource(Res.string.reader_open_failed_body),
                 )
 
                 state.pageCount == 0 -> EmptyState(
-                    title = stringResource(R.string.reader_no_pages_title),
-                    body = stringResource(R.string.reader_no_pages_body),
+                    title = stringResource(Res.string.reader_no_pages_title),
+                    body = stringResource(Res.string.reader_no_pages_body),
                 )
 
                 else -> {
@@ -749,7 +750,7 @@ private fun ReaderBar(
             IconButton(onClick = onBack) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.reader_back),
+                    contentDescription = stringResource(Res.string.reader_back),
                 )
             }
         },
@@ -765,7 +766,7 @@ private fun ReaderBar(
             IconButton(onClick = onFind, enabled = canUseTools) {
                 Icon(
                     Icons.Default.Search,
-                    contentDescription = stringResource(R.string.reader_find),
+                    contentDescription = stringResource(Res.string.reader_find),
                 )
             }
             // Only for a document that has one. A permanently greyed button is
@@ -774,14 +775,14 @@ private fun ReaderBar(
                 IconButton(onClick = onOutline, enabled = canUseTools) {
                     Icon(
                         painter = painterResource(R.drawable.ic_toc),
-                        contentDescription = stringResource(R.string.reader_contents),
+                        contentDescription = stringResource(Res.string.reader_contents),
                     )
                 }
             }
             IconButton(onClick = onDisplay, enabled = canUseTools) {
                 Icon(
                     painter = painterResource(R.drawable.ic_display),
-                    contentDescription = stringResource(R.string.reader_display),
+                    contentDescription = stringResource(Res.string.reader_display),
                 )
             }
             Box {
@@ -797,7 +798,7 @@ private fun ReaderBar(
                     onDismissRequest = { colorMenuOpen = false },
                 ) {
                     Text(
-                        text = stringResource(R.string.reader_highlight_colour),
+                        text = stringResource(Res.string.reader_highlight_colour),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = Space.lg, vertical = Space.sm),
@@ -857,9 +858,9 @@ private fun BookmarkButton(
             imageVector = if (isBookmarked) Icons.Filled.Star else Icons.Outlined.Star,
             contentDescription = stringResource(
                 if (isBookmarked) {
-                    R.string.reader_remove_page_bookmark
+                    Res.string.reader_remove_page_bookmark
                 } else {
-                    R.string.reader_add_page_bookmark
+                    Res.string.reader_add_page_bookmark
                 },
             ),
             tint = if (isBookmarked) {
@@ -908,20 +909,20 @@ private fun SearchBar(
             IconButton(onClick = onClose) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = stringResource(R.string.reader_find_close),
+                    contentDescription = stringResource(Res.string.reader_find_close),
                 )
             }
             SearchField(
                 query = search.query,
-                placeholder = stringResource(R.string.reader_find_hint),
+                placeholder = stringResource(Res.string.reader_find_hint),
                 onQueryChange = onQueryChange,
                 focusRequester = focusRequester,
                 trailing = {
                     val counter = when {
                         search.query.isBlank() -> null
-                        search.isEmptyResult -> stringResource(R.string.reader_find_none)
+                        search.isEmptyResult -> stringResource(Res.string.reader_find_none)
                         hasMatches -> stringResource(
-                            R.string.reader_find_position,
+                            Res.string.reader_find_position,
                             search.currentIndex + 1,
                             search.matches.size,
                         )
@@ -945,13 +946,13 @@ private fun SearchBar(
             IconButton(onClick = onPrevious, enabled = hasMatches) {
                 Icon(
                     Icons.Default.KeyboardArrowUp,
-                    contentDescription = stringResource(R.string.reader_find_previous),
+                    contentDescription = stringResource(Res.string.reader_find_previous),
                 )
             }
             IconButton(onClick = onNext, enabled = hasMatches) {
                 Icon(
                     Icons.Default.KeyboardArrowDown,
-                    contentDescription = stringResource(R.string.reader_find_next),
+                    contentDescription = stringResource(Res.string.reader_find_next),
                 )
             }
         }
@@ -994,11 +995,11 @@ private fun PagePill(
     zoom: Float,
     modifier: Modifier = Modifier,
 ) {
-    val position = stringResource(R.string.reader_page_position, page, pageCount)
+    val position = stringResource(Res.string.reader_page_position, page, pageCount)
     // One decimal, and no trailing ".0" on the whole steps.
     val rounded = (zoom * 10f).roundToInt() / 10f
     val zoomLabel = stringResource(
-        R.string.reader_zoom_level,
+        Res.string.reader_zoom_level,
         if (rounded % 1f == 0f) rounded.toInt().toString() else rounded.toString(),
     )
     val label = if (zoom > 1.01f) "$position  ·  $zoomLabel" else position
@@ -1230,7 +1231,7 @@ private fun PdfPage(
                 Image(
                     bitmap = rendered.asImageBitmap(),
                     contentDescription = stringResource(
-                        R.string.reader_page_content_description,
+                        Res.string.reader_page_content_description,
                         index + 1,
                     ),
                     contentScale = ContentScale.Fit,
@@ -1529,7 +1530,7 @@ private fun WordLookupSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stringResource(
-                        R.string.lookup_direction,
+                        Res.string.lookup_direction,
                         stringResource(target.directionRes),
                     ),
                     style = MaterialTheme.typography.labelMedium,
@@ -1546,9 +1547,9 @@ private fun WordLookupSheet(
                         },
                         contentDescription = stringResource(
                             if (lookup.isSaved) {
-                                R.string.lookup_unsave_word
+                                Res.string.lookup_unsave_word
                             } else {
-                                R.string.lookup_save_word
+                                Res.string.lookup_save_word
                             },
                         ),
                         tint = if (lookup.isSaved) {
@@ -1595,18 +1596,18 @@ private fun WordLookupSheet(
             ) {
                 when (lookup.status) {
                     LookupStatus.LOOKING_UP -> Text(
-                        text = stringResource(R.string.lookup_translating),
+                        text = stringResource(Res.string.lookup_translating),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
                     LookupStatus.DOWNLOADING_MODEL -> Column {
                         Text(
-                            text = stringResource(R.string.lookup_downloading_title),
+                            text = stringResource(Res.string.lookup_downloading_title),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = stringResource(R.string.lookup_downloading_body),
+                            text = stringResource(Res.string.lookup_downloading_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = Space.xs),
@@ -1628,7 +1629,7 @@ private fun WordLookupSheet(
 
                     LookupStatus.FAILED -> Text(
                         text = lookup.error?.resolved()
-                            ?: stringResource(R.string.lookup_failed),
+                            ?: stringResource(Res.string.lookup_failed),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -1642,7 +1643,7 @@ private fun WordLookupSheet(
             // comes back as "Canyon".
             lookup.here?.takeIf { it.isPhrase }?.let { here ->
                 DetailCard(
-                    title = stringResource(R.string.lookup_here_phrase),
+                    title = stringResource(Res.string.lookup_here_phrase),
                     modifier = Modifier.padding(top = Space.lg),
                 ) {
                     Text(
@@ -1669,7 +1670,7 @@ private fun WordLookupSheet(
             // depending on how it was reached.
             lookup.verb?.let { verb ->
                 DetailCard(
-                    title = stringResource(R.string.dictionary_verb_title),
+                    title = stringResource(Res.string.dictionary_verb_title),
                     modifier = Modifier.padding(top = Space.lg),
                 ) {
                     VerbDetails(
@@ -1683,7 +1684,7 @@ private fun WordLookupSheet(
             // ---- Word by word, only when there is more than one -------------
             if (lookup.isPhrase && lookup.status == LookupStatus.READY) {
                 DetailCard(
-                    title = stringResource(R.string.lookup_word_by_word),
+                    title = stringResource(Res.string.lookup_word_by_word),
                     modifier = Modifier.padding(top = Space.xl),
                 ) {
                     lookup.words.forEachIndexed { index, gloss ->
@@ -1723,7 +1724,7 @@ private fun WordLookupSheet(
             // ---- Where it came from -----------------------------------------
             if (lookup.context.isNotBlank() && lookup.context != lookup.text) {
                 DetailCard(
-                    title = stringResource(R.string.lookup_in_context),
+                    title = stringResource(Res.string.lookup_in_context),
                     modifier = Modifier.padding(top = Space.lg),
                 ) {
                     Text(
@@ -1747,7 +1748,7 @@ private fun WordLookupSheet(
                     // instead of being asked to trust a second confident word.
                     lookup.here?.takeIf { !it.isPhrase }?.let { here ->
                         Text(
-                            text = stringResource(R.string.lookup_here),
+                            text = stringResource(Res.string.lookup_here),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(top = Space.md),
@@ -1759,7 +1760,7 @@ private fun WordLookupSheet(
                             modifier = Modifier.padding(top = Space.xs),
                         )
                         Text(
-                            text = stringResource(R.string.lookup_here_note),
+                            text = stringResource(Res.string.lookup_here_note),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = Space.xs),
@@ -1767,7 +1768,7 @@ private fun WordLookupSheet(
                     }
                     Text(
                         text = stringResource(
-                            R.string.lookup_location,
+                            Res.string.lookup_location,
                             lookup.pageIndex + 1,
                             lookup.lineNumber,
                         ),
@@ -1808,15 +1809,15 @@ private fun WordLookupSheet(
                 // "Done" on its way to the thing it was actually looking for.
                 if (lookup.canRetryOnAnyNetwork) {
                     OutlinedButton(onClick = onRetryOnAnyNetwork) {
-                        Text(stringResource(R.string.lookup_use_mobile_data))
+                        Text(stringResource(Res.string.lookup_use_mobile_data))
                     }
                 }
                 if (lookup.dictionary.status == DictionaryStatus.CLOSED) {
                     OutlinedButton(onClick = onShowDictionary) {
-                        Text(stringResource(R.string.lookup_dictionary))
+                        Text(stringResource(Res.string.lookup_dictionary))
                     }
                 }
-                Button(onClick = onDismiss) { Text(stringResource(R.string.lookup_done)) }
+                Button(onClick = onDismiss) { Text(stringResource(Res.string.lookup_done)) }
             }
         }
     }
@@ -1868,7 +1869,7 @@ private fun ColorSwatch(
             Icon(
                 imageVector = Icons.Filled.Check,
                 contentDescription = stringResource(
-                    R.string.reader_colour_selected,
+                    Res.string.reader_colour_selected,
                     stringResource(HighlightColors.nameOf(color)),
                 ),
                 tint = Color.Black.copy(alpha = 0.7f),

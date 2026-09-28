@@ -1,14 +1,15 @@
 package com.david.llegeix.data.settings
 
 import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
 import com.david.llegeix.R
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.StringResource
 
 /** Light, dark, true black, or whatever the system is currently doing. */
-enum class ThemeMode(val key: String, @param:StringRes val labelRes: Int) {
-    SYSTEM("system", R.string.settings_theme_system),
-    LIGHT("light", R.string.settings_theme_light),
-    DARK("dark", R.string.settings_theme_dark),
+enum class ThemeMode(val key: String, val labelRes: StringResource) {
+    SYSTEM("system", Res.string.settings_theme_system),
+    LIGHT("light", Res.string.settings_theme_light),
+    DARK("dark", Res.string.settings_theme_dark),
 
     /**
      * True black, for OLED screens.
@@ -18,7 +19,7 @@ enum class ThemeMode(val key: String, @param:StringRes val labelRes: Int) {
      * battery cost, not a shade of the same one. Reading at night is most of
      * what this app is for.
      */
-    AMOLED("amoled", R.string.settings_theme_amoled),
+    AMOLED("amoled", Res.string.settings_theme_amoled),
     ;
 
     companion object {
@@ -37,17 +38,17 @@ enum class ThemeMode(val key: String, @param:StringRes val labelRes: Int) {
  * value — and each is a fixed scheme in ui/theme/Accents.kt, so the choice
  * survives a wallpaper change.
  */
-enum class AccentColor(val key: String, @param:StringRes val labelRes: Int) {
-    SYSTEM("system", R.string.settings_accent_system),
-    RED("red", R.string.settings_accent_red),
-    ORANGE("orange", R.string.settings_accent_orange),
-    YELLOW("yellow", R.string.settings_accent_yellow),
-    GREEN("green", R.string.settings_accent_green),
-    BLUE("blue", R.string.settings_accent_blue),
-    PURPLE("purple", R.string.settings_accent_purple),
+enum class AccentColor(val key: String, val labelRes: StringResource) {
+    SYSTEM("system", Res.string.settings_accent_system),
+    RED("red", Res.string.settings_accent_red),
+    ORANGE("orange", Res.string.settings_accent_orange),
+    YELLOW("yellow", Res.string.settings_accent_yellow),
+    GREEN("green", Res.string.settings_accent_green),
+    BLUE("blue", Res.string.settings_accent_blue),
+    PURPLE("purple", Res.string.settings_accent_purple),
 
     /** A colour mixed by hand; the value lives in [AppSettings.customAccent]. */
-    CUSTOM("custom", R.string.settings_accent_custom),
+    CUSTOM("custom", Res.string.settings_accent_custom),
     ;
 
     companion object {
@@ -66,9 +67,9 @@ enum class AccentColor(val key: String, @param:StringRes val labelRes: Int) {
  */
 enum class TranslationTarget(
     val code: String,
-    @param:StringRes val labelRes: Int,
+    val labelRes: StringResource,
     /** Named inside the sentence "Catalan → …", so it inflects with the UI. */
-    @param:StringRes val directionRes: Int,
+    val directionRes: StringResource,
     /** Shown on the reader's quick toggle, where a flag reads faster than a word. */
     @param:DrawableRes val flagRes: Int,
     /**
@@ -78,21 +79,21 @@ enum class TranslationTarget(
      * Catalan contracts the article differently for each one — *a l'anglès*
      * but *al romanès* — and a template would get one of them wrong.
      */
-    @param:StringRes val switchRes: Int,
+    val switchRes: StringResource,
 ) {
     ENGLISH(
         "en",
-        R.string.settings_translation_english,
-        R.string.lookup_target_english,
+        Res.string.settings_translation_english,
+        Res.string.lookup_target_english,
         R.drawable.ic_flag_uk,
-        R.string.lookup_switch_english,
+        Res.string.lookup_switch_english,
     ),
     ROMANIAN(
         "ro",
-        R.string.settings_translation_romanian,
-        R.string.lookup_target_romanian,
+        Res.string.settings_translation_romanian,
+        Res.string.lookup_target_romanian,
         R.drawable.ic_flag_ro,
-        R.string.lookup_switch_romanian,
+        Res.string.lookup_switch_romanian,
     ),
     ;
 
@@ -113,9 +114,9 @@ enum class TranslationTarget(
  * app is for; the Estelada is there because a great many of the people reading
  * Catalan on a phone would rather see that one, and the app is theirs too.
  */
-enum class AppFlag(val key: String, @param:StringRes val labelRes: Int) {
-    SENYERA("senyera", R.string.flag_senyera),
-    ESTELADA("estelada", R.string.flag_estelada),
+enum class AppFlag(val key: String, val labelRes: StringResource) {
+    SENYERA("senyera", Res.string.flag_senyera),
+    ESTELADA("estelada", Res.string.flag_estelada),
     ;
 
     companion object {
@@ -187,10 +188,10 @@ enum class ContinueShelf(val key: String) {
  * that actually helps is taking the glare off the white rather than replacing
  * it with black.
  */
-enum class PageTint(val key: String, @param:StringRes val labelRes: Int) {
-    NONE("none", R.string.reader_tint_none),
-    SEPIA("sepia", R.string.reader_tint_sepia),
-    INVERT("invert", R.string.reader_tint_invert),
+enum class PageTint(val key: String, val labelRes: StringResource) {
+    NONE("none", Res.string.reader_tint_none),
+    SEPIA("sepia", Res.string.reader_tint_sepia),
+    INVERT("invert", Res.string.reader_tint_invert),
 
     /**
      * Inverted and then warmed: cream type on a near-black page.
@@ -201,7 +202,7 @@ enum class PageTint(val key: String, @param:StringRes val labelRes: Int) {
      * same pass over the pixels that [INVERT] uses, so photographs are still
      * found and left alone, with [SEPIA]'s own warming laid over the result.
      */
-    WARM_DARK("warm-dark", R.string.reader_tint_warm_dark),
+    WARM_DARK("warm-dark", Res.string.reader_tint_warm_dark),
     ;
 
     /**
@@ -230,12 +231,12 @@ enum class PageTint(val key: String, @param:StringRes val labelRes: Int) {
  */
 enum class ReadingMode(
     val key: String,
-    @param:StringRes val labelRes: Int,
+    val labelRes: StringResource,
     /** A mark beside the word, since "Turn" and "Scroll" are near-synonyms read quickly. */
     @param:DrawableRes val iconRes: Int,
 ) {
-    PAGED("paged", R.string.reader_mode_paged, R.drawable.ic_page_turn),
-    SCROLL("scroll", R.string.reader_mode_scroll, R.drawable.ic_page_scroll),
+    PAGED("paged", Res.string.reader_mode_paged, R.drawable.ic_page_turn),
+    SCROLL("scroll", Res.string.reader_mode_scroll, R.drawable.ic_page_scroll),
     ;
 
     companion object {

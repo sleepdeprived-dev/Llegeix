@@ -37,16 +37,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.TagEntity
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The tags on a document, as they appear in a list.
@@ -83,7 +83,7 @@ fun TagStrip(
         }
         if (tags.size > maxVisible) {
             Text(
-                text = stringResource(R.string.tags_overflow, tags.size - maxVisible),
+                text = stringResource(Res.string.tags_overflow, tags.size - maxVisible),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -205,13 +205,13 @@ fun TagPickerDialog(
     var newName by remember { mutableStateOf("") }
     var colorIndex by remember { mutableIntStateOf(0) }
     var newPaletteOpen by remember { mutableStateOf(false) }
-    val pickColourLabel = stringResource(R.string.tags_pick_colour)
+    val pickColourLabel = stringResource(Res.string.tags_pick_colour)
     // Which existing tag has its palette open, if any.
     var recolouring by remember { mutableStateOf<TagEntity?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.tags_title)) },
+        title = { Text(stringResource(Res.string.tags_title)) },
         text = {
             Column {
                 Text(
@@ -224,7 +224,7 @@ fun TagPickerDialog(
 
                 if (allTags.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.tags_none_yet),
+                        text = stringResource(Res.string.tags_none_yet),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = Space.lg),
                     )
@@ -285,7 +285,7 @@ fun TagPickerDialog(
                     OutlinedTextField(
                         value = newName,
                         onValueChange = { newName = it },
-                        label = { Text(stringResource(R.string.tags_new_name)) },
+                        label = { Text(stringResource(Res.string.tags_new_name)) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium,
                         shape = RoundedCornerShape(12.dp),
@@ -315,11 +315,11 @@ fun TagPickerDialog(
                 },
                 enabled = newName.isNotBlank(),
             ) {
-                Text(stringResource(R.string.tags_add))
+                Text(stringResource(Res.string.tags_add))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_done)) }
         },
     )
 }
@@ -343,7 +343,7 @@ private fun TagRow(
     onDelete: () -> Unit,
     onRename: ((String) -> Unit)? = null,
 ) {
-    val changeColourLabel = stringResource(R.string.tags_change_colour, tag.name)
+    val changeColourLabel = stringResource(Res.string.tags_change_colour, tag.name)
     // Renaming happens in place, on the row, rather than in a dialog over a
     // dialog: the name is already drawn there, and the smallest honest edit
     // control for a word already on screen is that word becoming a field.
@@ -409,7 +409,7 @@ private fun TagRow(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Check,
-                        contentDescription = stringResource(R.string.action_done),
+                        contentDescription = stringResource(Res.string.action_done),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp),
                     )
@@ -429,7 +429,7 @@ private fun TagRow(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = stringResource(
-                                R.string.tags_rename,
+                                Res.string.tags_rename,
                                 tag.name,
                             ),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -440,7 +440,7 @@ private fun TagRow(
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.tags_delete, tag.name),
+                        contentDescription = stringResource(Res.string.tags_delete, tag.name),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp),
                     )
@@ -471,7 +471,7 @@ private fun ColourPalette(
     onPick: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val label = stringResource(R.string.tags_pick_colour)
+    val label = stringResource(Res.string.tags_pick_colour)
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Space.sm),

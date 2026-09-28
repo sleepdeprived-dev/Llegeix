@@ -8,11 +8,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureHit
 import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.data.flashcards.PictureSource
+import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.util.runCatchingCancellable
@@ -91,7 +91,7 @@ class DeckPictureViewModel(
                 .onSuccess { _done.value = true }
                 .onFailure { error ->
                     Log.w(TAG, "Could not set the deck's picture", error)
-                    _message.value = UiText.of(R.string.flashcards_picture_fetch_failed)
+                    _message.value = UiText.of(Res.string.flashcards_picture_fetch_failed)
                 }
             _busy.value = false
         }

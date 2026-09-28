@@ -1,8 +1,8 @@
 package com.david.llegeix.ui.common
 
-import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.Color
-import com.david.llegeix.R
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * The palette offered for highlights, stored in the database as ARGB ints.
@@ -28,14 +28,13 @@ object HighlightColors {
     fun compose(argb: Int): Color = Color(argb)
 
     /** The colour's name, as a resource so it follows the app's language. */
-    @StringRes
-    fun nameOf(argb: Int): Int = when (argb) {
-        Yellow -> R.string.colour_yellow
-        Green -> R.string.colour_green
-        Blue -> R.string.colour_blue
-        Pink -> R.string.colour_pink
-        Orange -> R.string.colour_orange
-        Purple -> R.string.colour_purple
-        else -> R.string.colour_custom
+    fun nameOf(argb: Int): StringResource = when (argb) {
+        Yellow -> Res.string.colour_yellow
+        Green -> Res.string.colour_green
+        Blue -> Res.string.colour_blue
+        Pink -> Res.string.colour_pink
+        Orange -> Res.string.colour_orange
+        Purple -> Res.string.colour_purple
+        else -> Res.string.colour_custom
     }
 }

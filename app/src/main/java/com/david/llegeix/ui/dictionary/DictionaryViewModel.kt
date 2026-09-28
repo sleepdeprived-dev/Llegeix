@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
@@ -18,6 +17,7 @@ import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.CatalanWordBank
 import com.david.llegeix.lang.VerbForm
 import com.david.llegeix.lang.verbEntry
+import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.DictionaryState
 import com.david.llegeix.ui.common.DictionaryStatus
@@ -278,9 +278,9 @@ class DictionaryViewModel(
                         canRetryOnAnyNetwork = requireWifi,
                         error = UiText.of(
                             if (requireWifi) {
-                                R.string.lookup_model_wifi_failed
+                                Res.string.lookup_model_wifi_failed
                             } else {
-                                R.string.lookup_model_failed
+                                Res.string.lookup_model_failed
                             },
                         ),
                     )
@@ -298,7 +298,7 @@ class DictionaryViewModel(
                 updateEntry {
                     it.copy(
                         status = EntryStatus.FAILED,
-                        error = UiText.ofMessageOr(error.message, R.string.lookup_failed),
+                        error = UiText.ofMessageOr(error.message, Res.string.lookup_failed),
                     )
                 }
             }

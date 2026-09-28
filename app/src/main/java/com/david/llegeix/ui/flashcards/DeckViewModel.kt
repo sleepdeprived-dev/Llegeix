@@ -6,12 +6,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardDeckEntity
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.CardSearch
 import com.david.llegeix.data.flashcards.CardSort
 import com.david.llegeix.data.flashcards.FlashcardRepository
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -72,7 +72,7 @@ class DeckViewModel(
 
     fun deleteCard(card: FlashcardEntity) = viewModelScope.launch {
         flashcards.deleteCard(card)
-        _message.value = UiText.of(R.string.flashcards_card_deleted, card.catalan)
+        _message.value = UiText.of(Res.string.flashcards_card_deleted, card.catalan)
     }
 
     fun onMessageShown() {

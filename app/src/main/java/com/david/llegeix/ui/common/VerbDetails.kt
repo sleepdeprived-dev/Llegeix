@@ -16,10 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.lang.Conjugation
 import com.david.llegeix.lang.Mood
 import com.david.llegeix.lang.NonFiniteForm
@@ -27,6 +25,9 @@ import com.david.llegeix.lang.Person
 import com.david.llegeix.lang.Tense
 import com.david.llegeix.lang.VerbForm
 import com.david.llegeix.lang.VerbReading
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * What a verb form is, spelled out.
@@ -75,7 +76,7 @@ fun VerbDetails(
             if (readings.size > 1) {
                 Text(
                     text = stringResource(
-                        R.string.dictionary_verb_also,
+                        Res.string.dictionary_verb_also,
                         readings.drop(1).joinToString(", "),
                     ),
                     style = MaterialTheme.typography.bodySmall,
@@ -88,7 +89,7 @@ fun VerbDetails(
             // is worth a card on its own, and inventing a tense to fill the
             // line would be worse than leaving it out.
             Text(
-                text = stringResource(R.string.dictionary_verb_unplaced),
+                text = stringResource(Res.string.dictionary_verb_unplaced),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -117,7 +118,7 @@ fun VerbDetails(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.dictionary_verb_infinitive),
+                    text = stringResource(Res.string.dictionary_verb_infinitive),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -139,7 +140,7 @@ fun VerbDetails(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(
-                        R.string.dictionary_verb_look_up,
+                        Res.string.dictionary_verb_look_up,
                         verb.infinitive,
                     ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -165,14 +166,14 @@ fun VerbDetails(
 private fun readingName(reading: VerbReading): String = when (reading) {
     is VerbReading.NonFinite -> stringResource(
         when (reading.form) {
-            NonFiniteForm.INFINITIVE -> R.string.verb_form_infinitive
-            NonFiniteForm.GERUND -> R.string.verb_form_gerund
-            NonFiniteForm.PARTICIPLE -> R.string.verb_form_participle
+            NonFiniteForm.INFINITIVE -> Res.string.verb_form_infinitive
+            NonFiniteForm.GERUND -> Res.string.verb_form_gerund
+            NonFiniteForm.PARTICIPLE -> Res.string.verb_form_participle
         },
     )
 
     is VerbReading.Finite -> stringResource(
-        R.string.dictionary_verb_reading,
+        Res.string.dictionary_verb_reading,
         stringResource(tenseName(reading.mood, reading.tense)),
         stringResource(personName(reading.person)),
     )
@@ -186,34 +187,34 @@ private fun readingName(reading: VerbReading): String = when (reading) {
  * *present de subjuntiu* is not *present* followed by *subjuntiu*, and the
  * imperative has no tense at all to put beside it.
  */
-private fun tenseName(mood: Mood, tense: Tense?): Int = when (mood) {
-    Mood.IMPERATIVE -> R.string.verb_mood_imperative
+private fun tenseName(mood: Mood, tense: Tense?): StringResource = when (mood) {
+    Mood.IMPERATIVE -> Res.string.verb_mood_imperative
     Mood.INDICATIVE -> when (tense) {
-        Tense.PRESENT -> R.string.verb_tense_present_indicative
-        Tense.IMPERFECT -> R.string.verb_tense_imperfect_indicative
-        Tense.PAST -> R.string.verb_tense_past
-        Tense.FUTURE -> R.string.verb_tense_future
-        Tense.CONDITIONAL -> R.string.verb_tense_conditional
-        null -> R.string.verb_mood_indicative
+        Tense.PRESENT -> Res.string.verb_tense_present_indicative
+        Tense.IMPERFECT -> Res.string.verb_tense_imperfect_indicative
+        Tense.PAST -> Res.string.verb_tense_past
+        Tense.FUTURE -> Res.string.verb_tense_future
+        Tense.CONDITIONAL -> Res.string.verb_tense_conditional
+        null -> Res.string.verb_mood_indicative
     }
 
     Mood.SUBJUNCTIVE -> when (tense) {
-        Tense.IMPERFECT -> R.string.verb_tense_imperfect_subjunctive
-        else -> R.string.verb_tense_present_subjunctive
+        Tense.IMPERFECT -> Res.string.verb_tense_imperfect_subjunctive
+        else -> Res.string.verb_tense_present_subjunctive
     }
 }
 
-private fun personName(person: Person): Int = when (person) {
-    Person.S1 -> R.string.verb_person_1s
-    Person.S2 -> R.string.verb_person_2s
-    Person.S3 -> R.string.verb_person_3s
-    Person.P1 -> R.string.verb_person_1p
-    Person.P2 -> R.string.verb_person_2p
-    Person.P3 -> R.string.verb_person_3p
+private fun personName(person: Person): StringResource = when (person) {
+    Person.S1 -> Res.string.verb_person_1s
+    Person.S2 -> Res.string.verb_person_2s
+    Person.S3 -> Res.string.verb_person_3s
+    Person.P1 -> Res.string.verb_person_1p
+    Person.P2 -> Res.string.verb_person_2p
+    Person.P3 -> Res.string.verb_person_3p
 }
 
-private fun conjugationName(conjugation: Conjugation): Int = when (conjugation) {
-    Conjugation.FIRST -> R.string.verb_conjugation_first
-    Conjugation.SECOND -> R.string.verb_conjugation_second
-    Conjugation.THIRD -> R.string.verb_conjugation_third
+private fun conjugationName(conjugation: Conjugation): StringResource = when (conjugation) {
+    Conjugation.FIRST -> Res.string.verb_conjugation_first
+    Conjugation.SECOND -> Res.string.verb_conjugation_second
+    Conjugation.THIRD -> Res.string.verb_conjugation_third
 }

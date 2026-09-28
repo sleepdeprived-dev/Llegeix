@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.FlashcardEntity
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureHit
@@ -18,6 +17,7 @@ import com.david.llegeix.data.flashcards.Suggested
 import com.david.llegeix.data.flashcards.matchLeadingCase
 import com.david.llegeix.data.flashcards.tidyIpa
 import com.david.llegeix.lang.CatalanIpa
+import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.util.runCatchingCancellable
@@ -399,7 +399,7 @@ class CardEditorViewModel(
                 }
                 .onFailure { error ->
                     Log.w(TAG, "Could not fetch picture ${hit.fullUrl}", error)
-                    _message.value = UiText.of(R.string.flashcards_picture_fetch_failed)
+                    _message.value = UiText.of(Res.string.flashcards_picture_fetch_failed)
                 }
         }
     }
@@ -415,7 +415,7 @@ class CardEditorViewModel(
             }.onFailure { error ->
                 Log.w(TAG, "Could not import picture $uri", error)
                 _uiState.update { it.copy(isImporting = false) }
-                _message.value = UiText.of(R.string.flashcards_image_failed)
+                _message.value = UiText.of(Res.string.flashcards_image_failed)
             }
         }
     }
@@ -472,7 +472,7 @@ class CardEditorViewModel(
                 storedImage = null
                 baseline = Baseline()
                 _uiState.update { CardEditorUiState(isLoading = false, deckName = it.deckName) }
-                _message.value = UiText.of(R.string.flashcards_card_saved, card.catalan)
+                _message.value = UiText.of(Res.string.flashcards_card_saved, card.catalan)
                 _cleared.update { it + 1 }
             } else {
                 _finished.value = true

@@ -24,14 +24,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.data.settings.AppFlag
+import com.david.llegeix.resources.*
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -72,8 +72,8 @@ fun Senyera(
 ) {
     val description = stringResource(
         when (flag) {
-            AppFlag.SENYERA -> R.string.senyera_content_description
-            AppFlag.ESTELADA -> R.string.estelada_content_description
+            AppFlag.SENYERA -> Res.string.senyera_content_description
+            AppFlag.ESTELADA -> Res.string.estelada_content_description
         },
     )
 
@@ -178,7 +178,7 @@ fun FlagChoiceDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.flag_choose_title)) },
+        title = { Text(stringResource(Res.string.flag_choose_title)) },
         text = {
             Row(horizontalArrangement = Arrangement.spacedBy(Space.lg)) {
                 AppFlag.entries.forEach { candidate ->
@@ -191,7 +191,7 @@ fun FlagChoiceDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_done)) }
         },
     )
 }

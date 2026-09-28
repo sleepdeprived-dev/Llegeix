@@ -41,13 +41,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.settings.TranslationTarget
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.DictionaryCard
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.IpaLine
@@ -59,6 +59,7 @@ import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.TranslationTargetFlags
 import com.david.llegeix.ui.common.VerbDetails
 import com.david.llegeix.ui.common.resolved
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The dictionary as a place, not as something that happens to a word you
@@ -103,7 +104,7 @@ fun DictionaryScreen(
                 title = {
                     ScreenTitle(
                         icon = R.drawable.ic_dictionary,
-                        title = stringResource(R.string.dictionary_title),
+                        title = stringResource(Res.string.dictionary_title),
                     )
                 },
             )
@@ -112,7 +113,7 @@ fun DictionaryScreen(
         Column(modifier = Modifier.padding(innerPadding)) {
             SearchField(
                 query = state.query,
-                placeholder = stringResource(R.string.dictionary_search),
+                placeholder = stringResource(Res.string.dictionary_search),
                 onQueryChange = viewModel::onQueryChange,
                 onSubmit = {
                     keyboard?.hide()
@@ -150,8 +151,8 @@ fun DictionaryScreen(
                         modifier = Modifier.padding(bottom = Space.sm),
                     )
                     EmptyState(
-                        title = stringResource(R.string.dictionary_empty_title),
-                        body = stringResource(R.string.dictionary_empty_body),
+                        title = stringResource(Res.string.dictionary_empty_title),
+                        body = stringResource(Res.string.dictionary_empty_body),
                         icon = painterResource(R.drawable.ic_dictionary),
                     )
                 }
@@ -253,7 +254,7 @@ private fun WordEntry(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(
-                    R.string.lookup_direction,
+                    Res.string.lookup_direction,
                     stringResource(target.directionRes),
                 ),
                 style = MaterialTheme.typography.labelMedium,
@@ -266,9 +267,9 @@ private fun WordEntry(
                     imageVector = if (entry.isSaved) Icons.Filled.Star else Icons.Outlined.Star,
                     contentDescription = stringResource(
                         if (entry.isSaved) {
-                            R.string.lookup_unsave_word
+                            Res.string.lookup_unsave_word
                         } else {
-                            R.string.lookup_save_word
+                            Res.string.lookup_save_word
                         },
                     ),
                     tint = if (entry.isSaved) {
@@ -311,18 +312,18 @@ private fun WordEntry(
         ) {
             when (entry.status) {
                 EntryStatus.TRANSLATING -> Text(
-                    text = stringResource(R.string.lookup_translating),
+                    text = stringResource(Res.string.lookup_translating),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
                 EntryStatus.DOWNLOADING_MODEL -> Column {
                     Text(
-                        text = stringResource(R.string.lookup_downloading_title),
+                        text = stringResource(Res.string.lookup_downloading_title),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        text = stringResource(R.string.lookup_downloading_body),
+                        text = stringResource(Res.string.lookup_downloading_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = Space.xs),
@@ -341,7 +342,7 @@ private fun WordEntry(
                 )
 
                 EntryStatus.FAILED -> Text(
-                    text = entry.error?.resolved() ?: stringResource(R.string.lookup_failed),
+                    text = entry.error?.resolved() ?: stringResource(Res.string.lookup_failed),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -363,7 +364,7 @@ private fun WordEntry(
                     .padding(Space.lg),
             ) {
                 Text(
-                    text = stringResource(R.string.dictionary_verb_title),
+                    text = stringResource(Res.string.dictionary_verb_title),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = Space.xs),
@@ -389,7 +390,7 @@ private fun WordEntry(
                 modifier = Modifier.padding(top = Space.xl),
             ) {
                 OutlinedButton(onClick = onRetryOnAnyNetwork) {
-                    Text(stringResource(R.string.lookup_use_mobile_data))
+                    Text(stringResource(Res.string.lookup_use_mobile_data))
                 }
             }
         }

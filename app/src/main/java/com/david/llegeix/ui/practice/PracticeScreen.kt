@@ -39,16 +39,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The saved words, one at a time, with something asked of the reader.
@@ -80,16 +81,16 @@ fun PracticeScreen(
                         IconButton(onClick = onBack) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.action_back),
+                                contentDescription = stringResource(Res.string.action_back),
                             )
                         }
                     },
-                    title = { Text(stringResource(R.string.practice_title)) },
+                    title = { Text(stringResource(Res.string.practice_title)) },
                     actions = {
                         if (state.cards.isNotEmpty() && !state.isFinished) {
                             Text(
                                 text = stringResource(
-                                    R.string.practice_position,
+                                    Res.string.practice_position,
                                     state.index + 1,
                                     state.cards.size,
                                 ),
@@ -126,34 +127,34 @@ fun PracticeScreen(
 
                 state.isEmpty -> EmptyState(
                     title = if (state.savedTotal == 0) {
-                        stringResource(R.string.practice_none_saved_title)
+                        stringResource(Res.string.practice_none_saved_title)
                     } else {
-                        stringResource(R.string.practice_all_done_title)
+                        stringResource(Res.string.practice_all_done_title)
                     },
                     body = if (state.savedTotal == 0) {
-                        stringResource(R.string.practice_none_saved_body)
+                        stringResource(Res.string.practice_none_saved_body)
                     } else {
-                        stringResource(R.string.practice_all_done_body)
+                        stringResource(Res.string.practice_all_done_body)
                     },
                     icon = painterResource(R.drawable.ic_cards),
                 )
 
                 state.isFinished -> EmptyState(
-                    title = stringResource(R.string.practice_finished_title),
+                    title = stringResource(Res.string.practice_finished_title),
                     body = stringResource(
-                        R.string.practice_finished_body,
+                        Res.string.practice_finished_body,
                         state.correct,
                         state.cards.size,
                     ),
                     icon = painterResource(R.drawable.ic_check_circle),
                     primaryAction = {
                         Button(onClick = { viewModel.deal() }) {
-                            Text(stringResource(R.string.practice_again))
+                            Text(stringResource(Res.string.practice_again))
                         }
                     },
                     secondaryAction = {
                         OutlinedButton(onClick = onBack) {
-                            Text(stringResource(R.string.practice_done))
+                            Text(stringResource(Res.string.practice_done))
                         }
                     },
                 )
@@ -242,7 +243,7 @@ private fun Card(
                     // reason the app bothered to keep the sentence.
                     card.senseTranslation?.takeIf { it.isNotBlank() }?.let { sense ->
                         Text(
-                            text = stringResource(R.string.practice_here, sense),
+                            text = stringResource(Res.string.practice_here, sense),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -263,7 +264,7 @@ private fun Card(
 
             if (!isRevealed) {
                 Text(
-                    text = stringResource(R.string.practice_tap_to_reveal),
+                    text = stringResource(Res.string.practice_tap_to_reveal),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = Space.xxl),
@@ -283,13 +284,13 @@ private fun Card(
                         onClick = { onAnswer(false) },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text(stringResource(R.string.practice_again_soon))
+                        Text(stringResource(Res.string.practice_again_soon))
                     }
                     Button(
                         onClick = { onAnswer(true) },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text(stringResource(R.string.practice_knew_it))
+                        Text(stringResource(Res.string.practice_knew_it))
                     }
                 }
             }

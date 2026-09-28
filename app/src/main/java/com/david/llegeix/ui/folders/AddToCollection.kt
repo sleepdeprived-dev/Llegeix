@@ -27,8 +27,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -39,10 +37,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
@@ -50,6 +48,8 @@ import com.david.llegeix.ui.common.PdfCover
 import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.runCatchingCancellable
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -262,7 +262,7 @@ fun AddToCollectionSheet(
                 .navigationBarsPadding(),
         ) {
             Text(
-                text = stringResource(R.string.collections_add_title, collectionName),
+                text = stringResource(Res.string.collections_add_title, collectionName),
                 style = MaterialTheme.typography.titleLarge,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -270,10 +270,10 @@ fun AddToCollectionSheet(
             )
             Text(
                 text = if (chosenCount == 0) {
-                    stringResource(R.string.collections_add_none_yet)
+                    stringResource(Res.string.collections_add_none_yet)
                 } else {
                     pluralStringResource(
-                        R.plurals.collections_add_chosen,
+                        Res.plurals.collections_add_chosen,
                         chosenCount,
                         chosenCount,
                     )
@@ -287,7 +287,7 @@ fun AddToCollectionSheet(
 
             SearchField(
                 query = query,
-                placeholder = stringResource(R.string.collections_add_search),
+                placeholder = stringResource(Res.string.collections_add_search),
                 onQueryChange = viewModel::onQueryChange,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -304,8 +304,8 @@ fun AddToCollectionSheet(
                 }
 
                 candidates.isEmpty() -> EmptyState(
-                    title = stringResource(R.string.library_no_matches_title),
-                    body = stringResource(R.string.collections_add_no_matches),
+                    title = stringResource(Res.string.library_no_matches_title),
+                    body = stringResource(Res.string.collections_add_no_matches),
                 )
 
                 else -> LazyColumn(
@@ -363,7 +363,7 @@ private fun CandidateRow(
             // lives in one collection at a time, so this row is offering to
             // move it out of somewhere.
             val detail = candidate.otherCollection?.let {
-                stringResource(R.string.collections_add_in_other, it)
+                stringResource(Res.string.collections_add_in_other, it)
             } ?: candidate.document.parentLabel?.takeIf { it.isNotBlank() }
             if (detail != null) {
                 Text(

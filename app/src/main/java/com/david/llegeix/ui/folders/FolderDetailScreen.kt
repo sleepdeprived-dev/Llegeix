@@ -43,12 +43,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.db.entity.DocumentEntity
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.TagPickerDialog
@@ -59,6 +59,7 @@ import com.david.llegeix.ui.common.SearchField
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.library.ListCoverWidth
 import com.david.llegeix.util.pdfTitle
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * One collection, and the way to fill it.
@@ -114,7 +115,7 @@ fun FolderDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.folder_detail_back),
+                            contentDescription = stringResource(Res.string.folder_detail_back),
                         )
                     }
                 },
@@ -129,7 +130,7 @@ fun FolderDetailScreen(
                 FloatingActionButton(onClick = { adding = true }) {
                     Icon(
                         Icons.Default.Add,
-                        contentDescription = stringResource(R.string.collections_add_action),
+                        contentDescription = stringResource(Res.string.collections_add_action),
                     )
                 }
             }
@@ -137,13 +138,13 @@ fun FolderDetailScreen(
     ) { innerPadding ->
         if (documents.isEmpty()) {
             EmptyState(
-                title = stringResource(R.string.folder_detail_empty_title),
-                body = stringResource(R.string.folder_detail_empty_body),
+                title = stringResource(Res.string.folder_detail_empty_title),
+                body = stringResource(Res.string.folder_detail_empty_body),
                 icon = painterResource(R.drawable.ic_collection),
                 modifier = Modifier.padding(innerPadding),
                 primaryAction = {
                     Button(onClick = { adding = true }) {
-                        Text(stringResource(R.string.collections_add_action))
+                        Text(stringResource(Res.string.collections_add_action))
                     }
                 },
             )
@@ -157,7 +158,7 @@ fun FolderDetailScreen(
                 // take in at a glance.
                 SearchField(
                     query = query,
-                    placeholder = stringResource(R.string.folder_detail_search),
+                    placeholder = stringResource(Res.string.folder_detail_search),
                     onQueryChange = viewModel::onQueryChange,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -166,7 +167,7 @@ fun FolderDetailScreen(
                 )
                 if (shown.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.folder_detail_search_none, query.trim()),
+                        text = stringResource(Res.string.folder_detail_search_none, query.trim()),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(
@@ -242,7 +243,7 @@ fun FolderDetailScreen(
                                     Icon(
                                         Icons.Default.Close,
                                         contentDescription = stringResource(
-                                            R.string.folder_detail_remove,
+                                            Res.string.folder_detail_remove,
                                         ),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -255,19 +256,19 @@ fun FolderDetailScreen(
                                         leadingIcon = {
                                             MenuIcon(painterResource(R.drawable.ic_tag))
                                         },
-                                        text = { Text(stringResource(R.string.tags_open)) },
+                                        text = { Text(stringResource(Res.string.tags_open)) },
                                         onClick = { menuOpen = false; tagsFor = document },
                                     )
                                     DropdownMenuItem(
                                         leadingIcon = { MenuIcon(Icons.Default.Edit) },
-                                        text = { Text(stringResource(R.string.document_rename)) },
+                                        text = { Text(stringResource(Res.string.document_rename)) },
                                         onClick = { menuOpen = false; renaming = document },
                                     )
                                     HorizontalDivider()
                                     DropdownMenuItem(
                                         leadingIcon = { MenuIcon(Icons.Default.Close) },
                                         text = {
-                                            Text(stringResource(R.string.folder_detail_remove))
+                                            Text(stringResource(Res.string.folder_detail_remove))
                                         },
                                         onClick = {
                                             menuOpen = false
@@ -335,17 +336,17 @@ private fun CollectionDocumentNameDialog(
     var name by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.document_rename_title)) },
+        title = { Text(stringResource(Res.string.document_rename_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.document_rename_label)) },
+                    label = { Text(stringResource(Res.string.document_rename_label)) },
                     singleLine = true,
                 )
                 Text(
-                    text = stringResource(R.string.document_rename_body),
+                    text = stringResource(Res.string.document_rename_body),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = Space.md),
@@ -354,17 +355,17 @@ private fun CollectionDocumentNameDialog(
                     TextButton(
                         onClick = { onConfirm("") },
                         modifier = Modifier.padding(top = Space.sm),
-                    ) { Text(stringResource(R.string.document_rename_reset)) }
+                    ) { Text(stringResource(Res.string.document_rename_reset)) }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
-                Text(stringResource(R.string.action_rename))
+                Text(stringResource(Res.string.action_rename))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

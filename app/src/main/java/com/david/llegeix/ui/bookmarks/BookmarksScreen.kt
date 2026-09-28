@@ -44,8 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,6 +52,7 @@ import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.entity.DocumentEntity
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.MenuIcon
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.res.painterResource
@@ -70,6 +69,8 @@ import com.david.llegeix.ui.common.RecentSearches
 import com.david.llegeix.data.practice.Leitner
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The reader's page bookmarks, as one pane of the Saved tab.
@@ -94,8 +95,8 @@ fun PagesPane(
 
     if (pages.isEmpty()) {
         EmptyState(
-            title = stringResource(R.string.bookmarks_pages_empty_title),
-            body = stringResource(R.string.bookmarks_pages_empty_body),
+            title = stringResource(Res.string.bookmarks_pages_empty_title),
+            body = stringResource(Res.string.bookmarks_pages_empty_body),
             icon = painterResource(R.drawable.ic_bookmark),
             modifier = modifier,
         )
@@ -122,14 +123,14 @@ fun PagesPane(
                     documentUri = bookmark.documentUri,
                     title = names.titleFor(bookmark.documentUri, bookmark.displayName),
                     subtitle = stringResource(
-                        R.string.bookmarks_page_detail,
+                        Res.string.bookmarks_page_detail,
                         bookmark.label?.let { label ->
                             stringResource(
-                                R.string.bookmarks_page_detail,
-                                stringResource(R.string.recent_page, bookmark.pageIndex + 1),
+                                Res.string.bookmarks_page_detail,
+                                stringResource(Res.string.recent_page, bookmark.pageIndex + 1),
                                 label,
                             )
-                        } ?: stringResource(R.string.recent_page, bookmark.pageIndex + 1),
+                        } ?: stringResource(Res.string.recent_page, bookmark.pageIndex + 1),
                         formatModified(bookmark.createdAt),
                     ),
                     onClick = {
@@ -172,8 +173,8 @@ fun WordsPane(
         Column(modifier = modifier.fillMaxSize()) {
             LearnedFolderRow(todayCount = addedToday, onOpen = onOpenLearned)
             EmptyState(
-                title = stringResource(R.string.bookmarks_words_empty_title),
-                body = stringResource(R.string.bookmarks_words_empty_body),
+                title = stringResource(Res.string.bookmarks_words_empty_title),
+                body = stringResource(Res.string.bookmarks_words_empty_body),
                 icon = painterResource(R.drawable.ic_bookmark),
             )
         }
@@ -200,8 +201,8 @@ fun WordsPane(
         )
         if (visibleWords.isEmpty()) {
             EmptyState(
-                title = stringResource(R.string.library_no_matches_title),
-                body = stringResource(R.string.words_none_match, wordQuery),
+                title = stringResource(Res.string.library_no_matches_title),
+                body = stringResource(Res.string.words_none_match, wordQuery),
             )
         } else {
             LazyColumn(
@@ -270,15 +271,15 @@ private fun LearnedFolderRow(todayCount: Int, onOpen: () -> Unit) {
                 .padding(start = Space.lg),
         ) {
             Text(
-                text = stringResource(R.string.learned_title),
+                text = stringResource(Res.string.learned_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = scheme.onSecondaryContainer,
             )
             Text(
                 text = if (todayCount > 0) {
-                    pluralStringResource(R.plurals.learned_folder_subtitle, todayCount, todayCount)
+                    pluralStringResource(Res.plurals.learned_folder_subtitle, todayCount, todayCount)
                 } else {
-                    stringResource(R.string.learned_folder_subtitle_none)
+                    stringResource(Res.string.learned_folder_subtitle_none)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSecondaryContainer.copy(alpha = 0.8f),
@@ -324,15 +325,15 @@ private fun PracticeHeader(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (dueCount > 0) {
-                        pluralStringResource(R.plurals.practice_due, dueCount, dueCount)
+                        pluralStringResource(Res.plurals.practice_due, dueCount, dueCount)
                     } else {
-                        stringResource(R.string.practice_nothing_due)
+                        stringResource(Res.string.practice_nothing_due)
                     },
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
                     text = pluralStringResource(
-                        R.plurals.practice_saved_total,
+                        Res.plurals.practice_saved_total,
                         savedCount,
                         savedCount,
                     ),
@@ -342,7 +343,7 @@ private fun PracticeHeader(
                 )
             }
             Button(onClick = onPractise, enabled = savedCount > 0) {
-                Text(stringResource(R.string.practice_start))
+                Text(stringResource(Res.string.practice_start))
             }
         }
         if (savedPerDay.any { it > 0 }) {
@@ -389,7 +390,7 @@ private fun TodayCard(words: List<WordBookmarkEntity>, modifier: Modifier = Modi
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.words_today_title),
+                text = stringResource(Res.string.words_today_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
             )
@@ -402,7 +403,7 @@ private fun TodayCard(words: List<WordBookmarkEntity>, modifier: Modifier = Modi
             )
         }
         Text(
-            text = stringResource(R.string.words_today_hint),
+            text = stringResource(Res.string.words_today_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 2.dp),
@@ -420,7 +421,7 @@ private fun TodayCard(words: List<WordBookmarkEntity>, modifier: Modifier = Modi
             val rest = words.size - TodayWordLimit
             if (rest > 0) {
                 Text(
-                    text = stringResource(R.string.words_today_more, rest),
+                    text = stringResource(Res.string.words_today_more, rest),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = Space.sm, vertical = Space.sm),
@@ -583,7 +584,7 @@ private fun WordControls(
     ) {
         SearchField(
             query = query,
-            placeholder = stringResource(R.string.words_search),
+            placeholder = stringResource(Res.string.words_search),
             onQueryChange = onQueryChange,
             onFocusChanged = { isSearchFocused = it },
             modifier = Modifier
@@ -620,9 +621,9 @@ private fun WordControls(
             Text(
                 text = stringResource(
                     if (alphabetical) {
-                        R.string.words_sort_alphabetical
+                        Res.string.words_sort_alphabetical
                     } else {
-                        R.string.words_sort_recent
+                        Res.string.words_sort_recent
                     },
                 ),
                 style = MaterialTheme.typography.labelLarge,
@@ -725,8 +726,8 @@ private fun SavedWordRow(
                 if (!word.senseTranslation.isNullOrBlank()) {
                     Text(
                         text = word.senseSource?.takeIf { it.isNotBlank() }
-                            ?.let { stringResource(R.string.words_sense_from, it) }
-                            ?: stringResource(R.string.lookup_here),
+                            ?.let { stringResource(Res.string.words_sense_from, it) }
+                            ?: stringResource(Res.string.lookup_here),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = Space.sm),
@@ -742,7 +743,7 @@ private fun SavedWordRow(
                 IconButton(onClick = onRemove) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.words_remove),
+                        contentDescription = stringResource(Res.string.words_remove),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -753,14 +754,14 @@ private fun SavedWordRow(
                     if (word.documentUri != null) {
                         DropdownMenuItem(
                             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_library)) },
-                            text = { Text(stringResource(R.string.words_open_source)) },
+                            text = { Text(stringResource(Res.string.words_open_source)) },
                             onClick = { menuOpen = false; onOpen() },
                         )
                         HorizontalDivider()
                     }
                     DropdownMenuItem(
                         leadingIcon = { MenuIcon(Icons.Default.Close) },
-                        text = { Text(stringResource(R.string.words_remove)) },
+                        text = { Text(stringResource(Res.string.words_remove)) },
                         onClick = { menuOpen = false; onRemove() },
                     )
                 }
@@ -803,10 +804,10 @@ private fun SavedWordRow(
         // never on.
         Text(
             text = if (word.documentUri == null) {
-                stringResource(R.string.words_from_dictionary)
+                stringResource(Res.string.words_from_dictionary)
             } else {
                 stringResource(
-                    R.string.words_source,
+                    Res.string.words_source,
                     source.orEmpty(),
                     word.pageIndex + 1,
                     word.lineNumber,
@@ -907,7 +908,7 @@ internal fun BookmarkRow(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = removeLabel
-                        ?: stringResource(R.string.document_remove_bookmark),
+                        ?: stringResource(Res.string.document_remove_bookmark),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -915,14 +916,14 @@ internal fun BookmarkRow(
                 onEditTags?.let { edit ->
                     DropdownMenuItem(
                         leadingIcon = { MenuIcon(painterResource(R.drawable.ic_tag)) },
-                        text = { Text(stringResource(R.string.tags_open)) },
+                        text = { Text(stringResource(Res.string.tags_open)) },
                         onClick = { menuOpen = false; edit() },
                     )
                 }
                 onRename?.let { rename ->
                     DropdownMenuItem(
                         leadingIcon = { MenuIcon(Icons.Default.Edit) },
-                        text = { Text(stringResource(R.string.document_rename)) },
+                        text = { Text(stringResource(Res.string.document_rename)) },
                         onClick = { menuOpen = false; rename() },
                     )
                 }
@@ -931,7 +932,7 @@ internal fun BookmarkRow(
                     leadingIcon = { MenuIcon(Icons.Default.Close) },
                     text = {
                         Text(
-                            removeLabel ?: stringResource(R.string.document_remove_bookmark),
+                            removeLabel ?: stringResource(Res.string.document_remove_bookmark),
                         )
                     },
                     onClick = { menuOpen = false; onRemove() },
@@ -1008,17 +1009,17 @@ private fun SavedNameDialog(
     var name by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.document_rename_title)) },
+        title = { Text(stringResource(Res.string.document_rename_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.document_rename_label)) },
+                    label = { Text(stringResource(Res.string.document_rename_label)) },
                     singleLine = true,
                 )
                 Text(
-                    text = stringResource(R.string.document_rename_body),
+                    text = stringResource(Res.string.document_rename_body),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = Space.md),
@@ -1027,17 +1028,17 @@ private fun SavedNameDialog(
                     TextButton(
                         onClick = { onConfirm("") },
                         modifier = Modifier.padding(top = Space.sm),
-                    ) { Text(stringResource(R.string.document_rename_reset)) }
+                    ) { Text(stringResource(Res.string.document_rename_reset)) }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
-                Text(stringResource(R.string.action_rename))
+                Text(stringResource(Res.string.action_rename))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

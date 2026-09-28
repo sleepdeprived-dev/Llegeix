@@ -41,12 +41,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.PdfCover
@@ -56,6 +56,7 @@ import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.TagStrip
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.formatSize
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 /**
@@ -163,7 +164,7 @@ fun DocumentRow(
                 if (isBookmarked) {
                     Icon(
                         imageVector = Icons.Filled.Star,
-                        contentDescription = stringResource(R.string.document_bookmarked),
+                        contentDescription = stringResource(Res.string.document_bookmarked),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .size(16.dp)
@@ -177,18 +178,18 @@ fun DocumentRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            val readLater = stringResource(R.string.document_read_later)
+            val readLater = stringResource(Res.string.document_read_later)
             val details = listOfNotNull(
                 // First in the line, ahead of everything about the file: how
                 // far in you are is the one thing on a row about a book you
                 // have already started that you actually want.
                 progress?.let { read ->
                     if (read.isFinished) {
-                        stringResource(R.string.library_read_finished)
+                        stringResource(Res.string.library_read_finished)
                     } else {
                         read.fraction?.let { fraction ->
                             stringResource(
-                                R.string.library_read_progress,
+                                Res.string.library_read_progress,
                                 (fraction * 100).roundToInt(),
                             )
                         }
@@ -198,7 +199,7 @@ fun DocumentRow(
                 // Ahead of the folder on disk, and phrased so the two cannot be
                 // mistaken for each other: this one is a decision the reader
                 // made, the other is where the file happens to live.
-                folderName?.let { stringResource(R.string.library_filed_in, it) },
+                folderName?.let { stringResource(Res.string.library_filed_in, it) },
                 document.parentLabel?.takeIf { showLocation && it.isNotBlank() },
                 formatSize(context, document.sizeBytes).takeIf { it.isNotBlank() },
                 formatModified(document.lastModified).takeIf { it.isNotBlank() },
@@ -224,7 +225,7 @@ fun DocumentRow(
             IconButton(onClick = { menuOpen = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
-                    contentDescription = stringResource(R.string.document_actions, title),
+                    contentDescription = stringResource(Res.string.document_actions, title),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -264,10 +265,10 @@ private fun SwipeBackground(
     val on = if (starring) !isBookmarked else !isReadLater
     val label = stringResource(
         when {
-            starring && on -> R.string.swipe_star
-            starring -> R.string.swipe_unstar
-            on -> R.string.swipe_read_later
-            else -> R.string.swipe_not_read_later
+            starring && on -> Res.string.swipe_star
+            starring -> Res.string.swipe_unstar
+            on -> Res.string.swipe_read_later
+            else -> Res.string.swipe_not_read_later
         },
     )
 
@@ -347,7 +348,7 @@ private fun DocumentMenu(
         // find bar when the document opens.
         DropdownMenuItem(
             leadingIcon = { MenuIcon(Icons.Default.Search) },
-            text = { Text(stringResource(R.string.document_search_inside)) },
+            text = { Text(stringResource(Res.string.document_search_inside)) },
             onClick = {
                 onSearchInside()
                 onDismiss()
@@ -360,9 +361,9 @@ private fun DocumentMenu(
                 Text(
                     stringResource(
                         if (isBookmarked) {
-                            R.string.document_remove_bookmark
+                            Res.string.document_remove_bookmark
                         } else {
-                            R.string.document_add_bookmark
+                            Res.string.document_add_bookmark
                         },
                     ),
                 )
@@ -378,9 +379,9 @@ private fun DocumentMenu(
                 Text(
                     stringResource(
                         if (isReadLater) {
-                            R.string.document_remove_read_later
+                            Res.string.document_remove_read_later
                         } else {
-                            R.string.document_read_later
+                            Res.string.document_read_later
                         },
                     ),
                 )
@@ -392,7 +393,7 @@ private fun DocumentMenu(
         )
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_folder)) },
-            text = { Text(stringResource(R.string.document_move_to_folder)) },
+            text = { Text(stringResource(Res.string.document_move_to_folder)) },
             onClick = {
                 onMoveToFolder()
                 onDismiss()
@@ -400,7 +401,7 @@ private fun DocumentMenu(
         )
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_tag)) },
-            text = { Text(stringResource(R.string.tags_open)) },
+            text = { Text(stringResource(Res.string.tags_open)) },
             onClick = {
                 onEditTags()
                 onDismiss()
@@ -414,7 +415,7 @@ private fun DocumentMenu(
         HorizontalDivider()
         DropdownMenuItem(
             leadingIcon = { MenuIcon(Icons.Default.Edit) },
-            text = { Text(stringResource(R.string.document_rename)) },
+            text = { Text(stringResource(Res.string.document_rename)) },
             onClick = {
                 onRename()
                 onDismiss()
@@ -471,7 +472,7 @@ fun DocumentCell(
             if (isBookmarked) {
                 Icon(
                     imageVector = Icons.Filled.Star,
-                    contentDescription = stringResource(R.string.document_bookmarked),
+                    contentDescription = stringResource(Res.string.document_bookmarked),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -506,7 +507,7 @@ fun DocumentCell(
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.document_actions, title),
+                        contentDescription = stringResource(Res.string.document_actions, title),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp),
                     )

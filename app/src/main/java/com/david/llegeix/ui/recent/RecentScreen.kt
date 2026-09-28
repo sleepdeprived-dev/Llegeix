@@ -47,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +54,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.david.llegeix.R
 import com.david.llegeix.data.settings.LibraryLayout
 import com.david.llegeix.data.db.dao.RecentDocument
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.CoverAspectRatio
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.MenuIcon
@@ -66,6 +66,7 @@ import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.util.formatModified
 import com.david.llegeix.util.pdfTitle
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -84,8 +85,8 @@ fun RecentScreen(
     var forgetting by remember { mutableStateOf<RecentDocument?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val removedLabel = stringResource(R.string.recent_removed)
-    val undoLabel = stringResource(R.string.action_undo)
+    val removedLabel = stringResource(Res.string.recent_removed)
+    val undoLabel = stringResource(Res.string.action_undo)
 
     /**
      * Forget an entry, having asked, and offer it straight back anyway.
@@ -126,11 +127,11 @@ fun RecentScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
+                            contentDescription = stringResource(Res.string.action_back),
                         )
                     }
                 },
-                title = { Text(stringResource(R.string.recent_title)) },
+                title = { Text(stringResource(Res.string.recent_title)) },
                 actions = {
                     // Clearing the history is destructive and rarely wanted, so
                     // it sits behind the menu rather than one stray tap away.
@@ -140,7 +141,7 @@ fun RecentScreen(
                                 Icon(
                                     Icons.Default.MoreVert,
                                     contentDescription = stringResource(
-                                        R.string.action_more_options,
+                                        Res.string.action_more_options,
                                     ),
                                 )
                             }
@@ -164,9 +165,9 @@ fun RecentScreen(
                                         Text(
                                             stringResource(
                                                 if (layout == LibraryLayout.GRID) {
-                                                    R.string.library_view_list
+                                                    Res.string.library_view_list
                                                 } else {
-                                                    R.string.library_view_grid
+                                                    Res.string.library_view_grid
                                                 },
                                             ),
                                         )
@@ -179,7 +180,7 @@ fun RecentScreen(
                                 DropdownMenuItem(
                                     leadingIcon = { MenuIcon(Icons.Default.Delete) },
                                     text = {
-                                        Text(stringResource(R.string.recent_clear_history))
+                                        Text(stringResource(Res.string.recent_clear_history))
                                     },
                                     onClick = {
                                         viewModel.clearAll()
@@ -195,8 +196,8 @@ fun RecentScreen(
     ) { innerPadding ->
         if (recents.isEmpty()) {
             EmptyState(
-                title = stringResource(R.string.recent_empty_title),
-                body = stringResource(R.string.recent_empty_body),
+                title = stringResource(Res.string.recent_empty_title),
+                body = stringResource(Res.string.recent_empty_body),
                 icon = painterResource(R.drawable.ic_recent),
                 modifier = Modifier.padding(innerPadding),
             )
@@ -242,7 +243,7 @@ fun RecentScreen(
                         )
                         Text(
                             text = stringResource(
-                                R.string.recent_page,
+                                Res.string.recent_page,
                                 recent.lastPageIndex + 1,
                             ),
                             style = MaterialTheme.typography.bodySmall,
@@ -296,9 +297,9 @@ fun RecentScreen(
                             )
                             Text(
                                 text = stringResource(
-                                    R.string.recent_subtitle,
+                                    Res.string.recent_subtitle,
                                     stringResource(
-                                        R.string.recent_page,
+                                        Res.string.recent_page,
                                         recent.lastPageIndex + 1,
                                     ),
                                     formatModified(recent.viewedAt),
@@ -321,11 +322,11 @@ fun RecentScreen(
     forgetting?.let { recent ->
         AlertDialog(
             onDismissRequest = { forgetting = null },
-            title = { Text(stringResource(R.string.recent_forget_title)) },
+            title = { Text(stringResource(Res.string.recent_forget_title)) },
             text = {
                 Text(
                     stringResource(
-                        R.string.recent_forget_body,
+                        Res.string.recent_forget_body,
                         names.titleFor(recent.uriString, recent.displayName),
                     ),
                 )
@@ -336,11 +337,11 @@ fun RecentScreen(
                         forgetting = null
                         forget(recent)
                     },
-                ) { Text(stringResource(R.string.recent_forget_confirm)) }
+                ) { Text(stringResource(Res.string.recent_forget_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { forgetting = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             },
         )

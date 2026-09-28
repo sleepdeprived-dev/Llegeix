@@ -1,12 +1,12 @@
 package com.david.llegeix.ui.library
 
-import androidx.annotation.StringRes
-import com.david.llegeix.R
 import com.david.llegeix.data.model.LibrarySort
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.data.source.LibraryFolder
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * How the library is arranged on screen.
@@ -24,9 +24,9 @@ import com.david.llegeix.ui.common.UiText
  * definition of a collection in this app, and having it here meant the same
  * shelf existed in two shapes in two tabs.
  */
-enum class LibraryView(@param:StringRes val labelRes: Int) {
-    FOLDERS(R.string.library_view_by_folder),
-    ALL(R.string.library_filter_all),
+enum class LibraryView(val labelRes: StringResource) {
+    FOLDERS(Res.string.library_view_by_folder),
+    ALL(Res.string.library_filter_all),
 }
 
 /**

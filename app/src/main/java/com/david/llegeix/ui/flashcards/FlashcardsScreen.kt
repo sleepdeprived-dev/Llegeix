@@ -92,8 +92,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -107,6 +105,7 @@ import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
 import com.david.llegeix.data.practice.Leitner
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.EmptyState
@@ -116,6 +115,9 @@ import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.ScreenTitle
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -168,7 +170,7 @@ fun FlashcardsScreen(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(viewModel::onRestore) }
     val backupName = stringResource(
-        R.string.flashcards_backup_filename,
+        Res.string.flashcards_backup_filename,
         LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
     )
     val onExport = { exportLauncher.launch(backupName) }
@@ -204,9 +206,9 @@ fun FlashcardsScreen(
 
     // Play asks which way round every time; this is what it is asking about.
     var asking by remember { mutableStateOf<PlayRequest?>(null) }
-    val everything = stringResource(R.string.flashcards_practise_all)
-    val weakTitle = stringResource(R.string.flashcards_weak_title)
-    val practiseName = stringResource(R.string.flashcards_practise_name)
+    val everything = stringResource(Res.string.flashcards_practise_all)
+    val weakTitle = stringResource(Res.string.flashcards_weak_title)
+    val practiseName = stringResource(Res.string.flashcards_practise_name)
     fun play(scope: StudyScope, title: String) {
         asking = PlayRequest(scope, title)
     }
@@ -223,7 +225,7 @@ fun FlashcardsScreen(
                 title = {
                     ScreenTitle(
                         icon = R.drawable.ic_flashcards,
-                        title = stringResource(R.string.nav_flashcards),
+                        title = stringResource(Res.string.nav_flashcards),
                     )
                 },
                 actions = {
@@ -233,7 +235,7 @@ fun FlashcardsScreen(
                     IconButton(onClick = { showingBackup = true }) {
                         Icon(
                             painter = painterResource(R.drawable.ic_backup),
-                            contentDescription = stringResource(R.string.flashcards_backup_title),
+                            contentDescription = stringResource(Res.string.flashcards_backup_title),
                         )
                     }
                 },
@@ -241,7 +243,7 @@ fun FlashcardsScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { newDeckCount++; creating = true }) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.flashcards_new_deck))
+                Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.flashcards_new_deck))
             }
         },
     ) { innerPadding ->
@@ -252,8 +254,8 @@ fun FlashcardsScreen(
             loaded == null -> Box(Modifier.padding(innerPadding))
 
             loaded.isEmpty -> EmptyState(
-                title = stringResource(R.string.flashcards_empty_title),
-                body = stringResource(R.string.flashcards_empty_body),
+                title = stringResource(Res.string.flashcards_empty_title),
+                body = stringResource(Res.string.flashcards_empty_body),
                 icon = painterResource(R.drawable.ic_flashcards),
                 modifier = Modifier.padding(innerPadding),
                 // A new phone, or the app put back after an uninstall, starts
@@ -261,7 +263,7 @@ fun FlashcardsScreen(
                 // way to bring one back is on the screen, not behind a button.
                 secondaryAction = {
                     TextButton(onClick = onRestore, enabled = !backupBusy) {
-                        Text(stringResource(R.string.flashcards_backup_restore))
+                        Text(stringResource(Res.string.flashcards_backup_restore))
                     }
                 },
             )
@@ -342,7 +344,7 @@ fun FlashcardsScreen(
                         if (here.isEmpty) {
                             item(key = "empty-${here.id}", span = full) {
                                 Text(
-                                    text = stringResource(R.string.flashcards_collection_empty),
+                                    text = stringResource(Res.string.flashcards_collection_empty),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = wide.padding(horizontal = Space.screen, vertical = Space.lg),
@@ -454,11 +456,11 @@ fun FlashcardsScreen(
 
     renaming?.let { deck ->
         NameDialog(
-            title = stringResource(R.string.flashcards_rename_deck_title),
-            label = stringResource(R.string.flashcards_deck_name_label),
-            hint = stringResource(R.string.flashcards_deck_name_hint),
-            takenRes = R.string.flashcards_deck_exists,
-            confirmLabel = stringResource(R.string.action_rename),
+            title = stringResource(Res.string.flashcards_rename_deck_title),
+            label = stringResource(Res.string.flashcards_deck_name_label),
+            hint = stringResource(Res.string.flashcards_deck_name_hint),
+            takenRes = Res.string.flashcards_deck_exists,
+            confirmLabel = stringResource(Res.string.action_rename),
             initialName = deck.name,
             check = { viewModel.checkName(it, renaming = deck.id) },
             onDismiss = { renaming = null },
@@ -481,11 +483,11 @@ fun FlashcardsScreen(
 
     renamingShelf?.let { shelf ->
         NameDialog(
-            title = stringResource(R.string.flashcards_rename_collection_title),
-            label = stringResource(R.string.flashcards_collection_name_label),
-            hint = stringResource(R.string.flashcards_collection_name_hint),
-            takenRes = R.string.flashcards_collection_exists,
-            confirmLabel = stringResource(R.string.action_rename),
+            title = stringResource(Res.string.flashcards_rename_collection_title),
+            label = stringResource(Res.string.flashcards_collection_name_label),
+            hint = stringResource(Res.string.flashcards_collection_name_hint),
+            takenRes = Res.string.flashcards_collection_exists,
+            confirmLabel = stringResource(Res.string.action_rename),
             initialName = shelf.collection.name,
             check = { viewModel.checkCollectionName(it, renaming = shelf.id) },
             onDismiss = { renamingShelf = null },
@@ -499,7 +501,7 @@ fun FlashcardsScreen(
     deletingShelf?.let { shelf ->
         AlertDialog(
             onDismissRequest = { deletingShelf = null },
-            title = { Text(stringResource(R.string.flashcards_delete_collection_title, shelf.collection.name)) },
+            title = { Text(stringResource(Res.string.flashcards_delete_collection_title, shelf.collection.name)) },
             // The one thing anybody wants to know before deleting a shelf is
             // what happens to what was on it. Nothing happens to it, and saying
             // so is the difference between a tidy-up and a moment of panic.
@@ -508,12 +510,12 @@ fun FlashcardsScreen(
                     .firstOrNull { it.id == shelf.collection.parentId }
                 Text(
                     when {
-                        shelf.isEmpty -> stringResource(R.string.flashcards_delete_collection_body_empty)
+                        shelf.isEmpty -> stringResource(Res.string.flashcards_delete_collection_body_empty)
                         parent != null -> stringResource(
-                            R.string.flashcards_delete_collection_body_up_to,
+                            Res.string.flashcards_delete_collection_body_up_to,
                             parent.collection.name,
                         )
-                        else -> stringResource(R.string.flashcards_delete_collection_body_up_top)
+                        else -> stringResource(Res.string.flashcards_delete_collection_body_up_top)
                     },
                 )
             },
@@ -523,11 +525,11 @@ fun FlashcardsScreen(
                         viewModel.deleteCollection(shelf)
                         deletingShelf = null
                     },
-                ) { Text(stringResource(R.string.action_delete)) }
+                ) { Text(stringResource(Res.string.action_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { deletingShelf = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             },
         )
@@ -537,7 +539,7 @@ fun FlashcardsScreen(
         AlertDialog(
             onDismissRequest = { deleting = null },
             title = {
-                Text(stringResource(R.string.flashcards_delete_deck_title, deck.name))
+                Text(stringResource(Res.string.flashcards_delete_deck_title, deck.name))
             },
             // Says exactly what goes, in numbers: a deck is hand-made work, and
             // "delete this deck?" alone does not tell anybody it is sixty cards
@@ -545,11 +547,11 @@ fun FlashcardsScreen(
             text = {
                 Text(
                     if (deck.cardCount == 0) {
-                        stringResource(R.string.flashcards_delete_deck_body_empty)
+                        stringResource(Res.string.flashcards_delete_deck_body_empty)
                     } else {
                         listOfNotNull(
                             pluralStringResource(
-                                R.plurals.flashcards_delete_deck_body,
+                                Res.plurals.flashcards_delete_deck_body,
                                 deck.cardCount,
                                 deck.cardCount,
                             ),
@@ -557,14 +559,14 @@ fun FlashcardsScreen(
                                 deck.imageCount == 0 -> null
                                 // "One of them" when there is only one reads as a slip.
                                 deck.cardCount == 1 ->
-                                    stringResource(R.string.flashcards_delete_deck_only_picture)
+                                    stringResource(Res.string.flashcards_delete_deck_only_picture)
                                 else -> pluralStringResource(
-                                    R.plurals.flashcards_delete_deck_pictures,
+                                    Res.plurals.flashcards_delete_deck_pictures,
                                     deck.imageCount,
                                     deck.imageCount,
                                 )
                             },
-                            stringResource(R.string.flashcards_cannot_undo),
+                            stringResource(Res.string.flashcards_cannot_undo),
                         ).joinToString(" ")
                     },
                 )
@@ -575,11 +577,11 @@ fun FlashcardsScreen(
                         viewModel.deleteDeck(deck)
                         deleting = null
                     },
-                ) { Text(stringResource(R.string.action_delete)) }
+                ) { Text(stringResource(Res.string.action_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { deleting = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             },
         )
@@ -617,7 +619,7 @@ private fun PractiseEverything(onStudy: () -> Unit) {
                 modifier = Modifier.size(20.dp),
             )
             Text(
-                text = stringResource(R.string.flashcards_practise_all),
+                text = stringResource(Res.string.flashcards_practise_all),
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(start = Space.sm),
             )
@@ -664,13 +666,13 @@ private fun WeakRow(count: Int, onOpen: () -> Unit, onPractise: () -> Unit, modi
                 .padding(start = Space.lg),
         ) {
             Text(
-                text = stringResource(R.string.flashcards_weak_title),
+                text = stringResource(Res.string.flashcards_weak_title),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = scheme.onTertiaryContainer,
             )
             Text(
-                text = pluralStringResource(R.plurals.flashcards_card_count, count, count) + " · " +
-                    stringResource(R.string.flashcards_weak_subtitle),
+                text = pluralStringResource(Res.plurals.flashcards_card_count, count, count) + " · " +
+                    stringResource(Res.string.flashcards_weak_subtitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onTertiaryContainer.copy(alpha = 0.8f),
                 maxLines = 2,
@@ -679,7 +681,7 @@ private fun WeakRow(count: Int, onOpen: () -> Unit, onPractise: () -> Unit, modi
         }
         PlayButton(
             onClick = onPractise,
-            contentDescription = stringResource(R.string.flashcards_weak_practise),
+            contentDescription = stringResource(Res.string.flashcards_weak_practise),
             modifier = Modifier.padding(start = Space.sm),
         )
     }
@@ -754,7 +756,7 @@ private fun MoveSheet(
                     )
                 }
                 Text(
-                    text = stringResource(R.string.flashcards_move_title, name),
+                    text = stringResource(Res.string.flashcards_move_title, name),
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -763,7 +765,7 @@ private fun MoveSheet(
             }
             if (emptyHint) {
                 Text(
-                    text = stringResource(R.string.flashcards_no_collections),
+                    text = stringResource(Res.string.flashcards_no_collections),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -774,8 +776,8 @@ private fun MoveSheet(
             Spacer(Modifier.height(Space.sm))
             MoveChoice(
                 icon = painterResource(R.drawable.ic_flashcards),
-                name = stringResource(R.string.flashcards_move_none),
-                detail = stringResource(R.string.flashcards_move_top_hint),
+                name = stringResource(Res.string.flashcards_move_none),
+                detail = stringResource(Res.string.flashcards_move_top_hint),
                 depth = 0,
                 isHere = here == null,
                 onClick = { choose(null) },
@@ -855,7 +857,7 @@ private fun MoveChoice(
         }
         if (isHere) {
             Text(
-                text = stringResource(R.string.flashcards_move_here_now),
+                text = stringResource(Res.string.flashcards_move_here_now),
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSecondaryContainer,
                 modifier = Modifier.padding(end = Space.xs),
@@ -937,7 +939,7 @@ private fun NewDeckSheet(
         ) {
             state.parentName?.let { inside ->
                 Text(
-                    text = stringResource(R.string.flashcards_new_inside_title, inside),
+                    text = stringResource(Res.string.flashcards_new_inside_title, inside),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = Space.md),
                 )
@@ -946,8 +948,8 @@ private fun NewDeckSheet(
                 NewDeckKind.entries.forEach { kind ->
                     val name = stringResource(
                         when (kind) {
-                            NewDeckKind.DECK -> R.string.flashcards_kind_deck
-                            NewDeckKind.COLLECTION -> R.string.flashcards_kind_collection
+                            NewDeckKind.DECK -> Res.string.flashcards_kind_deck
+                            NewDeckKind.COLLECTION -> Res.string.flashcards_kind_collection
                         },
                     )
                     Pill(
@@ -969,9 +971,9 @@ private fun NewDeckSheet(
                     Text(
                         stringResource(
                             if (isDeck) {
-                                R.string.flashcards_deck_name_label
+                                Res.string.flashcards_deck_name_label
                             } else {
-                                R.string.flashcards_collection_name_label
+                                Res.string.flashcards_collection_name_label
                             },
                         ),
                     )
@@ -980,9 +982,9 @@ private fun NewDeckSheet(
                     Text(
                         stringResource(
                             if (isDeck) {
-                                R.string.flashcards_deck_name_hint
+                                Res.string.flashcards_deck_name_hint
                             } else {
-                                R.string.flashcards_collection_name_hint
+                                Res.string.flashcards_collection_name_hint
                             },
                         ),
                     )
@@ -994,9 +996,9 @@ private fun NewDeckSheet(
                         Text(
                             stringResource(
                                 if (isDeck) {
-                                    R.string.flashcards_deck_exists
+                                    Res.string.flashcards_deck_exists
                                 } else {
-                                    R.string.flashcards_collection_exists
+                                    Res.string.flashcards_collection_exists
                                 },
                                 it.existing,
                             ),
@@ -1012,7 +1014,7 @@ private fun NewDeckSheet(
             // A picture for either kind, found from the name as it is typed.
             run {
                 Text(
-                    text = stringResource(R.string.flashcards_picture),
+                    text = stringResource(Res.string.flashcards_picture),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = Space.md, bottom = Space.sm),
@@ -1027,13 +1029,13 @@ private fun NewDeckSheet(
                     CardImage(
                         path = cover,
                         maxEdge = 384,
-                        contentDescription = stringResource(R.string.flashcards_picture_other),
+                        contentDescription = stringResource(Res.string.flashcards_picture_other),
                         kind = PictureResults.kindOf(state.coverCredit),
                         modifier = Modifier
                             .size(96.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .clickable(
-                                onClickLabel = stringResource(R.string.flashcards_picture_other),
+                                onClickLabel = stringResource(Res.string.flashcards_picture_other),
                                 onClick = viewModel::onRemoveCover,
                             ),
                     )
@@ -1065,13 +1067,13 @@ private fun NewDeckSheet(
                 modifier = Modifier.padding(top = Space.lg),
             ) {
                 OutlinedButton(onClick = close, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
                 Button(
                     onClick = viewModel::onCreate,
                     enabled = state.check is DeckNames.Check.Ok && !state.isBusy,
                     modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.action_create)) }
+                ) { Text(stringResource(Res.string.action_create)) }
             }
         }
     }
@@ -1109,7 +1111,7 @@ private fun DeckPictureSheet(deck: DeckWithCount, onDismiss: () -> Unit) {
                 .navigationBarsPadding(),
         ) {
             Text(
-                text = stringResource(R.string.flashcards_deck_picture_title, deck.name),
+                text = stringResource(Res.string.flashcards_deck_picture_title, deck.name),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = Space.md),
             )
@@ -1136,7 +1138,7 @@ private fun DeckPictureSheet(deck: DeckWithCount, onDismiss: () -> Unit) {
                 OutlinedButton(
                     onClick = viewModel::onRemove,
                     modifier = Modifier.padding(top = Space.lg),
-                ) { Text(stringResource(R.string.flashcards_deck_picture_remove)) }
+                ) { Text(stringResource(Res.string.flashcards_deck_picture_remove)) }
             }
         }
     }
@@ -1176,7 +1178,7 @@ private fun CollectionPictureSheet(shelf: DeckShelf, onDismiss: () -> Unit) {
         ) {
             Text(
                 text = stringResource(
-                    R.string.flashcards_deck_picture_title,
+                    Res.string.flashcards_deck_picture_title,
                     shelf.collection.name,
                 ),
                 style = MaterialTheme.typography.titleLarge,
@@ -1205,7 +1207,7 @@ private fun CollectionPictureSheet(shelf: DeckShelf, onDismiss: () -> Unit) {
                 OutlinedButton(
                     onClick = viewModel::onRemove,
                     modifier = Modifier.padding(top = Space.lg),
-                ) { Text(stringResource(R.string.flashcards_collection_picture_remove)) }
+                ) { Text(stringResource(Res.string.flashcards_collection_picture_remove)) }
             }
         }
     }
@@ -1226,11 +1228,11 @@ private fun BackupSheet(isBusy: Boolean, onExport: () -> Unit, onRestore: () -> 
             .navigationBarsPadding(),
     ) {
         Text(
-            text = stringResource(R.string.flashcards_backup_title),
+            text = stringResource(Res.string.flashcards_backup_title),
             style = MaterialTheme.typography.titleLarge,
         )
         Text(
-            text = stringResource(R.string.flashcards_backup_body),
+            text = stringResource(Res.string.flashcards_backup_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = Space.sm),
@@ -1247,10 +1249,10 @@ private fun BackupSheet(isBusy: Boolean, onExport: () -> Unit, onRestore: () -> 
             modifier = Modifier.padding(top = Space.lg),
         ) {
             Button(onClick = onExport, enabled = !isBusy, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.flashcards_backup_save))
+                Text(stringResource(Res.string.flashcards_backup_save))
             }
             OutlinedButton(onClick = onRestore, enabled = !isBusy, modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.flashcards_backup_restore))
+                Text(stringResource(Res.string.flashcards_backup_restore))
             }
         }
     }
@@ -1282,7 +1284,7 @@ private fun NameDialog(
     title: String,
     label: String,
     hint: String,
-    takenRes: Int,
+    takenRes: StringResource,
     confirmLabel: String,
     check: (String) -> DeckNames.Check,
     onDismiss: () -> Unit,
@@ -1314,7 +1316,7 @@ private fun NameDialog(
             ) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }

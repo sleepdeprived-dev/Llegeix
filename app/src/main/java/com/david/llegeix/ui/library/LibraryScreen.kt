@@ -58,6 +58,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Pill
 import androidx.compose.runtime.LaunchedEffect
@@ -72,8 +73,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
@@ -107,6 +106,8 @@ import com.david.llegeix.ui.common.resolved
 import com.david.llegeix.ui.folders.FolderNameDialog
 import com.david.llegeix.ui.sources.SourcesSheet
 import com.david.llegeix.util.allFilesAccessIntents
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.launch
 
 /** What the file picker will offer, so a photo cannot be added as a book. */
@@ -198,7 +199,7 @@ fun LibraryScreen(
         ActivityResultContracts.StartActivityForResult(),
     ) { }
 
-    val settingsUnavailable = stringResource(R.string.library_settings_unavailable)
+    val settingsUnavailable = stringResource(Res.string.library_settings_unavailable)
     fun openAllFilesSettings() {
         val opened = allFilesAccessIntents(context).any { intent ->
             runCatching { settingsLauncher.launch(intent) }.isSuccess
@@ -208,8 +209,8 @@ fun LibraryScreen(
         }
     }
 
-    val recentRemoved = stringResource(R.string.recent_removed)
-    val undoLabel = stringResource(R.string.action_undo)
+    val recentRemoved = stringResource(Res.string.recent_removed)
+    val undoLabel = stringResource(Res.string.action_undo)
 
     val errorMessage = state.errorMessage?.resolved()
     LaunchedEffect(errorMessage) {
@@ -238,7 +239,7 @@ fun LibraryScreen(
                 FloatingActionButton(onClick = { showAddDocuments = true }) {
                     Icon(
                         Icons.Default.Add,
-                        contentDescription = stringResource(R.string.library_add_documents),
+                        contentDescription = stringResource(Res.string.library_add_documents),
                     )
                 }
             }
@@ -251,7 +252,7 @@ fun LibraryScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Senyera(flag = flag, onClick = { choosingFlag = true })
                         Text(
-                            text = stringResource(R.string.app_name),
+                            text = stringResource(Res.string.app_name),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(start = Space.md),
@@ -271,7 +272,7 @@ fun LibraryScreen(
                     IconButton(onClick = viewModel::refresh, enabled = !state.isScanning) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.library_rescan),
+                            contentDescription = stringResource(Res.string.library_rescan),
                         )
                     }
                     LayoutButton(layout = layout, onClick = viewModel::onToggleLayout)
@@ -293,7 +294,7 @@ fun LibraryScreen(
             if (state.totalFound > 0) {
                 SearchField(
                     query = state.query,
-                    placeholder = stringResource(R.string.library_search),
+                    placeholder = stringResource(Res.string.library_search),
                     onQueryChange = viewModel::onQueryChange,
                     onFocusChanged = { isSearchFocused = it },
                     modifier = Modifier
@@ -459,19 +460,19 @@ fun LibraryScreen(
     hidingFolder?.let { folder ->
         AlertDialog(
             onDismissRequest = { hidingFolder = null },
-            title = { Text(stringResource(R.string.library_folder_hide_title, folder.name)) },
-            text = { Text(stringResource(R.string.library_folder_hide_body)) },
+            title = { Text(stringResource(Res.string.library_folder_hide_title, folder.name)) },
+            text = { Text(stringResource(Res.string.library_folder_hide_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         viewModel.onHideFolder(folder.path)
                         hidingFolder = null
                     },
-                ) { Text(stringResource(R.string.library_folder_hide_confirm)) }
+                ) { Text(stringResource(Res.string.library_folder_hide_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { hidingFolder = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             },
         )
@@ -486,11 +487,11 @@ fun LibraryScreen(
     forgettingRecent?.let { recent ->
         AlertDialog(
             onDismissRequest = { forgettingRecent = null },
-            title = { Text(stringResource(R.string.recent_forget_title)) },
+            title = { Text(stringResource(Res.string.recent_forget_title)) },
             text = {
                 Text(
                     stringResource(
-                        R.string.recent_forget_body,
+                        Res.string.recent_forget_body,
                         names.titleFor(recent.uriString, recent.displayName),
                     ),
                 )
@@ -510,11 +511,11 @@ fun LibraryScreen(
                             }
                         }
                     },
-                ) { Text(stringResource(R.string.recent_forget_confirm)) }
+                ) { Text(stringResource(Res.string.recent_forget_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { forgettingRecent = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(Res.string.action_cancel))
                 }
             },
         )
@@ -603,7 +604,7 @@ private fun LibraryControlsRow(
                 modifier = Modifier.size(18.dp),
             )
             Text(
-                text = stringResource(R.string.library_sort_by),
+                text = stringResource(Res.string.library_sort_by),
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -638,7 +639,7 @@ private fun SortSheet(
                 .padding(bottom = Space.xl),
         ) {
             Text(
-                text = stringResource(R.string.library_sort_by),
+                text = stringResource(Res.string.library_sort_by),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier
                     .padding(horizontal = Space.screen)
@@ -692,9 +693,9 @@ private fun LayoutButton(layout: LibraryLayout, onClick: () -> Unit) {
             ),
             contentDescription = stringResource(
                 if (layout == LibraryLayout.GRID) {
-                    R.string.library_view_list
+                    Res.string.library_view_list
                 } else {
-                    R.string.library_view_grid
+                    Res.string.library_view_grid
                 },
             ),
         )
@@ -712,8 +713,8 @@ private fun LayoutButton(layout: LibraryLayout, onClick: () -> Unit) {
  */
 @Composable
 private fun SettingsButton(updateWaiting: Boolean, onClick: () -> Unit) {
-    val waitingLabel = stringResource(R.string.settings_update_waiting)
-    val settingsLabel = stringResource(R.string.settings_title)
+    val waitingLabel = stringResource(Res.string.settings_update_waiting)
+    val settingsLabel = stringResource(Res.string.settings_title)
     Box {
         IconButton(onClick = onClick) {
             Icon(
@@ -766,17 +767,17 @@ private fun DocumentNameDialog(
     var name by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.document_rename_title)) },
+        title = { Text(stringResource(Res.string.document_rename_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.document_rename_label)) },
+                    label = { Text(stringResource(Res.string.document_rename_label)) },
                     singleLine = true,
                 )
                 Text(
-                    text = stringResource(R.string.document_rename_body),
+                    text = stringResource(Res.string.document_rename_body),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = Space.md),
@@ -788,17 +789,17 @@ private fun DocumentNameDialog(
                     TextButton(
                         onClick = { onConfirm("") },
                         modifier = Modifier.padding(top = Space.sm),
-                    ) { Text(stringResource(R.string.document_rename_reset)) }
+                    ) { Text(stringResource(Res.string.document_rename_reset)) }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
-                Text(stringResource(R.string.action_rename))
+                Text(stringResource(Res.string.action_rename))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
@@ -834,7 +835,7 @@ private fun PathBar(
         IconButton(onClick = onUp) {
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_up),
-                contentDescription = stringResource(R.string.library_folder_up),
+                contentDescription = stringResource(Res.string.library_folder_up),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
@@ -846,7 +847,7 @@ private fun PathBar(
         ) {
             item {
                 PathSegment(
-                    label = stringResource(R.string.library_path_root),
+                    label = stringResource(Res.string.library_path_root),
                     isCurrent = false,
                     onClick = { onOpenPath(null) },
                 )
@@ -950,13 +951,13 @@ private fun LibraryFolderRow(
             Text(
                 text = listOfNotNull(
                     pluralStringResource(
-                        R.plurals.folders_pdf_count,
+                        Res.plurals.folders_pdf_count,
                         folder.documentCount,
                         folder.documentCount,
                     ),
                     if (folder.folderCount > 0) {
                         pluralStringResource(
-                            R.plurals.sources_folder_count,
+                            Res.plurals.sources_folder_count,
                             folder.folderCount,
                             folder.folderCount,
                         )
@@ -1019,13 +1020,13 @@ private fun LibraryBody(
         // the app opens, where the three ways in are listed with a line each
         // saying what they do, folder first.
         !state.hasAnySource -> EmptyState(
-            title = stringResource(R.string.library_welcome_title),
-            body = stringResource(R.string.library_welcome_body),
+            title = stringResource(Res.string.library_welcome_title),
+            body = stringResource(Res.string.library_welcome_body),
             icon = painterResource(R.drawable.ic_library),
             modifier = modifier,
             primaryAction = {
                 Button(onClick = onAddDocuments) {
-                    Text(stringResource(R.string.library_add_documents))
+                    Text(stringResource(Res.string.library_add_documents))
                 }
             },
         )
@@ -1057,8 +1058,8 @@ private fun LibraryBody(
                 onOpenSort = onOpenSort,
             )
             EmptyState(
-                title = stringResource(R.string.library_empty_title),
-                body = stringResource(R.string.library_empty_body),
+                title = stringResource(Res.string.library_empty_title),
+                body = stringResource(Res.string.library_empty_body),
                 icon = painterResource(R.drawable.ic_library),
                 // Weighted rather than filling: the shelves above have already
                 // taken height, and an empty state that insists on the whole
@@ -1069,7 +1070,7 @@ private fun LibraryBody(
                 // knows which ones are still available and offers those.
                 primaryAction = {
                     Button(onClick = onAddDocuments) {
-                        Text(stringResource(R.string.library_add_documents))
+                        Text(stringResource(Res.string.library_add_documents))
                     }
                 },
             )
@@ -1090,9 +1091,9 @@ private fun LibraryBody(
                 onOpenSort = onOpenSort,
             )
             EmptyState(
-                title = stringResource(R.string.library_no_matches_title),
+                title = stringResource(Res.string.library_no_matches_title),
                 body = stringResource(
-                    R.string.library_no_matches_body,
+                    Res.string.library_no_matches_body,
                     state.totalFound,
                     state.query,
                 ),
@@ -1356,14 +1357,14 @@ private fun AddDocumentsSheet(
                 .padding(bottom = Space.xl),
         ) {
             Text(
-                text = stringResource(R.string.library_add_documents),
+                text = stringResource(Res.string.library_add_documents),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(horizontal = Space.screen),
             )
             // The sentence that stops the whole sheet being frightening: none of
             // these three moves, copies or changes anybody's files.
             Text(
-                text = stringResource(R.string.sources_add_body),
+                text = stringResource(Res.string.sources_add_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -1372,21 +1373,21 @@ private fun AddDocumentsSheet(
             )
             AddDocumentsOption(
                 icon = painterResource(R.drawable.ic_folder),
-                title = stringResource(R.string.action_add_folder),
-                body = stringResource(R.string.sources_add_folder_body),
+                title = stringResource(Res.string.action_add_folder),
+                body = stringResource(Res.string.sources_add_folder_body),
                 onClick = onAddFolder,
             )
             AddDocumentsOption(
                 icon = painterResource(R.drawable.ic_file),
-                title = stringResource(R.string.library_add_files),
-                body = stringResource(R.string.sources_add_files_body),
+                title = stringResource(Res.string.library_add_files),
+                body = stringResource(Res.string.sources_add_files_body),
                 onClick = onAddFiles,
             )
             if (!deviceScanEnabled) {
                 AddDocumentsOption(
                     icon = painterResource(R.drawable.ic_device),
-                    title = stringResource(R.string.action_scan_device),
-                    body = stringResource(R.string.sources_add_device_body),
+                    title = stringResource(Res.string.action_scan_device),
+                    body = stringResource(Res.string.sources_add_device_body),
                     onClick = onScanDevice,
                 )
             }
@@ -1462,7 +1463,7 @@ private fun MoveToFolderDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.library_move_to_folder)) },
+        title = { Text(stringResource(Res.string.library_move_to_folder)) },
         text = {
             Column {
                 Text(
@@ -1474,7 +1475,7 @@ private fun MoveToFolderDialog(
                 )
                 if (folders.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.library_no_folders_yet),
+                        text = stringResource(Res.string.library_no_folders_yet),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = Space.lg),
                     )
@@ -1505,11 +1506,11 @@ private fun MoveToFolderDialog(
         },
         confirmButton = {
             TextButton(onClick = onCreateNew) {
-                Text(stringResource(R.string.library_new_folder_ellipsis))
+                Text(stringResource(Res.string.library_new_folder_ellipsis))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
@@ -1559,7 +1560,7 @@ private fun FolderChoiceRow(
                 .padding(start = Space.md),
         ) {
             Text(
-                text = folder?.name ?: stringResource(R.string.library_no_folder),
+                text = folder?.name ?: stringResource(Res.string.library_no_folder),
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1567,10 +1568,10 @@ private fun FolderChoiceRow(
             if (folder != null) {
                 Text(
                     text = if (folder.documentCount == 0) {
-                        stringResource(R.string.folders_empty_count)
+                        stringResource(Res.string.folders_empty_count)
                     } else {
                         pluralStringResource(
-                            R.plurals.folders_pdf_count,
+                            Res.plurals.folders_pdf_count,
                             folder.documentCount,
                             folder.documentCount,
                         )

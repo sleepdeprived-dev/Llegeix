@@ -1,0 +1,825 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The app's strings, in Catalan — the only language it is shown in. There is
+    no English set: Llegeix is Catalan-only.
+
+    Read by Compose resources on the phone and the Mac alike, which is not quite
+    Android's reading of the same format:
+      - apostrophes and quotes are written plainly, ' and ", never \' or \"
+        (the backslash would be shown);
+      - a percent sign is a single %, never %% (both would be shown);
+      - a line break is \n; one typed into the file is kept, not folded into
+        a space as Android used to.
+    Arguments are positional, %1$s and %1$d, as before.
+-->
+<resources>
+    <string name="app_name" translatable="false">Llegeix</string>
+    <string name="pdf_badge" translatable="false">PDF</string>
+    <string name="settings_translation_english" translatable="false">English</string>
+    <string name="settings_translation_romanian" translatable="false">Română</string>
+
+
+    <!-- Navegació -->
+    <string name="nav_library">Biblioteca</string>
+    <string name="nav_dictionary">Diccionari</string>
+    <string name="nav_collections">Col·leccions</string>
+    <string name="nav_saved">Desat</string>
+    <string name="nav_flashcards">Targetes</string>
+    <!-- Mac only, for the sections that have not been brought across yet. -->
+    <string name="desktop_section_pending">Aquesta secció encara no és al Mac.</string>
+
+    <!-- Accions compartides -->
+    <string name="action_cancel">Cancel·la</string>
+    <string name="action_done">Fet</string>
+    <string name="action_delete">Suprimeix</string>
+    <string name="action_create">Crea</string>
+    <string name="action_add">Afegeix</string>
+    <string name="action_replace">Substitueix</string>
+    <string name="action_rename">Reanomena</string>
+    <string name="action_back">Enrere</string>
+    <string name="action_more_options">Més opcions</string>
+    <string name="action_add_folder">Afegeix una carpeta</string>
+    <string name="action_scan_device">Escaneja tot el dispositiu</string>
+
+    <!-- Biblioteca -->
+    <string name="library_welcome_title">Comença la biblioteca</string>
+    <string name="library_welcome_body">Indica-li una carpeta de PDF, tria fitxers concrets o deixa que es miri tot el telèfon. No es copia ni es mou res.</string>
+    <string name="library_sources">Fonts</string>
+    <string name="sources_explainer">Tot el que mostra la biblioteca ve d'aquí. Si desmarques una carpeta, l'aplicació deixa de mostrar-la; no s'esborra mai res del telèfon.</string>
+    <string name="sources_scan_paused">Desactivat. Els teus PDF es queden on són.</string>
+    <string name="sources_count_partial">Es mostren %1$d PDF de %2$d</string>
+    <string name="sources_remove_title">%1$s</string>
+    <string name="sources_remove_body">Si l'amagues, els seus PDF surten de la biblioteca i la carpeta es queda en aquesta llista, desmarcada — torna-la a marcar i tornen a aparèixer.\n\nSi l'oblides, es retorna el permís, la carpeta desapareix de la llista i l'hauries de tornar a buscar als fitxers.\n\nCap de les dues coses no esborra res del telèfon.</string>
+    <string name="sources_remove_confirm">Deixa d'utilitzar-la</string>
+    <!-- Una font, plegada: "48 PDF · 12 carpetes". -->
+    <plurals name="sources_folder_count">
+        <item quantity="one">%1$d carpeta</item>
+        <item quantity="many">%1$d carpetes</item>
+        <item quantity="other">%1$d carpetes</item>
+    </plurals>
+    <string name="sources_none_shown">No es mostra a la biblioteca</string>
+    <string name="sources_show_folders">Mostra les carpetes de %1$s</string>
+    <string name="sources_hide_folders">Amaga les carpetes de %1$s</string>
+    <string name="sources_include">Mostra %1$s a la biblioteca</string>
+    <string name="sources_add_folder_body">Vigila una carpeta i tot el que hi ha dins</string>
+    <string name="sources_add_files_body">Tria PDF concrets, també els del núvol</string>
+    <string name="library_device_scan_off">Cal accés a tots els fitxers</string>
+    <string name="library_add_files">Afegeix fitxers PDF</string>
+    <string name="library_rescan">Torna a escanejar</string>
+    <string name="library_search">Cerca</string>
+    <string name="library_clear_search">Esborra la cerca</string>
+    <!-- La fila de cerques anteriors, sota un camp de cerca buit. -->
+    <string name="search_recent">Recents</string>
+    <string name="search_recent_clear">Esborra</string>
+    <string name="library_settings_unavailable">No s'ha pogut obrir la configuració. Concedeix l'"Accés a tots els fitxers" manualment.</string>
+    <string name="library_scan_failed">No s'han pogut cercar els PDF</string>
+    <string name="library_filter_all">Tots</string>
+    <string name="library_view_by_folder">Per carpetes</string>
+    <!-- El punt de partida de la biblioteca, al camí de carpetes. -->
+    <string name="library_path_root">Biblioteca</string>
+    <string name="library_folder_up">Puja una carpeta</string>
+    <string name="library_sort_by">Ordena per</string>
+    <string name="library_sort_recent">Modificats recentment</string>
+    <string name="library_sort_name">Nom</string>
+    <string name="library_sort_size">Mida</string>
+    <string name="library_sort_tag">Etiqueta</string>
+    <string name="library_empty_title">No s'ha trobat cap PDF</string>
+    <string name="library_empty_body">No ha aparegut res amb l'extensió .pdf. Els PDF de Baixades no es poden llegir vigilant una carpeta: escaneja tot el telèfon o afegeix-los un a un.</string>
+    <string name="library_no_matches_title">Cap coincidència</string>
+    <string name="library_no_matches_body">Cap dels %1$d PDF no coincideix amb "%2$s".</string>
+    <string name="library_move_to_folder">Mou a una col·lecció</string>
+    <string name="library_no_folders_yet">Encara no tens cap col·lecció.</string>
+    <string name="library_new_folder_ellipsis">Col·lecció nova…</string>
+    <string name="library_no_folder">Cap col·lecció</string>
+    <!-- La carpeta on està desat un PDF, a la línia de detall de la biblioteca. -->
+    <string name="library_filed_in">A %1$s</string>
+
+    <!-- Fila de document -->
+    <string name="document_bookmarked">Amb marcador</string>
+    <string name="document_read_later">Per llegir més tard</string>
+    <string name="document_actions">Accions per a %1$s</string>
+    <string name="document_remove_bookmark">Treu el marcador</string>
+    <string name="document_add_bookmark">Afegeix un marcador a aquest PDF</string>
+    <string name="document_remove_read_later">Treu de "Per llegir més tard"</string>
+    <string name="document_move_to_folder">Mou a una col·lecció…</string>
+
+    <!-- Etiquetes -->
+    <string name="tags_title">Etiquetes</string>
+    <string name="tags_open">Etiquetes…</string>
+    <string name="tags_none_yet">Encara no hi ha etiquetes. Escriu-ne un nom a sota per crear-ne una.</string>
+    <string name="tags_new_name">Etiqueta nova</string>
+    <string name="tags_add">Afegeix</string>
+    <string name="tags_change_colour">Canvia el color de %1$s</string>
+    <string name="tags_pick_colour">Tria un color</string>
+    <string name="tags_delete">Suprimeix l'etiqueta %1$s</string>
+    <!-- Es mostra quan una fila té més etiquetes de les que hi caben, p. ex. «+2». -->
+    <string name="tags_overflow">+%1$d</string>
+
+    <!-- Recents -->
+    <string name="recent_title">Vistos recentment</string>
+    <string name="recent_clear_history">Esborra l'historial</string>
+    <string name="recent_empty_title">Encara no has llegit res</string>
+    <string name="recent_empty_body">Obre un PDF des de la biblioteca i apareixerà aquí, juntament amb la pàgina on vas arribar.</string>
+    <string name="recent_page">Pàgina %1$d</string>
+    <string name="recent_subtitle">%1$s · %2$s</string>
+
+    <!-- Marcadors -->
+    <string name="bookmarks_tab_pages">Pàgines</string>
+    <string name="bookmarks_pages_empty_title">Cap pàgina amb marcador</string>
+    <string name="bookmarks_pages_empty_body">Toca l'estrella mentre llegeixes per marcar la pàgina on ets. Es desen aquí, a part dels PDF sencers.</string>
+    <string name="bookmarks_page_detail">%1$s · %2$s</string>
+    <string name="bookmarked_collection_back">Torna a les col·leccions</string>
+    <string name="bookmarked_collection_title">Amb estrella</string>
+    <string name="bookmarked_collection_empty_title">Cap marcador</string>
+    <string name="bookmarked_collection_empty_body">Afegeix un marcador a un PDF des del seu menú a la biblioteca i apareixerà aquí automàticament.</string>
+
+    <!-- Carpetes -->
+    <string name="folders_rename_title">Canvia el nom de la col·lecció</string>
+    <string name="folders_delete_title">Vols esborrar la col·lecció?</string>
+    <string name="folders_delete_body">Els PDF que hi ha es queden al dispositiu: només deixen d'estar-hi arxivats.</string>
+    <string name="folders_exists">Ja hi ha una col·lecció que es diu «%1$s»</string>
+    <string name="folders_name_label">Nom de la col·lecció</string>
+    <string name="folders_bookmarked_auto">S'actualitza automàticament</string>
+    <string name="folders_pinned">Fixada</string>
+    <string name="folders_unpin">Deixa de fixar</string>
+    <string name="folders_pin">Fixa a dalt</string>
+    <string name="folders_bookmark">Afegeix un marcador</string>
+    <string name="folders_colour">Color…</string>
+    <string name="folders_rename">Reanomena…</string>
+    <string name="folders_colour_title">Color de la col·lecció</string>
+    <string name="folders_no_colour">Sense color</string>
+    <string name="folders_empty_count">Buida</string>
+    <!--
+        "PDF" is an invariable acronym in Catalan, so every quantity reads the
+        same; the "many" form exists because CLDR requires it for Catalan.
+    -->
+    <plurals name="folders_pdf_count">
+        <item quantity="one">%1$d PDF</item>
+        <item quantity="many">%1$d PDF</item>
+        <item quantity="other">%1$d PDF</item>
+    </plurals>
+    <string name="folder_detail_back">Torna a les col·leccions</string>
+    <string name="folder_detail_empty_title">Aquesta col·lecció és buida</string>
+    <string name="folder_detail_empty_body">Afegeix-hi PDF i sortiran aquí, amb el punt on ets a cadascun.</string>
+    <string name="folder_detail_remove">Treu de la col·lecció</string>
+
+    <!-- Lector -->
+    <string name="reader_back">Torna a la biblioteca</string>
+    <string name="reader_page_content_description">Pàgina %1$d</string>
+    <string name="reader_open_failed_title">No s'ha pogut obrir aquest PDF</string>
+    <string name="reader_open_failed_body">Pot ser que el fitxer s'hagi mogut o que s'hagi revocat el permís de la carpeta.</string>
+    <string name="reader_open_failed_message">No s'ha pogut obrir aquest PDF</string>
+    <string name="reader_no_pages_title">Cap pàgina</string>
+    <string name="reader_no_pages_body">Aquest document diu que té zero pàgines.</string>
+    <string name="reader_remove_page_bookmark">Treu el marcador d'aquesta pàgina</string>
+    <string name="reader_add_page_bookmark">Afegeix un marcador a aquesta pàgina</string>
+    <string name="reader_highlight_colour">Color del ressaltat</string>
+    <string name="reader_colour_selected">%1$s, seleccionat</string>
+
+    <string name="reader_find">Cerca al document</string>
+    <string name="reader_find_hint">Cerca</string>
+    <string name="reader_find_close">Tanca la cerca</string>
+    <string name="reader_find_next">Coincidència següent</string>
+    <string name="reader_find_previous">Coincidència anterior</string>
+    <string name="reader_find_none">cap</string>
+    <!-- Posició dins dels resultats, p. ex. «3 / 47». -->
+    <string name="reader_find_position">%1$d / %2$d</string>
+    <plurals name="reader_find_match_count">
+        <item quantity="one">%1$d coincidència</item>
+        <item quantity="many">%1$d coincidències</item>
+        <item quantity="other">%1$d coincidències</item>
+    </plurals>
+    <plurals name="reader_find_page_count">
+        <item quantity="one">%1$d pàgina</item>
+        <item quantity="many">%1$d pàgines</item>
+        <item quantity="other">%1$d pàgines</item>
+    </plurals>
+    <string name="reader_find_results_show">Mostra els resultats</string>
+    <string name="reader_find_results_hide">Amaga els resultats</string>
+    <string name="reader_find_result_page">Pàgina %1$d</string>
+    <string name="reader_find_empty_title">No s'ha trobat res</string>
+    <string name="reader_find_empty_body">Cap part d'aquest document conté «%1$s». Una pàgina escanejada no té text per cercar.</string>
+    <string name="reader_find_limit">Només es llisten les %1$d primeres coincidències. Cerca alguna cosa més llarga per acotar-ho.</string>
+    <string name="reader_zoom">Amplia</string>
+    <string name="reader_zoom_level">%1$s×</string>
+    <!-- El comptador de pàgines flotant, p. ex. «12 / 340». -->
+    <string name="reader_page_position">Pàgina %1$d de %2$d</string>
+    <string name="library_view_grid">Vista de graella</string>
+    <string name="library_view_list">Vista de llista</string>
+
+    <!-- Consulta de paraules -->
+    <string name="lookup_target_english">anglès</string>
+    <string name="lookup_target_romanian">romanès</string>
+
+    <!-- El canvi ràpid de llengua del lector i el quadre de sinònims. -->
+    <string name="lookup_switch_english">Tradueix a l'anglès</string>
+    <string name="lookup_switch_romanian">Tradueix al romanès</string>
+    <string name="lookup_synonyms">Sinònims</string>
+    <string name="lookup_dictionary">Diccionari</string>
+    <string name="lookup_dictionary_loading">S'està cercant al diccionari\u2026</string>
+    <string name="lookup_dictionary_none">El diccionari no té res per a això.</string>
+    <string name="pos_nom">nom</string>
+    <string name="pos_verb">verb</string>
+    <string name="pos_adj">adjectiu</string>
+    <string name="pos_adv">adverbi</string>
+    <string name="pos_interj">interjecció</string>
+    <string name="pos_loc">locució</string>
+    <string name="lookup_antonyms">Antònims</string>
+    <string name="lookup_direction">Català → %1$s</string>
+    <string name="lookup_translating">S'està traduint…</string>
+    <string name="lookup_downloading_title">S'està baixant el model d'idioma català…</string>
+    <string name="lookup_downloading_body">És una baixada única per Wi-Fi. Després les consultes són fora de línia i instantànies.</string>
+    <string name="lookup_failed">No s'ha pogut traduir aquesta paraula</string>
+    <string name="lookup_no_word_there">Aquí no hi ha cap paraula</string>
+    <string name="lookup_page_unreadable">Aquesta pàgina és una imatge i no s'hi ha pogut llegir res.</string>
+    <string name="lookup_model_wifi_failed">No s'ha pogut baixar el model català per Wi-Fi.</string>
+    <string name="lookup_model_failed">No s'ha pogut baixar el model català.</string>
+    <string name="lookup_use_mobile_data">Utilitza dades mòbils</string>
+    <string name="lookup_done">Entesos</string>
+
+    <string name="lookup_save_word">Desa aquesta paraula</string>
+    <string name="lookup_unsave_word">Treu de les paraules desades</string>
+    <string name="lookup_word_by_word">Paraula per paraula</string>
+    <string name="lookup_in_context">En context</string>
+    <string name="lookup_here">Aquí vol dir</string>
+    <string name="lookup_here_phrase">Forma part d'una expressió</string>
+    <string name="lookup_here_note">Llegit d'aquesta línia, i per això pot diferir de la paraula tota sola.</string>
+    <string name="lookup_sense_likely">probablement aquí</string>
+    <string name="words_sense_from">Aquí, a %1$s</string>
+    <!-- On s'ha trobat una paraula desada, p. ex. «Pàgina 12 · línia 4». -->
+    <string name="lookup_location">Pàgina %1$d · línia %2$d</string>
+    <!-- Marca una transcripció amb la vocal tònica deduïda. -->
+    <string name="lookup_ipa_approximate">aprox.</string>
+
+    <!--
+        L'altaveu al costat d'una paraula. Tres etiquetes i no una perquè el
+        botó fa tres coses diferents segons què tingui el motor de veu del
+        dispositiu: dir-la, aturar-la o anar a buscar la veu.
+    -->
+    <string name="pronounce">Digues aquesta paraula en veu alta</string>
+    <string name="pronounce_stop">Atura</string>
+    <string name="pronounce_get_voice">Obtén la veu catalana</string>
+
+    <!-- Paraules desades -->
+    <string name="bookmarks_tab_words">Paraules</string>
+    <string name="bookmarks_words_empty_title">Cap paraula desada</string>
+    <string name="bookmarks_words_empty_body">Mantén premuda una paraula mentre llegeixes i toca l'estrella. Si continues arrossegant, en pots desar tota una frase, o marca-la des de la pestanya Diccionari.</string>
+    <string name="words_remove">Treu aquesta paraula</string>
+    <string name="words_source">%1$s · pàgina %2$d · línia %3$d</string>
+
+    <!-- Colors de ressaltat -->
+    <string name="colour_yellow">Groc</string>
+    <string name="colour_green">Verd</string>
+    <string name="colour_blue">Blau</string>
+    <string name="colour_pink">Rosa</string>
+    <string name="colour_orange">Taronja</string>
+    <string name="colour_purple">Lila</string>
+    <string name="colour_custom">Personalitzat</string>
+
+    <!-- Senyera -->
+    <string name="senyera_content_description">La senyera, la bandera catalana</string>
+
+    <!-- Idioma de la traducció -->
+    <string name="settings_translation">Tradueix a</string>
+
+    <!-- Privadesa -->
+    <string name="settings_privacy">Privadesa</string>
+    <string name="settings_privacy_open">Política de privadesa</string>
+    <string name="settings_privacy_summary">Llegeix no recull res.</string>
+    <string name="privacy_title">Política de privadesa</string>
+    <string name="privacy_body">Llegeix no recull cap dada teva. Cap ni una. No hi ha analítiques, ni informes d'errors, ni publicitat, ni compte. Res del que fas en aquesta aplicació s'envia enlloc, i no hi ha cap servidor seu on enviar-ho. Tot el que l'aplicació recorda — les col·leccions, les etiquetes, els marcadors, les paraules desades, les targetes, per on vas llegint i la configuració — es desa només en aquest dispositiu, a l'emmagatzematge privat de l'aplicació. Desinstal·lar-la ho esborra tot, i res no es copia mai a cap còpia de seguretat al núvol. Si canvies de telèfon amb la transferència directa d'Android, ho tens al nou: del telèfon vell al nou, sense passar pel servidor de ningú. Els teus PDF es llegeixen allà on ja són al dispositiu. No es copien mai, no es pugen enlloc i no els obre res més que aquesta aplicació. L'aplicació fa servir internet per a tres coses. Cap no porta cap compte, cap identificador ni res sobre tu. La primera és baixar els models de traducció d'ML Kit de Google, un cop per llengua, perquè en tocar una paraula es pugui traduir. Aquesta petició va a Google i es regeix per la política de privadesa de Google; l'aplicació no hi envia cap informació sobre tu, i cap text dels teus documents no surt mai del dispositiu. Un cop baixats els models, la traducció i la pronunciació funcionen del tot sense connexió. La segona és trobar imatges per a una targeta, i és l'única que envia mai una paraula que hagis escrit. Només passa mentre tens una targeta oberta per escriure-la: després d'una pausa en l'escriptura, aquella paraula i la seva traducció anglesa, feta abans en aquest telèfon —i res més— es demanen a l'ARASAAC i a Global Symbols, per als pictogrames, i a Wikimedia Commons, a Wikidata, a la Viquipèdia, a iNaturalist i a Openverse, per a les fotografies. Els pictogrames d'OpenMoji es troben baixant-ne el catàleg sencer i cercant-hi aquí, de manera que no se li envia cap paraula. Aquests serveis veuen la paraula i l'adreça des d'on et connectes, com qualsevol lloc web; no se'ls dona cap compte, cap identificador ni res sobre els teus documents. Les imatges només es baixen per a la graella que estàs mirant, i només se'n queda una quan la toques. La tercera és comprovar si hi ha una versió nova de l'aplicació: com a molt un cop al dia, en obrir la biblioteca, i sempre que premis el botó de Configuració. És el que posa un punt vermell a la roda dentada quan n'hi ha una de nova; no hi ha cap servei en segon pla ni cap notificació. Pregunta a GitHub quina és la darrera versió i, si tries instal·lar-la, la baixa d'allà. La petició no porta cap compte, cap identificador ni res sobre els teus documents —és la mateixa petició anònima que pot fer qualsevol a una pàgina pública— tot i que GitHub, com qualsevol lloc web, pot veure l'adreça des d'on et connectes. Si no escrius mai cap targeta, l'aplicació no envia mai cap paraula enlloc. L'aplicació demana permís per llegir fitxers per trobar els teus PDF, accés a la xarxa per a aquestes tres coses, i permís per passar una actualització a l'instal·lador d'Android, que és el que la instal·la de debò i t'ho demana abans.</string>
+    <string name="privacy_updated">Darrera actualització: 20 de setembre de 2026</string>
+
+    <!-- Vistos recentment -->
+
+    <!-- Paraules desades -->
+    <!-- Diccionari -->
+    <string name="dictionary_title">Diccionari</string>
+    <string name="dictionary_search">Cerca una paraula catalana</string>
+    <string name="dictionary_empty_title">Consulta qualsevol paraula</string>
+    <string name="dictionary_empty_body">Escriu una paraula catalana per veure com es pronuncia, què vol dir i què més podria ser. Marca-la amb l'estrella per desar-la amb les teves paraules.</string>
+    <string name="words_from_dictionary">Consultada al diccionari</string>
+
+    <string name="words_search">Cerca paraules</string>
+    <string name="words_sort_recent">Més recents primer</string>
+    <string name="words_sort_alphabetical">De la A a la Z</string>
+    <string name="words_none_match">Cap paraula desada coincideix amb "%1$s".</string>
+
+    <!-- Configuració -->
+    <string name="settings_title">Configuració</string>
+    <string name="settings_appearance">Aparença</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Segueix el sistema</string>
+    <string name="settings_theme_light">Clar</string>
+    <string name="settings_theme_dark">Fosc</string>
+    <string name="settings_theme_amoled">Negre</string>
+    <!-- Etiquetes del control segmentat: prou curtes per anar de tres en tres. -->
+    <string name="settings_theme_system_short">Sistema</string>
+    <string name="settings_theme_light_short">Clar</string>
+    <string name="settings_theme_dark_short">Fosc</string>
+    <string name="settings_theme_amoled_short">Negre</string>
+    <string name="settings_accent">Color d'accent</string>
+    <string name="settings_accent_system">Predeterminat del sistema</string>
+    <string name="settings_accent_system_summary">Pren el color del fons de pantalla.</string>
+    <string name="settings_accent_custom">Personalitzat</string>
+    <string name="settings_accent_custom_title">Tria un color</string>
+    <string name="settings_accent_hex">Codi hexadecimal</string>
+    <string name="settings_accent_hue">To</string>
+    <string name="settings_accent_shade">Lluminositat</string>
+    <string name="settings_accent_red">Vermell</string>
+    <string name="settings_accent_orange">Taronja</string>
+    <string name="settings_accent_yellow">Groc</string>
+    <string name="settings_accent_green">Verd</string>
+    <string name="settings_accent_blue">Blau</string>
+    <string name="settings_accent_purple">Lila</string>
+    <string name="settings_accent_selected">%1$s, seleccionat</string>
+    <string name="settings_data">Dades</string>
+    <string name="settings_erase">Esborra-ho tot</string>
+    <string name="settings_erase_summary">Deixa l'aplicació tal com estava el dia que la vas instal·lar.</string>
+    <string name="erase_title">Vols esborrar-ho tot?</string>
+    <string name="erase_body">Això buida la biblioteca, les col·leccions, els marcadors, les paraules desades i les etiquetes, retorna totes les carpetes a què has donat accés a l'aplicació, esborra els models de traducció baixats i torna totes les opcions al seu valor inicial. També desactiva l'escaneig de tot el dispositiu, perquè la biblioteca no es torni a omplir tota sola; el pots tornar a activar des de les fonts que hi ha a dalt de la biblioteca.\n\nEls teus PDF no es toquen. Es queden exactament on són al telèfon.\n\nAixò no es pot desfer.</string>
+    <string name="erase_confirm">Esborra-ho tot</string>
+    <string name="erase_running">S'està esborrant\u2026</string>
+    <string name="settings_about">Sobre l'aplicació</string>
+    <string name="settings_credits_thesaurus">Les definicions provenen del Viccionari, el diccionari lliure en català, sota llicència CC BY-SA. Els sinònims provenen del Diccionari de sinònims de català de Jaume Ortolà i Softcatalà, sota llicència CC BY 4.0.</string>
+    <string name="settings_updates">Actualitzacions</string>
+    <string name="settings_update_check">Comprova si hi ha actualitzacions</string>
+    <string name="settings_update_checking">S'està preguntant…</string>
+    <string name="settings_update_current">Tens la versió més nova.</string>
+    <string name="settings_update_found">Ja hi ha Llegeix %1$s</string>
+    <string name="settings_update_size">%1$s · %2$s</string>
+    <string name="settings_update_download">Baixa i instal·la</string>
+    <string name="settings_update_downloading">S'està baixant… %1$d%</string>
+    <string name="settings_update_install">Instal·la</string>
+    <string name="settings_update_ready">Baixada. Android et demanarà que ho confirmis.</string>
+    <string name="settings_update_open_page">Obre la pàgina de la versió</string>
+    <string name="settings_update_dismiss">Ara no</string>
+    <string name="settings_update_offline">No s'ha pogut arribar a les versions. Comprova la connexió i torna-ho a provar.</string>
+    <string name="settings_update_rate_limited">Hi ha hagut massa comprovacions des d'aquesta xarxa l'última hora. Torna-ho a provar més tard.</string>
+    <string name="settings_update_no_build">Aquesta versió no té cap compilació per a aquest telèfon. Obre la pàgina de la versió per triar-ne una a mà.</string>
+    <string name="settings_update_unreadable">Les versions no han respost com s'esperava.</string>
+    <string name="settings_update_download_failed">La baixada no s'ha acabat. No s'ha instal·lat res.</string>
+    <string name="settings_update_not_ours">Aquesta baixada no és una versió signada del Llegeix. No s'ha instal·lat res.</string>
+    <string name="settings_update_permission_title">Permet instal·lar</string>
+    <string name="settings_update_permission_body">Android necessita el teu permís perquè Llegeix pugui passar una actualització a l'instal·lador. Només ho demana: qui instal·la és l'instal·lador del sistema, i abans t'ho confirmarà.</string>
+    <string name="settings_update_permission_open">Obre la configuració</string>
+    <string name="settings_update_cannot_open">Res en aquest telèfon no ha pogut obrir això.</string>
+    <string name="settings_update_manual">L'aplicació només ho comprova quan prems el botó, i no instal·la res pel seu compte.</string>
+
+    <string name="settings_version">Versió %1$s</string>
+
+    <!--
+        La tira de fonts a dalt de la biblioteca.
+
+        Ha substituït un element del menú de tres punts. Qui no troba un llibre
+        ho pregunta a la biblioteca, i per tant la resposta hi ha de ser.
+    -->
+    <string name="library_source_device">Tot el dispositiu</string>
+
+    <!-- El prestatge de llibres començats, a dalt de la biblioteca. -->
+    <string name="library_continue_title">Continua llegint</string>
+    <string name="library_continue_history">Historial</string>
+    <!-- "Pàgina 34 de 210 · 16%". El % doble és un signe de percentatge. -->
+    <string name="library_continue_position">Pàgina %1$d de %2$d · %3$d%</string>
+    <string name="library_read_progress">%1$d% llegit</string>
+    <string name="library_read_finished">Llegit</string>
+
+    <!--
+        Col·leccions: els prestatges que fa el lector, per oposició a les
+        carpetes que el telèfon ja té. Compartien paraula i icona, i això feia
+        impossible distingir a cop d'ull dues coses ben diferents.
+    -->
+    <string name="collections_new">Col·lecció nova</string>
+    <string name="collections_empty_title">Encara no hi ha col·leccions</string>
+    <string name="collections_empty_body">Una col·lecció és un prestatge que fas tu: una assignatura, un autor, allò que estàs treballant. Fes-ne una i posa-hi PDFs.</string>
+    <string name="collections_add_action">Afegeix PDFs</string>
+    <string name="collections_add_title">Afegeix a %1$s</string>
+    <string name="collections_add_search">Cerca als teus PDFs</string>
+    <string name="collections_add_none_yet">Encara no hi ha res: marca el que vulguis.</string>
+    <string name="collections_add_no_matches">Res del dispositiu no hi coincideix.</string>
+    <string name="collections_add_in_other">A «%1$s»</string>
+    <plurals name="collections_add_chosen">
+        <item quantity="one">%1$d en aquesta col·lecció</item>
+        <item quantity="many">%1$d en aquesta col·lecció</item>
+        <item quantity="other">%1$d en aquesta col·lecció</item>
+    </plurals>
+
+    <!--
+        El full de visualització del lector. El zoom i la inversió eren botons a
+        la barra; són opcions, no accions, i ara viuen aquí amb les dues que més
+        importen en un telèfon: retallar els marges i llegir desplaçant.
+    -->
+    <string name="reader_display">Visualització</string>
+    <string name="reader_contents">Índex</string>
+    <string name="reader_tint">Pàgina</string>
+    <string name="reader_tint_none">Paper</string>
+    <string name="reader_tint_sepia">Càlid</string>
+    <string name="reader_tint_invert">Fosc</string>
+    <string name="reader_mode">Pàgines</string>
+    <string name="reader_mode_paged">Passa</string>
+    <string name="reader_mode_scroll">Desplaça</string>
+    <string name="reader_crop">Retalla els marges</string>
+    <string name="reader_crop_summary">Elimina les vores en blanc perquè la lletra surti més gran, sense fer zoom.</string>
+
+    <!--
+        El joc de repàs. Una llista de vocabulari que només es fulleja no ensenya
+        res a ningú, i per això les paraules desades també són un joc de cartes.
+    -->
+    <string name="practice_title">Repàs</string>
+    <string name="practice_start">Repassa</string>
+    <string name="practice_position">%1$d / %2$d</string>
+    <string name="practice_tap_to_reveal">Toca per veure la resposta</string>
+    <string name="practice_again_soon">Encara no</string>
+    <string name="practice_knew_it">Ho sabia</string>
+    <string name="practice_here">Aquí: %1$s</string>
+    <string name="practice_nothing_due">Ara mateix no toca res</string>
+    <string name="practice_finished_title">Sessió acabada</string>
+    <string name="practice_finished_body">N'has encertat %1$d de %2$d. Les que has fallat tornaran d'aquí a uns minuts; la resta, més endavant.</string>
+    <string name="practice_again">Una altra</string>
+    <string name="practice_done">Acaba</string>
+    <string name="practice_all_done_title">No toca res</string>
+    <string name="practice_all_done_body">Totes les paraules desades s'han repassat fa poc. Tornaran quan toqui: com millor te'n saps una, més triga a tornar.</string>
+    <string name="practice_none_saved_title">Encara no hi ha paraules desades</string>
+    <string name="practice_none_saved_body">Mantén premuda una paraula mentre llegeixes, o cerca-la al diccionari, i marca-la amb l'estrella. Les paraules marcades apareixen aquí com a cartes.</string>
+    <plurals name="practice_due">
+        <item quantity="one">%1$d paraula per repassar</item>
+        <item quantity="many">%1$d paraules per repassar</item>
+        <item quantity="other">%1$d paraules per repassar</item>
+    </plurals>
+    <plurals name="practice_saved_total">
+        <item quantity="one">%1$d paraula desada</item>
+        <item quantity="many">%1$d paraules desades</item>
+        <item quantity="other">%1$d paraules desades</item>
+    </plurals>
+
+    <string name="reader_mark_saved">Marca les paraules desades</string>
+    <string name="reader_mark_saved_summary">Subratlla les paraules que ja tens a la llista allà on surten a la pàgina.</string>
+
+    <string name="action_undo">Desfés</string>
+    <string name="recent_removed">Tret de l'historial</string>
+
+    <string name="document_search_inside">Cerca a dins…</string>
+
+    <!--
+        Les etiquetes de la fila que llisques. Tenen text propi i no el del menú:
+        un element de menú té una línia sencera i pot dir "Afegeix un marcador a
+        aquest PDF"; una etiqueta de lliscament comparteix fila amb allò que
+        llisques i es talla tan bon punt passa de la meitat.
+    -->
+    <string name="swipe_star">Estrella</string>
+    <string name="swipe_unstar">Treu-la</string>
+    <string name="swipe_read_later">Per llegir</string>
+    <string name="swipe_not_read_later">Ja no</string>
+
+    <!-- Espai de treball, v4.0.3: una barra per on ets, una per al que fa el dit. -->
+
+    <!-- ================= v3.9 ================= -->
+
+    <!-- Una cerca anterior, tancada des de la seva fila. -->
+    <string name="search_recent_forget">Oblida la cerca de %1$s</string>
+
+    <!-- Les fonts de la biblioteca, darrere d'una paraula. -->
+
+    <!-- Mantenir premuda una carpeta ofereix deixar de mostrar-la. -->
+    <string name="library_folder_hide_title">Vols deixar de mostrar %1$s?</string>
+    <string name="library_folder_hide_body">Aquesta carpeta i tot el que hi ha dins desapareixen de la biblioteca. No s'esborra res del telèfon, i la pots recuperar des de "Mostra les fonts".</string>
+    <string name="library_folder_hide_confirm">Deixa de mostrar-la</string>
+
+    <!-- Reanomenar un PDF dins de l'aplicació. -->
+    <string name="document_rename">Reanomena…</string>
+    <string name="document_rename_title">Reanomena a Llegeix</string>
+    <string name="document_rename_body">Això és només com ho anomena Llegeix. El fitxer del telèfon manté el seu nom.</string>
+    <string name="document_rename_label">Nom</string>
+    <string name="document_rename_reset">Fes servir el nom del fitxer</string>
+
+    <!-- Les dues col·leccions automàtiques, al costat de Destacats. -->
+    <string name="read_later_collection_title">Per llegir més tard</string>
+    <string name="read_later_collection_empty_title">Res per llegir més tard</string>
+    <string name="read_later_collection_empty_body">Llisca un PDF de la biblioteca cap a l'esquerra, o fes servir el seu menú, i s'anirà acumulant aquí.</string>
+    <string name="recent_collection_summary">Tot el que has obert</string>
+
+    <!-- Hi ha una versió nova, com un punt a l'engranatge. -->
+    <string name="settings_update_waiting">Hi ha una versió nova disponible</string>
+
+    <!-- La bandera del costat del nom, i les dues que pot ser. -->
+    <string name="flag_choose_title">Quina bandera?</string>
+    <string name="flag_senyera">Senyera</string>
+    <string name="flag_estelada">Estelada</string>
+    <string name="estelada_content_description">Estelada, la bandera independentista catalana</string>
+
+    <string name="tags_rename">Reanomena l'etiqueta %1$s</string>
+    <string name="words_open_source">Ves on es va desar</string>
+
+    <!-- ================= v4.0 ================= -->
+
+    <!-- Oblidar una entrada de l'historial de lectura. -->
+    <string name="recent_forget_title">Vols oblidar-lo?</string>
+    <string name="recent_forget_body">%1$s desapareix del prestatge i de l'historial de lectura. El PDF i tot el que hi ha dins es queden exactament on són.</string>
+    <string name="recent_forget_confirm">Oblida'l</string>
+
+    <!-- Dues coses diferents que es poden voler dir amb "treure una font". -->
+    <string name="sources_hide_confirm">Amaga-la</string>
+    <string name="sources_forget_confirm">Oblida-la</string>
+
+    <!-- ================= v4.1 ================= -->
+
+    <!--
+        El prestatge «Continua llegint», que ara es pot plegar o treure de la
+        biblioteca.
+
+        «Amaga» i no «Esborra»: no es perd res i l'app no oblida res — el
+        prestatge només deixa de dibuixar-se. El missatge de després diu per on es
+        recupera, perquè un control que ha desaparegut de la pantalla on era no es
+        torna a trobar mirant.
+    -->
+    <string name="library_continue_collapse">Plega aquest prestatge</string>
+    <string name="library_continue_expand">Desplega aquest prestatge</string>
+    <plurals name="library_continue_count">
+        <item quantity="one">%1$d llibre a mitges</item>
+        <item quantity="many">%1$d de llibres a mitges</item>
+        <item quantity="other">%1$d llibres a mitges</item>
+    </plurals>
+
+    <!-- Les mateixes tres opcions, a Configuració, que és el camí de tornada. -->
+
+    <!--
+        L'ordenació, fora del menú de tres punts i dins de la biblioteca.
+
+        Cada ordre té tres noms ara: el llarg per al full, un curt per al xip que
+        diu quin ordre hi ha, i una línia que diu què fa.
+    -->
+    <string name="library_sort_recent_short">Recents</string>
+    <string name="library_sort_recent_summary">Els canviats fa poc, primer</string>
+    <string name="library_sort_name_summary">De la A a la Z</string>
+    <string name="library_sort_size_summary">Els més grossos, primer</string>
+    <string name="library_sort_tag_summary">Agrupats per la primera etiqueta; els sense etiqueta, al final</string>
+
+    <!--
+        Afegir documents: un sol full, que s'obre des de tot arreu.
+
+        «Documents» i no «fonts» al botó: una font és com en diu l'app després, i un
+        document és el que el lector creu que està afegint.
+    -->
+    <string name="library_add_documents">Afegeix documents</string>
+    <string name="sources_add_body">No es copia ni es mou res: els teus PDF es llegeixen allà on ja són.</string>
+    <string name="sources_add_device_body">Busca PDF per tot el telèfon. Cal un permís especial.</string>
+    <plurals name="sources_source_count">
+        <item quantity="one">%1$d font</item>
+        <item quantity="many">%1$d de fonts</item>
+        <item quantity="other">%1$d fonts</item>
+    </plurals>
+
+    <!-- ================= v4.1.1 ================= -->
+
+    <!--
+        Mantenir premut el títol de «Continua llegint» obre els tres estats
+        alhora, i per això cada un porta una línia que diu què fa: «plegat» i
+        «amagat» s'assemblen prou perquè tres paraules soles fossin una endevinalla.
+    -->
+
+    <!--
+        Les paraules del dia, dins de les paraules desades.
+
+        «Après» i no «desat»: una paraula hi compta si s'ha desat avui o s'ha
+        practicat avui, que són les dues maneres de treballar una paraula aquí.
+    -->
+    <string name="words_today_title">Paraules que he après avui</string>
+    <string name="words_today_hint">Toca'n una per veure què volia dir</string>
+    <string name="words_today_more">+%1$d més</string>
+
+    <!-- Targetes -->
+    <string name="flashcards_new_deck">Baralla nova</string>
+    <string name="flashcards_empty_title">Encara no hi ha baralles</string>
+    <string name="flashcards_empty_body">Una baralla és un joc de targetes sobre un tema: menjar, verbs, viatges. Fes-ne una i omple-la de paraules, amb el català a una cara i el romanès a l'altra.</string>
+    <string name="flashcards_rename_deck_title">Canvia el nom de la baralla</string>
+    <string name="flashcards_deck_name_label">Nom de la baralla</string>
+    <string name="flashcards_deck_name_hint">p. ex. Menjar</string>
+    <string name="flashcards_deck_exists">Ja hi ha una baralla que es diu «%1$s»</string>
+    <string name="flashcards_deck_deleted">S'ha suprimit «%1$s»</string>
+    <string name="flashcards_delete_deck_title">Vols suprimir «%1$s»?</string>
+    <string name="flashcards_delete_deck_body_empty">La baralla encara no té cap targeta. No es pot desfer.</string>
+    <plurals name="flashcards_delete_deck_body">
+        <item quantity="one">També se suprimeix l'única targeta que conté.</item>
+        <item quantity="many">També se suprimeixen les %1$d targetes que conté.</item>
+        <item quantity="other">També se suprimeixen les %1$d targetes que conté.</item>
+    </plurals>
+    <string name="flashcards_collection_no_cards">Cap targeta</string>
+    <string name="flashcards_deck_no_cards">Encara no té targetes</string>
+    <plurals name="flashcards_card_count">
+        <item quantity="one">%1$d targeta</item>
+        <item quantity="many">%1$d targetes</item>
+        <item quantity="other">%1$d targetes</item>
+    </plurals>
+    <string name="flashcards_add_card">Afegeix una targeta</string>
+    <string name="flashcards_deck_empty_title">Aquesta baralla encara no té targetes</string>
+    <string name="flashcards_deck_empty_body">Afegeix una paraula catalana i què vol dir en romanès. La pronúncia i un significat suggerit s'omplen sols mentre escrius.</string>
+    <string name="flashcards_edit_card">Edita…</string>
+    <string name="flashcards_new_card">Targeta nova</string>
+    <string name="flashcards_edit_card_title">Edita la targeta</string>
+    <string name="flashcards_card_deleted">S'ha suprimit «%1$s»</string>
+    <string name="flashcards_card_saved">S'ha desat «%1$s»</string>
+    <string name="flashcards_delete_card_title">Vols suprimir «%1$s»?</string>
+    <string name="flashcards_delete_card_body">No es pot desfer.</string>
+    <string name="flashcards_delete_card_body_picture">La imatge també se suprimeix. No es pot desfer.</string>
+    <string name="flashcards_field_catalan">Català</string>
+    <string name="flashcards_field_ipa">Pronúncia (AFI)</string>
+    <string name="flashcards_field_romanian">Romanès</string>
+    <string name="flashcards_meaning_suggested">Suggeriment del traductor del telèfon. Canvia'l si no és correcte.</string>
+    <string name="flashcards_meaning_downloading">Baixant el model de romanès, una sola vegada, per Wi-Fi…</string>
+    <string name="flashcards_meaning_needs_model">Encara no hi ha suggeriment: el model de romanès es baixa una sola vegada, per Wi-Fi.</string>
+    <string name="flashcards_picture">Imatge</string>
+    <string name="flashcards_image_failed">No s'ha pogut llegir aquesta imatge. Prova'n una altra.</string>
+    <string name="flashcards_save">Desa</string>
+    <string name="flashcards_save_and_add">Desa i nova</string>
+    <string name="flashcards_discard_title">Vols descartar els canvis?</string>
+    <string name="flashcards_discard_body">Es perdrà el que has escrit en aquesta targeta.</string>
+    <string name="flashcards_discard">Descarta</string>
+    <string name="flashcards_keep_editing">Continua editant</string>
+    <string name="flashcards_all_decks">Totes les baralles</string>
+    <string name="flashcards_study_no_cards_title">No hi ha targetes per repassar</string>
+    <string name="flashcards_study_no_cards_body">Primer afegeix alguna targeta a aquesta baralla.</string>
+    <plurals name="flashcards_delete_deck_pictures">
+        <item quantity="one">La imatge d'una d'elles se'n va amb ella.</item>
+        <item quantity="many">Les imatges de %1$d d'elles se'n van amb elles.</item>
+        <item quantity="other">Les imatges de %1$d d'elles se'n van amb elles.</item>
+    </plurals>
+    <string name="flashcards_delete_deck_only_picture">I també la seva imatge.</string>
+    <string name="flashcards_cannot_undo">No es pot desfer.</string>
+    <string name="flashcards_search_deck">Cerca en aquesta baralla</string>
+    <string name="flashcards_search_none">Cap targeta d'aquí coincideix amb «%1$s».</string>
+    <string name="flashcards_backup_title">Còpia de seguretat</string>
+    <string name="flashcards_backup_body">Les targetes són en aquest telèfon i enlloc més: si desinstal·les l'aplicació o perds el telèfon, es perden. Desa'n una còpia en un fitxer de tant en tant i guarda-la en un lloc segur.</string>
+    <string name="flashcards_backup_save">Desa'n una còpia</string>
+    <string name="flashcards_backup_restore">Recupera d'una còpia</string>
+    <string name="flashcards_backup_filename">Llegeix targetes %1$s.zip</string>
+    <plurals name="flashcards_backup_saved">
+        <item quantity="one">Còpia desada, amb %1$d targeta.</item>
+        <item quantity="many">Còpia desada, amb %1$d targetes.</item>
+        <item quantity="other">Còpia desada, amb %1$d targetes.</item>
+    </plurals>
+    <string name="flashcards_backup_nothing_new">No hi havia res de nou per afegir.</string>
+    <plurals name="flashcards_backup_added">
+        <item quantity="one">S'ha afegit %1$d targeta.</item>
+        <item quantity="many">S'han afegit %1$d targetes.</item>
+        <item quantity="other">S'han afegit %1$d targetes.</item>
+    </plurals>
+    <plurals name="flashcards_backup_skipped">
+        <item quantity="one">%1$d ja hi era.</item>
+        <item quantity="many">%1$d ja hi eren.</item>
+        <item quantity="other">%1$d ja hi eren.</item>
+    </plurals>
+    <plurals name="flashcards_backup_pictures_lost">
+        <item quantity="one">No s'ha pogut llegir %1$d imatge.</item>
+        <item quantity="many">No s'han pogut llegir %1$d imatges.</item>
+        <item quantity="other">No s'han pogut llegir %1$d imatges.</item>
+    </plurals>
+    <string name="flashcards_backup_not_a_copy">Aquest fitxer no és una còpia de targetes de Llegeix.</string>
+    <string name="flashcards_backup_too_new">Aquesta còpia l'ha feta una versió més nova de Llegeix. Actualitza l'aplicació i torna-ho a provar.</string>
+    <string name="flashcards_backup_failed">No s'ha pogut llegir o escriure la còpia. No s'ha canviat res.</string>
+    <string name="flashcards_pictures_pictograms">Pictogrames</string>
+    <string name="flashcards_pictures_photos">Fotos</string>
+    <string name="flashcards_pictures_waiting">Escriu la paraula i n'apareixeran imatges aquí.</string>
+    <string name="flashcards_pictures_offline">Sense connexió, no es poden suggerir imatges.</string>
+    <string name="flashcards_pictures_none">Cap resultat trobat</string>
+    <string name="flashcards_pictures_search">Cerca altres imatges</string>
+    <string name="flashcards_pictures_emoji">Emojis</string>
+    <string name="flashcards_pictures_credit_emoji">Emojis del joc Noto de Google (Apache 2.0) i d'OpenMoji (CC BY-SA 4.0).</string>
+    <string name="flashcards_pictures_retry">Torna-ho a provar</string>
+    <string name="flashcards_pictures_credit_pictograms">Pictogrames d'ARASAAC (Sergio Palao, CC BY-NC-SA) i Global Symbols, amb el crèdit a cada targeta.</string>
+    <string name="flashcards_pictures_credit_photos">Fotos de Wikimedia Commons, la Viquipèdia, iNaturalist i Openverse, cadascuna amb la seva llicència lliure.</string>
+    <string name="flashcards_picture_use">Fes servir aquesta imatge</string>
+    <string name="flashcards_picture_other">Tria'n una altra</string>
+    <string name="flashcards_picture_from_gallery">Afegeix foto</string>
+    <string name="flashcards_picture_fetch_failed">No s'ha pogut baixar aquesta imatge. Prova'n una altra.</string>
+    <string name="flashcards_study_missed">Per tornar-hi</string>
+    <string name="flashcards_study_perfect">Totes encertades.</string>
+    <string name="flashcards_direction_from_catalan">Català → %1$s</string>
+    <string name="flashcards_direction_to_catalan">%1$s → català</string>
+    <string name="flashcards_repeat_these">Repeteix-les</string>
+    <string name="flashcards_extra_label">Pràctica extra</string>
+    <string name="flashcards_extra_finished_body">La pràctica extra no canvia quan tornen les targetes: repeteix-les tantes vegades com vulguis.</string>
+    <string name="flashcards_deck_picture">Imatge…</string>
+    <string name="flashcards_deck_picture_title">Una imatge per a «%1$s»</string>
+    <string name="flashcards_deck_picture_remove">Treu la imatge triada</string>
+    <string name="flashcards_pictures_blocked">Per seguretat, aquesta paraula no es cerca a Fotos. Prova amb Pictogrames.</string>
+    <string name="flashcards_meaning_from_dictionary">Del diccionari d'ARASAAC, escrit per persones per a aquesta paraula. Canvia'l si vols dir una altra cosa.</string>
+    <string name="flashcards_catalan_suggested">Deduït del significat. Canvia-ho si vols dir una altra paraula.</string>
+    <string name="flashcards_kind_deck">Baralla</string>
+    <string name="flashcards_kind_collection">Col·lecció</string>
+    <string name="flashcards_collection_name_label">Nom de la col·lecció</string>
+    <string name="flashcards_collection_name_hint">p. ex. Menjar</string>
+    <string name="flashcards_collection_exists">Ja hi ha una col·lecció que es diu «%1$s»</string>
+    <string name="flashcards_rename_collection_title">Canvia el nom de la col·lecció</string>
+    <string name="flashcards_collection_deleted">S'ha esborrat «%1$s». Tot el que hi havia continua aquí.</string>
+    <string name="flashcards_delete_collection_title">Vols esborrar «%1$s»?</string>
+    <string name="flashcards_delete_collection_body_empty">No hi ha res a dins, així que no canvia res més.</string>
+    <string name="flashcards_collection_empty">Encara no hi ha res en aquesta col·lecció. Posa-hi una baralla o una col·lecció des del seu menú ⋮.</string>
+    <string name="flashcards_move_to_collection">Mou a…</string>
+    <string name="flashcards_move_title">Mou «%1$s» a…</string>
+    <string name="flashcards_move_none">Nivell superior</string>
+    <string name="flashcards_delete_collection_body_up_to">Tot el que hi ha a dins puja a «%1$s». No s'esborra cap targeta.</string>
+    <string name="flashcards_delete_collection_body_up_top">Tot el que hi ha a dins puja al nivell superior. No s'esborra cap targeta.</string>
+    <string name="flashcards_moved_to">S'ha mogut «%1$s» a %2$s</string>
+    <string name="flashcards_moved_to_top">S'ha mogut «%1$s» al nivell superior</string>
+    <string name="flashcards_move_here_now">Ara és aquí</string>
+    <string name="flashcards_move_top_hint">Fora de qualsevol col·lecció</string>
+    <string name="flashcards_new_collection_inside">Nou a dins…</string>
+    <string name="flashcards_weak_title">Paraules febles</string>
+    <string name="flashcards_weak_practise">Repassa-les</string>
+    <string name="flashcards_weak_intro">Totes les paraules que has respost «Encara no», de qualsevol baralla. Si n'encertes una quan les repasses, surt de la llista.</string>
+    <string name="flashcards_weak_empty_title">Cap paraula feble</string>
+    <string name="flashcards_weak_empty_body">Les paraules que responguis «Encara no» es guarden aquí, per repassar exactament aquestes.</string>
+    <string name="flashcards_weak_forget">Treu «%1$s» de les febles</string>
+    <string name="flashcards_weak_subtitle">Les que has respost «Encara no»</string>
+    <string name="flashcards_new_inside_title">Nou a «%1$s»</string>
+    <string name="flashcards_sort">Ordena</string>
+    <string name="flashcards_sort_name">Nom, A–Z</string>
+    <string name="flashcards_sort_name_desc">Nom, Z–A</string>
+    <string name="flashcards_sort_newest">Les més noves primer</string>
+    <string name="flashcards_sort_oldest">Les més antigues primer</string>
+    <string name="flashcards_sort_most_cards">Més targetes primer</string>
+    <string name="flashcards_sort_weakest">Les menys sabudes primer</string>
+    <string name="flashcards_no_collections">Encara no has fet cap col·lecció. El botó + en fa una.</string>
+    <string name="flashcards_show_decks">Mostra el contingut de %1$s</string>
+    <string name="flashcards_hide_decks">Amaga el contingut de %1$s</string>
+    <plurals name="flashcards_collection_count">
+        <item quantity="one">%1$d col·lecció</item>
+        <item quantity="many">%1$d col·leccions</item>
+        <item quantity="other">%1$d col·leccions</item>
+    </plurals>
+    <plurals name="flashcards_deck_count">
+        <item quantity="one">%1$d baralla</item>
+        <item quantity="many">%1$d baralles</item>
+        <item quantity="other">%1$d baralles</item>
+    </plurals>
+    <string name="dictionary_verb_title">Forma verbal</string>
+    <string name="dictionary_verb_infinitive">Infinitiu</string>
+    <string name="dictionary_verb_look_up">Cerca %1$s</string>
+    <string name="dictionary_verb_also">també %1$s</string>
+    <string name="dictionary_verb_reading">%1$s · %2$s</string>
+    <string name="dictionary_verb_unplaced">És una forma irregular. No s'ha pogut establir quina part del verb és.</string>
+    <string name="verb_conjugation_first">1a conjugació (-ar)</string>
+    <string name="verb_conjugation_second">2a conjugació (-re, -er)</string>
+    <string name="verb_conjugation_third">3a conjugació (-ir)</string>
+    <string name="verb_mood_indicative">Indicatiu</string>
+    <string name="verb_mood_imperative">Imperatiu</string>
+    <string name="verb_tense_present_indicative">Present d'indicatiu</string>
+    <string name="verb_tense_imperfect_indicative">Imperfet d'indicatiu</string>
+    <string name="verb_tense_past">Passat simple</string>
+    <string name="verb_tense_future">Futur</string>
+    <string name="verb_tense_conditional">Condicional</string>
+    <string name="verb_tense_present_subjunctive">Present de subjuntiu</string>
+    <string name="verb_tense_imperfect_subjunctive">Imperfet de subjuntiu</string>
+    <string name="verb_person_1s">1a persona del singular</string>
+    <string name="verb_person_2s">2a persona del singular</string>
+    <string name="verb_person_3s">3a persona del singular</string>
+    <string name="verb_person_1p">1a persona del plural</string>
+    <string name="verb_person_2p">2a persona del plural</string>
+    <string name="verb_person_3p">3a persona del plural</string>
+    <string name="verb_form_infinitive">Infinitiu</string>
+    <string name="verb_form_gerund">Gerundi</string>
+    <string name="verb_form_participle">Participi</string>
+    <string name="folder_detail_search">Cerca en aquesta col·lecció</string>
+    <string name="folder_detail_search_none">Res d'aquesta col·lecció coincideix amb «%1$s».</string>
+    <string name="flashcards_turn_round_title">Ara al revés?</string>
+    <string name="flashcards_turn_round_action">Comença</string>
+    <string name="flashcards_choose_pair">En quin sentit</string>
+    <string name="flashcards_practise_all">Repassa-les totes</string>
+    <string name="flashcards_practise_name">Repassa %1$s</string>
+    <string name="flashcards_collection_picture_remove">Fes servir la imatge de la primera baralla</string>
+    <string name="reader_tint_warm_dark">Càlid fosc</string>
+    <string name="sources_section_granted">Carpetes que has afegit</string>
+    <string name="sources_section_device">Tot el telèfon</string>
+    <plurals name="sources_shown_total">
+        <item quantity="one">%1$d PDF a la biblioteca</item>
+        <item quantity="many">%1$d PDF a la biblioteca</item>
+        <item quantity="other">%1$d PDF a la biblioteca</item>
+    </plurals>
+    <string name="sources_add_elsewhere">Per afegir una altra carpeta o fitxer, fes servir el botó + de la biblioteca.</string>
+    <string name="learned_title">Paraules que he après avui</string>
+    <string name="learned_add">Afegeix una paraula apresa</string>
+    <string name="learned_save">Desa</string>
+    <string name="learned_empty_title">Encara cap paraula</string>
+    <string name="learned_empty_body">Afegeix-hi les paraules que aprens cada dia, amb el seu significat en romanès. Es guarden per dies.</string>
+    <string name="learned_remove">Treu «%1$s»</string>
+    <string name="learned_today">Avui · %1$s</string>
+    <string name="learned_yesterday">Ahir · %1$s</string>
+    <string name="learned_suggested">Suggerit. Canvia-ho si vols dir una altra cosa.</string>
+    <string name="learned_folder_subtitle_none">Cap paraula avui encara</string>
+    <plurals name="learned_count">
+        <item quantity="one">%1$d paraula</item>
+        <item quantity="many">%1$d paraules</item>
+        <item quantity="other">%1$d paraules</item>
+    </plurals>
+    <plurals name="learned_folder_subtitle">
+        <item quantity="one">%1$d paraula avui</item>
+        <item quantity="many">%1$d paraules avui</item>
+        <item quantity="other">%1$d paraules avui</item>
+    </plurals>
+    <string name="collections_yours">Les teves col·leccions</string>
+    <string name="flashcards_practise_collection">Repassa-ho tot</string>
+    <string name="flashcards_layout">Vista</string>
+    <string name="flashcards_layout_list">Llista</string>
+    <string name="flashcards_layout_compact">Compacta</string>
+    <string name="flashcards_layout_grid">Quadrícula</string>
+</resources>

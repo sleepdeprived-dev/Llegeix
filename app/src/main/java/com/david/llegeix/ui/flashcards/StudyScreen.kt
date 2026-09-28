@@ -62,8 +62,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,9 +73,12 @@ import com.david.llegeix.data.flashcards.ImageSizing
 import com.david.llegeix.data.flashcards.PictureResults
 import com.david.llegeix.data.flashcards.StudyDirection
 import com.david.llegeix.data.flashcards.StudyScope
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.common.PronounceButton
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * The cards of a deck, one at a time, asked one way round.
@@ -115,7 +116,7 @@ fun StudyScreen(
                         IconButton(onClick = onBack) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.action_back),
+                                contentDescription = stringResource(Res.string.action_back),
                             )
                         }
                     },
@@ -124,7 +125,7 @@ fun StudyScreen(
                             Text(
                                 text = state.scopeName
                                     ?: stringResource(
-                                        if (state.isWeakReview) R.string.flashcards_weak_title else R.string.flashcards_all_decks,
+                                        if (state.isWeakReview) Res.string.flashcards_weak_title else Res.string.flashcards_all_decks,
                                     ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -141,7 +142,7 @@ fun StudyScreen(
                                 // answered here moves a card's schedule.
                                 if (state.isExtra) {
                                     Text(
-                                        text = stringResource(R.string.flashcards_extra_label),
+                                        text = stringResource(Res.string.flashcards_extra_label),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(start = Space.sm),
@@ -154,7 +155,7 @@ fun StudyScreen(
                         if (state.cards.isNotEmpty() && !state.isFinished) {
                             Text(
                                 text = stringResource(
-                                    R.string.practice_position,
+                                    Res.string.practice_position,
                                     state.index + 1,
                                     state.cards.size,
                                 ),
@@ -188,12 +189,12 @@ fun StudyScreen(
                 state.isLoading -> CircularProgressIndicator()
 
                 state.isEmpty && state.cardsInScope == 0 -> EmptyState(
-                    title = stringResource(R.string.flashcards_study_no_cards_title),
-                    body = stringResource(R.string.flashcards_study_no_cards_body),
+                    title = stringResource(Res.string.flashcards_study_no_cards_title),
+                    body = stringResource(Res.string.flashcards_study_no_cards_body),
                     icon = painterResource(R.drawable.ic_flashcards),
                     primaryAction = {
                         OutlinedButton(onClick = onBack) {
-                            Text(stringResource(R.string.practice_done))
+                            Text(stringResource(Res.string.practice_done))
                         }
                     },
                 )
@@ -280,7 +281,7 @@ private fun StudyCard(
             Face(
                 deckName = deckName,
                 modifier = if (front) Modifier else Modifier.graphicsLayer { rotationY = 180f },
-                hint = if (front) stringResource(R.string.practice_tap_to_reveal) else null,
+                hint = if (front) stringResource(Res.string.practice_tap_to_reveal) else null,
             ) {
                 val showPicture = !front || direction == StudyDirection.MEANING_TO_CATALAN
                 if (showPicture) {
@@ -333,7 +334,7 @@ private fun StudyCard(
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(20.dp))
                         Text(
-                            stringResource(R.string.practice_again_soon),
+                            stringResource(Res.string.practice_again_soon),
                             modifier = Modifier.padding(start = Space.sm),
                         )
                     }
@@ -345,7 +346,7 @@ private fun StudyCard(
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
                         Text(
-                            stringResource(R.string.practice_knew_it),
+                            stringResource(Res.string.practice_knew_it),
                             modifier = Modifier.padding(start = Space.sm),
                         )
                     }
@@ -438,21 +439,21 @@ private fun Finished(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = stringResource(R.string.practice_finished_title),
+            text = stringResource(Res.string.practice_finished_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = stringResource(R.string.practice_position, state.correct, state.cards.size),
+            text = stringResource(Res.string.practice_position, state.correct, state.cards.size),
             style = MaterialTheme.typography.displayLarge,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(top = Space.sm),
         )
         Text(
             text = if (state.isExtra) {
-                stringResource(R.string.flashcards_extra_finished_body)
+                stringResource(Res.string.flashcards_extra_finished_body)
             } else {
-                stringResource(R.string.practice_finished_body, state.correct, state.cards.size)
+                stringResource(Res.string.practice_finished_body, state.correct, state.cards.size)
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -462,13 +463,13 @@ private fun Finished(
 
         if (state.missed.isEmpty()) {
             Text(
-                text = stringResource(R.string.flashcards_study_perfect),
+                text = stringResource(Res.string.flashcards_study_perfect),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.padding(top = Space.xl),
             )
         } else {
             Text(
-                text = stringResource(R.string.flashcards_study_missed),
+                text = stringResource(Res.string.flashcards_study_missed),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.padding(top = Space.xl, bottom = Space.sm),
             )
@@ -516,7 +517,7 @@ private fun Finished(
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(
-                    stringResource(R.string.flashcards_repeat_these),
+                    stringResource(Res.string.flashcards_repeat_these),
                     modifier = Modifier.padding(start = Space.sm),
                 )
             }
@@ -527,7 +528,7 @@ private fun Finished(
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text(
-                    stringResource(R.string.flashcards_repeat_these),
+                    stringResource(Res.string.flashcards_repeat_these),
                     modifier = Modifier.padding(start = Space.sm),
                 )
             }
@@ -535,7 +536,7 @@ private fun Finished(
         TextButton(
             onClick = onDone,
             modifier = Modifier.padding(top = Space.sm),
-        ) { Text(stringResource(R.string.practice_done)) }
+        ) { Text(stringResource(Res.string.practice_done)) }
     }
 }
 
@@ -559,7 +560,7 @@ private fun TurnRoundOffer(
             .padding(Space.lg),
     ) {
         Text(
-            text = stringResource(R.string.flashcards_turn_round_title),
+            text = stringResource(Res.string.flashcards_turn_round_title),
             style = MaterialTheme.typography.titleMedium,
             color = scheme.onSecondaryContainer,
             textAlign = TextAlign.Center,
@@ -584,7 +585,7 @@ private fun TurnRoundOffer(
         ) {
             Icon(painterResource(R.drawable.ic_swap), contentDescription = null, modifier = Modifier.size(18.dp))
             Text(
-                stringResource(R.string.flashcards_turn_round_action),
+                stringResource(Res.string.flashcards_turn_round_action),
                 modifier = Modifier.padding(start = Space.sm),
             )
         }
@@ -632,7 +633,7 @@ private fun CatalanBlock(card: FlashcardEntity, big: Boolean, answer: Boolean = 
             )
             if (card.ipaApproximate) {
                 Text(
-                    text = stringResource(R.string.lookup_ipa_approximate),
+                    text = stringResource(Res.string.lookup_ipa_approximate),
                     style = MaterialTheme.typography.labelSmall,
                     color = scheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = Space.xs),

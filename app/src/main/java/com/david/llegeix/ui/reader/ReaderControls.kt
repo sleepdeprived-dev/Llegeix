@@ -53,20 +53,20 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
 import com.david.llegeix.data.settings.PageTint
 import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.pdf.PdfOutlineEntry
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * How far through the document you are, and the way to anywhere else in it.
@@ -213,7 +213,7 @@ fun PageScrubber(
             ) {
                 Text(
                     text = stringResource(
-                        R.string.reader_page_position,
+                        Res.string.reader_page_position,
                         scrubPage + 1,
                         pageCount,
                     ),
@@ -287,7 +287,7 @@ fun OutlineSheet(
                 .fillMaxHeight(0.9f),
         ) {
             Text(
-                text = stringResource(R.string.reader_contents),
+                text = stringResource(Res.string.reader_contents),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier
                     .padding(horizontal = Space.screen)
@@ -399,7 +399,7 @@ fun DisplaySheet(
                 .padding(bottom = Space.xxl),
         ) {
             Text(
-                text = stringResource(R.string.reader_display),
+                text = stringResource(Res.string.reader_display),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = Space.lg),
             )
@@ -414,7 +414,7 @@ fun DisplaySheet(
             // a colour is the one thing that does not need a word: the swatch
             // *is* the setting, shown at the size of a page corner, and the
             // name sits under it with room to be read.
-            SheetLabel(stringResource(R.string.reader_tint))
+            SheetLabel(stringResource(Res.string.reader_tint))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Space.sm),
                 modifier = Modifier.fillMaxWidth(),
@@ -430,7 +430,7 @@ fun DisplaySheet(
             }
 
             SheetLabel(
-                text = stringResource(R.string.reader_mode),
+                text = stringResource(Res.string.reader_mode),
                 modifier = Modifier.padding(top = Space.xl),
             )
             PillGroup(modifier = Modifier.fillMaxWidth()) {
@@ -462,21 +462,21 @@ fun DisplaySheet(
             }
 
             SheetRow(
-                title = stringResource(R.string.reader_crop),
-                summary = stringResource(R.string.reader_crop_summary),
+                title = stringResource(Res.string.reader_crop),
+                summary = stringResource(Res.string.reader_crop_summary),
                 checked = cropMargins,
                 onToggle = onToggleCrop,
             )
 
             SheetRow(
-                title = stringResource(R.string.reader_mark_saved),
-                summary = stringResource(R.string.reader_mark_saved_summary),
+                title = stringResource(Res.string.reader_mark_saved),
+                summary = stringResource(Res.string.reader_mark_saved_summary),
                 checked = markSavedWords,
                 onToggle = onToggleMarkSavedWords,
             )
 
             SheetLabel(
-                text = stringResource(R.string.reader_zoom),
+                text = stringResource(Res.string.reader_zoom),
                 modifier = Modifier.padding(top = Space.xl),
             )
             Row(

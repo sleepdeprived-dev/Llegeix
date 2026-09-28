@@ -14,8 +14,8 @@ import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.model.LibrarySort
-import com.david.llegeix.R
 import com.david.llegeix.data.model.PdfDocument
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.FolderWithCount
@@ -388,7 +388,7 @@ class LibraryViewModel(
                             hasScanned = true,
                             errorMessage = UiText.ofMessageOr(
                                 error.message,
-                                R.string.library_scan_failed,
+                                Res.string.library_scan_failed,
                             ),
                         )
                     }
@@ -522,7 +522,7 @@ class LibraryViewModel(
         val folderId = libraryData.createFolder(name)
         if (folderId == null) {
             _uiState.update {
-                it.copy(errorMessage = UiText.of(R.string.folders_exists, name))
+                it.copy(errorMessage = UiText.of(Res.string.folders_exists, name))
             }
             return@launch
         }

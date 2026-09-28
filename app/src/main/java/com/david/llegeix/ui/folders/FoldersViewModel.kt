@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.david.llegeix.LlegeixApp
-import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.source.LibraryDataRepository
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,7 +48,7 @@ class FoldersViewModel(
         // Folder names are uniquely indexed; a null result means it was taken.
         val id = libraryData.createFolder(trimmed)
         if (id == null) {
-            _message.value = UiText.of(R.string.folders_exists, trimmed)
+            _message.value = UiText.of(Res.string.folders_exists, trimmed)
         } else {
             _created.value = NewCollection(id, trimmed)
         }

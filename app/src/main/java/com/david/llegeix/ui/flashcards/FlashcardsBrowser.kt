@@ -44,16 +44,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.R
 import com.david.llegeix.data.db.dao.DeckWithCount
 import com.david.llegeix.data.flashcards.PictureResults
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.MenuIcon
 import com.david.llegeix.ui.common.Space
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * What can be done to a collection or a deck, from any of the three views:
@@ -86,21 +87,21 @@ class EntryActions(
  */
 @Composable
 internal fun shelfSummary(shelf: DeckShelf): String = if (shelf.cardCount == 0) {
-    stringResource(R.string.flashcards_collection_no_cards)
+    stringResource(Res.string.flashcards_collection_no_cards)
 } else buildList {
     val inside = shelf.children.size
-    if (inside > 0) add(pluralStringResource(R.plurals.flashcards_collection_count, inside, inside))
+    if (inside > 0) add(pluralStringResource(Res.plurals.flashcards_collection_count, inside, inside))
     val decks = shelf.decks.size
-    if (decks > 0) add(pluralStringResource(R.plurals.flashcards_deck_count, decks, decks))
-    add(pluralStringResource(R.plurals.flashcards_card_count, shelf.cardCount, shelf.cardCount))
+    if (decks > 0) add(pluralStringResource(Res.plurals.flashcards_deck_count, decks, decks))
+    add(pluralStringResource(Res.plurals.flashcards_card_count, shelf.cardCount, shelf.cardCount))
 }.joinToString(" · ")
 
 @Composable
 private fun deckSummary(deck: DeckWithCount): String =
     if (deck.cardCount == 0) {
-        stringResource(R.string.flashcards_deck_no_cards)
+        stringResource(Res.string.flashcards_deck_no_cards)
     } else {
-        pluralStringResource(R.plurals.flashcards_card_count, deck.cardCount, deck.cardCount)
+        pluralStringResource(Res.plurals.flashcards_card_count, deck.cardCount, deck.cardCount)
     }
 
 /**
@@ -168,7 +169,7 @@ private fun EntryName(name: String, pinned: Boolean, style: androidx.compose.ui.
         if (pinned) {
             Icon(
                 painter = painterResource(R.drawable.ic_pin),
-                contentDescription = stringResource(R.string.folders_pinned),
+                contentDescription = stringResource(Res.string.folders_pinned),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .padding(top = 3.dp, end = Space.xs)
@@ -184,7 +185,7 @@ private fun MoreButton(name: String, onClick: () -> Unit, modifier: Modifier = M
     IconButton(onClick = onClick, modifier = modifier) {
         Icon(
             painter = painterResource(R.drawable.ic_more),
-            contentDescription = stringResource(R.string.document_actions, name),
+            contentDescription = stringResource(Res.string.document_actions, name),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -196,36 +197,36 @@ internal fun ShelfMenu(shelf: DeckShelf, expanded: Boolean, onDismiss: () -> Uni
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_new_collection)) },
-            text = { Text(stringResource(R.string.flashcards_new_collection_inside)) },
+            text = { Text(stringResource(Res.string.flashcards_new_collection_inside)) },
             onClick = { onDismiss(); actions.newInside(shelf) },
         )
         HorizontalDivider()
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
             text = {
-                Text(stringResource(if (shelf.collection.isPinned) R.string.folders_unpin else R.string.folders_pin))
+                Text(stringResource(if (shelf.collection.isPinned) Res.string.folders_unpin else Res.string.folders_pin))
             },
             onClick = { onDismiss(); actions.pinShelf(shelf) },
         )
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
-            text = { Text(stringResource(R.string.flashcards_deck_picture)) },
+            text = { Text(stringResource(Res.string.flashcards_deck_picture)) },
             onClick = { onDismiss(); actions.pictureShelf(shelf) },
         )
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_move)) },
-            text = { Text(stringResource(R.string.flashcards_move_to_collection)) },
+            text = { Text(stringResource(Res.string.flashcards_move_to_collection)) },
             onClick = { onDismiss(); actions.moveShelf(shelf) },
         )
         DropdownMenuItem(
             leadingIcon = { MenuIcon(Icons.Default.Edit) },
-            text = { Text(stringResource(R.string.folders_rename)) },
+            text = { Text(stringResource(Res.string.folders_rename)) },
             onClick = { onDismiss(); actions.renameShelf(shelf) },
         )
         HorizontalDivider()
         DropdownMenuItem(
             leadingIcon = { MenuIcon(Icons.Default.Delete) },
-            text = { Text(stringResource(R.string.action_delete)) },
+            text = { Text(stringResource(Res.string.action_delete)) },
             onClick = { onDismiss(); actions.deleteShelf(shelf) },
         )
     }
@@ -237,28 +238,28 @@ private fun DeckMenu(deck: DeckWithCount, expanded: Boolean, onDismiss: () -> Un
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_pin)) },
-            text = { Text(stringResource(if (deck.isPinned) R.string.folders_unpin else R.string.folders_pin)) },
+            text = { Text(stringResource(if (deck.isPinned) Res.string.folders_unpin else Res.string.folders_pin)) },
             onClick = { onDismiss(); actions.pinDeck(deck) },
         )
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_image)) },
-            text = { Text(stringResource(R.string.flashcards_deck_picture)) },
+            text = { Text(stringResource(Res.string.flashcards_deck_picture)) },
             onClick = { onDismiss(); actions.pictureDeck(deck) },
         )
         DropdownMenuItem(
             leadingIcon = { MenuIcon(painterResource(R.drawable.ic_move)) },
-            text = { Text(stringResource(R.string.flashcards_move_to_collection)) },
+            text = { Text(stringResource(Res.string.flashcards_move_to_collection)) },
             onClick = { onDismiss(); actions.moveDeck(deck) },
         )
         DropdownMenuItem(
             leadingIcon = { MenuIcon(Icons.Default.Edit) },
-            text = { Text(stringResource(R.string.folders_rename)) },
+            text = { Text(stringResource(Res.string.folders_rename)) },
             onClick = { onDismiss(); actions.renameDeck(deck) },
         )
         HorizontalDivider()
         DropdownMenuItem(
             leadingIcon = { MenuIcon(Icons.Default.Delete) },
-            text = { Text(stringResource(R.string.action_delete)) },
+            text = { Text(stringResource(Res.string.action_delete)) },
             onClick = { onDismiss(); actions.deleteDeck(deck) },
         )
     }
@@ -330,7 +331,7 @@ internal fun EntryRow(entry: ListEntry, canPractise: Boolean, actions: EntryActi
                     }
                 },
                 contentDescription = stringResource(
-                    R.string.flashcards_practise_name,
+                    Res.string.flashcards_practise_name,
                     if (entry is ListEntry.Shelf) entry.shelf.collection.name else (entry as ListEntry.Deck).deck.name,
                 ),
             )
@@ -456,7 +457,7 @@ internal fun CompactRow(
                     Icon(
                         Icons.Default.PlayArrow,
                         contentDescription = stringResource(
-                            R.string.flashcards_practise_name,
+                            Res.string.flashcards_practise_name,
                             if (entry is ListEntry.Shelf) entry.shelf.collection.name else (entry as ListEntry.Deck).deck.name,
                         ),
                         tint = scheme.primary,
@@ -552,7 +553,7 @@ internal fun EntryTile(entry: ListEntry, canPractise: Boolean, actions: EntryAct
                         }
                     },
                     contentDescription = stringResource(
-                        R.string.flashcards_practise_name,
+                        Res.string.flashcards_practise_name,
                         if (entry is ListEntry.Shelf) entry.shelf.collection.name else (entry as ListEntry.Deck).deck.name,
                     ),
                     // Solid and lifted, so it stands out on any cover.
@@ -585,9 +586,9 @@ internal fun EntryTile(entry: ListEntry, canPractise: Boolean, actions: EntryAct
                 Text(
                     text = when (entry) {
                         is ListEntry.Shelf -> if (entry.shelf.cardCount == 0) {
-                            stringResource(R.string.flashcards_collection_no_cards)
+                            stringResource(Res.string.flashcards_collection_no_cards)
                         } else {
-                            pluralStringResource(R.plurals.flashcards_card_count, entry.shelf.cardCount, entry.shelf.cardCount)
+                            pluralStringResource(Res.plurals.flashcards_card_count, entry.shelf.cardCount, entry.shelf.cardCount)
                         }
                         is ListEntry.Deck -> deckSummary(entry.deck)
                     },
@@ -643,7 +644,7 @@ internal fun CollectionHeader(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(18.dp),
             )
-            Crumb(stringResource(R.string.nav_flashcards), onClick = { onGoTo(null) })
+            Crumb(stringResource(Res.string.nav_flashcards), onClick = { onGoTo(null) })
             path.dropLast(1).forEach { step ->
                 CrumbArrow()
                 Crumb(step.collection.name, onClick = { onGoTo(step.id) })
@@ -681,7 +682,7 @@ internal fun CollectionHeader(
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                 Text(
-                    text = stringResource(R.string.flashcards_practise_collection),
+                    text = stringResource(Res.string.flashcards_practise_collection),
                     modifier = Modifier.padding(start = Space.sm),
                 )
             }
@@ -727,14 +728,14 @@ internal fun LayoutMenu(selected: ListLayout, onSelect: (ListLayout) -> Unit) {
                         ListLayout.LIST -> R.drawable.ic_list
                     },
                 ),
-                contentDescription = stringResource(R.string.flashcards_layout),
+                contentDescription = stringResource(Res.string.flashcards_layout),
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             listOf(
-                ListLayout.LIST to (R.string.flashcards_layout_list to R.drawable.ic_list),
-                ListLayout.COMPACT to (R.string.flashcards_layout_compact to R.drawable.ic_compact),
-                ListLayout.GRID to (R.string.flashcards_layout_grid to R.drawable.ic_grid),
+                ListLayout.LIST to (Res.string.flashcards_layout_list to R.drawable.ic_list),
+                ListLayout.COMPACT to (Res.string.flashcards_layout_compact to R.drawable.ic_compact),
+                ListLayout.GRID to (Res.string.flashcards_layout_grid to R.drawable.ic_grid),
             ).forEach { (layout, labelAndIcon) ->
                 val isSelected = layout == selected
                 DropdownMenuItem(

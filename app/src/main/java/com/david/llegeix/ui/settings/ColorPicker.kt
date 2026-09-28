@@ -33,14 +33,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.R
+import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.theme.hslColor
 import com.david.llegeix.ui.theme.parseHex
 import com.david.llegeix.ui.theme.toHex
 import com.david.llegeix.ui.theme.toHsl
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Mix an accent colour by hand.
@@ -71,7 +71,7 @@ fun ColorPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_accent_custom_title)) },
+        title = { Text(stringResource(Res.string.settings_accent_custom_title)) },
         text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -98,7 +98,7 @@ fun ColorPickerDialog(
                                 lightness = hsl[2]
                             }
                         },
-                        label = { Text(stringResource(R.string.settings_accent_hex)) },
+                        label = { Text(stringResource(Res.string.settings_accent_hex)) },
                         singleLine = true,
                         modifier = Modifier
                             .weight(1f)
@@ -107,7 +107,7 @@ fun ColorPickerDialog(
                 }
 
                 GradientSlider(
-                    label = stringResource(R.string.settings_accent_hue),
+                    label = stringResource(Res.string.settings_accent_hue),
                     value = hue / 360f,
                     brush = Brush.horizontalGradient(
                         (0..360 step 30).map { hslColor(it.toFloat(), 1f, 0.5f) },
@@ -120,7 +120,7 @@ fun ColorPickerDialog(
                 )
 
                 GradientSlider(
-                    label = stringResource(R.string.settings_accent_shade),
+                    label = stringResource(Res.string.settings_accent_shade),
                     value = (lightness - 0.15f) / 0.7f,
                     brush = Brush.horizontalGradient(
                         listOf(
@@ -139,11 +139,11 @@ fun ColorPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(colour.toArgb()) }) {
-                Text(stringResource(R.string.action_done))
+                Text(stringResource(Res.string.action_done))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
         },
     )
 }
