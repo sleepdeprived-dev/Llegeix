@@ -44,4 +44,4 @@ fun AppSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier)
 }
 
 /** Kept for the one caller that positions its host itself. */
-internal val SnackbarEdgeInset = 8.dp
+val SnackbarEdgeInset = 8.dp

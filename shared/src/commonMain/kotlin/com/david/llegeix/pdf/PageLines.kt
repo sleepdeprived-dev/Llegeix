@@ -1,7 +1,7 @@
 package com.david.llegeix.pdf
 
 /** Where a selection sits in a page's text, and what is written around it. */
-internal data class LocatedLine(
+data class LocatedLine(
     val text: String,
     /** 1-based, counted down the page. */
     val number: Int,
@@ -17,7 +17,7 @@ internal data class LocatedLine(
  * list of lines — and because it is the sort of index arithmetic that is worth
  * being able to test without a PDF and a device to open it on.
  */
-internal object PageLines {
+object PageLines {
 
     /**
      * The line containing [charIndex] of [pageText], and its neighbours.

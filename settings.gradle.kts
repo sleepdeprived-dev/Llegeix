@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Llegeix"
 include(":app")
+include(":shared")
+include(":desktop")

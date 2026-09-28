@@ -1,18 +1,7 @@
 package com.david.llegeix.ui.theme
 
-import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import com.david.llegeix.data.settings.AccentColor
-
-/**
- * A fixed accent: the dot shown in Settings, and the two schemes built from it.
- */
-internal data class AccentSchemes(
-    /** The dot in the picker, legible against either background. */
-    val swatch: Color,
-    val light: ColorScheme,
-    val dark: ColorScheme,
-)
 
 /**
  * The six named colours, each built from its own seed.

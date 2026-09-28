@@ -10,6 +10,16 @@ import kotlin.math.min
 import kotlin.math.pow
 
 /**
+ * A fixed accent: the dot shown in Settings, and the two schemes built from it.
+ */
+data class AccentSchemes(
+    /** The dot in the picker, legible against either background. */
+    val swatch: Color,
+    val light: ColorScheme,
+    val dark: ColorScheme,
+)
+
+/**
  * Builds a usable colour scheme from a single colour the reader picked.
  *
  * Material's own generator lives in a separate artifact and pulls in a whole
@@ -20,7 +30,7 @@ import kotlin.math.pow
  * which are that text on each surface stays readable and that the result looks
  * like the colour that was chosen.
  */
-internal fun schemesFromSeed(seed: Color): AccentSchemes {
+fun schemesFromSeed(seed: Color): AccentSchemes {
     val hsl = seed.toHsl()
     val hue = hsl[0]
     // A very grey or very bright pick still has to produce a usable accent.
@@ -154,7 +164,7 @@ private fun readableTone(
 }
 
 /** Hue in degrees, saturation and lightness in 0..1. */
-internal fun Color.toHsl(): FloatArray {
+fun Color.toHsl(): FloatArray {
     val r = red
     val g = green
     val b = blue
@@ -174,7 +184,7 @@ internal fun Color.toHsl(): FloatArray {
     return floatArrayOf((hue + 360f) % 360f, saturation.coerceIn(0f, 1f), lightness)
 }
 
-internal fun hslColor(hue: Float, saturation: Float, lightness: Float): Color {
+fun hslColor(hue: Float, saturation: Float, lightness: Float): Color {
     val c = (1f - abs(2f * lightness - 1f)) * saturation
     val h = ((hue % 360f) + 360f) % 360f / 60f
     val x = c * (1f - abs(h % 2f - 1f))
@@ -200,7 +210,7 @@ private fun Color.shiftHue(degrees: Float): Color {
 }
 
 /** "#RRGGBB", the form the picker shows and accepts. */
-internal fun Color.toHex(): String = String.format(
+fun Color.toHex(): String = String.format(
     "#%02X%02X%02X",
     (red * 255).toInt(),
     (green * 255).toInt(),
@@ -208,7 +218,7 @@ internal fun Color.toHex(): String = String.format(
 )
 
 /** Parses "#RRGGBB" or "RRGGBB"; null when it is not a colour yet. */
-internal fun parseHex(text: String): Color? {
+fun parseHex(text: String): Color? {
     val cleaned = text.trim().removePrefix("#")
     if (cleaned.length != 6 || !cleaned.all { it.isDigit() || it.lowercaseChar() in "abcdef" }) {
         return null

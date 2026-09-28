@@ -109,7 +109,7 @@ object ReleaseFeed {
      * will not follow a redirect that downgrades the protocol. This is the
      * check that does not depend on either of those staying true.
      */
-    internal fun isTrustedUrl(url: String): Boolean {
+    fun isTrustedUrl(url: String): Boolean {
         val uri = runCatching { URI(url) }.getOrNull() ?: return false
         if (!uri.scheme.equals("https", ignoreCase = true)) return false
         val host = uri.host?.lowercase() ?: return false

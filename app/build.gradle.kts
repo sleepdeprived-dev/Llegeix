@@ -117,7 +117,15 @@ configurations.matching { it.name.contains("AndroidTest") }.configureEach {
     )
 }
 
+// Compose Multiplatform's Material 3 brings JetBrains' own back-handler library
+// for the desktop's sake. On Android, androidx.activity already does that job and
+// nothing here calls it, so it would only be dead classes in the APK.
+configurations.configureEach {
+    exclude(group = "org.jetbrains.compose.ui", module = "ui-backhandler")
+}
+
 dependencies {
+    implementation(project(":shared"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
