@@ -1,7 +1,5 @@
 package com.david.llegeix.data.model
 
-import android.net.Uri
-import androidx.core.net.toUri
 import com.david.llegeix.util.pdfTitle
 
 /**
@@ -29,10 +27,10 @@ enum class PdfOrigin {
  * This is the app's own domain type, deliberately independent of how it was
  * discovered, so the library UI never has to care which source produced it.
  *
- * The handle is held as a [String] rather than a [Uri] on purpose: it keeps the
+ * The handle is held as a [String] rather than an Android Uri on purpose: it keeps the
  * model plain Kotlin so the merge and sort logic is unit-testable without an
  * emulator, and it is the form feature 3 will persist, since Room cannot store
- * a [Uri] without a type converter anyway.
+ * a Uri without a type converter anyway.
  */
 data class PdfDocument(
     /**
@@ -50,8 +48,6 @@ data class PdfDocument(
     /** Human-readable location, e.g. "Documents/Catalan". Null when unknown. */
     val parentLabel: String?,
 ) {
-    val uri: Uri get() = uriString.toUri()
-
     /** Title without the ".pdf" suffix, for display. */
     val title: String get() = pdfTitle(displayName)
 

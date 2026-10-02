@@ -87,7 +87,7 @@ class LlegeixApp : Application(), AppServices {
     private val database: LlegeixDatabase by lazy { LlegeixDatabase.build(this) }
 
     /** What the app remembers about it. */
-    val libraryDataRepository: LibraryDataRepository by lazy {
+    override val libraryDataRepository: LibraryDataRepository by lazy {
         LibraryDataRepository(database)
     }
 
@@ -123,7 +123,7 @@ class LlegeixApp : Application(), AppServices {
     override val settingsRepository: SettingsRepository by lazy { SettingsRepository(this) }
 
     /** What the reader has searched for lately, in the library and in a page. */
-    val searchHistoryRepository: SearchHistoryRepository by lazy {
+    override val searchHistoryRepository: SearchHistoryRepository by lazy {
         SearchHistoryRepository(this)
     }
 

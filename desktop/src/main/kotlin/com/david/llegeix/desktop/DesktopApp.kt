@@ -7,8 +7,11 @@ import com.david.llegeix.data.flashcards.FlashcardImages
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.data.flashcards.desktopFlashcardPrefs
+import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
+import com.david.llegeix.data.settings.desktopSearchHistory
 import com.david.llegeix.data.settings.desktopSettingsRepository
+import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.lang.ApertureLexicon
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.Speech
@@ -51,4 +54,12 @@ object DesktopApp : AppServices {
     }
 
     override val pictureSearch: PictureSearch by lazy { PictureSearch(files) }
+
+    /** Saved words, and in time the library's folders, bookmarks and reading history. */
+    override val libraryDataRepository: LibraryDataRepository by lazy {
+        LibraryDataRepository(database)
+    }
+
+    /** What has been looked up lately, in the dictionary and the saved words. */
+    override val searchHistoryRepository: SearchHistoryRepository by lazy { desktopSearchHistory() }
 }

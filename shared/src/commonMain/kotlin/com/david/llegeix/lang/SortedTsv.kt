@@ -1,7 +1,7 @@
 package com.david.llegeix.lang
 
-import android.content.Context
-import java.io.IOException
+import com.david.llegeix.resources.Res
+import kotlinx.coroutines.runBlocking
 
 /**
  * A sorted, tab-separated reference file, searched without unpacking it.
@@ -124,16 +124,16 @@ class SortedTsv private constructor(
         private const val NEWLINE = '\n'.code.toByte()
 
         /**
-         * Reads [asset] into memory.
+         * Reads [file] from the shared resources into memory.
          *
          * A missing or unreadable file yields an empty table rather than an
          * error: the screens that use these can all say "nothing found", and
          * that is a far better failure than a crash in the middle of reading.
          */
-        fun load(context: Context, asset: String): SortedTsv {
+        fun load(file: String): SortedTsv {
             val data = try {
-                context.applicationContext.assets.open(asset).use { it.readBytes() }
-            } catch (error: IOException) {
+                runBlocking { Res.readBytes(file) }
+            } catch (error: Exception) {
                 ByteArray(0)
             }
             return SortedTsv(data, indexLines(data))

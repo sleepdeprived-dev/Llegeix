@@ -48,7 +48,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg)
             packageName = "Llegeix"
             // jpackage wants a plain x.y.z; kept in step with the Android versionName.
-            packageVersion = "4.4.5"
+            packageVersion = "4.4.6"
             macOS {
                 bundleID = "com.david.llegeix"
             }

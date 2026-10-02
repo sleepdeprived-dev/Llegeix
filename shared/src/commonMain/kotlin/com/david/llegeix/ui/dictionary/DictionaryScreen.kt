@@ -1,6 +1,5 @@
 package com.david.llegeix.ui.dictionary
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +56,7 @@ import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.TranslationTargetFlags
 import com.david.llegeix.ui.common.VerbDetails
 import com.david.llegeix.ui.common.resolved
+import com.david.llegeix.ui.platform.PlatformBackHandler
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -87,7 +87,7 @@ fun DictionaryScreen(
     val keyboard = LocalSoftwareKeyboardController.current
 
     // An open word is a mode, so back leaves the word before it leaves the tab.
-    BackHandler(enabled = state.entry != null) { viewModel.onCloseEntry() }
+    PlatformBackHandler(enabled = state.entry != null) { viewModel.onCloseEntry() }
 
     Scaffold(
         // The app shell's Scaffold has already inset this screen for the status

@@ -11,6 +11,11 @@ fun desktopSettingsRepository(): SettingsRepository = SettingsRepository(
     javaPrefsStore(desktopPrefsRoot.node(SettingsRepository.PREFS_NAME)),
 )
 
+/** The Mac's recent searches, beside its other settings. */
+fun desktopSearchHistory(): SearchHistoryRepository = SearchHistoryRepository(
+    javaPrefsStore(desktopPrefsRoot.node(SearchHistoryRepository.PREFS_NAME)),
+)
+
 internal fun javaPrefsStore(node: Preferences): SettingsStore = PreferencesStore(node)
 
 private class PreferencesStore(private val node: Preferences) : SettingsStore {

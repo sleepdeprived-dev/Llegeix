@@ -1,8 +1,5 @@
 package com.david.llegeix.data.settings
 
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,12 +52,11 @@ fun remembered(
  *
  * Its own preferences file rather than a table. This is a convenience, not
  * data: losing it costs nobody anything, and it should never be the reason a
- * database migration exists.
+ * database migration exists. Each platform hands it that file as a
+ * [SettingsStore]: SharedPreferences on the phone, the user's preferences on
+ * the Mac.
  */
-class SearchHistoryRepository(context: Context) {
-
-    private val prefs: SharedPreferences = context.applicationContext
-        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+class SearchHistoryRepository(private val prefs: SettingsStore) {
 
     private val flows: Map<SearchScope, MutableStateFlow<List<String>>> =
         SearchScope.entries.associateWith { MutableStateFlow(read(it)) }
@@ -94,7 +90,7 @@ class SearchHistoryRepository(context: Context) {
     private fun flow(scope: SearchScope) = flows.getValue(scope)
 
     private fun write(scope: SearchScope, queries: List<String>) {
-        prefs.edit { putString(scope.key, queries.joinToString(SEPARATOR)) }
+        prefs.putString(scope.key, queries.joinToString(SEPARATOR))
         flow(scope).value = queries
     }
 
@@ -104,10 +100,10 @@ class SearchHistoryRepository(context: Context) {
             ?.filter { it.isNotBlank() }
             .orEmpty()
 
-    private companion object {
+    companion object {
         const val PREFS_NAME = "llegeix.searches"
 
         /** Safe as a separator: every field that feeds this one is single-line. */
-        const val SEPARATOR = "\n"
+        private const val SEPARATOR = "\n"
     }
 }

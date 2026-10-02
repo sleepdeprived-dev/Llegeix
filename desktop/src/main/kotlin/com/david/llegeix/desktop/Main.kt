@@ -36,6 +36,7 @@ import com.david.llegeix.resources.nav_flashcards
 import com.david.llegeix.resources.nav_library
 import com.david.llegeix.resources.nav_saved
 import com.david.llegeix.ui.common.EmptyState
+import com.david.llegeix.ui.dictionary.DictionaryScreen
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
 import com.david.llegeix.ui.common.Space
@@ -50,7 +51,7 @@ import java.util.Locale
  *
  * A window in the phone's own theme, following the saved settings (the Mac's
  * own accent until another is chosen), with the four sections the phone has.
- * Targetes is here; the others follow. Everything in it comes from the shared module; the sections fill in
+ * Diccionari and Targetes are here; the others follow. Everything in it comes from the shared module; the sections fill in
  * as their screens move there.
  */
 fun main() {
@@ -64,13 +65,16 @@ fun main() {
 @Composable
 private fun ApplicationScope.App() {
     val flashcards = rememberNavController()
+    var section by rememberSaveable { mutableStateOf(Section.LIBRARY) }
     Window(
         onCloseRequest = ::exitApplication,
         // Escape is the Mac's back: first to whatever the screen is holding
-        // open (as the back gesture is on the phone), then back a screen.
+        // open (as the back gesture is on the phone), then back a screen in
+        // the section on show.
         onKeyEvent = { event ->
             if (event.type == KeyEventType.KeyDown && event.key == Key.Escape) {
-                DesktopBack.dispatch() || flashcards.popBackStack()
+                DesktopBack.dispatch() ||
+                    (section == Section.FLASHCARDS && flashcards.popBackStack())
             } else {
                 false
             }
@@ -84,7 +88,7 @@ private fun ApplicationScope.App() {
             accent = settings.accent,
             customAccent = settings.customAccent,
         ) {
-            Shell(flashcards)
+            Shell(section, onSection = { section = it }, flashcards)
         }
     }
 }
@@ -98,8 +102,11 @@ private enum class Section(val label: StringResource) {
 }
 
 @Composable
-private fun Shell(flashcards: NavHostController) {
-    var section by rememberSaveable { mutableStateOf(Section.LIBRARY) }
+private fun Shell(
+    section: Section,
+    onSection: (Section) -> Unit,
+    flashcards: NavHostController,
+) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier.fillMaxSize().padding(top = Space.lg),
@@ -110,7 +117,7 @@ private fun Shell(flashcards: NavHostController) {
                     val label = stringResource(entry.label)
                     Pill(
                         selected = entry == section,
-                        onClick = { section = entry },
+                        onClick = { onSection(entry) },
                         label = label,
                     ) {
                         Text(label, style = MaterialTheme.typography.labelLarge)
@@ -119,6 +126,7 @@ private fun Shell(flashcards: NavHostController) {
             }
             Box(Modifier.weight(1f).fillMaxWidth().padding(top = Space.md)) {
                 when (section) {
+                    Section.DICTIONARY -> DictionaryScreen()
                     Section.FLASHCARDS -> FlashcardsHost(flashcards)
                     else -> EmptyState(
                         title = stringResource(section.label),

@@ -1,6 +1,5 @@
 package com.david.llegeix.lang
 
-import android.content.Context
 
 /** A definition, with the part of speech the dictionary filed it under. */
 data class Definition(
@@ -306,9 +305,9 @@ class CatalanWordBank private constructor(
     }
 
     companion object {
-        private const val DEFINITIONS_ASSET = "catalan-dictionary.tsv"
-        private const val THESAURUS_ASSET = "catalan-thesaurus.tsv"
-        private const val LEMMAS_ASSET = "catalan-lemmas.tsv"
+        private const val DEFINITIONS_ASSET = "files/catalan-dictionary.tsv"
+        private const val THESAURUS_ASSET = "files/catalan-thesaurus.tsv"
+        private const val LEMMAS_ASSET = "files/catalan-lemmas.tsv"
 
         /** Suggestions offered while typing: a list you scroll is not a shortcut. */
         const val MAX_SUGGESTIONS = 12
@@ -384,14 +383,15 @@ class CatalanWordBank private constructor(
          * The shared reference shelf, read on the calling thread the first time.
          *
          * Sixteen megabytes of file reading, so callers must be off the main
-         * thread; every later call is a field read.
+         * thread; every later call is a field read. The files travel in the
+         * shared resources, so the phone and the Mac read the same shelf.
          */
-        fun get(context: Context): CatalanWordBank =
+        fun get(): CatalanWordBank =
             instance ?: synchronized(this) {
                 instance ?: CatalanWordBank(
-                    definitions = SortedTsv.load(context, DEFINITIONS_ASSET),
-                    thesaurus = SortedTsv.load(context, THESAURUS_ASSET),
-                    lemmas = SortedTsv.load(context, LEMMAS_ASSET),
+                    definitions = SortedTsv.load(DEFINITIONS_ASSET),
+                    thesaurus = SortedTsv.load(THESAURUS_ASSET),
+                    lemmas = SortedTsv.load(LEMMAS_ASSET),
                 ).also { instance = it }
             }
 
@@ -413,7 +413,7 @@ class CatalanWordBank private constructor(
          * PDFs are full of typographic apostrophes and stray punctuation that
          * the files, written in plain ASCII quoting, do not use.
          */
-        internal fun normalise(word: String): String = word
+        fun normalise(word: String): String = word
             .lowercase()
             .replace('’', '\'')
             .replace('ʼ', '\'')

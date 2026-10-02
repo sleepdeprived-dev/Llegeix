@@ -1,12 +1,10 @@
 package com.david.llegeix.ui.dictionary
 
-import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
@@ -17,6 +15,7 @@ import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.CatalanWordBank
 import com.david.llegeix.lang.VerbForm
 import com.david.llegeix.lang.verbEntry
+import com.david.llegeix.platform.Services
 import com.david.llegeix.resources.*
 import com.david.llegeix.translate.WordTranslator
 import com.david.llegeix.ui.common.DictionaryState
@@ -93,7 +92,6 @@ data class DictionaryUiState(
  * words list at the end of it.
  */
 class DictionaryViewModel(
-    private val application: Application,
     private val libraryData: LibraryDataRepository,
     private val settings: SettingsRepository,
     private val searchHistory: SearchHistoryRepository,
@@ -162,7 +160,7 @@ class DictionaryViewModel(
             // enough that the list is there by the time the finger stops.
             delay(SUGGEST_DEBOUNCE_MS)
             val found = withContext(Dispatchers.IO) {
-                CatalanWordBank.get(application).suggest(query)
+                CatalanWordBank.get().suggest(query)
             }
             _uiState.update { if (it.query == query) it.copy(suggestions = found) else it }
         }
@@ -223,7 +221,7 @@ class DictionaryViewModel(
             // and having the answer in hand is what lets the infinitive be
             // translated straight afterwards without a second round of waiting.
             val found = withContext(Dispatchers.IO) {
-                CatalanWordBank.get(application).verbEntry(word)
+                CatalanWordBank.get().verbEntry(word)
             }
             if (found != null) {
                 updateEntry { it.copy(verb = found.form, verbDefinition = found.definition) }
@@ -250,7 +248,7 @@ class DictionaryViewModel(
 
     private suspend fun loadReference(word: String) {
         val found = withContext(Dispatchers.IO) {
-            val bank = CatalanWordBank.get(application)
+            val bank = CatalanWordBank.get()
             // A phrase is looked up word by word, keeping only the words the
             // references actually know, so "de seguida" answers with what it can
             // rather than with nothing at all.
@@ -388,10 +386,8 @@ class DictionaryViewModel(
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 DictionaryViewModel(
-                    app,
                     app.libraryDataRepository,
                     app.settingsRepository,
                     app.searchHistoryRepository,

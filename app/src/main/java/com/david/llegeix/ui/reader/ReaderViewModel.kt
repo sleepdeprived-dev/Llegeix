@@ -1000,7 +1000,7 @@ class ReaderViewModel(
                 listOf(lookup.text)
             }
             val found = withContext(Dispatchers.IO) {
-                val dictionary = CatalanWordBank.get(application)
+                val dictionary = CatalanWordBank.get()
                 val tokens = CatalanContext.tokenise(lookup.context)
                 words.filter { CatalanWordBank.isWorthLookingUp(it) }
                     .take(MAX_THESAURUS_WORDS)
@@ -1133,7 +1133,7 @@ class ReaderViewModel(
         if (lookup.isPhrase) return
         val found = withContext(Dispatchers.IO) {
             runCatchingCancellable {
-                CatalanWordBank.get(application).verbEntry(lookup.text)
+                CatalanWordBank.get().verbEntry(lookup.text)
             }.getOrNull()
         } ?: return
         updateLookup { it.copy(verb = found.form, verbDefinition = found.definition) }
@@ -1232,7 +1232,7 @@ class ReaderViewModel(
         val index = tokens.indexOf(target)
         if (index < 0) return@withContext null
         runCatchingCancellable {
-            CatalanWordBank.get(application).phraseIn(tokens, index)
+            CatalanWordBank.get().phraseIn(tokens, index)
         }.getOrNull()
     }
 

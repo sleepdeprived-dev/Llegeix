@@ -13,6 +13,16 @@ fun SettingsRepository(context: Context): SettingsRepository = SettingsRepositor
     ),
 )
 
+/** The phone's recent searches, in the SharedPreferences file they have always been in. */
+fun SearchHistoryRepository(context: Context): SearchHistoryRepository = SearchHistoryRepository(
+    SharedPreferencesStore(
+        context.applicationContext.getSharedPreferences(
+            SearchHistoryRepository.PREFS_NAME,
+            Context.MODE_PRIVATE,
+        ),
+    ),
+)
+
 /** SharedPreferences as a [SettingsStore], writing with apply() as the app always has. */
 internal class SharedPreferencesStore(private val prefs: SharedPreferences) : SettingsStore {
     override fun getString(key: String, default: String?): String? = prefs.getString(key, default)
