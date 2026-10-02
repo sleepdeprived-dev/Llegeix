@@ -444,7 +444,7 @@ class PictureSearch(context: Context) {
          * empty after a few words typed in quick succession.
          */
         const val USER_AGENT =
-            "Llegeix (Android vocabulary app; https://github.com/sleepdeprived-dev/Llegeix-releases)"
+            "Llegeix (Android vocabulary app; https://github.com/sleepdeprived-dev/Llegeix)"
         const val TIMEOUT_MS = 12_000
 
         /** A page of search results is tens of kilobytes. */

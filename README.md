@@ -3,15 +3,18 @@
 An Android PDF reader built for reading Catalan documents while learning the
 language. Written in Kotlin with Jetpack Compose.
 
+Llegeix is free software under the [GNU General Public License v3.0](LICENSE).
+Signed APKs for every version are on the
+[Releases](https://github.com/sleepdeprived-dev/Llegeix/releases) page.
+
 ## Releasing
 
-The source is private and the builds have to be public, because the app's update
-check asks GitHub for them with no credentials and a token shipped inside a
-sideloaded APK is a token everybody holding the APK has. So the signed APKs and
-the release notes go to
-[Llegeix-releases](https://github.com/sleepdeprived-dev/Llegeix-releases), which
-carries nothing else, while the tag stays here. `tools/release.sh <notes-file>`
-does both after bumping the version in `app/build.gradle.kts`.
+The app's update check asks this repository's releases for the newest build,
+with no credentials, so the signed APKs and the release notes are attached to a
+release here, on the version's tag. `tools/release.sh <notes-file>` tags, builds
+and publishes after bumping the version in `app/build.gradle.kts`. Up to v4.4.5
+the source was private and the builds lived in a separate Llegeix-releases
+repository; every one of those releases has been carried over here.
 
 ## Features
 
@@ -694,6 +697,14 @@ under CC BY-SA 4.0. Photographs come from
 through the lead pictures of [Wikipedia](https://www.wikipedia.org) articles,
 and from [Openverse](https://openverse.org), each under its own open licence.
 The credit for any picture, from any source, is kept on the card it was put on.
+
+## License
+
+Llegeix is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See [LICENSE](LICENSE). Bundled third-party material keeps its own
+licence, as listed under Credits.
 
 ## Downloads
 
