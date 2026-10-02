@@ -1,6 +1,6 @@
 package com.david.llegeix.pdf
 
-import android.graphics.Bitmap
+import androidx.compose.ui.graphics.ImageBitmap
 
 /**
  * Where the ink actually is on a page, as fractions of its width and height.
@@ -56,12 +56,12 @@ data class ContentBox(
  * page. A line of type is within an order of magnitude of the densest line; a
  * speck is one or two pixels against dozens.
  */
-fun contentBoxOf(bitmap: Bitmap): ContentBox {
+fun contentBoxOf(bitmap: ImageBitmap): ContentBox {
     val width = bitmap.width
     val height = bitmap.height
     if (width <= 0 || height <= 0) return ContentBox.Whole
     val pixels = IntArray(width * height)
-    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+    bitmap.readPixels(pixels)
     return contentBoxOf(pixels, width, height)
 }
 

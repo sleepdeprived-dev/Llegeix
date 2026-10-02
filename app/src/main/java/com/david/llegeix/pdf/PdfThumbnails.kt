@@ -3,6 +3,7 @@ package com.david.llegeix.pdf
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.LruCache
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.core.net.toUri
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.sync.Semaphore
@@ -49,7 +50,7 @@ class PdfThumbnails(private val context: Context) {
             cache.get(key)?.let { return@withPermit it }
             runCatchingCancellable {
                 PdfiumPageRenderer.open(context, uriString.toUri()).use { renderer ->
-                    if (renderer.pageCount <= 0) null else renderer.renderPage(0, widthPx)
+                    if (renderer.pageCount <= 0) null else renderer.renderPage(0, widthPx).asAndroidBitmap()
                 }
             }.getOrNull()
         }

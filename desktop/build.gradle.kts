@@ -26,6 +26,7 @@ dependencies {
 tasks.withType<Test>().configureEach {
     val tools = rootProject.layout.projectDirectory.dir("tools/macos/build").asFile
     systemProperty("llegeix.bergamot", tools.resolve("bergamot-translator/build/app/bergamot").path)
+    systemProperty("llegeix.pdfium", tools.resolve("pdfium/lib/libpdfium.dylib").path)
     systemProperty("llegeix.testModels", tools.resolve("models").path)
     systemProperty("llegeix.screenshots", layout.buildDirectory.dir("screenshots").get().asFile.path)
 }
@@ -44,6 +45,8 @@ compose.desktop {
         jvmArgs += "-Dllegeix.bergamot=" + rootProject.file(
             "tools/macos/build/bergamot-translator/build/app/bergamot",
         ).path
+        // And PDFium from tools/macos/fetch-pdfium.sh, likewise.
+        jvmArgs += "-Dllegeix.pdfium=" + rootProject.file("tools/macos/build/pdfium/lib/libpdfium.dylib").path
         nativeDistributions {
             targetFormats(TargetFormat.Dmg)
             packageName = "Llegeix"

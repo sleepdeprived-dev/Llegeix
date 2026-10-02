@@ -19,7 +19,8 @@ import com.david.llegeix.data.settings.ReadingMode
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
-import android.graphics.RectF
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.asAndroidBitmap
 import com.david.llegeix.lang.CatalanContext
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.CatalanWordBank
@@ -28,6 +29,7 @@ import com.david.llegeix.lang.verbEntry
 import com.david.llegeix.pdf.MATCH_LIMIT
 import com.david.llegeix.pdf.PdfMatch
 import com.david.llegeix.pdf.PdfiumPageRenderer
+import com.david.llegeix.pdf.open
 import com.david.llegeix.pdf.PageOcr
 import com.david.llegeix.pdf.PdfOutlineEntry
 import com.david.llegeix.pdf.PdfPageRenderer
@@ -85,7 +87,7 @@ private data class SelectionRequest(
  */
 data class SelectionPreview(
     val pageIndex: Int,
-    val boundsPx: List<RectF>,
+    val boundsPx: List<Rect>,
     /**
      * How many words are currently covered.
      *
@@ -139,7 +141,7 @@ data class WordGloss(
 data class WordLookup(
     val text: String,
     val pageIndex: Int,
-    val boundsPx: List<RectF>,
+    val boundsPx: List<Rect>,
     /** The line it came from, which is what makes the sense recoverable. */
     val context: String = "",
     /**
@@ -568,7 +570,7 @@ class ReaderViewModel(
     val pageJumps: SharedFlow<Int> = _pageJumps.asSharedFlow()
 
     /** Highlight rectangles for the active match on [pageIndex], if any. */
-    suspend fun matchHighlights(pageIndex: Int, widthPx: Int, heightPx: Int): List<RectF> {
+    suspend fun matchHighlights(pageIndex: Int, widthPx: Int, heightPx: Int): List<Rect> {
         val active = renderer ?: return emptyList()
         val match = _uiState.value.search.current ?: return emptyList()
         if (match.pageIndex != pageIndex) return emptyList()
@@ -681,7 +683,7 @@ class ReaderViewModel(
         pageCache.get(key)?.let { return it }
 
         val plain = pageCache.get(plainKey)
-            ?: runCatchingCancellable { active.renderPage(index, widthPx, crop) }
+            ?: runCatchingCancellable { active.renderPage(index, widthPx, crop).asAndroidBitmap() }
                 .getOrNull()?.also { pageCache.put(plainKey, it) }
             ?: return null
 
@@ -720,7 +722,7 @@ class ReaderViewModel(
         pageIndex: Int,
         widthPx: Int,
         heightPx: Int,
-    ): List<RectF> {
+    ): List<Rect> {
         val state = _uiState.value
         if (!state.markSavedWords || state.savedWords.isEmpty()) return emptyList()
         val active = renderer ?: return emptyList()

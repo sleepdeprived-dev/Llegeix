@@ -1,17 +1,7 @@
 package com.david.llegeix.pdf
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.RectF
-import android.net.Uri
-import android.os.ParcelFileDescriptor
-import androidx.core.graphics.createBitmap
-import io.legere.pdfiumandroid.PdfDocument
-import io.legere.pdfiumandroid.PdfPage
-import io.legere.pdfiumandroid.PdfTextPage
-import io.legere.pdfiumandroid.PdfiumCore
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,10 +25,14 @@ import kotlin.math.roundToInt
  *
  * The cost is that PDFium hands back *characters*, not words, so word
  * boundaries are worked out here.
+ *
+ * The same code on the phone and the Mac, over [PdfiumDocument]: each platform
+ * only opens the file and hands PDFium's calls through. [release] gives back
+ * whatever the platform opened the file with, once the document is freed.
  */
-class PdfiumPageRenderer private constructor(
-    private val descriptor: ParcelFileDescriptor,
-    private val document: PdfDocument,
+class PdfiumPageRenderer internal constructor(
+    private val document: PdfiumDocument,
+    private val release: () -> Unit = {},
 ) : PdfPageRenderer {
 
     /** PDFium is not safe for concurrent use on one document. */
@@ -70,7 +64,7 @@ class PdfiumPageRenderer private constructor(
      */
     private val closing = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    override val pageCount: Int = document.getPageCount()
+    override val pageCount: Int = document.pageCount
 
     /**
      * Where the ink is on each page, once it has been looked for.
@@ -99,7 +93,7 @@ class PdfiumPageRenderer private constructor(
         index: Int,
         targetWidthPx: Int,
         crop: Boolean,
-    ): Bitmap = withContext(Dispatchers.IO) {
+    ): ImageBitmap = withContext(Dispatchers.IO) {
         val box = boxFor(index, crop)
         if (box == ContentBox.Whole) {
             renderWhole(index, targetWidthPx)
@@ -128,21 +122,21 @@ class PdfiumPageRenderer private constructor(
         index: Int,
         targetWidthPx: Int,
         box: ContentBox,
-    ): Bitmap = withContext(Dispatchers.IO) {
+    ): ImageBitmap = withContext(Dispatchers.IO) {
         mutex.withLock {
             if (closed) throw IOException("This PDF has been closed")
             val page = document.openPage(index)
                 ?: throw IOException("Page $index of this PDF could not be opened")
             page.use { page ->
-                val widthPt = page.getPageWidthPoint()
-                val heightPt = page.getPageHeightPoint()
+                val widthPt = page.widthPt
+                val heightPt = page.heightPt
                 // How large the whole sheet would have to be for the content box
                 // to come out at the requested width.
                 val sheetWidth = (targetWidthPx / box.width)
                     .toInt()
                     .coerceIn(targetWidthPx.coerceAtLeast(1), MAX_CROP_RENDER_PX)
                 val sheetHeight = if (widthPt > 0) {
-                    (sheetWidth.toFloat() * heightPt / widthPt).roundToInt().coerceAtLeast(1)
+                    (sheetWidth * heightPt / widthPt).roundToInt().coerceAtLeast(1)
                 } else {
                     sheetWidth
                 }
@@ -154,19 +148,7 @@ class PdfiumPageRenderer private constructor(
                 val height = (box.height * sheetHeight).roundToInt()
                     .coerceIn(1, sheetHeight)
 
-                val bitmap = createBitmap(width, height)
-                // PDFium composites only the page's own marks, so anything it
-                // does not paint would stay transparent and read as black.
-                Canvas(bitmap).drawColor(Color.WHITE)
-                page.renderPageBitmap(
-                    bitmap,
-                    -left,
-                    -top,
-                    sheetWidth,
-                    sheetHeight,
-                    renderAnnot = true,
-                )
-                bitmap
+                page.render(width, height, -left, -top, sheetWidth, sheetHeight)
             }
         }
     }
@@ -205,7 +187,6 @@ class PdfiumPageRenderer private constructor(
         val probe = runCatching { renderWhole(index, CROP_PROBE_PX) }.getOrNull()
             ?: return ContentBox.Whole
         val box = contentBoxOf(probe)
-        probe.recycle()
         mutex.withLock { contentBoxes[index] = box }
         return box
     }
@@ -246,8 +227,8 @@ class PdfiumPageRenderer private constructor(
         sheetRatios[index]?.let { return@withLock it }
         val page = document.openPage(index) ?: return@withLock null
         page.use { open ->
-            val widthPt = open.getPageWidthPoint().toFloat()
-            val heightPt = open.getPageHeightPoint().toFloat()
+            val widthPt = open.widthPt.toFloat()
+            val heightPt = open.heightPt.toFloat()
             if (widthPt <= 0f || heightPt <= 0f) return@withLock null
             (widthPt / heightPt).also { sheetRatios[index] = it }
         }
@@ -256,14 +237,14 @@ class PdfiumPageRenderer private constructor(
     override suspend fun outline(): List<PdfOutlineEntry> = withContext(Dispatchers.IO) {
         mutex.withLock {
             if (closed) return@withLock emptyList()
-            runCatching { document.getTableOfContents() }
+            runCatching { document.tableOfContents() }
                 .getOrDefault(emptyList())
                 .let { entries -> flattenOutline(entries, depth = 0) }
         }
     }
 
     private fun flattenOutline(
-        entries: List<io.legere.pdfiumandroid.api.Bookmark>,
+        entries: List<PdfiumBookmark>,
         depth: Int,
     ): List<PdfOutlineEntry> = entries.flatMap { entry ->
         val title = entry.title?.trim().orEmpty()
@@ -273,7 +254,7 @@ class PdfiumPageRenderer private constructor(
             listOf(
                 PdfOutlineEntry(
                     title = title,
-                    pageIndex = entry.pageIdx.toInt().coerceIn(0, (pageCount - 1).coerceAtLeast(0)),
+                    pageIndex = entry.pageIndex.coerceIn(0, (pageCount - 1).coerceAtLeast(0)),
                     depth = depth,
                 ),
             )
@@ -284,7 +265,7 @@ class PdfiumPageRenderer private constructor(
         here + flattenOutline(entry.children, if (here.isEmpty()) depth else depth + 1)
     }
 
-    private suspend fun renderWhole(index: Int, targetWidthPx: Int): Bitmap =
+    private suspend fun renderWhole(index: Int, targetWidthPx: Int): ImageBitmap =
         withContext(Dispatchers.IO) {
             mutex.withLock {
                 if (closed) throw IOException("This PDF has been closed")
@@ -292,21 +273,15 @@ class PdfiumPageRenderer private constructor(
                 val page = document.openPage(index)
                     ?: throw IOException("Page $index of this PDF could not be opened")
                 page.use { page ->
-                    val widthPt = page.getPageWidthPoint()
-                    val heightPt = page.getPageHeightPoint()
+                    val widthPt = page.widthPt
+                    val heightPt = page.heightPt
                     val width = targetWidthPx.coerceAtLeast(1)
                     val height = if (widthPt > 0) {
-                        (width.toFloat() * heightPt / widthPt).roundToInt().coerceAtLeast(1)
+                        (width * heightPt / widthPt).roundToInt().coerceAtLeast(1)
                     } else {
                         width
                     }
-
-                    val bitmap = createBitmap(width, height)
-                    // PDFium composites only the page's own marks, so anything
-                    // it does not paint would stay transparent and read as black.
-                    Canvas(bitmap).drawColor(Color.WHITE)
-                    page.renderPageBitmap(bitmap, 0, 0, width, height, renderAnnot = true)
-                    bitmap
+                    page.render(width, height, 0, 0, width, height)
                 }
             }
         }
@@ -315,7 +290,7 @@ class PdfiumPageRenderer private constructor(
         mutex.withLock {
             if (closed) return@withLock false
             document.openPage(pageIndex)?.use { page ->
-                page.openTextPage().use { it.textPageCountChars() > 0 }
+                page.openTextPage().use { it.charCount > 0 }
             } ?: false
         }
     }
@@ -348,37 +323,37 @@ class PdfiumPageRenderer private constructor(
      * as plain returns instead of a stack of ambiguous `return@use` labels.
      */
     private fun findWord(
-        page: PdfPage,
-        textPage: PdfTextPage,
+        page: PdfiumPage,
+        textPage: PdfiumTextPage,
         xPx: Float,
         yPx: Float,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
         shown: ContentBox,
     ): PdfWord? {
-        val widthPt = page.getPageWidthPoint().toDouble()
-        val heightPt = page.getPageHeightPoint().toDouble()
+        val widthPt = page.widthPt
+        val heightPt = page.heightPt
         if (widthPt <= 0.0 || heightPt <= 0.0) return null
 
         val xPt = PageGeometry.xPoint(xPx, renderedWidthPx, widthPt, shown)
         val yPt = PageGeometry.yPoint(yPx, renderedHeightPx, heightPt, shown)
         val tolerance = widthPt * TOUCH_TOLERANCE_FRACTION
 
-        val hitIndex = textPage.textPageGetCharIndexAtPos(xPt, yPt, tolerance, tolerance)
+        val hitIndex = textPage.charIndexAt(xPt, yPt, tolerance, tolerance)
         if (hitIndex < 0) return null
 
-        val charCount = textPage.textPageCountChars()
+        val charCount = textPage.charCount
         if (charCount <= 0 || hitIndex >= charCount) return null
         // The tolerance can snap to a nearby space or comma; only a real letter
         // counts as hitting a word.
-        if (!isWordChar(textPage.textPageGetUnicode(hitIndex))) return null
+        if (!isWordChar(textPage.charAt(hitIndex))) return null
 
         var start = hitIndex
-        while (start > 0 && isWordChar(textPage.textPageGetUnicode(start - 1))) start--
+        while (start > 0 && isWordChar(textPage.charAt(start - 1))) start--
         var end = hitIndex
-        while (end + 1 < charCount && isWordChar(textPage.textPageGetUnicode(end + 1))) end++
+        while (end + 1 < charCount && isWordChar(textPage.charAt(end + 1))) end++
 
-        val text = textPage.textPageGetText(start, end - start + 1)?.trim().orEmpty()
+        val text = textPage.text(start, end - start + 1)?.trim().orEmpty()
         if (text.isEmpty()) return null
 
         val bounds = wordBoundsPx(
@@ -390,7 +365,7 @@ class PdfiumPageRenderer private constructor(
 
     /** Union of the word's character boxes, converted to bitmap pixels. */
     private fun wordBoundsPx(
-        textPage: PdfTextPage,
+        textPage: PdfiumTextPage,
         start: Int,
         end: Int,
         widthPt: Double,
@@ -398,7 +373,7 @@ class PdfiumPageRenderer private constructor(
         renderedWidthPx: Int,
         renderedHeightPx: Int,
         shown: ContentBox,
-    ): RectF? {
+    ): Rect? {
         var left = Double.MAX_VALUE
         var top = Double.MAX_VALUE
         var right = -Double.MAX_VALUE
@@ -406,7 +381,7 @@ class PdfiumPageRenderer private constructor(
         var any = false
 
         for (index in start..end) {
-            val box = textPage.textPageGetCharBox(index) ?: continue
+            val box = textPage.charBox(index) ?: continue
             any = true
             // Normalise with min/max rather than trusting which edge PDFium
             // calls "top": in a y-up space that is the larger value.
@@ -422,7 +397,7 @@ class PdfiumPageRenderer private constructor(
         }
 
         return if (any) {
-            RectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+            Rect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
         } else {
             null
         }
@@ -455,8 +430,8 @@ class PdfiumPageRenderer private constructor(
     }
 
     private fun buildSelection(
-        page: PdfPage,
-        textPage: PdfTextPage,
+        page: PdfiumPage,
+        textPage: PdfiumTextPage,
         startXPx: Float,
         startYPx: Float,
         endXPx: Float,
@@ -465,18 +440,18 @@ class PdfiumPageRenderer private constructor(
         renderedHeightPx: Int,
         shown: ContentBox,
     ): PdfSelection? {
-        val widthPt = page.getPageWidthPoint().toDouble()
-        val heightPt = page.getPageHeightPoint().toDouble()
+        val widthPt = page.widthPt
+        val heightPt = page.heightPt
         if (widthPt <= 0.0 || heightPt <= 0.0) return null
 
-        val charCount = textPage.textPageCountChars()
+        val charCount = textPage.charCount
         if (charCount <= 0) return null
         val tolerance = widthPt * TOUCH_TOLERANCE_FRACTION
 
         fun charAt(xPx: Float, yPx: Float): Int {
             val xPt = PageGeometry.xPoint(xPx, renderedWidthPx, widthPt, shown)
             val yPt = PageGeometry.yPoint(yPx, renderedHeightPx, heightPt, shown)
-            return textPage.textPageGetCharIndexAtPos(xPt, yPt, tolerance, tolerance)
+            return textPage.charIndexAt(xPt, yPt, tolerance, tolerance)
         }
 
         /**
@@ -508,18 +483,18 @@ class PdfiumPageRenderer private constructor(
         if (from !in 0 until charCount || to !in 0 until charCount) return null
 
         // Snap to whole words: half a word is never what was meant.
-        while (from > 0 && isWordChar(textPage.textPageGetUnicode(from - 1))) from--
-        while (to + 1 < charCount && isWordChar(textPage.textPageGetUnicode(to + 1))) to++
+        while (from > 0 && isWordChar(textPage.charAt(from - 1))) from--
+        while (to + 1 < charCount && isWordChar(textPage.charAt(to + 1))) to++
 
-        val text = textPage.textPageGetText(from, to - from + 1)
+        val text = textPage.text(from, to - from + 1)
             ?.replace(LINE_BREAKS, " ")
             ?.trim()
             .orEmpty()
         if (text.isEmpty()) return null
 
-        val rectCount = textPage.textPageCountRects(from, to - from + 1)
+        val rectCount = textPage.countRects(from, to - from + 1)
         val bounds = (0 until rectCount).mapNotNull { i ->
-            textPage.textPageGetRect(i)?.let { box ->
+            textPage.rect(i)?.let { box ->
                 toBitmapRect(box, widthPt, heightPt, renderedWidthPx, renderedHeightPx, shown)
             }
         }
@@ -536,10 +511,10 @@ class PdfiumPageRenderer private constructor(
 
     /** The line containing [charIndex], with the lines around it. */
     private fun lineAt(
-        textPage: PdfTextPage,
+        textPage: PdfiumTextPage,
         charCount: Int,
         charIndex: Int,
-    ): LocatedLine = PageLines.locate(textPage.textPageGetText(0, charCount).orEmpty(), charIndex)
+    ): LocatedLine = PageLines.locate(textPage.text(0, charCount).orEmpty(), charIndex)
 
     override suspend fun findMatches(
         query: String,
@@ -577,36 +552,25 @@ class PdfiumPageRenderer private constructor(
     }
 
     private fun matchesOnPage(
-        textPage: PdfTextPage,
+        textPage: PdfiumTextPage,
         pageIndex: Int,
         term: String,
         remaining: Int,
     ): List<PdfMatch> {
         if (remaining <= 0) return emptyList()
-        // No flags: case-insensitive, substring. Searching a language you are
-        // learning means often being unsure of the exact form, so the widest
-        // match is the useful one.
-        // close() alone. FindResult.close() and closeFind() both call the same
-        // native closeFind on the same handle, so calling both is a double free
-        // and aborts the process inside the allocator.
-        val found = textPage.findStart(term, emptySet(), 0)?.use { find ->
-            buildList {
-                while (size < remaining && find.findNext()) {
-                    val index = find.getSchResultIndex()
-                    val count = find.getSchCount()
-                    if (index >= 0 && count > 0) {
-                        add(PdfMatch(pageIndex = pageIndex, charIndex = index, charCount = count))
-                    }
-                }
-            }
-        }.orEmpty()
+        // Case-insensitive, substring. Searching a language you are learning
+        // means often being unsure of the exact form, so the widest match is
+        // the useful one.
+        val found = textPage.find(term, remaining).map { (index, count) ->
+            PdfMatch(pageIndex = pageIndex, charIndex = index, charCount = count)
+        }
         if (found.isEmpty()) return found
 
         // The page's text is pulled once, here, and only for a page that
         // actually matched. It is what the snippets are cut out of, and the
         // alternative — asking PDFium for each match's surroundings separately —
         // is one call per hit on a page that can hold dozens.
-        val pageText = textPage.textPageGetText(0, textPage.textPageCountChars()).orEmpty()
+        val pageText = textPage.text(0, textPage.charCount).orEmpty()
         return found.map { match ->
             val snippet = MatchSnippet.around(pageText, match.charIndex, match.charCount)
             match.copy(
@@ -623,7 +587,7 @@ class PdfiumPageRenderer private constructor(
         renderedWidthPx: Int,
         renderedHeightPx: Int,
         crop: Boolean,
-    ): List<RectF> = withContext(Dispatchers.IO) {
+    ): List<Rect> = withContext(Dispatchers.IO) {
         if (words.isEmpty() || renderedWidthPx <= 0 || renderedHeightPx <= 0) {
             return@withContext emptyList()
         }
@@ -631,8 +595,8 @@ class PdfiumPageRenderer private constructor(
         mutex.withLock {
             if (closed) return@withLock emptyList()
             document.openPage(pageIndex)?.use { page ->
-                val widthPt = page.getPageWidthPoint().toDouble()
-                val heightPt = page.getPageHeightPoint().toDouble()
+                val widthPt = page.widthPt
+                val heightPt = page.heightPt
                 if (widthPt <= 0.0 || heightPt <= 0.0) return@use emptyList()
                 page.openTextPage().use { textPage ->
                     // The page's text is pulled once and walked here rather
@@ -640,7 +604,7 @@ class PdfiumPageRenderer private constructor(
                     // reader with two hundred saved words would otherwise cost
                     // two hundred searches per page, every page.
                     val text = textPage
-                        .textPageGetText(0, textPage.textPageCountChars())
+                        .text(0, textPage.charCount)
                         .orEmpty()
                     buildList {
                         var start = 0
@@ -652,9 +616,9 @@ class PdfiumPageRenderer private constructor(
                             var end = start
                             while (end < text.length && isWordChar(text[end])) end++
                             if (text.substring(start, end).lowercase() in words) {
-                                val rects = textPage.textPageCountRects(start, end - start)
+                                val rects = textPage.countRects(start, end - start)
                                 for (index in 0 until rects) {
-                                    textPage.textPageGetRect(index)?.let { box ->
+                                    textPage.rect(index)?.let { box ->
                                         add(
                                             toBitmapRect(
                                                 box,
@@ -681,21 +645,21 @@ class PdfiumPageRenderer private constructor(
         renderedWidthPx: Int,
         renderedHeightPx: Int,
         crop: Boolean,
-    ): List<RectF> = withContext(Dispatchers.IO) {
+    ): List<Rect> = withContext(Dispatchers.IO) {
         if (renderedWidthPx <= 0 || renderedHeightPx <= 0) return@withContext emptyList()
         val shown = boxFor(match.pageIndex, crop)
         mutex.withLock {
             if (closed) return@withLock emptyList()
             document.openPage(match.pageIndex)?.use { page ->
-                val widthPt = page.getPageWidthPoint().toDouble()
-                val heightPt = page.getPageHeightPoint().toDouble()
+                val widthPt = page.widthPt
+                val heightPt = page.heightPt
                 if (widthPt <= 0.0 || heightPt <= 0.0) return@use emptyList()
                 page.openTextPage().use { textPage ->
                     // FPDFText_GetRect only answers after the range has been
                     // counted; the count call is what populates it.
-                    val rectCount = textPage.textPageCountRects(match.charIndex, match.charCount)
+                    val rectCount = textPage.countRects(match.charIndex, match.charCount)
                     (0 until rectCount).mapNotNull { i ->
-                        textPage.textPageGetRect(i)?.let { box ->
+                        textPage.rect(i)?.let { box ->
                             toBitmapRect(
                                 box,
                                 widthPt,
@@ -713,19 +677,19 @@ class PdfiumPageRenderer private constructor(
 
     /** PDF user space is y-up from the bottom left; bitmaps are y-down. */
     private fun toBitmapRect(
-        box: RectF,
+        box: Rect,
         widthPt: Double,
         heightPt: Double,
         renderedWidthPx: Int,
         renderedHeightPx: Int,
         shown: ContentBox,
-    ): RectF {
+    ): Rect {
         val left = PageGeometry.xPixel(minOf(box.left, box.right).toDouble(), renderedWidthPx, widthPt, shown)
         val right = PageGeometry.xPixel(maxOf(box.left, box.right).toDouble(), renderedWidthPx, widthPt, shown)
         val top = PageGeometry.yPixel(maxOf(box.top, box.bottom).toDouble(), renderedHeightPx, heightPt, shown)
         val bottom =
             PageGeometry.yPixel(minOf(box.top, box.bottom).toDouble(), renderedHeightPx, heightPt, shown)
-        return RectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+        return Rect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
     }
 
     /**
@@ -742,7 +706,7 @@ class PdfiumPageRenderer private constructor(
         closing.launch {
             mutex.withLock {
                 runCatching { document.close() }
-                runCatching { descriptor.close() }
+                runCatching { release() }
             }
         }
     }
@@ -803,23 +767,5 @@ class PdfiumPageRenderer private constructor(
          */
         internal fun isWordChar(character: Char): Boolean =
             character.isLetterOrDigit() || character == '·'
-
-        /**
-         * Open [uri] for rendering. Throws [IOException] when the document
-         * cannot be read — a revoked grant, a deleted file, or a PDF PDFium
-         * rejects as malformed or password-protected.
-         */
-        suspend fun open(context: Context, uri: Uri): PdfiumPageRenderer =
-            withContext(Dispatchers.IO) {
-                val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
-                    ?: throw IOException("Could not open $uri")
-                try {
-                    val core = PdfiumCore(context)
-                    PdfiumPageRenderer(descriptor, core.newDocument(descriptor))
-                } catch (error: Throwable) {
-                    runCatching { descriptor.close() }
-                    throw error
-                }
-            }
     }
 }

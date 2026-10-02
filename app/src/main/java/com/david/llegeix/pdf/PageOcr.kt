@@ -1,7 +1,8 @@
 package com.david.llegeix.pdf
 
 import android.graphics.Bitmap
-import android.graphics.RectF
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.toComposeRect
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
@@ -18,7 +19,7 @@ import kotlin.math.abs
 /** One word read off a rendered page, in that bitmap's own pixels. */
 data class OcrWord(
     val text: String,
-    val box: RectF,
+    val box: Rect,
     /** Index into [OcrPage.lines], so a selection can quote the line it came from. */
     val lineIndex: Int,
 )
@@ -73,7 +74,7 @@ class OcrPage(val words: List<OcrWord>, val lines: List<OcrLine>) {
         val line = lines.getOrNull(lineIndex)
         return PdfSelection(
             text = range.joinToString(" ") { it.text },
-            boundsPx = range.map { RectF(it.box) },
+            boundsPx = range.map { it.box },
             lineText = line?.text.orEmpty(),
             lineNumber = line?.number ?: 1,
             passage = PageLines.passageAround(lines.map { it.text }, lineIndex),
@@ -82,8 +83,8 @@ class OcrPage(val words: List<OcrWord>, val lines: List<OcrLine>) {
 
     /** The word whose centre is closest, for the loose end of a drag. */
     private fun nearestWord(x: Float, y: Float): OcrWord? = words.minByOrNull { word ->
-        val dx = abs(word.box.centerX() - x)
-        val dy = abs(word.box.centerY() - y)
+        val dx = abs(word.box.center.x - x)
+        val dy = abs(word.box.center.y - y)
         // Vertical distance counts for more: the word after the one you meant
         // is a smaller mistake than a word on another line entirely.
         dx + dy * VERTICAL_WEIGHT
@@ -162,7 +163,7 @@ class PageOcr {
     private fun Text.Element.toWord(lineIndex: Int): OcrWord? {
         val box = boundingBox ?: return null
         if (text.isBlank()) return null
-        return OcrWord(text = text, box = RectF(box), lineIndex = lineIndex)
+        return OcrWord(text = text, box = box.toComposeRect(), lineIndex = lineIndex)
     }
 
     private fun key(pageIndex: Int, widthPx: Int) = "$pageIndex@$widthPx"

@@ -1,7 +1,7 @@
 package com.david.llegeix.pdf
 
-import android.graphics.Bitmap
-import android.graphics.RectF
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.ImageBitmap
 
 /**
  * One line of a document's own table of contents.
@@ -24,7 +24,7 @@ data class PdfOutlineEntry(
  */
 data class PdfWord(
     val text: String,
-    val boundsPx: RectF,
+    val boundsPx: Rect,
 )
 
 /**
@@ -61,7 +61,7 @@ data class PdfMatch(
  */
 data class PdfSelection(
     val text: String,
-    val boundsPx: List<RectF>,
+    val boundsPx: List<Rect>,
     val lineText: String,
     /** 1-based, counted from the page's text layer. */
     val lineNumber: Int,
@@ -81,7 +81,8 @@ data class PdfSelection(
  *
  * The text half is what forced the backend choice: Android's built-in
  * PdfRenderer produces bitmaps and exposes no text at all, so it cannot support
- * tap-to-look-up. [PdfiumPageRenderer] is the implementation.
+ * tap-to-look-up. [PdfiumPageRenderer] is the implementation, on the phone and
+ * on the Mac alike.
  */
 interface PdfPageRenderer : AutoCloseable {
 
@@ -97,7 +98,7 @@ interface PdfPageRenderer : AutoCloseable {
      * point of the option: on a phone the margins of an A4 page are a fifth of
      * the screen's width spent on nothing.
      */
-    suspend fun renderPage(index: Int, targetWidthPx: Int, crop: Boolean = false): Bitmap
+    suspend fun renderPage(index: Int, targetWidthPx: Int, crop: Boolean = false): ImageBitmap
 
     /**
      * The shape one page will come out, width over height, without rendering
@@ -208,7 +209,7 @@ interface PdfPageRenderer : AutoCloseable {
         renderedWidthPx: Int,
         renderedHeightPx: Int,
         crop: Boolean = false,
-    ): List<RectF>
+    ): List<Rect>
 
     /**
      * Where [match] sits on its page, in rendered-bitmap pixels.
@@ -220,7 +221,7 @@ interface PdfPageRenderer : AutoCloseable {
         renderedWidthPx: Int,
         renderedHeightPx: Int,
         crop: Boolean = false,
-    ): List<RectF>
+    ): List<Rect>
 }
 
 /**

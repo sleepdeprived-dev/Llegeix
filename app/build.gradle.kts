@@ -135,7 +135,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.pdfiumandroid)
     // DataEraser removes the downloaded translation models itself.
     implementation(libs.mlkit.translate)
     // The bundled Latin recogniser rather than the Play-Services one: reading a

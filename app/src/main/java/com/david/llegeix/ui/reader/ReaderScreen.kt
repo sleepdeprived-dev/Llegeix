@@ -1,7 +1,6 @@
 package com.david.llegeix.ui.reader
 
 import android.graphics.Bitmap
-import android.graphics.RectF
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -93,6 +92,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -1114,9 +1114,9 @@ private fun PdfPage(
      */
     assumedAspectRatio: Float,
     searchMatch: PdfMatch?,
-    highlights: suspend (widthPx: Int, heightPx: Int) -> List<RectF>,
+    highlights: suspend (widthPx: Int, heightPx: Int) -> List<Rect>,
     /** Where words the reader has already saved sit on this page. */
-    savedWords: suspend (widthPx: Int, heightPx: Int) -> List<RectF>,
+    savedWords: suspend (widthPx: Int, heightPx: Int) -> List<Rect>,
     /**
      * The saved words themselves, used only as the key that re-runs the
      * lookup.
@@ -1142,7 +1142,7 @@ private fun PdfPage(
     onSelectCancel: () -> Unit,
     /** Called with -1 or +1 when a magnified page is pushed past its edge. */
     onTurnPage: (Int) -> Unit,
-    lookupHighlights: List<RectF>,
+    lookupHighlights: List<Rect>,
     highlightColor: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -1209,8 +1209,8 @@ private fun PdfPage(
                 // offset maps to bitmap pixels by a single scale factor with no
                 // letterboxing to compensate for.
                 var drawnSize by remember { mutableStateOf(IntSize.Zero) }
-                var searchRects by remember(index, rendered) { mutableStateOf(emptyList<RectF>()) }
-                var savedRects by remember(index, rendered) { mutableStateOf(emptyList<RectF>()) }
+                var searchRects by remember(index, rendered) { mutableStateOf(emptyList<Rect>()) }
+                var savedRects by remember(index, rendered) { mutableStateOf(emptyList<Rect>()) }
 
                 LaunchedEffect(index, rendered, drawnSize, searchMatch) {
                     searchRects = if (searchMatch != null && drawnSize.width > 0) {
@@ -1398,10 +1398,10 @@ private fun PdfPage(
                             // selection is rounded for the same reason.
                             val corner = CornerRadius(HighlightCorner.toPx())
 
-                            fun mark(box: RectF, color: Color) = drawRoundRect(
+                            fun mark(box: Rect, color: Color) = drawRoundRect(
                                 color = color,
                                 topLeft = Offset(box.left * scaleX, box.top * scaleY),
-                                size = Size(box.width() * scaleX, box.height() * scaleY),
+                                size = Size(box.width * scaleX, box.height * scaleY),
                                 cornerRadius = corner,
                             )
 
@@ -1418,7 +1418,7 @@ private fun PdfPage(
                                         box.left * scaleX,
                                         box.bottom * scaleY - underline,
                                     ),
-                                    size = Size(box.width() * scaleX, underline),
+                                    size = Size(box.width * scaleX, underline),
                                     cornerRadius = CornerRadius(underline / 2f),
                                 )
                             }

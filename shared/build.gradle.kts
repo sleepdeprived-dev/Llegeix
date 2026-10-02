@@ -54,6 +54,8 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.mlkit.translate)
+            // PDFium, the engine both platforms render with; the Mac loads it itself.
+            implementation(libs.pdfiumandroid)
             implementation(libs.androidx.activity.compose)
         }
         val desktopMain by getting {
@@ -97,11 +99,15 @@ compose.resources {
     generateResClass = always
 }
 
-// The Mac's translator in tests: the development build from tools/macos, and the
-// models already fetched there, so the suite neither downloads nor touches the
-// real Application Support. The tests skip when that build is absent.
+// The Mac's translator and PDFium in tests: the development builds from
+// tools/macos, and the models already fetched there, so the suite neither
+// downloads nor touches the real Application Support. The tests skip when
+// those builds are absent.
 tasks.withType<Test>().configureEach {
     val tools = rootProject.layout.projectDirectory.dir("tools/macos/build").asFile
     systemProperty("llegeix.bergamot", tools.resolve("bergamot-translator/build/app/bergamot").path)
+    systemProperty("llegeix.pdfium", tools.resolve("pdfium/lib/libpdfium.dylib").path)
+    // PDFium is called through the JDK's foreign function interface.
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
     systemProperty("llegeix.testModels", tools.resolve("models").path)
 }
