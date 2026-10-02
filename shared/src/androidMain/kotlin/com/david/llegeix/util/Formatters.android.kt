@@ -1,15 +1,15 @@
 package com.david.llegeix.util
 
-import android.content.Context
 import android.text.format.DateUtils
 import android.text.format.Formatter
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 
-/** "1.4 MB", localised. Blank when the provider reported no size. */
-fun formatSize(context: Context, bytes: Long): String =
-    if (bytes <= 0L) "" else Formatter.formatShortFileSize(context, bytes)
+@Composable
+actual fun formatSize(bytes: Long): String =
+    if (bytes <= 0L) "" else Formatter.formatShortFileSize(LocalContext.current, bytes)
 
-/** "Yesterday", "12 Mar" — blank when the provider reported no timestamp. */
-fun formatModified(millis: Long): String =
+actual fun formatModified(millis: Long): String =
     if (millis <= 0L) {
         ""
     } else {

@@ -1,18 +1,18 @@
 package com.david.llegeix.ui.sources
 
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
+import com.david.llegeix.platform.ContentRef
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.source.FolderRules
 import com.david.llegeix.data.source.GrantedFolder
 import com.david.llegeix.data.source.LibraryDataRepository
-import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.data.source.PdfLibrary
 import com.david.llegeix.data.source.SourceFolder
 import com.david.llegeix.data.source.folderTreeUnder
 import com.david.llegeix.util.runCatchingCancellable
@@ -66,7 +66,7 @@ data class SourcesUiState(
  * the saved work.
  */
 class SourcesViewModel(
-    private val repository: PdfRepository,
+    private val repository: PdfLibrary,
     private val libraryData: LibraryDataRepository,
     private val settings: SettingsRepository,
 ) : ViewModel() {
@@ -190,13 +190,13 @@ class SourcesViewModel(
         refresh()
     }
 
-    fun onFolderPicked(treeUri: Uri) {
-        repository.addFolder(treeUri)
+    fun onFolderPicked(folder: ContentRef) {
+        repository.addFolder(folder)
         refresh()
     }
 
-    fun onFilesPicked(uris: List<Uri>) {
-        uris.forEach(repository::addPickedFile)
+    fun onFilesPicked(files: List<ContentRef>) {
+        files.forEach(repository::addPickedFile)
         refresh()
     }
 
@@ -224,7 +224,7 @@ class SourcesViewModel(
             .map { root ->
                 val tree = folderTreeUnder(root, loose, rules)
                 SourceGroup(
-                    folder = GrantedFolder(Uri.EMPTY, root),
+                    folder = GrantedFolder("", root),
                     tree = tree,
                     visibleCount = loose.count { document ->
                         val path = document.parentLabel ?: return@count false
@@ -262,10 +262,9 @@ class SourcesViewModel(
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 SourcesViewModel(
-                    app.pdfRepository,
+                    app.pdfLibrary,
                     app.libraryDataRepository,
                     app.settingsRepository,
                 )

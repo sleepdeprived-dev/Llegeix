@@ -1,10 +1,8 @@
 package com.david.llegeix.pdf
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.util.LruCache
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.core.net.toUri
+import androidx.compose.ui.graphics.ImageBitmap
+import com.david.llegeix.platform.byteCount
+import com.david.llegeix.util.LruCache
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -21,10 +19,13 @@ import kotlinx.coroutines.sync.withPermit
  * will not open the second time either, and retrying on every recomposition
  * would turn one broken file into a permanent background load.
  */
-class PdfThumbnails(private val context: Context) {
+class PdfThumbnails(
+    /** Opens a document for its first page: the phone's or the Mac's renderer. */
+    private val open: suspend (uriString: String) -> PdfPageRenderer,
+) {
 
-    private val cache = object : LruCache<String, Bitmap>(CACHE_BYTES) {
-        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    private val cache = object : LruCache<String, ImageBitmap>(CACHE_BYTES) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int = value.byteCount()
     }
 
     /** URIs already known not to render, so they are not attempted again. */
@@ -32,13 +33,13 @@ class PdfThumbnails(private val context: Context) {
 
     private val openLimit = Semaphore(MAX_CONCURRENT_OPENS)
 
-    fun cached(uriString: String, widthPx: Int): Bitmap? = cache.get(key(uriString, widthPx))
+    fun cached(uriString: String, widthPx: Int): ImageBitmap? = cache.get(key(uriString, widthPx))
 
     /**
      * The cover for [uriString], rendering it if this is the first request.
      * Null when the document cannot be opened or has no pages.
      */
-    suspend fun load(uriString: String, widthPx: Int): Bitmap? {
+    suspend fun load(uriString: String, widthPx: Int): ImageBitmap? {
         if (widthPx <= 0) return null
         val key = key(uriString, widthPx)
         cache.get(key)?.let { return it }
@@ -49,8 +50,8 @@ class PdfThumbnails(private val context: Context) {
             // document while the first one is still rendering it.
             cache.get(key)?.let { return@withPermit it }
             runCatchingCancellable {
-                PdfiumPageRenderer.open(context, uriString.toUri()).use { renderer ->
-                    if (renderer.pageCount <= 0) null else renderer.renderPage(0, widthPx).asAndroidBitmap()
+                open(uriString).use { renderer ->
+                    if (renderer.pageCount <= 0) null else renderer.renderPage(0, widthPx)
                 }
             }.getOrNull()
         }

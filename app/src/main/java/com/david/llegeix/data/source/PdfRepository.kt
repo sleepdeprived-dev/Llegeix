@@ -2,24 +2,10 @@ package com.david.llegeix.data.source
 
 import android.content.Context
 import com.david.llegeix.data.settings.SettingsRepository
-import android.net.Uri
-import com.david.llegeix.data.model.PdfDocument
-import com.david.llegeix.data.model.PdfOrigin
+import androidx.core.net.toUri
+import com.david.llegeix.platform.ContentRef
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-
-/** The result of one full discovery pass. */
-data class LibrarySnapshot(
-    val documents: List<PdfDocument> = emptyList(),
-    val grantedFolders: List<GrantedFolder> = emptyList(),
-    val deviceScanEnabled: Boolean = false,
-)
-
-/**
- * Picked files are merged on the folder side because they share the property
- * that matters: an explicitly granted URI outlives All Files Access, so it is
- * the handle worth keeping when the device sweep finds the same file.
- */
 
 /**
  * Single entry point the UI uses to find PDFs, hiding the fact that there are
@@ -38,7 +24,7 @@ class PdfRepository(
      * Null in tests, where the sweep is always allowed to run.
      */
     private val settings: SettingsRepository? = null,
-) {
+) : PdfLibrary {
 
     constructor(context: Context, settings: SettingsRepository) : this(
         SafPdfSource(context.applicationContext),
@@ -47,37 +33,28 @@ class PdfRepository(
         settings,
     )
 
-    fun grantedFolders(): List<GrantedFolder> = safSource.grantedFolders()
+    override fun grantedFolders(): List<GrantedFolder> = safSource.grantedFolders()
 
     /** Whether Android currently allows the whole-device sweep at all. */
-    fun isDeviceScanPermitted(): Boolean = deviceSource.isAvailable()
+    override fun isDeviceScanPermitted(): Boolean = deviceSource.isAvailable()
 
-    /** Whether the sweep is both permitted and switched on. */
-    fun isDeviceScanEnabled(): Boolean =
+    override fun isDeviceScanEnabled(): Boolean =
         isDeviceScanPermitted() && settings?.current?.deviceScanOptOut != true
 
-    fun addFolder(treeUri: Uri) = safSource.persistGrant(treeUri)
+    override fun addFolder(folder: ContentRef) = safSource.persistGrant(folder.uri)
 
-    fun removeFolder(treeUri: Uri) = safSource.releaseGrant(treeUri)
+    override fun removeFolder(treeUri: String) = safSource.releaseGrant(treeUri.toUri())
 
-    /** Keep a PDF picked file-by-file, including one from a cloud provider. */
-    fun addPickedFile(uri: Uri) = pickedFileSource.persistGrant(uri)
+    override fun addPickedFile(file: ContentRef) = pickedFileSource.persistGrant(file.uri)
 
-    fun removePickedFile(uri: Uri) = pickedFileSource.releaseGrant(uri)
-
-    /**
-     * Files picked one by one and still kept. Counted as present even when the
-     * scan could not read them — a cloud drive offline for a moment is not the
-     * reader removing the file, and must not cost it its place in a collection.
-     */
-    fun pickedUris(): Set<String> = pickedFileSource.grantedUris().toSet()
+    override fun pickedUris(): Set<String> = pickedFileSource.grantedUris().toSet()
 
     /**
      * Run both sources and merge them. The two run concurrently because the
      * device sweep is by far the slower of the pair and there is no reason to
      * make the folder walk wait behind it.
      */
-    suspend fun loadLibrary(): LibrarySnapshot = coroutineScope {
+    override suspend fun loadLibrary(): LibrarySnapshot = coroutineScope {
         val fromFolders = async { safSource.findPdfs() }
         val fromDevice = async {
             if (isDeviceScanEnabled()) deviceSource.findPdfs() else emptyList()
@@ -94,32 +71,4 @@ class PdfRepository(
             deviceScanEnabled = isDeviceScanEnabled(),
         )
     }
-}
-
-/**
- * Collapse files seen by both sources, keeping the granted-folder copy.
- *
- * That preference matters: a SAF document URI keeps working after the user
- * revokes All Files Access, whereas the MediaStore URI for the same file stops
- * resolving. Keeping the more durable handle means turning the device scan off
- * later does not break documents the user has already opened.
- *
- * Top-level and internal rather than a private method so it can be tested
- * directly, without standing up a Context.
- */
-internal fun mergePdfDocuments(
-    fromFolders: List<PdfDocument>,
-    fromDevice: List<PdfDocument>,
-): List<PdfDocument> {
-    val byKey = LinkedHashMap<String, PdfDocument>(fromFolders.size + fromDevice.size)
-    for (document in fromFolders) {
-        byKey[document.dedupeKey] = document
-    }
-    for (document in fromDevice) {
-        val existing = byKey[document.dedupeKey]
-        if (existing == null || existing.origin != PdfOrigin.GRANTED_FOLDER) {
-            byKey[document.dedupeKey] = document
-        }
-    }
-    return byKey.values.toList()
 }

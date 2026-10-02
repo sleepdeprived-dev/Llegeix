@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.flashcards
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -1221,7 +1222,7 @@ private fun BackupSheet(isBusy: Boolean, onExport: () -> Unit, onRestore: () -> 
             style = MaterialTheme.typography.titleLarge,
         )
         Text(
-            text = stringResource(Res.string.flashcards_backup_body),
+            text = stringResource(onThisDevice(Res.string.flashcards_backup_body, Res.string.flashcards_backup_body_mac)),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = Space.sm),

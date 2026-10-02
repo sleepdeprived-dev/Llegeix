@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.dictionary
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -389,7 +390,7 @@ private fun WordEntry(
                 modifier = Modifier.padding(top = Space.xl),
             ) {
                 OutlinedButton(onClick = onRetryOnAnyNetwork) {
-                    Text(stringResource(Res.string.lookup_use_mobile_data))
+                    Text(stringResource(onThisDevice(Res.string.lookup_use_mobile_data, Res.string.lookup_use_mobile_data_mac)))
                 }
             }
         }

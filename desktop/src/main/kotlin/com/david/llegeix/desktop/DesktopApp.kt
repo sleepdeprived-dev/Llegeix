@@ -11,7 +11,18 @@ import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.desktopSearchHistory
 import com.david.llegeix.data.settings.desktopSettingsRepository
+import com.david.llegeix.data.source.DesktopPdfLibrary
 import com.david.llegeix.data.source.LibraryDataRepository
+import com.david.llegeix.data.source.desktopPdfLibrary
+import com.david.llegeix.pdf.PdfPageRenderer
+import com.david.llegeix.pdf.PdfThumbnails
+import com.david.llegeix.pdf.PdfiumPageRenderer
+import com.david.llegeix.pdf.open
+import com.david.llegeix.update.AppUpdates
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import java.io.File
+import java.net.URI
 import com.david.llegeix.lang.ApertureLexicon
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.Speech
@@ -62,4 +73,21 @@ object DesktopApp : AppServices {
 
     /** What has been looked up lately, in the dictionary and the saved words. */
     override val searchHistoryRepository: SearchHistoryRepository by lazy { desktopSearchHistory() }
+
+    /** Folders chosen, files chosen, and Spotlight. */
+    override val pdfLibrary: DesktopPdfLibrary by lazy { desktopPdfLibrary(settingsRepository) }
+
+    override val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(::openPdf) }
+
+    /**
+     * Nothing waiting, and nothing looked for: what the Mac app does about new
+     * versions is decided with Configuració, which is where it would be shown.
+     */
+    override val updates: AppUpdates = object : AppUpdates {
+        override val updateWaiting: StateFlow<Boolean> = MutableStateFlow(false)
+        override suspend fun checkQuietly() = Unit
+    }
+
+    override suspend fun openPdf(uriString: String): PdfPageRenderer =
+        PdfiumPageRenderer.open(File(URI(uriString)))
 }

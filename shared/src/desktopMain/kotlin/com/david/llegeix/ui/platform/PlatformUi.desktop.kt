@@ -5,7 +5,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import com.david.llegeix.data.source.DesktopPdfLibrary
 import com.david.llegeix.platform.ContentRef
+import com.david.llegeix.platform.Services
 import java.awt.FileDialog
 import java.awt.Frame
 import java.io.File
@@ -41,6 +43,55 @@ actual fun rememberDocumentOpener(onOpened: (ContentRef) -> Unit): (Array<String
     }
 }
 
+/** The Mac's open panel, turned to choosing a folder. */
+@Composable
+actual fun rememberFolderPicker(onPicked: (ContentRef) -> Unit): () -> Unit {
+    val current by rememberUpdatedState(onPicked)
+    return remember {
+        {
+            // Read by the panel as it opens; put back so other panels choose files.
+            System.setProperty(FOLDERS_PROPERTY, "true")
+            try {
+                choose(FileDialog.LOAD, title = null, suggested = null)
+            } finally {
+                System.setProperty(FOLDERS_PROPERTY, "false")
+            }?.let { current(ContentRef(it)) }
+        }
+    }
+}
+
+/** The Mac's open panel, for PDFs, several at once. */
+@Composable
+actual fun rememberPdfFilesPicker(onPicked: (List<ContentRef>) -> Unit): () -> Unit {
+    val current by rememberUpdatedState(onPicked)
+    return remember {
+        {
+            val dialog = FileDialog(null as Frame?, "", FileDialog.LOAD).apply {
+                isMultipleMode = true
+                setFilenameFilter { _, name -> name.endsWith(".pdf", ignoreCase = true) }
+                isVisible = true
+            }
+            current(dialog.files.map(::ContentRef))
+        }
+    }
+}
+
+/**
+ * Spotlight answers without asking macOS for anything, so the reader choosing
+ * the sweep is the permission. It is kept beside the library's other choices.
+ */
+@Composable
+actual fun rememberDeviceScanRequest(onReturn: () -> Unit): () -> Boolean {
+    val current by rememberUpdatedState(onReturn)
+    return remember {
+        {
+            (Services.app.pdfLibrary as? DesktopPdfLibrary)?.allowDeviceScan()
+            current()
+            true
+        }
+    }
+}
+
 private fun choose(mode: Int, title: String?, suggested: String?, accept: ((String) -> Boolean)? = null): File? {
     val dialog = FileDialog(null as Frame?, title ?: "", mode).apply {
         if (suggested != null) file = suggested
@@ -50,6 +101,8 @@ private fun choose(mode: Int, title: String?, suggested: String?, accept: ((Stri
     val name = dialog.file ?: return null
     return File(dialog.directory, name)
 }
+
+private const val FOLDERS_PROPERTY = "apple.awt.fileDialogForDirectories"
 
 private val PICTURE_EXTENSIONS = setOf("jpg", "jpeg", "png", "heic", "heif", "webp", "gif", "bmp", "tif", "tiff")
 

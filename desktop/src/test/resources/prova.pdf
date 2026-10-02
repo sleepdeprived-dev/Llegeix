@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /Outlines 7 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 9 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 137 >>
+stream
+BT /F1 24 Tf 72 760 Td (La finestra del menjador) Tj 0 -32 Td (Ell parlava amb intel·ligència) Tj 0 -32 Td (La finestra era oberta) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Contents 6 0 R /Resources << /Font << /F1 9 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 51 >>
+stream
+BT /F1 24 Tf 320 290 Td (Al mig de la pàgina) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Outlines /First 8 0 R /Last 10 0 R /Count 2 >>
+endobj
+8 0 obj
+<< /Title (Primer capítol) /Parent 7 0 R /Next 10 0 R /Dest [3 0 R /Fit] >>
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+10 0 obj
+<< /Title (Segon) /Parent 7 0 R /Prev 8 0 R /Dest [5 0 R /Fit] >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000074 00000 n 
+0000000137 00000 n 
+0000000263 00000 n 
+0000000451 00000 n 
+0000000577 00000 n 
+0000000678 00000 n 
+0000000750 00000 n 
+0000000841 00000 n 
+0000000938 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+1020
+%%EOF

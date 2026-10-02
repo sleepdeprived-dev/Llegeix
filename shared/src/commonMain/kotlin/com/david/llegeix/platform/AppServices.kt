@@ -5,7 +5,11 @@ import com.david.llegeix.data.flashcards.PictureSearch
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.source.LibraryDataRepository
+import com.david.llegeix.data.source.PdfLibrary
 import com.david.llegeix.lang.Speech
+import com.david.llegeix.pdf.PdfPageRenderer
+import com.david.llegeix.pdf.PdfThumbnails
+import com.david.llegeix.update.AppUpdates
 
 /**
  * What the app keeps for its lifetime, provided by the platform when it starts:
@@ -22,6 +26,15 @@ interface AppServices {
     val pictureSearch: PictureSearch
     val libraryDataRepository: LibraryDataRepository
     val searchHistoryRepository: SearchHistoryRepository
+    val pdfLibrary: PdfLibrary
+    val pdfThumbnails: PdfThumbnails
+    val updates: AppUpdates
+
+    /**
+     * Open the PDF behind [uriString] for rendering: a content Uri on the
+     * phone, a file URI on the Mac. Throws IOException when it cannot be read.
+     */
+    suspend fun openPdf(uriString: String): PdfPageRenderer
 }
 
 object Services {

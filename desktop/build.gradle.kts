@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(compose.desktop.currentOs)
     implementation(libs.compose.mp.material3)
+    implementation(libs.compose.mp.material.icons.core)
     implementation(libs.compose.mp.navigation.compose)
     // Dispatchers.Main on the Mac is the Swing event thread; the ViewModels run on it.
     implementation(libs.kotlinx.coroutines.swing)

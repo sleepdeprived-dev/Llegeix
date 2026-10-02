@@ -1,6 +1,6 @@
 package com.david.llegeix.ui.sources
 
-import androidx.activity.compose.rememberLauncherForActivityResult
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.HorizontalDivider
@@ -8,7 +8,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -63,7 +61,7 @@ import com.david.llegeix.data.source.SourceFolder
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.Space
-import com.david.llegeix.util.allFilesAccessIntents
+import com.david.llegeix.ui.platform.rememberDeviceScanRequest
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -103,23 +101,17 @@ fun SourcesSheet(
 ) {
     val state by viewModel.uiState.collectAsState()
     var removing by remember { mutableStateOf<GrantedFolder?>(null) }
-    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(focusSource) {
         if (focusSource != null) viewModel.onExpand(focusSource)
     }
 
-    // The result code is meaningless here; the rescan on return is what picks
-    // up a grant that was just given.
-    val settingsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { viewModel.refresh() }
+    // The rescan on return is what picks up a grant that was just given.
+    val deviceScanRequest = rememberDeviceScanRequest(onReturn = viewModel::refresh)
 
     fun openDeviceScanSettings() {
-        allFilesAccessIntents(context).any { intent ->
-            runCatching { settingsLauncher.launch(intent) }.isSuccess
-        }
+        deviceScanRequest()
     }
 
     AppBottomSheet(
@@ -175,7 +167,7 @@ fun SourcesSheet(
             // The sweep and what it found, as one section of their own: the
             // same cards as the granted folders, but a different kind of
             // place, so a heading says whose they are.
-            item(key = "device-label") { SectionLabel(stringResource(Res.string.sources_section_device)) }
+            item(key = "device-label") { SectionLabel(stringResource(onThisDevice(Res.string.sources_section_device, Res.string.sources_section_device_mac))) }
 
             item(key = "device-scan") {
                 DeviceScanCard(
@@ -238,7 +230,7 @@ fun SourcesSheet(
             // because they are not degrees of the same thing. Hiding is
             // reversible from this very list; forgetting means finding the
             // folder in the system picker again.
-            text = { Text(stringResource(Res.string.sources_remove_body)) },
+            text = { Text(stringResource(onThisDevice(Res.string.sources_remove_body, Res.string.sources_remove_body_mac))) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -299,7 +291,7 @@ private fun SheetHeader(shown: Int, isScanning: Boolean) {
             }
         }
         Text(
-            text = stringResource(Res.string.sources_explainer),
+            text = stringResource(onThisDevice(Res.string.sources_explainer, Res.string.sources_explainer_mac)),
             style = MaterialTheme.typography.bodySmall,
             color = scheme.onSurfaceVariant,
             modifier = Modifier.padding(top = Space.md),
@@ -642,7 +634,7 @@ private fun DeviceScanCard(
                 .background(if (isOn) scheme.secondaryContainer else scheme.surfaceContainerHighest),
         ) {
             Icon(
-                painter = painterResource(Res.drawable.ic_device),
+                painter = painterResource(onThisDevice(Res.drawable.ic_device, Res.drawable.ic_device_mac)),
                 contentDescription = null,
                 tint = if (isOn) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
@@ -654,12 +646,12 @@ private fun DeviceScanCard(
                 .padding(start = Space.md, end = Space.sm),
         ) {
             Text(
-                text = stringResource(Res.string.action_scan_device),
+                text = stringResource(onThisDevice(Res.string.action_scan_device, Res.string.action_scan_device_mac)),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             )
             Text(
                 text = when {
-                    !permitted -> stringResource(Res.string.library_device_scan_off)
+                    !permitted -> stringResource(onThisDevice(Res.string.library_device_scan_off, Res.string.library_device_scan_off_mac))
                     enabled -> pluralStringResource(Res.plurals.folders_pdf_count, count, count)
                     else -> stringResource(Res.string.sources_scan_paused)
                 },

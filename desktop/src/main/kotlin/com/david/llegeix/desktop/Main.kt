@@ -51,7 +51,7 @@ import java.util.Locale
  *
  * A window in the phone's own theme, following the saved settings (the Mac's
  * own accent until another is chosen), with the four sections the phone has.
- * Diccionari and Targetes are here; the others follow. Everything in it comes from the shared module; the sections fill in
+ * Biblioteca, Diccionari and Targetes are here; Desat follows. Everything in it comes from the shared module; the sections fill in
  * as their screens move there.
  */
 fun main() {
@@ -64,6 +64,7 @@ fun main() {
 
 @Composable
 private fun ApplicationScope.App() {
+    val library = rememberNavController()
     val flashcards = rememberNavController()
     var section by rememberSaveable { mutableStateOf(Section.LIBRARY) }
     Window(
@@ -74,7 +75,11 @@ private fun ApplicationScope.App() {
         onKeyEvent = { event ->
             if (event.type == KeyEventType.KeyDown && event.key == Key.Escape) {
                 DesktopBack.dispatch() ||
-                    (section == Section.FLASHCARDS && flashcards.popBackStack())
+                    when (section) {
+                        Section.LIBRARY -> library.goBack()
+                        Section.FLASHCARDS -> flashcards.goBack()
+                        else -> false
+                    }
             } else {
                 false
             }
@@ -88,10 +93,16 @@ private fun ApplicationScope.App() {
             accent = settings.accent,
             customAccent = settings.customAccent,
         ) {
-            Shell(section, onSection = { section = it }, flashcards)
+            Shell(section, onSection = { section = it }, library, flashcards)
         }
     }
 }
+
+/**
+ * Back a screen, or false on a section's first screen, which popping would
+ * leave blank.
+ */
+private fun NavHostController.goBack(): Boolean = previousBackStackEntry != null && popBackStack()
 
 /** The four sections, in the phone's order. */
 private enum class Section(val label: StringResource) {
@@ -105,6 +116,7 @@ private enum class Section(val label: StringResource) {
 private fun Shell(
     section: Section,
     onSection: (Section) -> Unit,
+    library: NavHostController,
     flashcards: NavHostController,
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
@@ -126,6 +138,7 @@ private fun Shell(
             }
             Box(Modifier.weight(1f).fillMaxWidth().padding(top = Space.md)) {
                 when (section) {
+                    Section.LIBRARY -> LibraryHost(library)
                     Section.DICTIONARY -> DictionaryScreen()
                     Section.FLASHCARDS -> FlashcardsHost(flashcards)
                     else -> EmptyState(

@@ -21,6 +21,23 @@ expect fun rememberDocumentCreator(mimeType: String, onCreated: (ContentRef) -> 
 @Composable
 expect fun rememberDocumentOpener(onOpened: (ContentRef) -> Unit): (mimeTypes: Array<String>) -> Unit
 
+/** A launcher for choosing a folder of PDFs to keep watched. */
+@Composable
+expect fun rememberFolderPicker(onPicked: (ContentRef) -> Unit): () -> Unit
+
+/** A launcher for choosing PDFs one by one, several at a time. */
+@Composable
+expect fun rememberPdfFilesPicker(onPicked: (List<ContentRef>) -> Unit): () -> Unit
+
+/**
+ * A launcher for leave to sweep the whole device for PDFs: All Files Access in
+ * Android's Settings on the phone; on the Mac, where Spotlight needs no
+ * permission, the reader's say-so. [onReturn] runs once they are back. The
+ * launcher answers whether it could ask at all.
+ */
+@Composable
+expect fun rememberDeviceScanRequest(onReturn: () -> Unit): () -> Boolean
+
 /** Going back: the system back gesture on the phone, Escape on the Mac. */
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)

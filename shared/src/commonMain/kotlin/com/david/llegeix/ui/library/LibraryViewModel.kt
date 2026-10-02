@@ -1,12 +1,12 @@
 package com.david.llegeix.ui.library
 
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
+import com.david.llegeix.platform.ContentRef
 import com.david.llegeix.data.settings.AppFlag
 import com.david.llegeix.data.settings.ContinueShelf
 import com.david.llegeix.data.settings.LibraryLayout
@@ -25,13 +25,13 @@ import com.david.llegeix.data.db.entity.TagEntity
 import com.david.llegeix.data.source.DocumentNames
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.FolderRules
-import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.data.source.PdfLibrary
 import com.david.llegeix.data.source.LibrarySnapshot
 import com.david.llegeix.data.source.applyFolderRules
 import com.david.llegeix.data.source.documentsIn
 import com.david.llegeix.data.source.foldersIn
 import com.david.llegeix.data.source.nearestLivePath
-import com.david.llegeix.update.UpdateRepository
+import com.david.llegeix.update.AppUpdates
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,11 +46,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class LibraryViewModel(
-    private val repository: PdfRepository,
+    private val repository: PdfLibrary,
     private val libraryData: LibraryDataRepository,
     private val settings: SettingsRepository,
     private val searchHistory: SearchHistoryRepository,
-    private val updates: UpdateRepository,
+    private val updates: AppUpdates,
 ) : ViewModel() {
 
     /**
@@ -268,6 +268,12 @@ class LibraryViewModel(
             assignments.mapNotNull { (uri, id) -> byId[id]?.let { uri to it.name } }.toMap()
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+    // Declared ahead of the init block below, whose collectors write to it:
+    // properties are set up in the order they are written, and a collector
+    // that answered at once would otherwise find it not yet there.
+    private val _uiState = MutableStateFlow(LibraryUiState())
+    val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
+
     init {
         // Bookmark and read-later flags live in the database while the document
         // list comes from storage, so they are collected separately and matched
@@ -289,9 +295,6 @@ class LibraryViewModel(
             }
         }
     }
-
-    private val _uiState = MutableStateFlow(LibraryUiState())
-    val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
     /** Unfiltered scan result; the state holds the filtered view of this. */
     private var allDocuments: List<PdfDocument> = emptyList()
@@ -412,16 +415,16 @@ class LibraryViewModel(
         viewModelScope.launch { libraryData.forgetMissing(present) }
     }
 
-    fun onFolderPicked(treeUri: Uri) {
-        repository.addFolder(treeUri)
+    fun onFolderPicked(folder: ContentRef) {
+        repository.addFolder(folder)
         syncSources()
         refresh()
     }
 
     /** Files chosen from the PDF-only document picker, cloud sources included. */
-    fun onFilesPicked(uris: List<Uri>) {
-        if (uris.isEmpty()) return
-        uris.forEach(repository::addPickedFile)
+    fun onFilesPicked(files: List<ContentRef>) {
+        if (files.isEmpty()) return
+        files.forEach(repository::addPickedFile)
         syncSources()
         refresh()
     }
@@ -449,7 +452,7 @@ class LibraryViewModel(
         )
     }
 
-    fun onFolderRemoved(treeUri: Uri) {
+    fun onFolderRemoved(treeUri: String) {
         repository.removeFolder(treeUri)
         syncSources()
         refresh()
@@ -651,13 +654,13 @@ class LibraryViewModel(
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as LlegeixApp
+                val app = Services.app
                 LibraryViewModel(
-                    app.pdfRepository,
+                    app.pdfLibrary,
                     app.libraryDataRepository,
                     app.settingsRepository,
                     app.searchHistoryRepository,
-                    app.updateRepository,
+                    app.updates,
                 )
             }
         }

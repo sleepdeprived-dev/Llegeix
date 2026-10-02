@@ -20,7 +20,13 @@ import com.david.llegeix.data.flashcards.FlashcardImages
 import com.david.llegeix.data.flashcards.FlashcardPrefs
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureSearch
+import com.david.llegeix.data.source.PdfLibrary
+import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.pdf.PdfThumbnails
+import com.david.llegeix.pdf.PdfiumPageRenderer
+import com.david.llegeix.pdf.open
+import androidx.core.net.toUri
+import com.david.llegeix.update.AppUpdates
 import com.david.llegeix.update.UpdateRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +83,11 @@ class LlegeixApp : Application(), AppServices {
 
     val pdfRepository: PdfRepository by lazy { PdfRepository(this, settingsRepository) }
 
+    override val pdfLibrary: PdfLibrary get() = pdfRepository
+
+    override suspend fun openPdf(uriString: String): PdfPageRenderer =
+        PdfiumPageRenderer.open(this, uriString.toUri())
+
     /**
      * The one database, shared.
      *
@@ -105,7 +116,7 @@ class LlegeixApp : Application(), AppServices {
     override val pictureSearch: PictureSearch by lazy { PictureSearch(appFiles) }
 
     /** First-page covers for the library, shared so the cache outlives a screen. */
-    val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(this) }
+    override val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(::openPdf) }
 
     /** Puts the app back to how it was before it was ever opened. */
     val dataEraser: DataEraser by lazy {
@@ -140,6 +151,8 @@ class LlegeixApp : Application(), AppServices {
 
     /** The app's only way of learning that a newer version of itself exists. */
     val updateRepository: UpdateRepository by lazy { UpdateRepository(this) }
+
+    override val updates: AppUpdates get() = updateRepository
 
     private companion object {
         /** Where exam papers were copied to, before v4.1 dropped the feature. */

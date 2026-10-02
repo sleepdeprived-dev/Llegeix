@@ -1,8 +1,6 @@
 package com.david.llegeix.ui.library
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.BackHandler
-import androidx.activity.result.contract.ActivityResultContracts
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -70,7 +68,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -103,14 +100,14 @@ import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
 import com.david.llegeix.ui.folders.FolderNameDialog
 import com.david.llegeix.ui.sources.SourcesSheet
-import com.david.llegeix.util.allFilesAccessIntents
+import com.david.llegeix.ui.platform.PlatformBackHandler
+import com.david.llegeix.ui.platform.rememberDeviceScanRequest
+import com.david.llegeix.ui.platform.rememberFolderPicker
+import com.david.llegeix.ui.platform.rememberPdfFilesPicker
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlinx.coroutines.launch
-
-/** What the file picker will offer, so a photo cannot be added as a book. */
-private const val PDF_MIME_TYPE = "application/pdf"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -138,7 +135,6 @@ fun LibraryScreen(
     var isSearchFocused by remember { mutableStateOf(false) }
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val folders by viewModel.folders.collectAsState()
@@ -169,7 +165,7 @@ fun LibraryScreen(
 
     // Back goes up a folder before it leaves the library. Anything else makes
     // going three folders deep a thing you need a plan to get out of.
-    BackHandler(enabled = state.isBrowsing && state.path != null) {
+    PlatformBackHandler(enabled = state.isBrowsing && state.path != null) {
         viewModel.onNavigateUp()
     }
 
@@ -184,25 +180,17 @@ fun LibraryScreen(
         viewModel.checkForUpdatesQuietly()
     }
 
-    val folderPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree(),
-    ) { treeUri -> if (treeUri != null) viewModel.onFolderPicked(treeUri) }
+    val folderPicker = rememberFolderPicker(viewModel::onFolderPicked)
 
-    val filePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments(),
-    ) { uris -> viewModel.onFilesPicked(uris) }
+    val filePicker = rememberPdfFilesPicker(viewModel::onFilesPicked)
 
-    // The result code is meaningless for the Settings screen; ON_RESUME above
-    // is what actually picks up the new grant.
-    val settingsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { }
+    // On the phone ON_RESUME above is what picks up the new grant; the Mac
+    // has no Settings screen to come back from, so it looks again at once.
+    val deviceScanRequest = rememberDeviceScanRequest(onReturn = viewModel::syncSources)
 
     val settingsUnavailable = stringResource(Res.string.library_settings_unavailable)
     fun openAllFilesSettings() {
-        val opened = allFilesAccessIntents(context).any { intent ->
-            runCatching { settingsLauncher.launch(intent) }.isSuccess
-        }
+        val opened = deviceScanRequest()
         if (!opened) {
             scope.launch { snackbarHostState.showSnackbar(settingsUnavailable) }
         }
@@ -420,11 +408,11 @@ fun LibraryScreen(
             onDismiss = { showAddDocuments = false },
             onAddFolder = {
                 showAddDocuments = false
-                folderPicker.launch(null)
+                folderPicker()
             },
             onAddFiles = {
                 showAddDocuments = false
-                filePicker.launch(arrayOf(PDF_MIME_TYPE))
+                filePicker()
             },
             onScanDevice = {
                 showAddDocuments = false
@@ -460,7 +448,7 @@ fun LibraryScreen(
         AlertDialog(
             onDismissRequest = { hidingFolder = null },
             title = { Text(stringResource(Res.string.library_folder_hide_title, folder.name)) },
-            text = { Text(stringResource(Res.string.library_folder_hide_body)) },
+            text = { Text(stringResource(onThisDevice(Res.string.library_folder_hide_body, Res.string.library_folder_hide_body_mac))) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -776,7 +764,7 @@ private fun DocumentNameDialog(
                     singleLine = true,
                 )
                 Text(
-                    text = stringResource(Res.string.document_rename_body),
+                    text = stringResource(onThisDevice(Res.string.document_rename_body, Res.string.document_rename_body_mac)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = Space.md),
@@ -1020,7 +1008,7 @@ private fun LibraryBody(
         // saying what they do, folder first.
         !state.hasAnySource -> EmptyState(
             title = stringResource(Res.string.library_welcome_title),
-            body = stringResource(Res.string.library_welcome_body),
+            body = stringResource(onThisDevice(Res.string.library_welcome_body, Res.string.library_welcome_body_mac)),
             icon = painterResource(Res.drawable.ic_library),
             modifier = modifier,
             primaryAction = {
@@ -1058,7 +1046,7 @@ private fun LibraryBody(
             )
             EmptyState(
                 title = stringResource(Res.string.library_empty_title),
-                body = stringResource(Res.string.library_empty_body),
+                body = stringResource(onThisDevice(Res.string.library_empty_body, Res.string.library_empty_body_mac)),
                 icon = painterResource(Res.drawable.ic_library),
                 // Weighted rather than filling: the shelves above have already
                 // taken height, and an empty state that insists on the whole
@@ -1384,9 +1372,9 @@ private fun AddDocumentsSheet(
             )
             if (!deviceScanEnabled) {
                 AddDocumentsOption(
-                    icon = painterResource(Res.drawable.ic_device),
-                    title = stringResource(Res.string.action_scan_device),
-                    body = stringResource(Res.string.sources_add_device_body),
+                    icon = painterResource(onThisDevice(Res.drawable.ic_device, Res.drawable.ic_device_mac)),
+                    title = stringResource(onThisDevice(Res.string.action_scan_device, Res.string.action_scan_device_mac)),
+                    body = stringResource(onThisDevice(Res.string.sources_add_device_body, Res.string.sources_add_device_body_mac)),
                     onClick = onScanDevice,
                 )
             }

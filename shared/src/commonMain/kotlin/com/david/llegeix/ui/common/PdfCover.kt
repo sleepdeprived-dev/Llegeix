@@ -20,14 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
 import com.david.llegeix.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -55,10 +53,7 @@ fun PdfCover(
      */
     progress: Float? = null,
 ) {
-    val context = LocalContext.current
-    val thumbnails = remember(context) {
-        (context.applicationContext as LlegeixApp).pdfThumbnails
-    }
+    val thumbnails = remember { Services.app.pdfThumbnails }
     val widthPx = with(LocalDensity.current) { width.roundToPx() }
 
     // Seeded from the cache so an already-rendered cover paints on the first
@@ -85,7 +80,7 @@ fun PdfCover(
         Crossfade(targetState = bitmap, label = "cover") { rendered ->
             if (rendered != null) {
                 Image(
-                    bitmap = rendered.asImageBitmap(),
+                    bitmap = rendered,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     alignment = Alignment.TopCenter,

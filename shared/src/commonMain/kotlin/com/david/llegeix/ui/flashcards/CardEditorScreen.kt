@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.flashcards
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.heightIn
@@ -384,7 +385,7 @@ private fun meaningNote(field: Suggested, status: MeaningSuggestion, source: Mea
     field.isSuggestion && field.text.isNotBlank() && source == MeaningSource.DICTIONARY ->
         stringResource(Res.string.flashcards_meaning_from_dictionary)
     status == MeaningSuggestion.DOWNLOADING -> stringResource(Res.string.flashcards_meaning_downloading)
-    field.isSuggestion && field.text.isNotBlank() -> stringResource(Res.string.flashcards_meaning_suggested)
+    field.isSuggestion && field.text.isNotBlank() -> stringResource(onThisDevice(Res.string.flashcards_meaning_suggested, Res.string.flashcards_meaning_suggested_mac))
     status == MeaningSuggestion.NEEDS_MODEL && field.text.isBlank() ->
         stringResource(Res.string.flashcards_meaning_needs_model)
     else -> null

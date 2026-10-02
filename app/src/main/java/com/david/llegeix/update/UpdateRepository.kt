@@ -79,7 +79,7 @@ sealed interface UpdateCheck {
  * call needs no key. An API token shipped inside a sideloaded APK is a token
  * anybody with the APK has.
  */
-class UpdateRepository(private val context: Context) {
+class UpdateRepository(private val context: Context) : AppUpdates {
 
     /** Serialises downloads; see the note in [download]. */
     private val downloadLock = Mutex()
@@ -97,7 +97,7 @@ class UpdateRepository(private val context: Context) {
      * check that happens right after the reader installs it.
      */
     private val _updateWaiting = MutableStateFlow(waitingVersion() != null)
-    val updateWaiting: StateFlow<Boolean> = _updateWaiting.asStateFlow()
+    override val updateWaiting: StateFlow<Boolean> = _updateWaiting.asStateFlow()
 
     /**
      * Look for a new version without being asked, at most once a day.
@@ -115,7 +115,7 @@ class UpdateRepository(private val context: Context) {
      * identifier, and a phone that is offline simply learns nothing and tries
      * again tomorrow.
      */
-    suspend fun checkQuietly() {
+    override suspend fun checkQuietly() {
         val now = System.currentTimeMillis()
         val last = prefs.getLong(KEY_LAST_CHECK, 0L)
         if (now - last in 0 until QUIET_CHECK_INTERVAL_MS) return

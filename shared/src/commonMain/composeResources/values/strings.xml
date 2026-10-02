@@ -27,6 +27,7 @@
     <string name="nav_flashcards">Targetes</string>
     <!-- Mac only, for the sections that have not been brought across yet. -->
     <string name="desktop_section_pending">Aquesta secció encara no és al Mac.</string>
+    <string name="desktop_reader_pending">El lector encara no és al Mac: aviat s'hi podrà llegir aquest document.</string>
 
     <!-- Accions compartides -->
     <string name="action_cancel">Cancel·la</string>
@@ -822,4 +823,19 @@
     <string name="flashcards_layout_list">Llista</string>
     <string name="flashcards_layout_compact">Compacta</string>
     <string name="flashcards_layout_grid">Quadrícula</string>
+
+    <!-- The Mac's wording for the sentences that name the device; see onThisDevice(). -->
+    <string name="library_welcome_body_mac">Indica-li una carpeta de PDF, tria fitxers concrets o deixa que els busqui per tot el Mac. No es copia ni es mou res.</string>
+    <string name="sources_explainer_mac">Tot el que mostra la biblioteca ve d'aquí. Si desmarques una carpeta, l'aplicació deixa de mostrar-la; no s'esborra mai res del Mac.</string>
+    <string name="sources_remove_body_mac">Si l'amagues, els seus PDF surten de la biblioteca i la carpeta es queda en aquesta llista, desmarcada — torna-la a marcar i tornen a aparèixer.\n\nSi l'oblides, la carpeta desapareix de la llista i l'hauries de tornar a triar.\n\nCap de les dues coses no esborra res del Mac.</string>
+    <string name="library_device_scan_off_mac">Encara no s'ha activat</string>
+    <string name="library_empty_body_mac">No ha aparegut res amb l'extensió .pdf. Tria una altra carpeta, afegeix els PDF un a un o deixa que els busqui per tot el Mac.</string>
+    <string name="library_folder_hide_body_mac">Aquesta carpeta i tot el que hi ha dins desapareixen de la biblioteca. No s'esborra res del Mac, i la pots recuperar des de "Mostra les fonts".</string>
+    <string name="document_rename_body_mac">Això és només com ho anomena Llegeix. El fitxer del Mac manté el seu nom.</string>
+    <string name="sources_add_device_body_mac">Busca amb Spotlight tots els PDF de la teva carpeta d'usuari.</string>
+    <string name="flashcards_meaning_suggested_mac">Suggeriment del traductor del Mac. Canvia'l si no és correcte.</string>
+    <string name="flashcards_backup_body_mac">Les targetes són en aquest Mac i enlloc més: si esborres l'aplicació o perds el Mac, es perden. Desa'n una còpia en un fitxer de tant en tant i guarda-la en un lloc segur.</string>
+    <string name="sources_section_device_mac">Tot el Mac</string>
+    <string name="action_scan_device_mac">Busca per tot el Mac</string>
+    <string name="lookup_use_mobile_data_mac">Torna-ho a provar</string>
 </resources>

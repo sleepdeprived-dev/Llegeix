@@ -6,6 +6,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
+import androidx.core.net.toUri
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.data.model.PdfOrigin
 import com.david.llegeix.util.runCatchingCancellable
@@ -13,12 +14,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
-
-/** A folder tree the user has granted us persistent read access to. */
-data class GrantedFolder(
-    val treeUri: Uri,
-    val label: String,
-)
 
 /**
  * Finds PDFs under folder trees the user picked with the SAF folder picker.
@@ -42,7 +37,7 @@ class SafPdfSource(private val context: Context) : PdfSource {
     fun grantedFolders(): List<GrantedFolder> =
         resolver.persistedUriPermissions
             .filter { it.isReadPermission && DocumentsContract.isTreeUri(it.uri) }
-            .map { GrantedFolder(it.uri, labelForTree(it.uri)) }
+            .map { GrantedFolder(it.uri.toString(), labelForTree(it.uri)) }
             .sortedBy { it.label.lowercase() }
 
     override fun isAvailable(): Boolean = grantedFolders().isNotEmpty()
@@ -84,7 +79,7 @@ class SafPdfSource(private val context: Context) : PdfSource {
      * slower over a few hundred documents.
      */
     private suspend fun walkTree(folder: GrantedFolder): List<PdfDocument> {
-        val treeUri = folder.treeUri
+        val treeUri = folder.treeUri.toUri()
         val results = mutableListOf<PdfDocument>()
         val visited = mutableSetOf<String>()
 
@@ -180,11 +175,3 @@ class SafPdfSource(private val context: Context) : PdfSource {
         )
     }
 }
-
-/**
- * Providers are inconsistent about MIME types — plenty report
- * `application/octet-stream` for a perfectly good PDF — so the file extension
- * is checked as well.
- */
-internal fun isPdf(displayName: String, mimeType: String?): Boolean =
-    mimeType == "application/pdf" || displayName.endsWith(".pdf", ignoreCase = true)

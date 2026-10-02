@@ -863,7 +863,7 @@ private fun UpdateHeadline(update: AvailableUpdate) {
     Text(
         text = stringResource(
             Res.string.settings_update_size,
-            formatSize(context, update.downloadBytes),
+            formatSize(update.downloadBytes),
             update.abi,
         ),
         style = MaterialTheme.typography.bodySmall,

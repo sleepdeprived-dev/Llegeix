@@ -40,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.david.llegeix.data.model.PdfDocument
@@ -107,7 +106,6 @@ fun DocumentRow(
     onSearchInside: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
 
     // Neither direction ever dismisses anything: the row is a document that
@@ -200,7 +198,7 @@ fun DocumentRow(
                 // made, the other is where the file happens to live.
                 folderName?.let { stringResource(Res.string.library_filed_in, it) },
                 document.parentLabel?.takeIf { showLocation && it.isNotBlank() },
-                formatSize(context, document.sizeBytes).takeIf { it.isNotBlank() },
+                formatSize(document.sizeBytes).takeIf { it.isNotBlank() },
                 formatModified(document.lastModified).takeIf { it.isNotBlank() },
             ).joinToString(" · ")
             if (details.isNotEmpty()) {
