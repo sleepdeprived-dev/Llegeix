@@ -11,4 +11,4 @@ fun FlashcardPrefs(context: Context): FlashcardPrefs = FlashcardPrefs(
 )
 
 internal actual val USER_AGENT: String =
-    "Llegeix (Android vocabulary app; https://github.com/sleepdeprived-dev/Llegeix-releases)"
+    "Llegeix (Android vocabulary app; https://github.com/sleepdeprived-dev/Llegeix)"

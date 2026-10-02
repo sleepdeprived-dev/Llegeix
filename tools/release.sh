@@ -2,12 +2,9 @@
 #
 # Cut a release.
 #
-# The source repository is private and the builds have to be public, because the
-# app's own "check for updates" asks GitHub for them with no credentials at all
-# and an API token shipped inside a sideloaded APK is a token everybody holding
-# the APK has. So there are two repositories, and this is what keeps them one
-# command apart: the tag goes on the source, the signed APKs and the notes go to
-# sleepdeprived-dev/Llegeix-releases, which carries nothing else.
+# The app's own "check for updates" asks this repository's latest release for a
+# build, with no credentials at all, so the tag, the signed APKs and the notes
+# all go to sleepdeprived-dev/Llegeix, which is public.
 #
 # Usage:  tools/release.sh <notes-file>
 #
@@ -23,7 +20,7 @@ fi
 
 cd "$(dirname "$0")/.."
 
-RELEASES_REPO="sleepdeprived-dev/Llegeix-releases"
+RELEASES_REPO="sleepdeprived-dev/Llegeix"
 VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
 CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts)
 ABIS=(arm64-v8a armeabi-v7a x86_64 universal)

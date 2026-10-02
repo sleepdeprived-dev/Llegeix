@@ -9,4 +9,4 @@ fun desktopFlashcardPrefs(): FlashcardPrefs = FlashcardPrefs(
 )
 
 internal actual val USER_AGENT: String =
-    "Llegeix (Mac vocabulary app; https://github.com/sleepdeprived-dev/Llegeix-releases)"
+    "Llegeix (Mac vocabulary app; https://github.com/sleepdeprived-dev/Llegeix)"

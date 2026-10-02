@@ -459,13 +459,12 @@ class UpdateRepository(private val context: Context) {
 
     private companion object {
         /**
-         * The public repository holding the builds.
-         *
-         * Separate from the source, which is private: a check has to be
-         * answerable without credentials, and the only credential that could
-         * live in a sideloaded APK is one everybody holding the APK has.
+         * The repository holding the builds: the source's own, which is public,
+         * so a check is answerable without credentials — and the only
+         * credential that could live in a sideloaded APK is one everybody
+         * holding the APK has.
          */
-        const val RELEASES_REPO = "sleepdeprived-dev/Llegeix-releases"
+        const val RELEASES_REPO = "sleepdeprived-dev/Llegeix"
 
         const val LATEST_RELEASE_URL =
             "https://api.github.com/repos/$RELEASES_REPO/releases/latest"

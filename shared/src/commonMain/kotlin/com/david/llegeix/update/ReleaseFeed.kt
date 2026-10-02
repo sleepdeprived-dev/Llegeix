@@ -42,7 +42,7 @@ data class AvailableUpdate(
  *
  * The feed is GitHub's own `releases/latest` for a public repository, which
  * needs no key, no account and no library: it is one unauthenticated GET, and
- * the repository it asks about carries nothing but the builds.
+ * the builds are attached to the releases of the app's own public repository.
  */
 object ReleaseFeed {
 

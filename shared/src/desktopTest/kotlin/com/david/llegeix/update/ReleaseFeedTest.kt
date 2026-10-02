@@ -24,7 +24,7 @@ class ReleaseFeedTest {
           "name": "Llegeix v3.4",
           "draft": false,
           "prerelease": false,
-          "html_url": "https://github.com/sleepdeprived-dev/Llegeix-releases/releases/tag/v3.4",
+          "html_url": "https://github.com/sleepdeprived-dev/Llegeix/releases/tag/v3.4",
           "body": "## Per què\n\nUna **cosa** nova.\n",
           "assets": [
             {
@@ -154,7 +154,7 @@ class ReleaseFeedTest {
     @Test
     fun `blanks a release page it would not open`() {
         val tampered = feed.replace(
-            "https://github.com/sleepdeprived-dev/Llegeix-releases/releases/tag/v3.4",
+            "https://github.com/sleepdeprived-dev/Llegeix/releases/tag/v3.4",
             "https://phishing.example.com/llegeix",
         )
         assertEquals("", ReleaseFeed.parse(tampered)!!.pageUrl)
