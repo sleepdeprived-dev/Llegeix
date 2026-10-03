@@ -30,12 +30,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.david.llegeix.resources.Res
 import com.david.llegeix.resources.app_name
-import com.david.llegeix.resources.desktop_section_pending
 import com.david.llegeix.resources.nav_dictionary
 import com.david.llegeix.resources.nav_flashcards
 import com.david.llegeix.resources.nav_library
 import com.david.llegeix.resources.nav_saved
-import com.david.llegeix.ui.common.EmptyState
 import com.david.llegeix.ui.dictionary.DictionaryScreen
 import com.david.llegeix.ui.common.Pill
 import com.david.llegeix.ui.common.PillGroup
@@ -47,12 +45,11 @@ import org.jetbrains.compose.resources.stringResource
 import java.util.Locale
 
 /**
- * Llegeix for the Mac: for now, the shell.
+ * Llegeix for the Mac.
  *
  * A window in the phone's own theme, following the saved settings (the Mac's
  * own accent until another is chosen), with the four sections the phone has.
- * Biblioteca, Diccionari and Targetes are here; Desat follows. Everything in it comes from the shared module; the sections fill in
- * as their screens move there.
+ * Everything in them comes from the shared module.
  */
 fun main() {
     // Catalan whatever the Mac is set to, as on the phone: plurals follow the
@@ -65,6 +62,7 @@ fun main() {
 @Composable
 private fun ApplicationScope.App() {
     val library = rememberNavController()
+    val saved = rememberNavController()
     val flashcards = rememberNavController()
     var section by rememberSaveable { mutableStateOf(Section.LIBRARY) }
     Window(
@@ -77,6 +75,7 @@ private fun ApplicationScope.App() {
                 DesktopBack.dispatch() ||
                     when (section) {
                         Section.LIBRARY -> library.goBack()
+                        Section.SAVED -> saved.goBack()
                         Section.FLASHCARDS -> flashcards.goBack()
                         else -> false
                     }
@@ -93,7 +92,7 @@ private fun ApplicationScope.App() {
             accent = settings.accent,
             customAccent = settings.customAccent,
         ) {
-            Shell(section, onSection = { section = it }, library, flashcards)
+            Shell(section, onSection = { section = it }, library, saved, flashcards)
         }
     }
 }
@@ -117,6 +116,7 @@ private fun Shell(
     section: Section,
     onSection: (Section) -> Unit,
     library: NavHostController,
+    saved: NavHostController,
     flashcards: NavHostController,
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
@@ -140,11 +140,8 @@ private fun Shell(
                 when (section) {
                     Section.LIBRARY -> LibraryHost(library)
                     Section.DICTIONARY -> DictionaryScreen()
+                    Section.SAVED -> SavedHost(saved)
                     Section.FLASHCARDS -> FlashcardsHost(flashcards)
-                    else -> EmptyState(
-                        title = stringResource(section.label),
-                        body = stringResource(Res.string.desktop_section_pending),
-                    )
                 }
             }
         }

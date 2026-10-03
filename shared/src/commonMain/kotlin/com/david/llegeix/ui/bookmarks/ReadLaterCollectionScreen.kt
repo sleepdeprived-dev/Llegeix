@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.bookmarks
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -100,7 +101,7 @@ fun ReadLaterCollectionScreen(
         if (documents.isEmpty()) {
             EmptyState(
                 title = stringResource(Res.string.read_later_collection_empty_title),
-                body = stringResource(Res.string.read_later_collection_empty_body),
+                body = stringResource(onThisDevice(Res.string.read_later_collection_empty_body, Res.string.read_later_collection_empty_body_mac)),
                 icon = painterResource(Res.drawable.ic_bookmark),
                 modifier = Modifier.padding(innerPadding),
             )

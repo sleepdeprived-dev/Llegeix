@@ -54,7 +54,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
 import com.david.llegeix.data.db.entity.LearnedWordEntity
 import com.david.llegeix.data.flashcards.FlashcardRepository
 import com.david.llegeix.data.flashcards.PictureSearch
@@ -191,7 +191,7 @@ class LearnedWordsViewModel(
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as LlegeixApp
+                val app = Services.app
                 LearnedWordsViewModel(app.flashcardRepository, app.pictureSearch)
             }
         }

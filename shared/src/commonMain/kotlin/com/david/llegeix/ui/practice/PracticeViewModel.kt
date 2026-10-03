@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
@@ -117,8 +117,7 @@ class PracticeViewModel(
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 PracticeViewModel(app.libraryDataRepository, app.settingsRepository)
             }
         }

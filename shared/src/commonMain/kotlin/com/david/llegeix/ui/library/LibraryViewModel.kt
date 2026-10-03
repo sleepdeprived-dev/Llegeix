@@ -268,11 +268,16 @@ class LibraryViewModel(
             assignments.mapNotNull { (uri, id) -> byId[id]?.let { uri to it.name } }.toMap()
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    // Declared ahead of the init block below, whose collectors write to it:
-    // properties are set up in the order they are written, and a collector
-    // that answered at once would otherwise find it not yet there.
+    // Declared ahead of the init blocks below, whose collectors read and write
+    // them: properties are set up in the order they are written, and a
+    // collector that answered at once would otherwise find them not yet there.
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
+
+    /** Unfiltered scan result; the state holds the filtered view of this. */
+    private var allDocuments: List<PdfDocument> = emptyList()
+
+    private var scanJob: Job? = null
 
     init {
         // Bookmark and read-later flags live in the database while the document
@@ -295,11 +300,6 @@ class LibraryViewModel(
             }
         }
     }
-
-    /** Unfiltered scan result; the state holds the filtered view of this. */
-    private var allDocuments: List<PdfDocument> = emptyList()
-
-    private var scanJob: Job? = null
 
     init {
         // Under a tag sort the order depends on data outside the document list,

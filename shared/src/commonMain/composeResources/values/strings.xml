@@ -837,4 +837,12 @@
     <string name="sources_section_device_mac">Tot el Mac</string>
     <string name="action_scan_device_mac">Busca per tot el Mac</string>
     <string name="lookup_use_mobile_data_mac">Torna-ho a provar</string>
+    <string name="bookmarks_pages_empty_body_mac">Fes clic a l'estrella mentre llegeixes per marcar la pàgina on ets. Es desen aquí, a part dels PDF sencers.</string>
+    <string name="bookmarks_words_empty_body_mac">Fes doble clic en una paraula mentre llegeixes i fes clic a l'estrella. Si arrossegues per sobre de diverses paraules, en pots desar tota una frase, o marca-la des de la pestanya Diccionari.</string>
+    <string name="practice_tap_to_reveal_mac">Fes clic per veure la resposta</string>
+    <string name="practice_none_saved_body_mac">Fes doble clic en una paraula mentre llegeixes, o cerca-la al diccionari, i marca-la amb l'estrella. Les paraules marcades apareixen aquí com a cartes.</string>
+    <string name="read_later_collection_empty_body_mac">Fes servir el menú d'un PDF de la biblioteca i s'anirà acumulant aquí.</string>
+    <string name="words_today_hint_mac">Fes clic en una per veure què volia dir</string>
+    <string name="folders_delete_body_mac">Els PDF que hi ha es queden al Mac: només deixen d'estar-hi arxivats.</string>
+    <string name="collections_add_no_matches_mac">Res del Mac no hi coincideix.</string>
 </resources>

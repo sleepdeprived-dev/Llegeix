@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.ReadingProgress
 import com.david.llegeix.data.db.entity.DocumentEntity
@@ -118,8 +118,7 @@ class FolderDetailViewModel(
     companion object {
         fun factory(folderId: Long): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 FolderDetailViewModel(app.libraryDataRepository, folderId)
             }
         }

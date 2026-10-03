@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.flashcards
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -280,7 +281,7 @@ private fun StudyCard(
             Face(
                 deckName = deckName,
                 modifier = if (front) Modifier else Modifier.graphicsLayer { rotationY = 180f },
-                hint = if (front) stringResource(Res.string.practice_tap_to_reveal) else null,
+                hint = if (front) stringResource(onThisDevice(Res.string.practice_tap_to_reveal, Res.string.practice_tap_to_reveal_mac)) else null,
             ) {
                 val showPicture = !front || direction == StudyDirection.MEANING_TO_CATALAN
                 if (showPicture) {

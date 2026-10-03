@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
 import com.david.llegeix.data.db.dao.DocumentTag
 import com.david.llegeix.data.db.dao.FolderWithCount
 import com.david.llegeix.data.db.dao.PageBookmark
@@ -244,8 +244,7 @@ class BookmarksViewModel(
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 BookmarksViewModel(app.libraryDataRepository, app.searchHistoryRepository)
             }
         }

@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.practice
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -131,7 +132,7 @@ fun PracticeScreen(
                         stringResource(Res.string.practice_all_done_title)
                     },
                     body = if (state.savedTotal == 0) {
-                        stringResource(Res.string.practice_none_saved_body)
+                        stringResource(onThisDevice(Res.string.practice_none_saved_body, Res.string.practice_none_saved_body_mac))
                     } else {
                         stringResource(Res.string.practice_all_done_body)
                     },
@@ -263,7 +264,7 @@ private fun Card(
 
             if (!isRevealed) {
                 Text(
-                    text = stringResource(Res.string.practice_tap_to_reveal),
+                    text = stringResource(onThisDevice(Res.string.practice_tap_to_reveal, Res.string.practice_tap_to_reveal_mac)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = Space.xxl),

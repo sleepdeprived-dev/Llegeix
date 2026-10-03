@@ -82,3 +82,24 @@ fun ComposeUiTest.screenshot(name: String) {
     val dir = File(System.getProperty("llegeix.screenshots")).apply { mkdirs() }
     ImageIO.write(onAllNodes(isRoot()).onLast().captureToImage().toAwtImage(), "png", File(dir, "$name.png"))
 }
+
+/**
+ * Waits for [condition] in real time while moving the test's clock along with
+ * it: sheets and the reader wait a moment on that clock before they move, and
+ * the translator and the database answer in real time. A screenshot of how
+ * things stood goes with a timeout.
+ */
+@OptIn(ExperimentalTestApi::class)
+fun ComposeUiTest.settleUntil(timeoutMillis: Long = 30_000, condition: () -> Boolean) {
+    val deadline = System.currentTimeMillis() + timeoutMillis
+    while (true) {
+        waitForIdle()
+        if (condition()) return
+        if (System.currentTimeMillis() > deadline) {
+            screenshot("timeout")
+            error("Still waiting after ${timeoutMillis / 1000} s")
+        }
+        mainClock.advanceTimeBy(100)
+        Thread.sleep(50)
+    }
+}

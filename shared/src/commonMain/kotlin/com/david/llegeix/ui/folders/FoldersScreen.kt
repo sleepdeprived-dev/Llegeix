@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.folders
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -238,7 +239,7 @@ fun CollectionsPane(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(Res.string.folders_delete_title)) },
-            text = { Text(stringResource(Res.string.folders_delete_body)) },
+            text = { Text(stringResource(onThisDevice(Res.string.folders_delete_body, Res.string.folders_delete_body_mac))) },
             confirmButton = {
                 TextButton(
                     onClick = {

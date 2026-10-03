@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.folders
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,10 +37,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
 import com.david.llegeix.data.model.PdfDocument
 import com.david.llegeix.data.source.LibraryDataRepository
-import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.data.source.PdfLibrary
 import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.AppBottomSheet
 import com.david.llegeix.ui.common.CoverAspectRatio
@@ -87,7 +88,7 @@ data class AddCandidate(
  * looking for.
  */
 class AddToCollectionViewModel(
-    private val repository: PdfRepository,
+    private val repository: PdfLibrary,
     private val libraryData: LibraryDataRepository,
     private val collectionId: Long,
 ) : ViewModel() {
@@ -204,10 +205,9 @@ class AddToCollectionViewModel(
     companion object {
         fun factory(collectionId: Long): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 AddToCollectionViewModel(
-                    app.pdfRepository,
+                    app.pdfLibrary,
                     app.libraryDataRepository,
                     collectionId,
                 )
@@ -305,7 +305,7 @@ fun AddToCollectionSheet(
 
                 candidates.isEmpty() -> EmptyState(
                     title = stringResource(Res.string.library_no_matches_title),
-                    body = stringResource(Res.string.collections_add_no_matches),
+                    body = stringResource(onThisDevice(Res.string.collections_add_no_matches, Res.string.collections_add_no_matches_mac)),
                 )
 
                 else -> LazyColumn(

@@ -1,5 +1,6 @@
 package com.david.llegeix.ui.bookmarks
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -95,7 +96,7 @@ fun PagesPane(
     if (pages.isEmpty()) {
         EmptyState(
             title = stringResource(Res.string.bookmarks_pages_empty_title),
-            body = stringResource(Res.string.bookmarks_pages_empty_body),
+            body = stringResource(onThisDevice(Res.string.bookmarks_pages_empty_body, Res.string.bookmarks_pages_empty_body_mac)),
             icon = painterResource(Res.drawable.ic_bookmark),
             modifier = modifier,
         )
@@ -173,7 +174,7 @@ fun WordsPane(
             LearnedFolderRow(todayCount = addedToday, onOpen = onOpenLearned)
             EmptyState(
                 title = stringResource(Res.string.bookmarks_words_empty_title),
-                body = stringResource(Res.string.bookmarks_words_empty_body),
+                body = stringResource(onThisDevice(Res.string.bookmarks_words_empty_body, Res.string.bookmarks_words_empty_body_mac)),
                 icon = painterResource(Res.drawable.ic_bookmark),
             )
         }
@@ -402,7 +403,7 @@ private fun TodayCard(words: List<WordBookmarkEntity>, modifier: Modifier = Modi
             )
         }
         Text(
-            text = stringResource(Res.string.words_today_hint),
+            text = stringResource(onThisDevice(Res.string.words_today_hint, Res.string.words_today_hint_mac)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 2.dp),

@@ -3,7 +3,6 @@ package com.david.llegeix.desktop
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.doubleClick
@@ -97,25 +96,6 @@ class ReaderOnTheMacTest {
             }
         } finally {
             folder.deleteRecursively()
-        }
-    }
-
-    /**
-     * Waits for [condition] in real time while moving the test's clock along
-     * with it: the reader's sheet waits a moment on that clock before it
-     * rises, and the translator answers in real time.
-     */
-    private fun ComposeUiTest.settleUntil(condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 30_000
-        while (true) {
-            waitForIdle()
-            if (condition()) return
-            if (System.currentTimeMillis() > deadline) {
-                screenshot("reader-timeout")
-                error("Still waiting after 30 s")
-            }
-            mainClock.advanceTimeBy(100)
-            Thread.sleep(50)
         }
     }
 
