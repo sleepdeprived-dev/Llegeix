@@ -61,3 +61,5 @@ actual fun rememberDeviceScanRequest(onReturn: () -> Unit): () -> Boolean {
         allFilesAccessIntents(context).any { intent -> runCatching { launcher.launch(intent) }.isSuccess }
     }
 }
+
+actual val usesMouse: Boolean = false

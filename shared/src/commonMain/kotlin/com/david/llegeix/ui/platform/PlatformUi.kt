@@ -38,6 +38,13 @@ expect fun rememberPdfFilesPicker(onPicked: (List<ContentRef>) -> Unit): () -> U
 @Composable
 expect fun rememberDeviceScanRequest(onReturn: () -> Unit): () -> Boolean
 
+/**
+ * Whether pages are worked with a mouse and keyboard — the Mac — rather than
+ * a finger. The reader selects by dragging, looks a word up on a double click,
+ * pans with the scroll wheel and turns pages from the keyboard when it is.
+ */
+expect val usesMouse: Boolean
+
 /** Going back: the system back gesture on the phone, Escape on the Mac. */
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)

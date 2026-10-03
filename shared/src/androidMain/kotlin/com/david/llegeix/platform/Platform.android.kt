@@ -1,6 +1,7 @@
 package com.david.llegeix.platform
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.ui.graphics.ImageBitmap
@@ -36,3 +37,6 @@ actual fun decodeImage(bytes: ByteArray, maxEdge: Int): ImageBitmap? {
     }
     return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)?.asImageBitmap()
 }
+
+actual fun imageFromPixels(pixels: IntArray, width: Int, height: Int): ImageBitmap =
+    Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888).asImageBitmap()

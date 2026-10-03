@@ -23,7 +23,7 @@ import java.nio.file.Files
  * Biblioteca on the Mac, driven as a reader would: a folder of PDFs chosen
  * (the open panel itself cannot be driven, so the folder is handed to the
  * library as the panel would hand it), browsed into, its document's cover
- * drawn by PDFium, and the document opened. Screenshots of each step go to
+ * drawn by PDFium, and the document opened in the reader and closed again. Screenshots of each step go to
  * desktop/build/screenshots.
  */
 @OptIn(ExperimentalTestApi::class)
@@ -64,12 +64,13 @@ class LibraryOnTheMacTest {
 
                 onAllNodesWithText("prova")[0].performClick()
                 waitUntil(timeoutMillis = 10_000) {
-                    onAllNodesWithText("El lector encara no és al Mac", substring = true).fetchSemanticsNodes().isNotEmpty()
+                    onAllNodesWithText("Pàgina 1 de 2").fetchSemanticsNodes().isNotEmpty()
                 }
+                Thread.sleep(1_000)
                 waitForIdle()
                 screenshot("library-3-opened")
 
-                onNodeWithContentDescription("Enrere").performClick()
+                onNodeWithContentDescription("Torna a la biblioteca").performClick()
                 waitUntil(timeoutMillis = 10_000) { onAllNodesWithText("prova").fetchSemanticsNodes().isNotEmpty() }
 
                 // The ways in, in the Mac's words.

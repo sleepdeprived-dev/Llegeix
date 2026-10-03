@@ -56,6 +56,10 @@ kotlin {
             implementation(libs.mlkit.translate)
             // PDFium, the engine both platforms render with; the Mac loads it itself.
             implementation(libs.pdfiumandroid)
+            // The bundled Latin recogniser rather than the Play-Services one: reading a
+            // scanned page has to work the first time it is asked for, offline, on a
+            // phone that has never seen the app before.
+            implementation(libs.mlkit.text.recognition)
             implementation(libs.androidx.activity.compose)
         }
         val desktopMain by getting {
@@ -99,7 +103,7 @@ compose.resources {
     generateResClass = always
 }
 
-// The Mac's translator and PDFium in tests: the development builds from
+// The Mac's translator, PDFium and page reader in tests: the development builds from
 // tools/macos, and the models already fetched there, so the suite neither
 // downloads nor touches the real Application Support. The tests skip when
 // those builds are absent.
@@ -107,6 +111,7 @@ tasks.withType<Test>().configureEach {
     val tools = rootProject.layout.projectDirectory.dir("tools/macos/build").asFile
     systemProperty("llegeix.bergamot", tools.resolve("bergamot-translator/build/app/bergamot").path)
     systemProperty("llegeix.pdfium", tools.resolve("pdfium/lib/libpdfium.dylib").path)
+    systemProperty("llegeix.ocr", tools.resolve("llegeix-ocr").path)
     // PDFium is called through the JDK's foreign function interface.
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     systemProperty("llegeix.testModels", tools.resolve("models").path)

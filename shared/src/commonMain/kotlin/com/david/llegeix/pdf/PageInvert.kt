@@ -1,6 +1,7 @@
 package com.david.llegeix.pdf
 
-import android.graphics.Bitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import com.david.llegeix.platform.imageFromPixels
 
 /**
  * Turns a page light-on-dark without turning its photographs into negatives.
@@ -86,13 +87,13 @@ object PageInvert {
      * the page cache and the reader may be looking at it un-inverted a moment
      * later.
      */
-    fun invertKeepingPictures(source: Bitmap): Bitmap {
+    fun invertKeepingPictures(source: ImageBitmap): ImageBitmap {
         val width = source.width
         val height = source.height
         if (width <= 0 || height <= 0) return source
 
         val pixels = IntArray(width * height)
-        source.getPixels(pixels, 0, width, 0, 0, width, height)
+        source.readPixels(pixels)
 
         val picture = pictureMask(pixels, width, height)
         val blocksAcross = (width + BLOCK - 1) / BLOCK
@@ -110,7 +111,7 @@ object PageInvert {
             }
         }
 
-        return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
+        return imageFromPixels(pixels, width, height)
     }
 
     private const val ALPHA = 0xFF000000.toInt()

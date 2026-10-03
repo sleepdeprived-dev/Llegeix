@@ -1,7 +1,5 @@
 package com.david.llegeix.ui.reader
 
-import android.graphics.Bitmap
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -16,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -98,9 +97,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -134,6 +134,9 @@ import com.david.llegeix.ui.common.VerbDetails
 import com.david.llegeix.ui.common.AppSnackbarHost
 import com.david.llegeix.ui.common.Space
 import com.david.llegeix.ui.common.resolved
+import com.david.llegeix.ui.platform.PlatformBackHandler
+import com.david.llegeix.ui.platform.usesMouse
+import androidx.compose.foundation.focusable
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -334,7 +337,7 @@ fun ReaderScreen(
     // undoes one step at a time: the list first, the search after. Closing both
     // at once would throw away a sweep of the whole document for a press that
     // only meant "let me see the page".
-    BackHandler(enabled = state.search.isOpen) {
+    PlatformBackHandler(enabled = state.search.isOpen) {
         if (state.search.showResults && state.search.matches.isNotEmpty()) {
             viewModel.onToggleResults()
         } else {
@@ -409,13 +412,43 @@ fun ReaderScreen(
         viewModel.onLookupHintShown()
     }
 
+    // On the Mac the reader also answers to the keyboard (see readerKeys), so
+    // it takes the focus as it opens, as a document window would.
+    val keyFocus = remember { FocusRequester() }
+    if (usesMouse) {
+        LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
+    }
+    fun turnTo(target: Int) {
+        if (state.pageCount == 0) return
+        val page = target.coerceIn(0, state.pageCount - 1)
+        scope.launch { if (scrolling) scrollState.animateScrollToItem(page) else pagerState.animateScrollToPage(page) }
+    }
+
     Scaffold(
         // The app shell's Scaffold has already inset this screen for the
         // status bar and the navigation bar; counting them a second time
         // put a dead band above the bottom bar and made every top bar
         // 24dp taller than it asks to be.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().then(
+            if (usesMouse) {
+                Modifier
+                    .focusRequester(keyFocus)
+                    .focusable()
+                    .readerKeys(
+                        onTurn = { step -> turnTo(state.currentPage + step) },
+                        onFirst = { turnTo(0) },
+                        onLast = { turnTo(state.pageCount - 1) },
+                        onZoom = { factor ->
+                            val zoom = if (factor == null) ReaderViewModel.MIN_ZOOM else state.zoom * factor
+                            viewModel.onZoomChanged(zoom.coerceIn(ReaderViewModel.MIN_ZOOM, ReaderViewModel.MAX_ZOOM))
+                        },
+                        onFind = viewModel::onOpenSearch,
+                    )
+            } else {
+                Modifier
+            },
+        ),
         snackbarHost = { AppSnackbarHost(snackbarHostState) },
         // One bar, and only one. The bottom bar this screen used to carry took a
         // second slice out of the page for a toggle that fits in the top row.
@@ -1094,7 +1127,7 @@ private fun PdfPage(
      */
     cropMargins: Boolean,
     tint: PageTint,
-    render: suspend (index: Int, widthPx: Int) -> Bitmap?,
+    render: suspend (index: Int, widthPx: Int) -> ImageBitmap?,
     /**
      * The shape this page will come out, asked before it is drawn.
      *
@@ -1156,17 +1189,30 @@ private fun PdfPage(
         modifier = modifier.clipToBounds(),
         contentAlignment = Alignment.Center,
     ) {
-        val widthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
         // Kept across a change of width rather than cleared, so a page being
         // re-rendered at a new size goes on showing the size it had instead of
         // blinking to a spinner and back.
-        var bitmap by remember(index) { mutableStateOf<Bitmap?>(null) }
+        var bitmap by remember(index) { mutableStateOf<ImageBitmap?>(null) }
         var offset by remember(index) { mutableStateOf(Offset.Zero) }
         // How tall a slot this page asks for, which it can say before it has
         // anything to put in it. Keyed on the crop as well as the page,
         // because trimming the margins changes a page's shape and not only its
         // size.
         var aspectRatio by remember(index, cropMargins) { mutableFloatStateOf(assumedAspectRatio) }
+        // As wide as the space, unless that would make the page taller than the
+        // space: then as wide as fits its whole height. A portrait phone is
+        // always the first case; a Mac window, wider than it is tall, is the
+        // second, and a page sized to its width alone came out taller than the
+        // window, centred, with its top — where the text starts — cut off. In
+        // scroll mode the height is the column's to grow, so only the width
+        // counts.
+        val shape = bitmap?.let { it.width.toFloat() / it.height } ?: aspectRatio
+        val pageWidth = if (constraints.hasBoundedHeight && shape > 0f) {
+            minOf(maxWidth, (maxHeight - Space.sm * 2) * shape + Space.sm * 2)
+        } else {
+            maxWidth
+        }
+        val widthPx = with(LocalDensity.current) { pageWidth.roundToPx() }
         // The gesture handlers outlive the composition that started them, so
         // they have to read the zoom through a holder rather than capture it —
         // a captured value goes stale the moment the first pinch changes it.
@@ -1228,7 +1274,7 @@ private fun PdfPage(
                 }
 
                 Image(
-                    bitmap = rendered.asImageBitmap(),
+                    bitmap = rendered,
                     contentDescription = stringResource(
                         Res.string.reader_page_content_description,
                         index + 1,
@@ -1236,7 +1282,7 @@ private fun PdfPage(
                     contentScale = ContentScale.Fit,
                     colorFilter = filterFor(tint),
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .width(pageWidth)
                         .padding(horizontal = Space.sm, vertical = Space.sm)
                         .aspectRatio(rendered.width.toFloat() / rendered.height.toFloat())
                         .graphicsLayer {
@@ -1280,7 +1326,10 @@ private fun PdfPage(
                         // Dragging pans, but only while magnified — the pager owns
                         // horizontal drags the rest of the time.
                         .then(
-                            if (isZoomed) {
+                            // A mouse drag selects text on the Mac, so a
+                            // magnified page pans with the scroll wheel there
+                            // instead (see below).
+                            if (isZoomed && !usesMouse) {
                                 // Keyed on the page alone. Including the zoom here
                                 // restarted the detector every time the zoom
                                 // changed, which cancelled the drag that was in
@@ -1336,13 +1385,38 @@ private fun PdfPage(
                                 Modifier
                             },
                         )
-                        .doubleTapToZoom(
-                            key = index,
-                            currentZoom = { currentZoom },
-                            minZoom = ReaderViewModel.MIN_ZOOM,
-                            magnified = DOUBLE_TAP_ZOOM,
-                            onZoomChanged = onZoomChanged,
-                            onTap = onTap,
+                        .then(
+                            if (usesMouse) {
+                                // A Mac double click picks the word under it,
+                                // as it does in every Mac text, and looks it
+                                // up; zooming is the keyboard's and ⌘-scroll's.
+                                Modifier
+                                    .pointerInput(index, rendered, drawnSize) {
+                                        detectTapGestures(
+                                            onTap = { onTap() },
+                                            onDoubleTap = { point ->
+                                                emitSelection(point, point, rendered, drawnSize, onSelectCommit)
+                                            },
+                                        )
+                                    }
+                                    .pointerInput(index) {
+                                        wheelOnPage(
+                                            zoom = { currentZoom },
+                                            onZoom = onZoomChanged,
+                                            offset = { offset },
+                                            onPan = { offset = it },
+                                        )
+                                    }
+                            } else {
+                                Modifier.doubleTapToZoom(
+                                    key = index,
+                                    currentZoom = { currentZoom },
+                                    minZoom = ReaderViewModel.MIN_ZOOM,
+                                    magnified = DOUBLE_TAP_ZOOM,
+                                    onZoomChanged = onZoomChanged,
+                                    onTap = onTap,
+                                )
+                            },
                         )
                         // Press and hold picks a word; keep dragging and the
                         // selection grows to a phrase. One gesture, so there is
@@ -1355,36 +1429,42 @@ private fun PdfPage(
                         .pointerInput(index, rendered, drawnSize) {
                             var anchor = Offset.Zero
                             var last = Offset.Zero
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { start ->
-                                    anchor = start
-                                    last = start
-                                    // Before anything is looked up, and before the
-                                    // page has even been asked what is there. The
-                                    // hold is over the moment it is over, and
-                                    // saying so on that frame is most of what makes
-                                    // it feel immediate — the highlight is a few
-                                    // milliseconds behind and nobody notices,
-                                    // because the gesture has already been
-                                    // answered.
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    emitSelection(start, start, rendered, drawnSize, onSelectPreview)
-                                },
-                                onDrag = { change, _ ->
-                                    last = change.position
-                                    emitSelection(
-                                        anchor,
-                                        last,
-                                        rendered,
-                                        drawnSize,
-                                        onSelectPreview,
-                                    )
-                                },
-                                onDragEnd = {
-                                    emitSelection(anchor, last, rendered, drawnSize, onSelectCommit)
-                                },
-                                onDragCancel = onSelectCancel,
-                            )
+                            val onStart: (Offset) -> Unit = { start ->
+                                anchor = start
+                                last = start
+                                // Before anything is looked up, and before the
+                                // page has even been asked what is there. The
+                                // hold is over the moment it is over, and
+                                // saying so on that frame is most of what makes
+                                // it feel immediate — the highlight is a few
+                                // milliseconds behind and nobody notices,
+                                // because the gesture has already been
+                                // answered.
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                emitSelection(start, start, rendered, drawnSize, onSelectPreview)
+                            }
+                            val onMove: (PointerInputChange, Offset) -> Unit = { change, _ ->
+                                // Taken, on the Mac, so the pages around this
+                                // one do not slide along with the selection.
+                                if (usesMouse) change.consume()
+                                last = change.position
+                                emitSelection(anchor, last, rendered, drawnSize, onSelectPreview)
+                            }
+                            val onEnd: () -> Unit = {
+                                emitSelection(anchor, last, rendered, drawnSize, onSelectCommit)
+                            }
+                            // On the Mac a plain drag selects, as it does in
+                            // any Mac text; holding first is the phone's way.
+                            if (usesMouse) {
+                                detectDragGestures(onStart, onEnd, onSelectCancel, onMove)
+                            } else {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = onStart,
+                                    onDrag = onMove,
+                                    onDragEnd = onEnd,
+                                    onDragCancel = onSelectCancel,
+                                )
+                            }
                         }
                         .drawWithContent {
                             drawContent()
@@ -1437,7 +1517,7 @@ private fun PdfPage(
         } else {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .width(pageWidth)
                     .padding(horizontal = Space.sm, vertical = Space.sm)
                     .aspectRatio(aspectRatio)
                     .background(MaterialTheme.colorScheme.surface),
@@ -1463,7 +1543,7 @@ private fun PdfPage(
 private fun emitSelection(
     start: Offset,
     end: Offset,
-    rendered: Bitmap,
+    rendered: ImageBitmap,
     drawnSize: IntSize,
     onSelect: (Float, Float, Float, Float, Int, Int) -> Unit,
 ) {

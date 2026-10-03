@@ -1,15 +1,13 @@
 package com.david.llegeix.ui.reader
 
-import android.app.Application
-import android.graphics.Bitmap
-import android.util.LruCache
-import androidx.core.net.toUri
+import com.david.llegeix.util.LruCache
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
+import com.david.llegeix.platform.byteCount
 import com.david.llegeix.data.db.entity.WordBookmarkEntity
 import com.david.llegeix.data.settings.SearchHistoryRepository
 import com.david.llegeix.data.settings.SearchScope
@@ -20,7 +18,7 @@ import com.david.llegeix.data.settings.SettingsRepository
 import com.david.llegeix.data.settings.TranslationTarget
 import com.david.llegeix.data.source.LibraryDataRepository
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import com.david.llegeix.lang.CatalanContext
 import com.david.llegeix.lang.CatalanIpa
 import com.david.llegeix.lang.CatalanWordBank
@@ -28,8 +26,6 @@ import com.david.llegeix.lang.VerbForm
 import com.david.llegeix.lang.verbEntry
 import com.david.llegeix.pdf.MATCH_LIMIT
 import com.david.llegeix.pdf.PdfMatch
-import com.david.llegeix.pdf.PdfiumPageRenderer
-import com.david.llegeix.pdf.open
 import com.david.llegeix.pdf.PageOcr
 import com.david.llegeix.pdf.PdfOutlineEntry
 import com.david.llegeix.pdf.PdfPageRenderer
@@ -276,7 +272,6 @@ data class ReaderUiState(
 }
 
 class ReaderViewModel(
-    private val application: Application,
     private val uriString: String,
     private val libraryData: LibraryDataRepository,
     private val settings: SettingsRepository,
@@ -341,9 +336,9 @@ class ReaderViewModel(
      * whole, so a cache of "six pages" quietly became a cache of ninety
      * megabytes the moment that setting was switched on.
      */
-    private val pageCache = object : LruCache<String, Bitmap>(pageCacheBudgetKb()) {
-        override fun sizeOf(key: String, value: Bitmap): Int =
-            (value.allocationByteCount / 1024).coerceAtLeast(1)
+    private val pageCache = object : LruCache<String, ImageBitmap>(pageCacheBudgetKb()) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int =
+            (value.byteCount() / 1024).coerceAtLeast(1)
     }
 
     init {
@@ -587,7 +582,7 @@ class ReaderViewModel(
         // otherwise pick up where reading left off.
         val resumePage = targetPage ?: libraryData.lastReadPage(uriString)
 
-        runCatchingCancellable { PdfiumPageRenderer.open(application, uriString.toUri()) }
+        runCatchingCancellable { Services.app.openPdf(uriString) }
             .onSuccess { opened ->
                 renderer = opened
                 // A document can shrink between visits; never resume past its end.
@@ -670,7 +665,7 @@ class ReaderViewModel(
      * Sepia stays a filter, because warming a photograph is a reasonable thing
      * to do to a photograph.
      */
-    suspend fun renderPage(index: Int, widthPx: Int): Bitmap? {
+    suspend fun renderPage(index: Int, widthPx: Int): ImageBitmap? {
         val active = renderer ?: return null
         val crop = _uiState.value.cropMargins
         val invert = _uiState.value.pageTint.invertsPage
@@ -683,7 +678,7 @@ class ReaderViewModel(
         pageCache.get(key)?.let { return it }
 
         val plain = pageCache.get(plainKey)
-            ?: runCatchingCancellable { active.renderPage(index, widthPx, crop).asAndroidBitmap() }
+            ?: runCatchingCancellable { active.renderPage(index, widthPx, crop) }
                 .getOrNull()?.also { pageCache.put(plainKey, it) }
             ?: return null
 
@@ -1335,10 +1330,8 @@ class ReaderViewModel(
             targetPage: Int? = null,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
+                val app = Services.app
                 ReaderViewModel(
-                    app,
                     uriString,
                     app.libraryDataRepository,
                     app.settingsRepository,

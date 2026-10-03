@@ -9,6 +9,13 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import com.david.llegeix.ui.platform.PlatformBackHandler
+import com.david.llegeix.ui.platform.usesMouse
 
 /**
  * Scrolling that simply stops at the end.
@@ -52,9 +59,19 @@ fun AppBottomSheet(
     sheetState: SheetState = rememberModalBottomSheetState(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // The phone's sheet closes on the back gesture by itself. On the Mac,
+    // Escape: through the window's own Escape, and through the sheet's when it
+    // has the keyboard.
+    if (usesMouse) PlatformBackHandler(onBack = onDismissRequest)
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        modifier = modifier,
+        modifier = if (usesMouse) {
+            modifier.onPreviewKeyEvent { event ->
+                (event.type == KeyEventType.KeyDown && event.key == Key.Escape).also { if (it) onDismissRequest() }
+            }
+        } else {
+            modifier
+        },
         sheetState = sheetState,
     ) {
         val column = this

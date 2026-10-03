@@ -130,3 +130,5 @@ actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
         onDispose { DesktopBack.remove(handler) }
     }
 }
+
+actual val usesMouse: Boolean = true

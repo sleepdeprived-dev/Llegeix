@@ -8,5 +8,8 @@ import androidx.compose.ui.graphics.ImageBitmap
  */
 expect fun decodeImage(bytes: ByteArray, maxEdge: Int): ImageBitmap?
 
+/** A picture made from ARGB pixels, [width] to a row, as ImageBitmap.readPixels gives them. */
+expect fun imageFromPixels(pixels: IntArray, width: Int, height: Int): ImageBitmap
+
 /** What a decoded picture costs to keep in memory, for sizing caches. */
 internal fun ImageBitmap.byteCount(): Int = width * height * 4

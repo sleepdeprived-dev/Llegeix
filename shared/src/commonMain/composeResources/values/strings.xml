@@ -27,7 +27,6 @@
     <string name="nav_flashcards">Targetes</string>
     <!-- Mac only, for the sections that have not been brought across yet. -->
     <string name="desktop_section_pending">Aquesta secció encara no és al Mac.</string>
-    <string name="desktop_reader_pending">El lector encara no és al Mac: aviat s'hi podrà llegir aquest document.</string>
 
     <!-- Accions compartides -->
     <string name="action_cancel">Cancel·la</string>

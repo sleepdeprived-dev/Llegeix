@@ -137,10 +137,6 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     // DataEraser removes the downloaded translation models itself.
     implementation(libs.mlkit.translate)
-    // The bundled Latin recogniser rather than the Play-Services one: reading a
-    // scanned page has to work the first time it is asked for, offline, on a
-    // phone that has never seen the app before.
-    implementation(libs.mlkit.text.recognition)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     testImplementation(libs.junit)

@@ -1,19 +1,10 @@
 package com.david.llegeix.pdf
 
-import android.graphics.Bitmap
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.toComposeRect
-import com.google.android.gms.tasks.Task
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.Text
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import kotlinx.coroutines.suspendCancellableCoroutine
+import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlin.math.abs
 
 /** One word read off a rendered page, in that bitmap's own pixels. */
@@ -107,11 +98,7 @@ class OcrPage(val words: List<OcrWord>, val lines: List<OcrLine>) {
  * presses on it — and kept afterwards, so the wait happens once per page and
  * never during the drag that follows.
  */
-class PageOcr {
-
-    private val recognizer by lazy {
-        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    }
+class PageOcr(private val recognizer: PageTextRecognizer = pageTextRecognizer()) {
 
     /**
      * Concurrent because the two callers are not the same call: [read] writes
@@ -127,7 +114,7 @@ class PageOcr {
     fun cached(pageIndex: Int, widthPx: Int): OcrPage? = cache[key(pageIndex, widthPx)]
 
     /** Read [bitmap], or return what was read before. */
-    suspend fun read(pageIndex: Int, bitmap: Bitmap): OcrPage = mutex.withLock {
+    suspend fun read(pageIndex: Int, bitmap: ImageBitmap): OcrPage = mutex.withLock {
         cache[key(pageIndex, bitmap.width)]?.let { return it }
         val page = recognise(bitmap)
         cache[key(pageIndex, bitmap.width)] = page
@@ -139,45 +126,40 @@ class PageOcr {
         runCatching { recognizer.close() }
     }
 
-    private suspend fun recognise(bitmap: Bitmap): OcrPage {
-        val text = recognizer.process(InputImage.fromBitmap(bitmap, 0)).await()
-
-        // ML Kit groups by block, and a block is a paragraph-ish region rather
-        // than a reading order, so the lines are put back in the order a person
-        // would take them: down the page, then across.
-        val sorted = text.textBlocks
-            .flatMap { it.lines }
-            .sortedWith(compareBy({ it.boundingBox?.top ?: 0 }, { it.boundingBox?.left ?: 0 }))
+    private suspend fun recognise(bitmap: ImageBitmap): OcrPage {
+        // Recognisers group by block, and a block is a paragraph-ish region
+        // rather than a reading order, so the lines are put back in the order a
+        // person would take them: down the page, then across.
+        val sorted = recognizer.recognise(bitmap)
+            .sortedWith(compareBy({ it.box?.top ?: 0f }, { it.box?.left ?: 0f }))
 
         val lines = ArrayList<OcrLine>(sorted.size)
         val words = ArrayList<OcrWord>()
         sorted.forEachIndexed { index, line ->
             lines += OcrLine(number = index + 1, text = line.text)
-            words += line.elements
-                .sortedBy { it.boundingBox?.left ?: 0 }
-                .mapNotNull { element -> element.toWord(index) }
+            words += line.words
+                .filter { it.text.isNotBlank() }
+                .sortedBy { it.box.left }
+                .map { OcrWord(text = it.text, box = it.box, lineIndex = index) }
         }
         return OcrPage(words = words, lines = lines)
-    }
-
-    private fun Text.Element.toWord(lineIndex: Int): OcrWord? {
-        val box = boundingBox ?: return null
-        if (text.isBlank()) return null
-        return OcrWord(text = text, box = box.toComposeRect(), lineIndex = lineIndex)
     }
 
     private fun key(pageIndex: Int, widthPx: Int) = "$pageIndex@$widthPx"
 }
 
-/** Bridges a Play Services task to a coroutine, cancellably. */
-private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { continuation ->
-    addOnCompleteListener { task ->
-        val error = task.exception
-        if (error != null) {
-            continuation.resumeWithException(error)
-        } else {
-            @Suppress("UNCHECKED_CAST")
-            continuation.resume(task.result as T)
-        }
-    }
+/**
+ * What reads the words off a picture of a page: ML Kit's Latin recogniser on
+ * the phone, Apple's Vision on the Mac. Each hands back lines as it found
+ * them; [PageOcr] puts them in reading order.
+ */
+interface PageTextRecognizer : AutoCloseable {
+    suspend fun recognise(image: ImageBitmap): List<RecognisedLine>
 }
+
+/** One line read off a page, with its words; boxes are in the picture's own pixels. */
+data class RecognisedLine(val text: String, val box: Rect?, val words: List<RecognisedWord>)
+
+data class RecognisedWord(val text: String, val box: Rect)
+
+expect fun pageTextRecognizer(): PageTextRecognizer
