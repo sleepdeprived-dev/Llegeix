@@ -14,6 +14,7 @@ import com.david.llegeix.platform.AppServices
 import com.david.llegeix.platform.Services
 import com.david.llegeix.data.source.LibraryDataRepository
 import com.david.llegeix.data.source.PdfRepository
+import com.david.llegeix.data.AndroidDataEraser
 import com.david.llegeix.data.DataEraser
 import com.david.llegeix.data.flashcards.FlashcardBackupFiles
 import com.david.llegeix.data.flashcards.FlashcardImages
@@ -26,7 +27,7 @@ import com.david.llegeix.pdf.PdfThumbnails
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.open
 import androidx.core.net.toUri
-import com.david.llegeix.update.AppUpdates
+import com.david.llegeix.update.AppUpdater
 import com.david.llegeix.update.UpdateRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -119,8 +120,8 @@ class LlegeixApp : Application(), AppServices {
     override val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(::openPdf) }
 
     /** Puts the app back to how it was before it was ever opened. */
-    val dataEraser: DataEraser by lazy {
-        DataEraser(
+    override val dataEraser: DataEraser by lazy {
+        AndroidDataEraser(
             this,
             libraryDataRepository,
             flashcardRepository,
@@ -152,7 +153,7 @@ class LlegeixApp : Application(), AppServices {
     /** The app's only way of learning that a newer version of itself exists. */
     val updateRepository: UpdateRepository by lazy { UpdateRepository(this) }
 
-    override val updates: AppUpdates get() = updateRepository
+    override val updates: AppUpdater get() = updateRepository
 
     private companion object {
         /** Where exam papers were copied to, before v4.1 dropped the feature. */

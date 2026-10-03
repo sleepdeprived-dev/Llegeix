@@ -1,11 +1,12 @@
 package com.david.llegeix.ui.settings
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.david.llegeix.LlegeixApp
+import com.david.llegeix.platform.Services
 import com.david.llegeix.data.DataEraser
 import com.david.llegeix.data.settings.AccentColor
 import com.david.llegeix.data.settings.AppSettings
@@ -15,7 +16,7 @@ import com.david.llegeix.resources.*
 import com.david.llegeix.ui.common.UiText
 import com.david.llegeix.update.AvailableUpdate
 import com.david.llegeix.update.UpdateCheck
-import com.david.llegeix.update.UpdateRepository
+import com.david.llegeix.update.AppUpdater
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,7 +60,7 @@ sealed interface UpdateUiState {
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val dataEraser: DataEraser,
-    private val updates: UpdateRepository,
+    private val updates: AppUpdater,
 ) : ViewModel() {
 
     val settings: StateFlow<AppSettings> = settingsRepository.settings
@@ -113,6 +114,9 @@ class SettingsViewModel(
     /** The version running now, for the card to name without asking anything. */
     val installedVersion: String get() = updates.installedVersion
 
+    /** For the screen's platform actions: the installer, the browser. */
+    val updater: AppUpdater get() = updates
+
     private var updateJob: Job? = null
 
     /**
@@ -165,11 +169,11 @@ class SettingsViewModel(
             }
             _updateState.value = when {
                 file == null ->
-                    UpdateUiState.Trouble(UiText.of(Res.string.settings_update_download_failed))
+                    UpdateUiState.Trouble(UiText.of(onThisDevice(Res.string.settings_update_download_failed, Res.string.settings_update_download_failed_mac)))
                 // Checked before the reader is shown a dialog about it, not
                 // after. See UpdateRepository.isOurBuild.
                 !updates.isOurBuild(file) ->
-                    UpdateUiState.Trouble(UiText.of(Res.string.settings_update_not_ours))
+                    UpdateUiState.Trouble(UiText.of(onThisDevice(Res.string.settings_update_not_ours, Res.string.settings_update_not_ours_mac)))
                 else -> UpdateUiState.Ready(update, file)
             }
         }
@@ -182,7 +186,8 @@ class SettingsViewModel(
     }
 
     /**
-     * Whether Android will let the app hand an APK to the installer.
+     * Whether the platform will let the app hand a build over: on the phone,
+     * whether Android will let it give an APK to the installer.
      *
      * Asked at the moment of installing rather than remembered, because the
      * reader can grant or revoke it in system Settings while this screen is
@@ -191,37 +196,25 @@ class SettingsViewModel(
     fun canInstallUpdates(): Boolean = updates.canInstall()
 
     /**
-     * The intents the screen fires.
+     * Say so when the platform would not do what the card asked.
      *
-     * Built here because the repository knows the file provider and the package
-     * name, and started there because starting an activity wants the screen's
-     * own context, not the application's.
-     */
-    fun installIntent(file: File) = updates.installIntent(file)
-
-    fun installPermissionIntent() = updates.installPermissionIntent()
-
-    fun releasePageIntent(update: AvailableUpdate) = updates.releasePageIntent(update)
-
-    /**
-     * Say so when an intent would not start.
-     *
-     * Three of these are fired from the card — the installer, the browser, the
-     * permission screen — and every one of them is a `startActivity` that can
-     * throw on a device with nothing registered for it. Uncaught, in a click
+     * Three things are started from the card — the installer, the browser, the
+     * permission screen — and on the phone every one of them is a
+     * `startActivity` that can throw on a device with nothing registered for
+     * it. Uncaught, in a click
      * handler, that is not a failed update: it is the app closing. A device
      * with no package installer at all is close to hypothetical, which is
      * exactly why it would never be found any other way.
      */
     fun onCouldNotOpen() {
-        _updateState.value = UpdateUiState.Trouble(UiText.of(Res.string.settings_update_cannot_open))
+        _updateState.value = UpdateUiState.Trouble(UiText.of(onThisDevice(Res.string.settings_update_cannot_open, Res.string.settings_update_cannot_open_mac)))
     }
 
     private fun troubleText(reason: UpdateCheck.Reason): UiText = UiText.of(
         when (reason) {
             UpdateCheck.Reason.OFFLINE -> Res.string.settings_update_offline
             UpdateCheck.Reason.RATE_LIMITED -> Res.string.settings_update_rate_limited
-            UpdateCheck.Reason.NO_BUILD -> Res.string.settings_update_no_build
+            UpdateCheck.Reason.NO_BUILD -> onThisDevice(Res.string.settings_update_no_build, Res.string.settings_update_no_build_mac)
             UpdateCheck.Reason.UNREADABLE -> Res.string.settings_update_unreadable
         },
     )
@@ -229,9 +222,8 @@ class SettingsViewModel(
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                    as LlegeixApp
-                SettingsViewModel(app.settingsRepository, app.dataEraser, app.updateRepository)
+                val app = Services.app
+                SettingsViewModel(app.settingsRepository, app.dataEraser, app.updates)
             }
         }
     }

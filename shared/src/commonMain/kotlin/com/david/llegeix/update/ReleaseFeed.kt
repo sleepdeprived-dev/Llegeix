@@ -182,6 +182,14 @@ object ReleaseFeed {
     }
 
     /**
+     * The Mac's build in [release]: one disk image, universal, named
+     * `Llegeix-<version>-macos.dmg` beside the phone's APKs.
+     */
+    fun macBuildFor(release: PublishedRelease): ChosenBuild? =
+        release.assets.firstOrNull { it.name.endsWith("-${release.version}-$MAC$DMG", ignoreCase = true) }
+            ?.let { ChosenBuild(it, MAC) }
+
+    /**
      * Whether an asset is the build of [version] for [abi].
      *
      * Anchored on the version rather than only on the end of the name, so that
@@ -195,6 +203,10 @@ object ReleaseFeed {
     private const val UNIVERSAL = "universal"
 
     private const val APK = ".apk"
+
+    private const val MAC = "macos"
+
+    private const val DMG = ".dmg"
 
     private val DIGITS = Regex("\\d+")
 

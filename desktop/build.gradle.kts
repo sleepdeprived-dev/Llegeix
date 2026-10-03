@@ -1,5 +1,8 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
+/** jpackage wants a plain x.y.z; kept in step with the Android versionName. */
+val macVersion = "4.4.6"
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.compose)
@@ -10,7 +13,6 @@ dependencies {
     implementation(project(":shared"))
     implementation(compose.desktop.currentOs)
     implementation(libs.compose.mp.material3)
-    implementation(libs.compose.mp.material.icons.core)
     implementation(libs.compose.mp.navigation.compose)
     // Dispatchers.Main on the Mac is the Swing event thread; the ViewModels run on it.
     implementation(libs.kotlinx.coroutines.swing)
@@ -30,6 +32,7 @@ tasks.withType<Test>().configureEach {
     systemProperty("llegeix.pdfium", tools.resolve("pdfium/lib/libpdfium.dylib").path)
     systemProperty("llegeix.ocr", tools.resolve("llegeix-ocr").path)
     systemProperty("llegeix.testModels", tools.resolve("models").path)
+    systemProperty("llegeix.version", macVersion)
     systemProperty("llegeix.screenshots", layout.buildDirectory.dir("screenshots").get().asFile.path)
 }
 
@@ -51,11 +54,13 @@ compose.desktop {
         // pages from tools/macos/build-ocr.sh, likewise.
         jvmArgs += "-Dllegeix.pdfium=" + rootProject.file("tools/macos/build/pdfium/lib/libpdfium.dylib").path
         jvmArgs += "-Dllegeix.ocr=" + rootProject.file("tools/macos/build/llegeix-ocr").path
+        // The packaged app is told its version by jpackage's launcher; a run
+        // from Gradle is told here.
+        jvmArgs += "-Dllegeix.version=$macVersion"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg)
             packageName = "Llegeix"
-            // jpackage wants a plain x.y.z; kept in step with the Android versionName.
-            packageVersion = "4.4.6"
+            packageVersion = macVersion
             macOS {
                 bundleID = "com.david.llegeix"
             }

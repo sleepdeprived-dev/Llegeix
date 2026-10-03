@@ -1,14 +1,6 @@
 package com.david.llegeix.update
 
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.content.pm.SigningInfo
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
-import androidx.core.content.FileProvider
-import androidx.core.net.toUri
+import com.david.llegeix.data.settings.SettingsStore
 import com.david.llegeix.util.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +16,6 @@ import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.security.MessageDigest
 
 /** What a check for updates came back with. */
 sealed interface UpdateCheck {
@@ -69,24 +60,24 @@ sealed interface UpdateCheck {
  *  - **Nothing happens unless it is asked for.** No background poll, no check on
  *    launch, no notification. The app makes one network call of its own, when
  *    the button in Configuració is pressed.
- *  - **Nothing is installed without Android's own dialog.** The APK is handed to
- *    the system installer, which asks. The app cannot install it and does not
- *    try; the permission it holds is only the right to ask.
+ *  - **Nothing is installed by the app.** On the phone the APK is handed to
+ *    Android's installer, which asks; on the Mac the disk image is opened in
+ *    the Finder, and the reader drags the app across.
  *  - **Nothing is sent.** The request carries no identifier of any kind — it is
  *    the same unauthenticated GET anybody can make of a public repository.
  *
- * The releases repository is separate from the source, and public so that this
- * call needs no key. An API token shipped inside a sideloaded APK is a token
- * anybody with the APK has.
+ * The repository is public, so this call needs no key. An API token shipped
+ * inside a sideloaded app is a token anybody with the app has.
+ *
+ * What differs between the platforms — which file in a release is this
+ * device's, what version is running, whether a downloaded file is really
+ * Llegeix — is left to UpdateRepository on the phone and DesktopUpdater on
+ * the Mac.
  */
-class UpdateRepository(private val context: Context) : AppUpdates {
+abstract class AppUpdater(private val prefs: SettingsStore) : AppUpdates {
 
     /** Serialises downloads; see the note in [download]. */
     private val downloadLock = Mutex()
-
-    private val prefs by lazy {
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    }
 
     /**
      * Whether a newer version is known to be waiting, for the dot on the gear.
@@ -95,9 +86,13 @@ class UpdateRepository(private val context: Context) : AppUpdates {
      * rather than appearing a second later, and cleared the moment a check
      * finds the newest release is the one already running — including the
      * check that happens right after the reader installs it.
+     *
+     * Lazy, because it asks for [installedVersion], which the platform's
+     * subclass answers from fields that are not yet set while this class is
+     * being built.
      */
-    private val _updateWaiting = MutableStateFlow(waitingVersion() != null)
-    override val updateWaiting: StateFlow<Boolean> = _updateWaiting.asStateFlow()
+    private val _updateWaiting by lazy { MutableStateFlow(waitingVersion() != null) }
+    override val updateWaiting: StateFlow<Boolean> by lazy { _updateWaiting.asStateFlow() }
 
     /**
      * Look for a new version without being asked, at most once a day.
@@ -121,7 +116,7 @@ class UpdateRepository(private val context: Context) : AppUpdates {
         if (now - last in 0 until QUIET_CHECK_INTERVAL_MS) return
         // Written before the call rather than after it, so a phone with no
         // connection does not retry on every single trip to the foreground.
-        prefs.edit().putLong(KEY_LAST_CHECK, now).apply()
+        prefs.putLong(KEY_LAST_CHECK, now)
         when (val answer = check()) {
             is UpdateCheck.Available -> rememberWaiting(answer.update.version)
             is UpdateCheck.UpToDate -> rememberWaiting(null)
@@ -133,20 +128,30 @@ class UpdateRepository(private val context: Context) : AppUpdates {
 
     /** Record what the last check found, so the dot survives the app closing. */
     fun rememberWaiting(version: String?) {
-        prefs.edit().apply {
-            if (version == null) remove(KEY_WAITING) else putString(KEY_WAITING, version)
-        }.apply()
+        if (version == null) prefs.remove(KEY_WAITING) else prefs.putString(KEY_WAITING, version)
         _updateWaiting.value = version != null
     }
 
     private fun waitingVersion(): String? = prefs.getString(KEY_WAITING, null)
         ?.takeIf { ReleaseFeed.isNewer(it, installedVersion) }
 
-    /** The version running now, read from the package rather than from a build flag. */
-    val installedVersion: String
-        get() = runCatching {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName
-        }.getOrNull().orEmpty()
+    /** The version running now. */
+    abstract val installedVersion: String
+
+    /** The file in [release] this device should fetch, or null when it carries none. */
+    protected abstract fun buildFor(release: PublishedRelease): ChosenBuild?
+
+    /** Where a download goes: a folder of the app's own, emptied each time. */
+    protected abstract fun downloadFolder(): File
+
+    /** What the downloaded file is called. */
+    protected abstract fun fileNameFor(update: AvailableUpdate): String
+
+    /** Whether [file] really is a newer Llegeix, before it is offered. */
+    abstract fun isOurBuild(file: File): Boolean
+
+    /** Whether this device will let the app hand a build over now. */
+    abstract fun canInstall(): Boolean
 
     suspend fun check(): UpdateCheck = withContext(Dispatchers.IO) {
         val response = fetch(LATEST_RELEASE_URL)
@@ -161,7 +166,7 @@ class UpdateRepository(private val context: Context) : AppUpdates {
             return@withContext UpdateCheck.UpToDate
         }
 
-        val build = ReleaseFeed.buildFor(release, Build.SUPPORTED_ABIS.orEmpty().toList())
+        val build = buildFor(release)
             ?: return@withContext UpdateCheck.Trouble(UpdateCheck.Reason.NO_BUILD)
 
         UpdateCheck.Available(
@@ -180,8 +185,8 @@ class UpdateRepository(private val context: Context) : AppUpdates {
      *
      * Into the app's own cache rather than the public Downloads folder: this is
      * a file the app made for itself and should clear up after itself, and a
-     * reader's Downloads folder is not the place to leave a 70 MB APK they did
-     * not ask to keep. Everything already there goes first, so a failed or
+     * reader's Downloads folder is not the place to leave a 70 MB build they
+     * did not ask to keep. Everything already there goes first, so a failed or
      * abandoned attempt cannot accumulate.
      */
     suspend fun download(
@@ -194,10 +199,10 @@ class UpdateRepository(private val context: Context) : AppUpdates {
         // folder — and delete the file — of the job that replaced it, which
         // ends in an install of a file that is no longer there.
         downloadLock.withLock {
-            val folder = File(context.cacheDir, UPDATE_FOLDER)
+            val folder = downloadFolder()
             folder.deleteRecursively()
             if (!folder.mkdirs()) return@withLock null
-            val target = File(folder, "Llegeix-${update.version}-${update.abi}.apk")
+            val target = File(folder, fileNameFor(update))
             // The version is a dotted number by the time it gets here, checked
             // where it was parsed, and this is the line that says so out loud.
             // A path built out of anything off the network is worth asserting
@@ -210,7 +215,7 @@ class UpdateRepository(private val context: Context) : AppUpdates {
                 runCatchingCancellable { fetchTo(update, target, onProgress) }.getOrDefault(false)
             } catch (cancelled: CancellationException) {
                 // Deleted on the way out as well as on failure. Cancelling
-                // leaves whatever had arrived so far on disk, and half an APK
+                // leaves whatever had arrived so far on disk, and half a build
                 // in the cache is a file with no purpose and a misleading name.
                 target.delete()
                 throw cancelled
@@ -291,104 +296,6 @@ class UpdateRepository(private val context: Context) : AppUpdates {
         }
     }
 
-    /**
-     * Whether [file] really is a newer Llegeix, signed with the key this copy
-     * was signed with.
-     *
-     * Android checks this too, and its check is the one that counts: an APK
-     * signed with a different key cannot replace an installed app, whatever
-     * this method says. But the installer's refusal comes *after* a dialog has
-     * been put in front of the reader, and there is one case where it does not
-     * refuse at all — an APK with a *different package name* is not an update
-     * being rejected, it is a new app being offered, and the reader is the only
-     * thing standing between a compromised release and an installed stranger.
-     *
-     * So the file is opened and read before any of that. It has to be this
-     * package, and it has to be signed by the same certificate. Nothing that
-     * fails both tests is worth showing a dialog for, and a reader should not
-     * be the check.
-     */
-    fun isOurBuild(file: File): Boolean = runCatching {
-        val manager = context.packageManager
-        val downloaded = archiveInfo(file) ?: return false
-        if (downloaded.packageName != context.packageName) return false
-
-        val installed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            manager.getPackageInfo(
-                context.packageName,
-                PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()),
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            manager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        }
-
-        val theirs = downloaded.signingInfo?.certificates() ?: return false
-        val ours = installed.signingInfo?.certificates() ?: return false
-        theirs.isNotEmpty() && theirs == ours
-    }.getOrDefault(false)
-
-    /** The signatures an APK on disk actually carries, or null if it carries none. */
-    private fun archiveInfo(file: File) =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.getPackageArchiveInfo(
-                file.path,
-                PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()),
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.getPackageArchiveInfo(
-                file.path,
-                PackageManager.GET_SIGNING_CERTIFICATES,
-            )
-        }
-
-    /**
-     * The certificates behind a signature, as digests.
-     *
-     * Digested rather than compared as byte arrays because a certificate is a
-     * byte array and byte arrays do not compare by value — a set of them would
-     * compare by identity and agree with nothing, including itself.
-     */
-    private fun SigningInfo.certificates(): Set<String> {
-        val signers = if (hasMultipleSigners()) apkContentsSigners else signingCertificateHistory
-        return signers.orEmpty().map { signature ->
-            MessageDigest.getInstance("SHA-256").digest(signature.toByteArray())
-                .joinToString("") { byte -> "%02x".format(byte) }
-        }.toSet()
-    }
-
-    /** Whether Android will let the app ask to install something. */
-    fun canInstall(): Boolean = context.packageManager.canRequestPackageInstalls()
-
-    /**
-     * Where the reader grants that, which is a screen in system Settings and
-     * cannot be a dialog: installing packages is a special access, deliberately
-     * made deliberate.
-     */
-    fun installPermissionIntent(): Intent =
-        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-            .setData("package:${context.packageName}".toUri())
-
-    /**
-     * Hand [file] to Android's package installer.
-     *
-     * The app's part ends here. What follows is the system's own dialog, which
-     * names the app, says it is an update, and is the only thing that can
-     * actually install anything.
-     */
-    fun installIntent(file: File): Intent {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}$PROVIDER", file)
-        return Intent(Intent.ACTION_VIEW)
-            .setDataAndType(uri, APK_MIME)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-
-    /** Browsing to the release itself, for a reader who would rather. */
-    fun releasePageIntent(update: AvailableUpdate): Intent =
-        Intent(Intent.ACTION_VIEW, update.pageUrl.ifBlank { RELEASES_PAGE }.toUri())
-
     // ---- Talking to the releases repository -------------------------------
 
     private sealed interface Response {
@@ -457,7 +364,7 @@ class UpdateRepository(private val context: Context) : AppUpdates {
             setRequestProperty("Accept", "application/vnd.github+json")
         }
 
-    private companion object {
+    protected companion object {
         /**
          * The repository holding the builds: the source's own, which is public,
          * so a check is answerable without credentials — and the only
@@ -477,13 +384,6 @@ class UpdateRepository(private val context: Context) : AppUpdates {
 
         const val TIMEOUT_MS = 15_000
 
-        const val UPDATE_FOLDER = "updates"
-
-        /** Matches the authority declared for the provider in the manifest. */
-        const val PROVIDER = ".updates"
-
-        const val APK_MIME = "application/vnd.android.package-archive"
-
         const val DOWNLOAD_BUFFER = 32 * 1024
 
         /** A release document is a few kilobytes; this is room to spare. */
@@ -500,9 +400,6 @@ class UpdateRepository(private val context: Context) : AppUpdates {
          */
         const val MAX_DOWNLOAD_BYTES = 320L * 1024 * 1024
 
-        /** Its own file: this is bookkeeping about the app, not a preference. */
-        const val PREFS_NAME = "llegeix.updates"
-
         const val KEY_LAST_CHECK = "last_quiet_check"
 
         /** The version the last check found, so the dot survives a restart. */
@@ -517,5 +414,6 @@ class UpdateRepository(private val context: Context) : AppUpdates {
          * urgent enough to be worth a single extra one.
          */
         const val QUIET_CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
+    
     }
 }

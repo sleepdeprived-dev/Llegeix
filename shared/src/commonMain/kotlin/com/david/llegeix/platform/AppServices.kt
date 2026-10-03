@@ -9,7 +9,8 @@ import com.david.llegeix.data.source.PdfLibrary
 import com.david.llegeix.lang.Speech
 import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.pdf.PdfThumbnails
-import com.david.llegeix.update.AppUpdates
+import com.david.llegeix.update.AppUpdater
+import com.david.llegeix.data.DataEraser
 
 /**
  * What the app keeps for its lifetime, provided by the platform when it starts:
@@ -28,7 +29,8 @@ interface AppServices {
     val searchHistoryRepository: SearchHistoryRepository
     val pdfLibrary: PdfLibrary
     val pdfThumbnails: PdfThumbnails
-    val updates: AppUpdates
+    val updates: AppUpdater
+    val dataEraser: DataEraser
 
     /**
      * Open the PDF behind [uriString] for rendering: a content Uri on the

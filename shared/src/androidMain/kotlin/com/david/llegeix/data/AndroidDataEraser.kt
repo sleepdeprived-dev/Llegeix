@@ -36,14 +36,14 @@ import kotlin.coroutines.resumeWithException
  * The downloaded translation models go too. They are by far the largest thing
  * the app puts on disk, and nothing else offers a way to remove them.
  */
-class DataEraser(
+class AndroidDataEraser(
     private val context: Context,
     private val libraryData: LibraryDataRepository,
     private val flashcards: FlashcardRepository,
     private val settings: SettingsRepository,
     private val searchHistory: SearchHistoryRepository,
     private val thumbnails: PdfThumbnails,
-) {
+) : DataEraser {
 
     /**
      * Erase everything, in the order that leaves nothing behind on a failure.
@@ -52,7 +52,7 @@ class DataEraser(
      * being able to see the reader's files, which is the half of this that
      * matters most.
      */
-    suspend fun eraseEverything() = withContext(Dispatchers.IO) {
+    override suspend fun eraseEverything() = withContext(Dispatchers.IO) {
         releaseAllUriPermissions()
         runCatching { deleteTranslationModels() }
         runCatching { libraryData.eraseEverything() }

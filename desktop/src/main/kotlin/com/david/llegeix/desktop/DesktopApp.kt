@@ -18,9 +18,10 @@ import com.david.llegeix.pdf.PdfPageRenderer
 import com.david.llegeix.pdf.PdfThumbnails
 import com.david.llegeix.pdf.PdfiumPageRenderer
 import com.david.llegeix.pdf.open
-import com.david.llegeix.update.AppUpdates
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.david.llegeix.data.DataEraser
+import com.david.llegeix.data.DesktopDataEraser
+import com.david.llegeix.update.AppUpdater
+import com.david.llegeix.update.desktopUpdater
 import java.io.File
 import java.net.URI
 import com.david.llegeix.lang.ApertureLexicon
@@ -79,13 +80,18 @@ object DesktopApp : AppServices {
 
     override val pdfThumbnails: PdfThumbnails by lazy { PdfThumbnails(::openPdf) }
 
-    /**
-     * Nothing waiting, and nothing looked for: what the Mac app does about new
-     * versions is decided with Configuració, which is where it would be shown.
-     */
-    override val updates: AppUpdates = object : AppUpdates {
-        override val updateWaiting: StateFlow<Boolean> = MutableStateFlow(false)
-        override suspend fun checkQuietly() = Unit
+    /** The disk image in each GitHub release, beside the phone's APKs. */
+    override val updates: AppUpdater by lazy { desktopUpdater() }
+
+    override val dataEraser: DataEraser by lazy {
+        DesktopDataEraser(
+            pdfLibrary,
+            libraryDataRepository,
+            flashcardRepository,
+            settingsRepository,
+            searchHistoryRepository,
+            pdfThumbnails,
+        )
     }
 
     override suspend fun openPdf(uriString: String): PdfPageRenderer =

@@ -57,6 +57,9 @@ class DesktopPdfLibrary internal constructor(
         settings?.setDeviceScanOptOut(false)
     }
 
+    /** Forget every folder and file chosen, and the leave to sweep, for "erase everything". */
+    fun forgetAll() = prefs.clear()
+
     override fun addFolder(folder: ContentRef) {
         if (folder.file.isDirectory) add(KEY_FOLDERS, folder.file.absolutePath)
     }

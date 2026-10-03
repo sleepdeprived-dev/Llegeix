@@ -1,13 +1,12 @@
 package com.david.llegeix.ui.settings
 
+import com.david.llegeix.ui.platform.onThisDevice
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.Image
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -51,8 +50,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,7 +61,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -83,6 +79,8 @@ import kotlin.math.roundToInt
 import java.io.File
 import com.david.llegeix.util.formatSize
 import com.david.llegeix.update.AvailableUpdate
+import com.david.llegeix.update.rememberUpdateActions
+import com.david.llegeix.ui.theme.systemColorScheme
 import com.david.llegeix.ui.theme.hslColor
 import com.david.llegeix.ui.theme.isDark
 import com.david.llegeix.ui.theme.swatchOrNull
@@ -112,7 +110,7 @@ fun SettingsScreen(
     var showErase by remember { mutableStateOf(false) }
     var askForInstallPermission by remember { mutableStateOf(false) }
     val isErasing by viewModel.isErasing.collectAsState()
-    val context = LocalContext.current
+    val updateActions = rememberUpdateActions(viewModel.updater)
 
     Scaffold(
         // The app shell's Scaffold has already inset this screen for the
@@ -170,7 +168,7 @@ fun SettingsScreen(
                 )
                 if (settings.accent == AccentColor.SYSTEM) {
                     Text(
-                        text = stringResource(Res.string.settings_accent_system_summary),
+                        text = stringResource(onThisDevice(Res.string.settings_accent_system_summary, Res.string.settings_accent_system_summary_mac)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = Space.xs),
@@ -247,17 +245,13 @@ fun SettingsScreen(
                     onDownload = viewModel::onDownloadUpdate,
                     onInstall = { file ->
                         if (viewModel.canInstallUpdates()) {
-                            context.startOrReport(viewModel::onCouldNotOpen) {
-                                viewModel.installIntent(file)
-                            }
+                            if (!updateActions.install(file)) viewModel.onCouldNotOpen()
                         } else {
                             askForInstallPermission = true
                         }
                     },
                     onOpenPage = { update ->
-                        context.startOrReport(viewModel::onCouldNotOpen) {
-                            viewModel.releasePageIntent(update)
-                        }
+                        if (!updateActions.openReleasePage(update)) viewModel.onCouldNotOpen()
                     },
                     onDismiss = viewModel::onDismissUpdate,
                 )
@@ -266,7 +260,7 @@ fun SettingsScreen(
             SectionHeader(stringResource(Res.string.settings_about))
 
             SettingsCard {
-                AboutRows()
+                AboutRows(viewModel.installedVersion.ifBlank { null })
             }
         }
     }
@@ -279,9 +273,7 @@ fun SettingsScreen(
         InstallPermissionDialog(
             onOpenSettings = {
                 askForInstallPermission = false
-                context.startOrReport(viewModel::onCouldNotOpen) {
-                    viewModel.installPermissionIntent()
-                }
+                if (!updateActions.requestInstallPermission()) viewModel.onCouldNotOpen()
             },
             onDismiss = { askForInstallPermission = false },
         )
@@ -345,7 +337,7 @@ private fun EraseDialog(
         title = { Text(stringResource(Res.string.erase_title)) },
         text = {
             Text(
-                text = stringResource(Res.string.erase_body),
+                text = stringResource(onThisDevice(Res.string.erase_body, Res.string.erase_body_mac)),
                 style = MaterialTheme.typography.bodyMedium,
             )
         },
@@ -375,7 +367,7 @@ private fun PrivacyDialog(onDismiss: () -> Unit) {
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    text = stringResource(Res.string.privacy_body),
+                    text = stringResource(onThisDevice(Res.string.privacy_body, Res.string.privacy_body_mac)),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
@@ -562,13 +554,8 @@ private fun AccentPicker(
     // would actually produce. Asked for directly rather than read off
     // MaterialTheme, which would otherwise show whichever fixed accent is
     // currently applied and make every dot look the same as the selection.
-    val context = LocalContext.current
     val dark = themeMode.isDark()
-    val dynamicPrimary = if (dark) {
-        dynamicDarkColorScheme(context).primary
-    } else {
-        dynamicLightColorScheme(context).primary
-    }
+    val dynamicPrimary = systemColorScheme(dark).primary
 
     // Two rows of four rather than eight across. Eight dots on a narrow phone
     // leaves them touching, and a row of touching circles reads as a strip of
@@ -690,22 +677,6 @@ private fun onColorOf(color: Color): Color {
 }
 
 /**
- * Start what [intent] builds, and say so rather than fall over if nothing can.
- *
- * [ActivityNotFoundException] is the obvious one, but building the intent can
- * throw too: a FileProvider asked for a URI to a file outside the folder it was
- * configured with throws [IllegalArgumentException]. Both happen inside a click
- * handler, where an exception is not a failed update but a closed app.
- */
-private inline fun Context.startOrReport(onTrouble: () -> Unit, intent: () -> Intent) {
-    try {
-        startActivity(intent())
-    } catch (error: RuntimeException) {
-        onTrouble()
-    }
-}
-
-/**
  * The update card: what is running, and the one button that goes and asks.
  *
  * Deliberately a card that does nothing until it is pressed. Llegeix is
@@ -729,7 +700,6 @@ private fun UpdateRows(
     onOpenPage: (AvailableUpdate) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
 
     Text(
         text = stringResource(Res.string.settings_version, installedVersion),
@@ -786,7 +756,7 @@ private fun UpdateRows(
                 modifier = Modifier.padding(top = Space.md),
             ) {
                 Button(onClick = { onDownload(state.update) }) {
-                    Text(stringResource(Res.string.settings_update_download))
+                    Text(stringResource(onThisDevice(Res.string.settings_update_download, Res.string.settings_update_download_mac)))
                 }
                 TextButton(onClick = onDismiss) {
                     Text(stringResource(Res.string.settings_update_dismiss))
@@ -824,12 +794,12 @@ private fun UpdateRows(
 
         is UpdateUiState.Ready -> {
             UpdateHeadline(state.update)
-            UpdateNote(stringResource(Res.string.settings_update_ready))
+            UpdateNote(stringResource(onThisDevice(Res.string.settings_update_ready, Res.string.settings_update_ready_mac)))
             Button(
                 onClick = { onInstall(state.file) },
                 modifier = Modifier.padding(top = Space.md),
             ) {
-                Text(stringResource(Res.string.settings_update_install))
+                Text(stringResource(onThisDevice(Res.string.settings_update_install, Res.string.settings_update_install_mac)))
             }
         }
 
@@ -853,7 +823,6 @@ private fun UpdateRows(
 /** The version that is out, and what fetching it will cost. */
 @Composable
 private fun UpdateHeadline(update: AvailableUpdate) {
-    val context = LocalContext.current
     Text(
         text = stringResource(Res.string.settings_update_found, update.version),
         style = MaterialTheme.typography.titleMedium,
@@ -909,14 +878,7 @@ private fun InstallPermissionDialog(onOpenSettings: () -> Unit, onDismiss: () ->
 }
 
 @Composable
-private fun AboutRows() {
-    val context = LocalContext.current
-    val version = remember(context) {
-        runCatching {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName
-        }.getOrNull()
-    }
-
+private fun AboutRows(version: String?) {
     // The name is a proper noun and never translated, so it comes straight from
     // the resource rather than from anything locale-dependent.
     Text(

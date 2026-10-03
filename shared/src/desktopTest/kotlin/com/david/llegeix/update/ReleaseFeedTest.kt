@@ -241,4 +241,23 @@ class ReleaseFeedTest {
         assertNull(ReleaseFeed.buildFor(armOnly, listOf("armeabi")))
         assertNull(ReleaseFeed.buildFor(armOnly, listOf("v8a")))
     }
+
+    @Test
+    fun `finds the Mac's disk image, and only that release's`() {
+        val release = ReleaseFeed.parse(feed)!!
+        // The phone's feed has no disk image: a Mac has nothing to fetch.
+        assertNull(ReleaseFeed.macBuildFor(release))
+
+        val withMac = release.copy(
+            assets = release.assets + listOf(
+                ReleaseAsset("Llegeix-3.3-macos.dmg", "https://github.com/x/old.dmg", 1),
+                ReleaseAsset("Llegeix-3.4-macos.dmg", "https://github.com/x/new.dmg", 2),
+            ),
+        )
+        val mac = ReleaseFeed.macBuildFor(withMac)!!
+        assertEquals("Llegeix-3.4-macos.dmg", mac.asset.name)
+        assertEquals("macos", mac.abi)
+        // And the phone is never offered it.
+        assertEquals("Llegeix-3.4-universal.apk", ReleaseFeed.buildFor(withMac, listOf("x86_64"))!!.asset.name)
+    }
 }
