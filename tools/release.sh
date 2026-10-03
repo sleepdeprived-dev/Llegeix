@@ -3,8 +3,9 @@
 # Cut a release.
 #
 # The app's own "check for updates" asks this repository's latest release for a
-# build, with no credentials at all, so the tag, the signed APKs and the notes
-# all go to sleepdeprived-dev/Llegeix, which is public.
+# build, with no credentials at all, so the tag, the signed APKs, the Mac's disk
+# image and the notes all go to sleepdeprived-dev/Llegeix, which is public.
+# Run on a Mac with Apple silicon: the disk image is built here too.
 #
 # Usage:  tools/release.sh <notes-file>
 #
@@ -55,6 +56,10 @@ for abi in "${ABIS[@]}"; do
        "$STAGE/Llegeix-$VERSION-$abi.apk"
 done
 
+echo "==> Building the Mac app"
+# Named as the Mac app's updater looks for it: Llegeix-<version>-macos.dmg.
+tools/macos/package.sh "$STAGE"
+
 echo "==> Tagging the source"
 git tag -a "v$VERSION" -m "Llegeix v$VERSION"
 git push origin main
@@ -65,7 +70,8 @@ gh release create "v$VERSION" \
     --repo "$RELEASES_REPO" \
     --title "Llegeix v$VERSION" \
     --notes-file "$NOTES" \
-    "$STAGE"/Llegeix-"$VERSION"-*.apk
+    "$STAGE"/Llegeix-"$VERSION"-*.apk \
+    "$STAGE/Llegeix-$VERSION-macos.dmg"
 
 echo "==> Checking that the app would see it"
 SEEN=$(curl -fsS "https://api.github.com/repos/$RELEASES_REPO/releases/latest" \

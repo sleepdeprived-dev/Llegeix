@@ -1,7 +1,9 @@
 """Builds the adaptive-icon layers from the source artwork.
 
 Run with `python3 tools/icon/build.py`; it needs Pillow, NumPy and SciPy, and it
-writes the two raster layers into every mipmap density. It is kept in the tree
+writes the two raster layers into every mipmap density. With `--mac` it writes
+the Mac app's icon instead, desktop/icons/Llegeix.icns, from the same two
+layers (it needs macOS's iconutil for that). It is kept in the tree
 with the artwork beside it because a release once went out without a new icon
 for want of the file it was to be cut from.
 
@@ -26,15 +28,19 @@ launcher shows, and carried on past the edges of the canvas so there is no
 ground anywhere behind them.
 """
 
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
 from scipy import ndimage
 
 HERE = Path(__file__).resolve().parent
 SRC = HERE / "artwork.png"
 OUT = HERE.parent.parent / "app/src/main/res"
+MAC_OUT = HERE.parent.parent / "desktop/icons/Llegeix.icns"
 
 # The 108dp canvas, drawn at 12px per dp and reduced from there.
 DP = 12
@@ -220,6 +226,10 @@ def main():
     foreground = Image.alpha_composite(foreground, shadow.filter(ImageFilter.GaussianBlur(1.2 * DP)))
     foreground.alpha_composite(cut, (left, topped))
 
+    if "--mac" in sys.argv:
+        mac_icon(background, foreground)
+        return
+
     for folder, size in DENSITIES.items():
         background.resize((size, size), Image.LANCZOS).convert("RGB").save(
             OUT / f"mipmap-{folder}/ic_launcher_background.png"
@@ -227,6 +237,38 @@ def main():
         foreground.resize((size, size), Image.LANCZOS).save(
             OUT / f"mipmap-{folder}/ic_launcher_foreground.png"
         )
+
+
+def mac_icon(background, foreground):
+    """The Mac's icon: what a launcher would show, on Apple's rounded square.
+
+    The middle 72dp of the two layers — the whole flag and the book, as a
+    phone's launcher shows them — laid on the rounded square macOS draws its
+    own icons on: 824 of 1024 pixels with a corner of 185, and a soft shadow
+    under it, as in Apple's icon template. Written as every size an .icns
+    carries and packed with iconutil.
+    """
+    shown = SHOWN_DP * DP
+    margin = (CANVAS - shown) // 2
+    face = Image.alpha_composite(background.convert("RGBA"), foreground)
+    face = face.crop((margin, margin, margin + shown, margin + shown)).resize((824, 824), Image.LANCZOS)
+
+    mask = Image.new("L", (824, 824), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, 823, 823), radius=185, fill=255)
+    icon = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+    shadow.paste((0, 0, 0, 80), (100, 112), mask)
+    icon = Image.alpha_composite(icon, shadow.filter(ImageFilter.GaussianBlur(14)))
+    icon.paste(face, (100, 100), mask)
+
+    with tempfile.TemporaryDirectory() as temp:
+        iconset = Path(temp) / "Llegeix.iconset"
+        iconset.mkdir()
+        for points in (16, 32, 128, 256, 512):
+            icon.resize((points, points), Image.LANCZOS).save(iconset / f"icon_{points}x{points}.png")
+            icon.resize((points * 2, points * 2), Image.LANCZOS).save(iconset / f"icon_{points}x{points}@2x.png")
+        MAC_OUT.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(MAC_OUT)], check=True)
 
 
 if __name__ == "__main__":

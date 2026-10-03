@@ -1,17 +1,38 @@
 # Llegeix
 
-An Android PDF reader built for reading Catalan documents while learning the
-language. Written in Kotlin with Jetpack Compose.
+A PDF reader built for reading Catalan documents while learning the language,
+for Android and for the Mac. Written in Kotlin with Jetpack Compose and Compose
+Multiplatform: the screens, the reader, the dictionary and the flashcards are
+one codebase in `shared/`, with the phone's app in `app/` and the Mac's in
+`desktop/`.
 
 Llegeix is free software under the [GNU General Public License v3.0](LICENSE).
 Signed APKs for every version are on the
 [Releases](https://github.com/sleepdeprived-dev/Llegeix/releases) page.
 
+## The Mac app
+
+The Mac app is the phone's, laid out for a window and worked with a mouse and
+keyboard: a drag selects text and a double click looks a word up, the arrow
+keys turn pages, ⌘+ and ⌘− zoom, ⌘F finds, and Escape goes back. What the
+phone does with Android, the Mac does with its own tools, all on the Mac and
+free: PDFium draws the pages on both; Bergamot, Firefox's translator, stands in
+for ML Kit; Apple's Vision reads scanned pages; Spotlight is the sweep of every
+PDF; and updates are a disk image in the same release as the APKs.
+
+`tools/macos/package.sh` builds it — fetching a JDK with jpackage and PDFium,
+and building the page reader and the translator if they are not there yet —
+into `build/macos/Llegeix-<version>-macos.dmg`, for Apple silicon.
+`tools/release.sh` runs it and attaches the image to the release. The app is
+signed ad hoc, so the first time it is opened macOS asks for it to be allowed
+in System Settings > Privacy & Security.
+
 ## Releasing
 
 The app's update check asks this repository's releases for the newest build,
-with no credentials, so the signed APKs and the release notes are attached to a
-release here, on the version's tag. `tools/release.sh <notes-file>` tags, builds
+with no credentials, so the signed APKs, the Mac's disk image and the release
+notes are attached to a release here, on the version's tag. Releases are cut on
+a Mac with Apple silicon, which builds both. `tools/release.sh <notes-file>` tags, builds
 and publishes after bumping the version in `app/build.gradle.kts`. Up to v4.4.5
 the source was private and the builds lived in a separate Llegeix-releases
 repository; every one of those releases has been carried over here.
