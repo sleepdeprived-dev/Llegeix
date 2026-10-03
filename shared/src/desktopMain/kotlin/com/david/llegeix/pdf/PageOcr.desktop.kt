@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
+import com.david.llegeix.platform.bundledProgram
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -45,11 +46,8 @@ private class VisionRecognizer : PageTextRecognizer {
 
     override fun close() = Unit
 
-    private fun helper(): File {
-        System.getProperty("llegeix.ocr")?.let { return File(it) }
-        System.getProperty("compose.application.resources.dir")?.let { return File(it, "llegeix-ocr") }
-        throw IOException("llegeix-ocr was not found: run tools/macos/build-ocr.sh")
-    }
+    private fun helper(): File = bundledProgram("llegeix-ocr", "llegeix.ocr")
+        ?: throw IOException("llegeix-ocr was not found: run tools/macos/build-ocr.sh")
 
     private companion object {
         /** The first read of a run loads Vision's models, which can take half a minute. */

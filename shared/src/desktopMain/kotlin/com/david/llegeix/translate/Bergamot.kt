@@ -1,6 +1,8 @@
 package com.david.llegeix.translate
 
+import com.david.llegeix.platform.bundledProgram
 import com.david.llegeix.platform.desktopDataDirectory
+import com.david.llegeix.platform.logWarning
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -34,12 +36,7 @@ internal object Bergamot {
      * The translator itself. Bundled with the app; `llegeix.bergamot` points at
      * a development build instead (see tools/macos/build-bergamot.sh).
      */
-    private val binary: File? by lazy {
-        listOfNotNull(
-            System.getProperty("llegeix.bergamot")?.let(::File),
-            System.getProperty("compose.application.resources.dir")?.let { File(it, "bergamot") },
-        ).firstOrNull { it.canExecute() }
-    }
+    private val binary: File? by lazy { bundledProgram("bergamot", "llegeix.bergamot") }
 
     /** The models between two languages, through English where there is no direct one. */
     fun route(from: String, to: String): List<String> = when {
@@ -88,9 +85,17 @@ internal object Bergamot {
         }
     }
 
-    /** Translate [text] through one model. Blocking; call off the main thread. */
+    /**
+     * Translate [text] through one model. Blocking; call off the main thread.
+     *
+     * What went wrong goes to the log, in English for whoever reads it there;
+     * the exception carries no message, because the screen shows an
+     * exception's message where it has one, and the app speaks Catalan. Left
+     * without one, the screen says it could not translate the word, in its
+     * own words.
+     */
     fun run(pair: String, text: String): String {
-        val program = binary ?: throw IOException("The translator is not installed")
+        val program = binary ?: fail("The translator is not in the app")
         val process = ProcessBuilder(
             program.path,
             "--model-config-paths",
@@ -100,10 +105,15 @@ internal object Bergamot {
         val out = process.inputStream.bufferedReader().readText()
         if (!process.waitFor(30, TimeUnit.SECONDS)) {
             process.destroyForcibly()
-            throw IOException("The translator did not answer")
+            fail("The translator did not answer")
         }
-        if (process.exitValue() != 0) throw IOException("The translator failed")
+        if (process.exitValue() != 0) fail("The translator failed with ${process.exitValue()}")
         return out.trim()
+    }
+
+    private fun fail(reason: String): Nothing {
+        logWarning("Bergamot", reason)
+        throw IOException()
     }
 
     private fun config(dir: File, pair: String) = """

@@ -389,10 +389,7 @@ class LibraryViewModel(
                         it.copy(
                             isScanning = false,
                             hasScanned = true,
-                            errorMessage = UiText.ofMessageOr(
-                                error.message,
-                                Res.string.library_scan_failed,
-                            ),
+                            errorMessage = UiText.of(Res.string.library_scan_failed),
                         )
                     }
                 }

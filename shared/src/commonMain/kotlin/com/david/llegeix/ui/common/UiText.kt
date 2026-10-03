@@ -13,8 +13,9 @@ import org.jetbrains.compose.resources.stringResource
  * is worded where it is shown, in the composition's language, rather than
  * wherever the ViewModel happened to be when it failed.
  *
- * [Raw] exists for text that is already a string with no resource behind it —
- * an exception message from the platform, most often.
+ * Always a resource, never an exception's message: those come from Android,
+ * the JDK or a library, in English, and the app speaks Catalan. What actually
+ * went wrong belongs in the log.
  */
 sealed interface UiText {
 
@@ -34,8 +35,6 @@ sealed interface UiText {
         val args: List<Any> = listOf(count),
     ) : UiText
 
-    data class Raw(val value: String) : UiText
-
     /**
      * Several messages read as one, a space between each.
      *
@@ -49,16 +48,11 @@ sealed interface UiText {
         fun of(id: StringResource, vararg args: Any): UiText = Res(id, args.toList())
 
         fun ofPlural(id: PluralStringResource, count: Int): UiText = Plural(id, count)
-
-        /** Prefers a platform message when there is one, falling back to [id]. */
-        fun ofMessageOr(message: String?, id: StringResource): UiText =
-            message?.takeIf { it.isNotBlank() }?.let(::Raw) ?: Res(id)
     }
 }
 
 @Composable
 fun UiText.resolved(): String = when (this) {
-    is UiText.Raw -> value
     is UiText.Res -> stringResource(id, *args.toTypedArray())
     is UiText.Plural -> pluralStringResource(id, count, *args.toTypedArray())
     is UiText.Joined -> parts.map { it.resolved() }.joinToString(" ")

@@ -619,10 +619,7 @@ class ReaderViewModel(
                 _uiState.update {
                     it.copy(
                         isOpening = false,
-                        error = UiText.ofMessageOr(
-                            error.message,
-                            Res.string.reader_open_failed_message,
-                        ),
+                        error = UiText.of(Res.string.reader_open_failed_message),
                     )
                 }
             }
@@ -1101,7 +1098,7 @@ class ReaderViewModel(
                 updateLookup {
                     it.copy(
                         status = LookupStatus.FAILED,
-                        error = UiText.ofMessageOr(error.message, Res.string.lookup_failed),
+                        error = UiText.of(Res.string.lookup_failed),
                     )
                 }
             }

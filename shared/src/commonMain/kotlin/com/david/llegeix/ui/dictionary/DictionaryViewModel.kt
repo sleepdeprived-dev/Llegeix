@@ -296,7 +296,7 @@ class DictionaryViewModel(
                 updateEntry {
                     it.copy(
                         status = EntryStatus.FAILED,
-                        error = UiText.ofMessageOr(error.message, Res.string.lookup_failed),
+                        error = UiText.of(Res.string.lookup_failed),
                     )
                 }
             }
